@@ -1,0 +1,43 @@
+.custom-calendar {
+  background-color: #111827;
+  color: #f9fafb;
+  border-radius: 12px;
+  padding: 1rem;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.custom-calendar .rdp-day {
+  padding: 0.5rem;
+  margin: 0.2rem;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.custom-calendar .rdp-day:hover {
+  background-color: #2563eb;
+  color: white;
+  transform: scale(1.05);
+}
+
+.custom-calendar .rdp-day_selected {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.custom-calendar .rdp-day_today {
+  border: 1px solid #3b82f6;
+}
+
+.calendar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 2rem auto;
+}
+
+.selected-date {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  color: #d1d5db;
+}
