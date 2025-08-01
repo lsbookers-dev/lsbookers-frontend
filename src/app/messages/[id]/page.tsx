@@ -42,7 +42,6 @@ export default function ConversationPage() {
   const handleSend = async () => {
     try {
       const token = getAuthToken()
-
       if (!content && !file) return
 
       const formData = new FormData()
