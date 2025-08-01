@@ -34,7 +34,7 @@ export default function MessagesPage() {
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/messages/conversations', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/messages/conversations`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
