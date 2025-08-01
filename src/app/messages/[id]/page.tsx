@@ -6,9 +6,15 @@ import axios from 'axios'
 import { getAuthToken } from '@/utils/auth'
 import Image from 'next/image'
 
+type Message = {
+  id: string
+  content: string
+  createdAt: string
+}
+
 export default function ConversationPage() {
   const { id } = useParams()
-  const [messages, setMessages] = useState<any[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)

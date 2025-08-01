@@ -7,7 +7,7 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import { EventInput } from '@fullcalendar/core'
+import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
 import axios from 'axios'
 
 interface Profile {
@@ -102,7 +102,7 @@ export default function ArtistProfilePage() {
     }
   }
 
-  const handleDateSelect = (selectInfo: any) => {
+  const handleDateSelect = (selectInfo: DateSelectArg) => {
     const title = prompt('Titre de l’événement :')
     const calendarApi = selectInfo.view.calendar
     calendarApi.unselect()
@@ -119,7 +119,7 @@ export default function ArtistProfilePage() {
     }
   }
 
-  const handleEventClick = (clickInfo: any) => {
+  const handleEventClick = (clickInfo: EventClickArg) => {
     if (confirm(`Supprimer l’événement "${clickInfo.event.title}" ?`)) {
       setEvents(events.filter(e => e.id !== clickInfo.event.id))
     }

@@ -8,6 +8,14 @@ import dynamic from 'next/dynamic'
 const typeOptions = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
 const MapOrganizerLocation = dynamic(() => import('@/components/MapSelector'), { ssr: false })
 
+type ProfileUpdateFields = Partial<{
+  typeEtablissement: string
+  latitude: number
+  longitude: number
+  location: string
+  country: string
+}>
+
 export default function OrganizerProfilePage() {
   const { user, token, setUser } = useAuth()
   const router = useRouter()
@@ -30,7 +38,7 @@ export default function OrganizerProfilePage() {
     }
   }, [user])
 
-  const updateProfile = async (fields: any) => {
+  const updateProfile = async (fields: ProfileUpdateFields) => {
     try {
       const res = await fetch(`http://localhost:5001/api/profile/${user?.profile?.id}`, {
         method: 'PUT',
@@ -42,11 +50,16 @@ export default function OrganizerProfilePage() {
       })
 
       if (res.ok) {
-        const updated = await res.json()
-        setUser(prev => ({
-          ...prev!,
-          profile: { ...prev!.profile, ...fields }
-        }))
+        setUser(prev => {
+          if (!prev || !prev.profile) return prev
+          return {
+            ...prev,
+            profile: {
+              ...prev.profile,
+              ...fields
+            }
+          }
+        })
       } else {
         console.error('❌ Erreur lors de la mise à jour du profil')
       }

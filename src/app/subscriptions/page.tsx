@@ -26,7 +26,7 @@ export default function SubscriptionsPage() {
         <div>
           <h2 className="text-2xl font-semibold mb-4">Formules pour les artistes 🎤</h2>
           <ul className="space-y-4">
-            <li className="bg-gray-800 p-4 rounded">🔹 Mise en avant sur la page d'accueil</li>
+            <li className="bg-gray-800 p-4 rounded">🔹 Mise en avant sur la page d’accueil</li>
             <li className="bg-gray-800 p-4 rounded">🔹 Accès à l’espace premium</li>
             <li className="bg-gray-800 p-4 rounded">🔹 Boost du profil dans les résultats de recherche</li>
           </ul>
@@ -37,7 +37,7 @@ export default function SubscriptionsPage() {
         <div>
           <h2 className="text-2xl font-semibold mb-4">Formules pour les établissements 🏢</h2>
           <ul className="space-y-4">
-            <li className="bg-gray-800 p-4 rounded">🔸 Promotion d’événements sur la page d'accueil</li>
+            <li className="bg-gray-800 p-4 rounded">🔸 Promotion d’événements sur la page d’accueil</li>
             <li className="bg-gray-800 p-4 rounded">🔸 Encarts publicitaires sponsorisés</li>
             <li className="bg-gray-800 p-4 rounded">🔸 Mise en avant de vos soirées auprès des artistes</li>
           </ul>

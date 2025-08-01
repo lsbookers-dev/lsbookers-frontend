@@ -38,7 +38,7 @@ export default function ArtistCalendar({ userId }: { userId: number }) {
       <FullCalendar
         plugins={[dayGridPlugin]}
         initialView="dayGridMonth"
-        events={events}
+        events={events.map(event => ({ ...event, id: String(event.id) }))}
         locale={frLocale}
         height="auto"
         headerToolbar={{

@@ -12,12 +12,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       router.replace('/login')
-    } else if (!user.isAdmin) {
+    } else if (user.role !== 'ADMIN') {
       router.replace('/home')
     }
   }, [user, router])
 
-  if (!user || !user.isAdmin) return null
+  if (!user || user.role !== 'ADMIN') return null
 
   return (
     <div className="min-h-screen bg-black text-white">

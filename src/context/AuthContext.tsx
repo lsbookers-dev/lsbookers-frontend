@@ -5,12 +5,24 @@ import { useRouter, usePathname } from 'next/navigation'
 
 // ✅ Types
 
+type Profile = {
+  id: number
+  specialties?: string[]
+  location?: string
+  radiusKm?: number
+  country?: string
+  latitude?: number
+  longitude?: number
+  typeEtablissement?: string
+}
+
 type User = {
   id: string
   email: string
   role: 'ARTIST' | 'ORGANIZER' | 'ADMIN'
   name?: string
-  profile?: any
+  profile?: Profile
+  avatarUrl?: string // ✅ Ajouté pour corriger l'erreur de build
 }
 
 type RegisterData = {
@@ -23,6 +35,7 @@ type RegisterData = {
 type AuthContextType = {
   user: User | null
   token: string | null
+  loading: boolean
   setUser: React.Dispatch<React.SetStateAction<User | null>>
   login: (email: string, password: string) => Promise<void>
   register: (data: RegisterData) => Promise<void>
@@ -60,7 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
     setLoading(false)
-  }, [])
+  }, [pathname, router])
 
   const login = async (email: string, password: string) => {
     const res = await fetch('http://localhost:5001/api/auth/login', {
@@ -127,7 +140,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, setUser, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, setUser, login, register, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   )

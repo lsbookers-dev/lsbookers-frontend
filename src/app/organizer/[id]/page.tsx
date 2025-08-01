@@ -4,10 +4,21 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 
+type UserProfile = {
+  typeEtablissement?: string
+  location?: string
+}
+
+type OrganizerUser = {
+  name: string
+  role: string
+  profile?: UserProfile
+}
+
 export default function OrganizerProfilePage() {
   const { id } = useParams()
   const { token } = useAuth()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<OrganizerUser | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {

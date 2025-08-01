@@ -39,7 +39,7 @@ export default function AdminSettingsPage() {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await axios.put('http://localhost:5001/api/admin/settings', formData, {
+      await axios.put('http://localhost:5001/api/admin/settings', formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage('✅ Modifications enregistrées');

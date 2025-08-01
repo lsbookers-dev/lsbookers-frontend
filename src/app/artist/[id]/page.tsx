@@ -45,40 +45,48 @@ export default function ArtistPublicProfile() {
   if (error) return <p className="text-red-500">{error}</p>
   if (!profile) return <p className="text-gray-400">Chargement du profil...</p>
 
+  const {
+    user,
+    bio,
+    profession,
+    location,
+    radiusKm = 50,
+    latitude = 48.8566,
+    longitude = 2.3522,
+    specialties
+  } = profile
+
   return (
     <div className="p-4 space-y-6 max-w-4xl mx-auto text-white">
-      <h1 className="text-2xl font-bold">Profil de {profile.user.name}</h1>
+      <h1 className="text-2xl font-bold">Profil de {user.name}</h1>
 
       <div className="bg-gray-900 p-4 rounded shadow space-y-2">
-        <p><strong>Email :</strong> {profile.user.email}</p>
-        <p><strong>Rôle :</strong> {profile.user.role}</p>
-        {profile.bio && <p><strong>Bio :</strong> {profile.bio}</p>}
-        {profile.profession && <p><strong>Profession :</strong> {profile.profession}</p>}
-        {profile.location && <p><strong>Localisation :</strong> {profile.location}</p>}
-        {profile.radiusKm && (
-          <p><strong>Rayon de déplacement :</strong> {profile.radiusKm} km</p>
+        <p><strong>Email :</strong> {user.email}</p>
+        <p><strong>Rôle :</strong> {user.role}</p>
+        {bio && <p><strong>Bio :</strong> {bio}</p>}
+        {profession && <p><strong>Profession :</strong> {profession}</p>}
+        {location && <p><strong>Localisation :</strong> {location}</p>}
+        {radiusKm && (
+          <p><strong>Rayon de déplacement :</strong> {radiusKm} km</p>
         )}
-        {profile.specialties?.length > 0 && (
-          <p><strong>Spécialités :</strong> {profile.specialties.join(', ')}</p>
+        {Array.isArray(specialties) && specialties.length > 0 && (
+          <p><strong>Spécialités :</strong> {specialties.join(', ')}</p>
         )}
       </div>
 
       <div>
         <h2 className="text-xl font-semibold mb-2">Zone d’intervention</h2>
-        <Map
-          center={[profile.latitude || 48.8566, profile.longitude || 2.3522]}
-          radius={profile.radiusKm || 50}
-        />
+        <Map center={[latitude, longitude]} radius={radiusKm} />
       </div>
 
       <div>
         <h2 className="text-xl font-semibold mb-2">Galerie Média</h2>
-        <MediaGallery userId={profile.user.id} />
+        <MediaGallery userId={user.id} />
       </div>
 
       <div>
         <h2 className="text-xl font-semibold mb-2">Calendrier</h2>
-        <Calendar userId={profile.user.id} />
+        <Calendar userId={user.id} />
       </div>
     </div>
   )
