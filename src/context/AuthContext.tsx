@@ -22,7 +22,7 @@ type User = {
   role: 'ARTIST' | 'ORGANIZER' | 'ADMIN'
   name?: string
   profile?: Profile
-  avatarUrl?: string // ✅ Ajouté pour corriger l'erreur de build
+  avatarUrl?: string
 }
 
 type RegisterData = {
@@ -52,6 +52,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter()
   const pathname = usePathname()
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL
+
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
@@ -76,7 +78,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [pathname, router])
 
   const login = async (email: string, password: string) => {
-    const res = await fetch('http://localhost:5001/api/auth/login', {
+    const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -104,7 +106,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const register = async (data: RegisterData) => {
-    const res = await fetch('http://localhost:5001/api/auth/register', {
+    const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
