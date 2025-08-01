@@ -22,7 +22,7 @@ export default function ConversationPage() {
   const fetchMessages = async () => {
     try {
       const token = getAuthToken()
-      const res = await axios.get(`http://localhost:5001/api/messages/messages/${id}`, {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/messages/messages/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setMessages(res.data)
@@ -50,7 +50,7 @@ export default function ConversationPage() {
       if (content) formData.append('content', content)
       if (file) formData.append('file', file)
 
-      await axios.post('http://localhost:5001/api/messages/send-file', formData, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/messages/send-file`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -129,7 +129,7 @@ export default function ConversationPage() {
               className="hidden"
             />
             <label htmlFor="fileInput" className="cursor-pointer bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm">
-              Choisir un fichier
+              Fichier
             </label>
 
             <button
