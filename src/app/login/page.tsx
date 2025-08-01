@@ -13,24 +13,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  // 🧠 Ne reset que si l’utilisateur est déjà connecté
   useEffect(() => {
     if (user) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       setUser(null)
     }
-  }, []) // ✅ ne dépend pas de setUser ni de user pour éviter de re-trigger à chaque maj
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       console.log('🟡 Tentative de connexion...')
 
-      const response = await axios.post('http://localhost:5001/api/auth/login', {
-        email,
-        password
-      })
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+        {
+          email,
+          password
+        }
+      )
 
       const { token, user } = response.data
 
