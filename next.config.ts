@@ -13,7 +13,16 @@ const nextConfig = {
         hostname: 'api.lsbookers.com',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'lsbookers.com',
+        pathname: '/uploads/**',
+      },
     ],
+  },
+  // Facultatif : active les strictes routes middleware (utile si tu as des routes protégées)
+  experimental: {
+    serverActions: true,
   },
 }
 
