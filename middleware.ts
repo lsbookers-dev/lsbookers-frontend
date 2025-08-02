@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const accessGranted = req.cookies.get('authorized')?.value // ⬅️ Corrigé ici
+  const accessGranted = req.cookies.get('authorized')?.value
 
-  // Autorise les chemins publics
+  // Routes publiques accessibles sans mot de passe
   const publicPaths = [
     '/access',
     '/api',
@@ -29,7 +29,7 @@ export function middleware(req: NextRequest) {
   return NextResponse.redirect(url)
 }
 
-// 🔧 Nécessaire pour que Vercel applique le middleware
+// Indique à Next sur quelles routes appliquer le middleware
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/', '/((?!_next|.*\\..*).*)'],
 }
