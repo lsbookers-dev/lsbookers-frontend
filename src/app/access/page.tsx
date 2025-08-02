@@ -10,8 +10,8 @@ export default function AccessPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (password === 'showiq2025') {
-      // ✅ corriger ici pour correspondre au middleware
-      document.cookie = "access_granted=true; path=/"
+      // Définir un cookie pour autoriser l'accès
+      document.cookie = 'authorized=true; path=/'
       router.push('/')
     } else {
       alert('Mot de passe incorrect')

@@ -1,37 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Middleware de protection
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const accessGranted = req.cookies.get('access_granted')?.value
+  const access = req.cookies.get('authorized')?.value
 
-  // Routes publiques à laisser passer
+  // Autoriser les chemins publics
   const publicPaths = [
     '/access',
     '/favicon.ico',
-    '/logo.png',
-    '/landing-background.jpg',
+    '/_next',
     '/fonts',
     '/images',
     '/styles',
-    '/_next',
-    '/api/auth', // utile si tu veux laisser login/register
+    '/api',
+    '/uploads',
+    '/landing-background.jpg',
+    '/logo.png',
   ]
 
   const isPublic = publicPaths.some(path => pathname.startsWith(path))
 
-  if (accessGranted === 'true' || isPublic) {
+  if (isPublic || access === 'true') {
     return NextResponse.next()
   }
 
-  // Sinon rediriger vers /access
   const url = req.nextUrl.clone()
   url.pathname = '/access'
   return NextResponse.redirect(url)
 }
 
-// 👇 Très important : matcher correctement les routes à surveiller
+// Ciblage du middleware sur toutes les pages sauf les fichiers statiques
 export const config = {
-  matcher: [
-    '/((?!access|_next|favicon.ico|logo.png|landing-background.jpg|fonts|images|styles|api/auth).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|access).*)'],
 }
