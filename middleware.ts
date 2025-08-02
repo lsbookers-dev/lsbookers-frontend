@@ -4,10 +4,9 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   const accessGranted = req.cookies.get('authorized')?.value
 
-  // Routes publiques accessibles sans mot de passe
+  // Liste des chemins publics
   const publicPaths = [
     '/access',
-    '/api',
     '/_next',
     '/favicon.ico',
     '/logo.png',
@@ -18,7 +17,7 @@ export function middleware(req: NextRequest) {
     '/static',
   ]
 
-  const isPublic = publicPaths.some(path => pathname.startsWith(path))
+  const isPublic = publicPaths.some((path) => pathname.startsWith(path))
 
   if (accessGranted === 'true' || isPublic) {
     return NextResponse.next()
@@ -29,7 +28,7 @@ export function middleware(req: NextRequest) {
   return NextResponse.redirect(url)
 }
 
-// Indique à Next sur quelles routes appliquer le middleware
+// Appliquer le middleware à toutes les routes sauf les fichiers statiques
 export const config = {
-  matcher: ['/', '/((?!_next|.*\\..*).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 }
