@@ -10,7 +10,8 @@ export default function AccessPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (password === 'showiq2025') {
-      document.cookie = 'authorized=true; path=/'
+      // ✅ corriger ici pour correspondre au middleware
+      document.cookie = "access_granted=true; path=/"
       router.push('/')
     } else {
       alert('Mot de passe incorrect')
@@ -19,16 +20,16 @@ export default function AccessPage() {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-black text-white">
-      <h1 className="text-2xl mb-4">🔐 Accès réservé</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
+      <h1 className="text-2xl mb-4">Accès réservé</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col items-center">
         <input
           type="password"
           placeholder="Mot de passe"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="p-2 text-black rounded"
+          className="p-2 text-black"
         />
-        <button type="submit" className="px-4 py-2 bg-white text-black rounded">
+        <button type="submit" className="mt-2 px-4 py-1 bg-white text-black rounded">
           Entrer
         </button>
       </form>
