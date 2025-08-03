@@ -16,6 +16,7 @@ interface Profile {
   location?: string
   radiusKm?: number
   country?: string
+  description?: string
 }
 
 interface User {
@@ -25,7 +26,7 @@ interface User {
   profile: Profile
 }
 
-const TYPE_OPTIONS = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
+const PROVIDER_OPTIONS = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
 
 export default function ProviderProfilePage() {
   const { user, setUser } = useAuth() as {
@@ -50,23 +51,21 @@ export default function ProviderProfilePage() {
       setLocation(user.profile?.location || '')
       setRadiusKm(user.profile?.radiusKm?.toString() || '')
       setCountry(user.profile?.country || '')
+      setDescription(user.profile?.description || '')
     }
   }, [user])
 
   const handleAddType = async () => {
     if (!selectedType || types.includes(selectedType)) return
-
     const updated = [...types, selectedType]
     setTypes(updated)
-
     try {
       const token = localStorage.getItem('token')
       await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/${user!.profile.id}`,
+        `/api/profile/${user!.profile.id}`,
         { specialties: updated },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-
       setUser(prev => ({
         ...prev!,
         profile: {
@@ -74,37 +73,45 @@ export default function ProviderProfilePage() {
           specialties: updated
         }
       }))
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour des types', error)
+    } catch (err) {
+      console.error('Erreur mise à jour spécialités', err)
     }
   }
 
-  const handleRemoveType = async (type: string) => {
-    const updated = types.filter(t => t !== type)
-    setTypes(updated)
-
+  const handleLocationUpdate = async () => {
     try {
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
+      const geoData = await geoRes.json()
+      const countryName = geoData?.[0]?.address?.country || ''
+
       const token = localStorage.getItem('token')
       await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/${user!.profile.id}`,
-        { specialties: updated },
+        `/api/profile/${user!.profile.id}`,
+        {
+          location,
+          radiusKm: parseInt(radiusKm),
+          country: countryName,
+          description
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-
       setUser(prev => ({
         ...prev!,
         profile: {
           ...prev!.profile,
-          specialties: updated
+          location,
+          radiusKm: parseInt(radiusKm),
+          country: countryName,
+          description
         }
       }))
-    } catch (error) {
-      console.error('Erreur lors de la suppression du type', error)
+    } catch (err) {
+      console.error('Erreur mise à jour localisation', err)
     }
   }
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const title = prompt('Titre de l’événement ou prestation ?')
+    const title = prompt('Titre de l’événement :')
     const calendarApi = selectInfo.view.calendar
     calendarApi.unselect()
 
@@ -121,39 +128,8 @@ export default function ProviderProfilePage() {
   }
 
   const handleEventClick = (clickInfo: EventClickArg) => {
-    if (confirm(`Supprimer "${clickInfo.event.title}" ?`)) {
+    if (confirm(`Supprimer l’événement "${clickInfo.event.title}" ?`)) {
       setEvents(events.filter(e => e.id !== clickInfo.event.id))
-    }
-  }
-
-  const handleLocationUpdate = async () => {
-    try {
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
-      const geoData = await geoRes.json()
-      const countryName = geoData?.[0]?.address?.country || ''
-
-      const token = localStorage.getItem('token')
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/${user!.profile.id}`,
-        {
-          location,
-          radiusKm: parseInt(radiusKm),
-          country: countryName
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-
-      setUser(prev => ({
-        ...prev!,
-        profile: {
-          ...prev!.profile,
-          location,
-          radiusKm: parseInt(radiusKm),
-          country: countryName
-        }
-      }))
-    } catch (err) {
-      console.error('Erreur mise à jour localisation', err)
     }
   }
 
@@ -176,13 +152,13 @@ export default function ProviderProfilePage() {
             <p className="text-sm text-gray-300">
               Prestations : {types.length > 0 ? types.join(', ') : 'Aucune'}
             </p>
-            <p className="mt-2 text-gray-400">Description de vos prestations. À compléter.</p>
+            <p className="mt-2 text-gray-400">Profil prestataire. À compléter.</p>
           </div>
         </section>
 
-        {/* Modifier les types */}
+        {/* Prestations */}
         <section>
-          <h2 className="text-xl font-bold mb-2">🛠️ Modifier mes prestations</h2>
+          <h2 className="text-xl font-bold mb-2">🛠️ Types de prestations</h2>
           <div className="flex gap-4 mb-4">
             <select
               value={selectedType}
@@ -190,7 +166,7 @@ export default function ProviderProfilePage() {
               className="bg-gray-800 px-4 py-2 rounded text-white"
             >
               <option value="">-- Sélectionner --</option>
-              {TYPE_OPTIONS.filter(opt => !types.includes(opt)).map(opt => (
+              {PROVIDER_OPTIONS.filter(opt => !types.includes(opt)).map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
@@ -201,25 +177,6 @@ export default function ProviderProfilePage() {
               Ajouter
             </button>
           </div>
-
-          {types.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {types.map((type, i) => (
-                <span
-                  key={i}
-                  className="bg-gray-700 px-3 py-1 rounded-full flex items-center gap-2"
-                >
-                  {type}
-                  <button
-                    onClick={() => handleRemoveType(type)}
-                    className="text-red-400 hover:text-red-600"
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
         </section>
 
         {/* Zone géographique */}
@@ -256,9 +213,21 @@ export default function ProviderProfilePage() {
           </div>
         </section>
 
+        {/* Description libre */}
+        <section>
+          <h2 className="text-xl font-bold mb-2">📝 Description</h2>
+          <textarea
+            placeholder="Décrivez vos prestations, services et modalités..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full bg-gray-800 text-white p-4 rounded"
+            rows={5}
+          />
+        </section>
+
         {/* Calendrier */}
         <section>
-          <h2 className="text-2xl font-bold mb-4">📅 Planning / Disponibilités</h2>
+          <h2 className="text-2xl font-bold mb-4">📅 Planning</h2>
           <div className="bg-white text-black p-4 rounded shadow">
             <FullCalendar
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
