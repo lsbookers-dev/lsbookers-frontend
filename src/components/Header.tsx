@@ -12,6 +12,26 @@ export default function Header() {
 
   const goTo = (path: string) => router.push(path)
 
+  const goToProfile = () => {
+    if (!user) return
+    switch (user.role) {
+      case 'ARTIST':
+        goTo('/profile/artist')
+        break
+      case 'ORGANIZER':
+        goTo('/profile/organizer')
+        break
+      case 'PROVIDER':
+        goTo('/profile/provider')
+        break
+      case 'ADMIN':
+        goTo('/admin/dashboard')
+        break
+      default:
+        goTo('/profile')
+    }
+  }
+
   return (
     <header className="bg-gray-900 text-white px-6 py-4 shadow-md flex items-center justify-between sticky top-0 z-50">
       {/* Logo */}
@@ -56,7 +76,7 @@ export default function Header() {
               <button
                 onClick={() => {
                   setMenuOpen(false)
-                  goTo('/profile')
+                  goToProfile()
                 }}
                 className="block w-full text-left px-4 py-2 hover:bg-gray-700"
               >
