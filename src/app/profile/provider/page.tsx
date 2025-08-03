@@ -7,7 +7,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
 export default function ProviderProfilePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ name: string } | null>(null);
   const [types, setTypes] = useState<string[]>([]);
   const [newType, setNewType] = useState('');
   const [city, setCity] = useState('');
@@ -65,7 +65,7 @@ export default function ProviderProfilePage() {
     }
   };
 
-  const handleDateSelect = (info: any) => {
+  const handleDateSelect = (info: { startStr: string }) => {
     console.log('📅 Date sélectionnée :', info.startStr);
     // TODO: connecter à l’API calendrier
   };
