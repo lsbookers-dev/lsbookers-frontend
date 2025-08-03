@@ -3,12 +3,15 @@
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 
+// Définition complète des rôles disponibles
+type UserRole = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
+
 export default function RegisterPage() {
   const { register } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'ARTIST' | 'ORGANIZER'>('ARTIST')
+  const [role, setRole] = useState<UserRole>('ARTIST')
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -60,11 +63,12 @@ export default function RegisterPage() {
         <label className="block mb-2">Type de compte</label>
         <select
           value={role}
-          onChange={e => setRole(e.target.value as 'ARTIST' | 'ORGANIZER')}
+          onChange={e => setRole(e.target.value as UserRole)}
           className="w-full px-4 py-2 mb-6 text-black"
         >
           <option value="ARTIST">Artiste</option>
           <option value="ORGANIZER">Organisateur</option>
+          <option value="PROVIDER">Prestataire</option>
         </select>
 
         <button

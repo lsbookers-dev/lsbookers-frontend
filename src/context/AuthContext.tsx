@@ -19,7 +19,7 @@ type Profile = {
 type User = {
   id: string
   email: string
-  role: 'ARTIST' | 'ORGANIZER' | 'ADMIN'
+  role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
   name?: string
   profile?: Profile
   avatarUrl?: string
@@ -28,7 +28,7 @@ type User = {
 type RegisterData = {
   email: string
   password: string
-  role: 'ARTIST' | 'ORGANIZER'
+  role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
   name?: string
 }
 
