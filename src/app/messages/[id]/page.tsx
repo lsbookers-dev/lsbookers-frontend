@@ -1,15 +1,21 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import { useParams } from 'next/navigation'
 import axios from 'axios'
 import { getAuthToken } from '@/utils/auth'
 import Image from 'next/image'
 
-type Message = {
+interface Message {
   id: string
   content: string
   createdAt: string
+  sender: {
+    id: number
+    name: string
+    image?: string
+  }
+  seen: boolean
 }
 
 export default function ConversationPage() {
@@ -36,7 +42,6 @@ export default function ConversationPage() {
   }, [id])
 
   useEffect(() => {
-    // Scroll vers le bas dans la zone de messages uniquement
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
     }
@@ -67,6 +72,12 @@ export default function ConversationPage() {
     }
   }
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSend()
+    }
+  }
+
   const renderFile = (url: string) => {
     const cleanUrl = url.trim()
     const lower = cleanUrl.toLowerCase()
@@ -94,7 +105,6 @@ export default function ConversationPage() {
       <div className="max-w-3xl w-full mx-auto flex flex-col flex-grow px-4 py-6">
         <h2 className="text-2xl font-semibold mb-4">Conversation</h2>
 
-        {/* Zone messages scrollable */}
         <div
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
@@ -106,24 +116,34 @@ export default function ConversationPage() {
             const url = urlLine?.replace('Lien:', '').trim()
 
             return (
-              <div key={msg.id} className="bg-[#2a2a2a] p-3 rounded-lg">
-                <p className="text-sm text-gray-400 mb-2">
-                  {new Date(msg.createdAt).toLocaleString()}
-                </p>
-                {text && <p className="mb-2 text-base leading-relaxed">{text}</p>}
-                {url && renderFile(url)}
+              <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
+                {msg.sender?.image ? (
+                  <Image src={msg.sender.image} alt={msg.sender.name} width={40} height={40} className="rounded-full" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold">
+                    {msg.sender?.name?.charAt(0) ?? '?'}
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">
+                    {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
+                  </p>
+                  {text && <p className="mb-1 text-base leading-relaxed">{text}</p>}
+                  {url && renderFile(url)}
+                  <p className="text-xs text-right text-gray-500 mt-1">{msg.seen ? '✓ Vu' : 'Non lu'}</p>
+                </div>
               </div>
             )
           })}
         </div>
 
-        {/* Zone de saisie */}
         <div className="mt-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <input
               type="text"
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Écris ton message..."
               className="border border-gray-600 bg-[#1c1c1c] text-white p-3 rounded flex-grow placeholder-gray-400"
             />
