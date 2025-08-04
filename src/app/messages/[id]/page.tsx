@@ -17,7 +17,7 @@ export default function ConversationPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState('')
   const [file, setFile] = useState<File | null>(null)
-  const bottomRef = useRef<HTMLDivElement | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
   const fetchMessages = async () => {
     try {
@@ -36,7 +36,10 @@ export default function ConversationPage() {
   }, [id])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Scroll vers le bas dans la zone de messages uniquement
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
   }, [messages])
 
   const handleSend = async () => {
@@ -91,8 +94,11 @@ export default function ConversationPage() {
       <div className="max-w-3xl w-full mx-auto flex flex-col flex-grow px-4 py-6">
         <h2 className="text-2xl font-semibold mb-4">Conversation</h2>
 
-        {/* Zone des messages avec scroll indépendant */}
-        <div className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f]">
+        {/* Zone messages scrollable */}
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
+        >
           {messages.map((msg) => {
             const parts = msg.content.split('\n')
             const text = parts[0]
@@ -109,7 +115,6 @@ export default function ConversationPage() {
               </div>
             )
           })}
-          <div ref={bottomRef} />
         </div>
 
         {/* Zone de saisie */}
