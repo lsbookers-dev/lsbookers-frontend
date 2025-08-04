@@ -30,13 +30,11 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!user) {
       router.push('/login')
-      return
+    } else {
+      fetchConversations()
+      fetchUsers()
     }
-
-    fetchConversations()
-    fetchUsers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user, router])
 
   const fetchConversations = async () => {
     try {
@@ -57,17 +55,15 @@ export default function MessagesPage() {
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true)
-
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
-
       const data: User[] = await res.json()
-      const currentUserId = user?.id ?? 0
-      const filtered = data.filter((u: User) => u.id !== currentUserId)
-
+      const filtered = user?.id
+        ? data.filter((u: User) => u.id !== Number(user.id))
+        : data
       setAllUsers(filtered)
     } catch (err) {
       console.error('Erreur chargement utilisateurs :', err)
@@ -116,7 +112,6 @@ export default function MessagesPage() {
 
       {error && <p className="text-red-500">{error}</p>}
 
-      {/* Recherche d'utilisateur */}
       <div className="mb-10">
         <h2 className="text-lg font-semibold mb-2">📨 Démarrer une nouvelle conversation</h2>
         <input
@@ -126,6 +121,9 @@ export default function MessagesPage() {
           placeholder="Rechercher un utilisateur..."
           className="border border-gray-600 bg-[#1c1c1c] text-white p-3 rounded w-full mb-3"
         />
+
+        {loadingUsers && <p className="text-gray-400">Chargement des utilisateurs...</p>}
+
         {search && (
           <ul className="space-y-2 max-h-40 overflow-y-auto">
             {filteredUsers.length > 0 ? (
@@ -145,7 +143,6 @@ export default function MessagesPage() {
         )}
       </div>
 
-      {/* Liste des conversations */}
       {conversations.length === 0 && !error ? (
         <p className="text-gray-400">Aucune conversation pour le moment.</p>
       ) : (
