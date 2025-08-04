@@ -87,11 +87,12 @@ export default function ConversationPage() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen font-sans bg-[#121212] text-white">
-      <section className="flex-grow max-w-3xl w-full mx-auto py-6 px-4">
-        <h2 className="text-2xl font-semibold mb-6">Conversation</h2>
+    <main className="flex flex-col h-screen bg-[#121212] text-white font-sans">
+      <div className="max-w-3xl w-full mx-auto flex flex-col flex-grow px-4 py-6">
+        <h2 className="text-2xl font-semibold mb-4">Conversation</h2>
 
-        <div className="space-y-4 mb-6 max-h-[60vh] overflow-y-auto border border-gray-700 p-4 rounded bg-[#1f1f1f]">
+        {/* Zone des messages avec scroll indépendant */}
+        <div className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f]">
           {messages.map((msg) => {
             const parts = msg.content.split('\n')
             const text = parts[0]
@@ -111,7 +112,8 @@ export default function ConversationPage() {
           <div ref={bottomRef} />
         </div>
 
-        <div className="flex flex-col gap-3">
+        {/* Zone de saisie */}
+        <div className="mt-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <input
               type="text"
@@ -164,7 +166,7 @@ export default function ConversationPage() {
             </div>
           )}
         </div>
-      </section>
+      </div>
     </main>
   )
 }
