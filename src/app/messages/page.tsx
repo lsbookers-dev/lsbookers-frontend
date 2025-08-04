@@ -25,6 +25,7 @@ export default function MessagesPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [allUsers, setAllUsers] = useState<User[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -53,22 +54,25 @@ export default function MessagesPage() {
 
   const fetchUsers = async () => {
     try {
+      setLoadingUsers(true)
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
-      const data: User[] = await res.json()
-      const currentUserId = user?.id
 
-      if (typeof currentUserId === 'number') {
-        const filtered = data.filter((u: User) => u.id !== currentUserId)
-        setAllUsers(filtered)
-      } else {
-        setAllUsers(data)
-      }
+      const data: User[] = await res.json()
+
+      const filtered = user?.id
+        ? data.filter((u: User) => u.id !== Number(user.id))
+        : data
+
+      setAllUsers(filtered)
     } catch (err) {
       console.error('Erreur chargement utilisateurs :', err)
+    } finally {
+      setLoadingUsers(false)
     }
   }
 
@@ -87,7 +91,6 @@ export default function MessagesPage() {
       })
 
       const data = await res.json()
-
       if (data?.conversationId) {
         router.push(`/messages/${data.conversationId}`)
       } else {
@@ -98,13 +101,14 @@ export default function MessagesPage() {
     }
   }
 
-  const getOtherUser = (conv: Conversation) => {
-    return conv.participants.find((p) => String(p.id) !== String(user?.id))
-  }
+  const getOtherUser = (conv: Conversation) =>
+    conv.participants.find((p) => String(p.id) !== String(user?.id))
 
-  const filteredUsers = allUsers.filter((u) =>
-    u.name?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredUsers = search
+    ? allUsers.filter((u) =>
+        u.name?.toLowerCase().includes(search.toLowerCase())
+      )
+    : []
 
   return (
     <div className="flex flex-col min-h-screen bg-black text-white p-6">
@@ -112,7 +116,8 @@ export default function MessagesPage() {
 
       {error && <p className="text-red-500">{error}</p>}
 
-      <div className="mb-8">
+      {/* Recherche d'utilisateur */}
+      <div className="mb-10">
         <h2 className="text-lg font-semibold mb-2">📨 Démarrer une nouvelle conversation</h2>
         <input
           type="text"
@@ -121,19 +126,26 @@ export default function MessagesPage() {
           placeholder="Rechercher un utilisateur..."
           className="border border-gray-600 bg-[#1c1c1c] text-white p-3 rounded w-full mb-3"
         />
-        <ul className="space-y-2 max-h-40 overflow-y-auto">
-          {filteredUsers.map((u) => (
-            <li
-              key={u.id}
-              onClick={() => startConversation(u.id)}
-              className="cursor-pointer hover:bg-gray-700 p-3 rounded bg-gray-800"
-            >
-              {u.name}
-            </li>
-          ))}
-        </ul>
+        {search && (
+          <ul className="space-y-2 max-h-40 overflow-y-auto">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map((u) => (
+                <li
+                  key={u.id}
+                  onClick={() => startConversation(u.id)}
+                  className="cursor-pointer hover:bg-gray-700 p-3 rounded bg-gray-800"
+                >
+                  {u.name}
+                </li>
+              ))
+            ) : (
+              <li className="text-gray-500 italic">Aucun utilisateur trouvé.</li>
+            )}
+          </ul>
+        )}
       </div>
 
+      {/* Liste des conversations */}
       {conversations.length === 0 && !error ? (
         <p className="text-gray-400">Aucune conversation pour le moment.</p>
       ) : (
