@@ -30,10 +30,12 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!user) {
       router.push('/login')
-    } else {
-      fetchConversations()
-      fetchUsers()
+      return
     }
+
+    fetchConversations()
+    fetchUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const fetchConversations = async () => {
@@ -63,10 +65,8 @@ export default function MessagesPage() {
       })
 
       const data: User[] = await res.json()
-
-      const filtered = user?.id
-        ? data.filter((u: User) => u.id !== Number(user.id))
-        : data
+      const currentUserId = user?.id ?? 0
+      const filtered = data.filter((u: User) => u.id !== currentUserId)
 
       setAllUsers(filtered)
     } catch (err) {
