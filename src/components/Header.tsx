@@ -36,7 +36,7 @@ export default function Header() {
     <header className="bg-gray-900 text-white px-6 py-4 shadow-md flex items-center justify-between sticky top-0 z-50">
       {/* Logo */}
       <div className="cursor-pointer" onClick={() => goTo('/home')}>
-        <Image src="/logo-lsbookers.png" alt="Logo LSBookers" width={40} height={40} />
+        <Image src="/logo.png" alt="Logo LSBookers" width={40} height={40} />
       </div>
 
       {/* Menu de navigation */}
