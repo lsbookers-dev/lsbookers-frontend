@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 interface User {
   id: number
   name: string
-  role: 'ARTIST' | 'ORGANIZER'
+  role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
   profile: {
     location?: string
     country?: string
@@ -17,29 +17,11 @@ interface User {
   }
 }
 
-const COUNTRIES = [
-  'France', 'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina',
-  'Armenia', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh',
-  'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia',
-  'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cambodia',
-  'Cameroon', 'Canada', 'Chad', 'Chile', 'China', 'Colombia', 'Congo', 'Costa Rica',
-  'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Dominican Republic',
-  'Ecuador', 'Egypt', 'El Salvador', 'Estonia', 'Ethiopia', 'Finland', 'Gabon',
-  'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Guatemala', 'Guinea', 'Haiti',
-  'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland',
-  'Israel', 'Italy', 'Ivory Coast', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan',
-  'Kenya', 'Kuwait', 'Laos', 'Latvia', 'Lebanon', 'Liberia', 'Libya', 'Lithuania',
-  'Luxembourg', 'Madagascar', 'Malaysia', 'Mali', 'Malta', 'Mauritania', 'Mexico',
-  'Moldova', 'Monaco', 'Mongolia', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia',
-  'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea',
-  'Norway', 'Oman', 'Pakistan', 'Palestine', 'Panama', 'Paraguay', 'Peru', 'Philippines',
-  'Poland', 'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saudi Arabia', 'Senegal',
-  'Serbia', 'Singapore', 'Slovakia', 'Slovenia', 'Somalia', 'South Africa', 'South Korea',
-  'Spain', 'Sri Lanka', 'Sudan', 'Sweden', 'Switzerland', 'Syria', 'Taiwan', 'Tajikistan',
-  'Tanzania', 'Thailand', 'Togo', 'Tunisia', 'Turkey', 'Turkmenistan', 'Uganda', 'Ukraine',
-  'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan',
-  'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
-]
+const SPECIALTIES = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
+const PROVIDER_TYPES = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
+const ESTABLISHMENT_TYPES = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
+
+const COUNTRIES = ['France', 'Belgium', 'Canada', 'United States', 'United Kingdom', 'Spain', 'Germany', 'Italy', 'Portugal', 'Switzerland']
 
 export default function SearchPage() {
   const router = useRouter()
@@ -49,6 +31,7 @@ export default function SearchPage() {
   const [roleFilter, setRoleFilter] = useState('')
   const [specialtyFilter, setSpecialtyFilter] = useState('')
   const [establishmentTypeFilter, setEstablishmentTypeFilter] = useState('')
+  const [typeProviderFilter, setTypeProviderFilter] = useState('')
   const [zone, setZone] = useState('')
   const [country, setCountry] = useState('')
   const [radiusKm, setRadiusKm] = useState('')
@@ -66,12 +49,13 @@ export default function SearchPage() {
     if (searchTerm) params.append('name', searchTerm)
     if (roleFilter) params.append('role', roleFilter)
     if (specialtyFilter) params.append('specialty', specialtyFilter)
+    if (typeProviderFilter) params.append('specialty', typeProviderFilter)
     if (establishmentTypeFilter) params.append('typeEtablissement', establishmentTypeFilter)
     if (zone) params.append('zone', zone)
     if (country) params.append('country', country)
     if (radiusKm) params.append('radius', radiusKm)
 
-    fetch(`http://localhost:5001/api/search?${params.toString()}`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/search?${params.toString()}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -82,7 +66,12 @@ export default function SearchPage() {
   }
 
   const goToProfile = (user: User) => {
-    const route = user.role === 'ARTIST' ? `/artist/${user.id}` : `/organizer/${user.id}`
+    const route =
+      user.role === 'ARTIST'
+        ? `/artist/${user.id}`
+        : user.role === 'ORGANIZER'
+        ? `/organizer/${user.id}`
+        : `/provider/${user.id}`
     router.push(route)
   }
 
@@ -91,7 +80,7 @@ export default function SearchPage() {
       <h1 className="text-3xl font-bold mb-6">🔍 Recherche d’utilisateurs</h1>
 
       {/* FILTRES */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <input
           type="text"
           placeholder="Rechercher par pseudo..."
@@ -99,17 +88,24 @@ export default function SearchPage() {
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
+
         <select
           className="px-4 py-2 rounded bg-gray-800 text-white"
           value={roleFilter}
-          onChange={e => setRoleFilter(e.target.value)}
+          onChange={e => {
+            setRoleFilter(e.target.value)
+            setSpecialtyFilter('')
+            setEstablishmentTypeFilter('')
+            setTypeProviderFilter('')
+          }}
         >
           <option value="">Tous les rôles</option>
           <option value="ARTIST">Artistes</option>
           <option value="ORGANIZER">Organisateurs</option>
+          <option value="PROVIDER">Prestataires</option>
         </select>
 
-        {/* 🎵 Spécialité (si artiste) */}
+        {/* 🎵 Spécialité (si ARTIST) */}
         {roleFilter === 'ARTIST' && (
           <select
             className="px-4 py-2 rounded bg-gray-800 text-white"
@@ -117,15 +113,13 @@ export default function SearchPage() {
             onChange={e => setSpecialtyFilter(e.target.value)}
           >
             <option value="">Toutes les spécialités</option>
-            <option value="DJ">DJ</option>
-            <option value="Chanteur">Chanteur</option>
-            <option value="Saxophoniste">Saxophoniste</option>
-            <option value="Danseur">Danseur</option>
-            <option value="Guitariste">Guitariste</option>
+            {SPECIALTIES.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
           </select>
         )}
 
-        {/* 🏢 Type d’établissement (si organisateur) */}
+        {/* 🏢 Type d’établissement (si ORGANIZER) */}
         {roleFilter === 'ORGANIZER' && (
           <select
             className="px-4 py-2 rounded bg-gray-800 text-white"
@@ -133,11 +127,23 @@ export default function SearchPage() {
             onChange={e => setEstablishmentTypeFilter(e.target.value)}
           >
             <option value="">Tous les types d’établissement</option>
-            <option value="Club">Club</option>
-            <option value="Bar">Bar</option>
-            <option value="Rooftop">Rooftop</option>
-            <option value="Soirée privée">Soirée privée</option>
-            <option value="Autre">Autre</option>
+            {ESTABLISHMENT_TYPES.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        )}
+
+        {/* 🛠️ Type de prestataire (si PROVIDER) */}
+        {roleFilter === 'PROVIDER' && (
+          <select
+            className="px-4 py-2 rounded bg-gray-800 text-white"
+            value={typeProviderFilter}
+            onChange={e => setTypeProviderFilter(e.target.value)}
+          >
+            <option value="">Tous les types de prestataire</option>
+            {PROVIDER_TYPES.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
           </select>
         )}
 
@@ -165,6 +171,7 @@ export default function SearchPage() {
           value={radiusKm}
           onChange={e => setRadiusKm(e.target.value)}
         />
+
         <button
           onClick={handleSearch}
           className="px-4 py-2 bg-yellow-500 text-black font-semibold rounded hover:bg-yellow-600 transition"
@@ -175,7 +182,7 @@ export default function SearchPage() {
 
       {/* RÉSULTATS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.isArray(users) && users.map(user => (
+        {users.map(user => (
           <div
             key={user.id}
             className="bg-gray-800 p-4 rounded hover:bg-gray-700 transition cursor-pointer"
@@ -194,6 +201,8 @@ export default function SearchPage() {
                 <p className="text-sm text-gray-400">
                   {user.role === 'ARTIST'
                     ? user.profile?.specialties?.join(', ') || 'Artiste'
+                    : user.role === 'PROVIDER'
+                    ? user.profile?.specialties?.join(', ') || 'Prestataire'
                     : user.profile?.typeEtablissement || 'Organisateur'}
                 </p>
                 {(user.profile?.location || user.profile?.country) && (
@@ -208,7 +217,7 @@ export default function SearchPage() {
         ))}
       </div>
 
-      {Array.isArray(users) && users.length === 0 && (
+      {users.length === 0 && (
         <p className="text-center text-gray-500 mt-6">Aucun résultat trouvé.</p>
       )}
     </main>
