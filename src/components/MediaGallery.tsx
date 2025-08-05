@@ -5,8 +5,8 @@ import Image from 'next/image'
 
 interface Media {
   id: number
-  fileUrl: string
-  fileType: string
+  url: string         // ✅ correspond à la colonne 'url' en BDD
+  type: 'IMAGE' | 'VIDEO'
   createdAt: string
 }
 
@@ -15,7 +15,7 @@ export default function MediaGallery({ userId }: { userId: number }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch(`http://localhost:5001/api/media/user/${userId}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/media/user/${userId}`)
       .then((res) => {
         if (!res.ok) throw new Error('Erreur serveur')
         return res.json()
@@ -36,28 +36,28 @@ export default function MediaGallery({ userId }: { userId: number }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
       {mediaList.map((media) => (
         <div key={media.id} className="bg-gray-800 p-2 rounded shadow">
-          {media.fileType.startsWith('image') ? (
+          {media.type === 'IMAGE' ? (
             <Image
-              src={media.fileUrl}
+              src={media.url}
               alt="media"
               width={400}
               height={300}
               className="w-full h-48 object-cover rounded"
               unoptimized
             />
-          ) : media.fileType.startsWith('video') ? (
+          ) : media.type === 'VIDEO' ? (
             <video controls className="w-full h-48 object-cover rounded">
-              <source src={media.fileUrl} type={media.fileType} />
+              <source src={media.url} type="video/mp4" />
               Votre navigateur ne supporte pas les vidéos.
             </video>
           ) : (
             <a
-              href={media.fileUrl}
+              href={media.url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 underline"
             >
-              Fichier
+              Voir le fichier
             </a>
           )}
           <p className="text-xs text-gray-400 mt-1">
