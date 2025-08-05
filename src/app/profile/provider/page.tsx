@@ -9,6 +9,7 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
 import axios from 'axios'
+import Image from 'next/image'
 
 interface Profile {
   id: number
@@ -53,7 +54,7 @@ export default function ProviderProfilePage() {
       setCountry(user.profile?.country || '')
       setDescription(user.profile?.description || '')
     }
-  }, [user])
+  }, [user, router]) // ✅ Ajout de router ici
 
   const handleAddType = async () => {
     if (!selectedType || types.includes(selectedType)) return
@@ -142,10 +143,12 @@ export default function ProviderProfilePage() {
       <main className="flex-1 p-6 space-y-6">
         {/* Infos profil */}
         <section className="flex flex-col md:flex-row items-center gap-6">
-          <img
+          <Image
             src="/default-avatar.png"
             alt="Photo de profil"
-            className="w-32 h-32 rounded-full border-2 border-white"
+            width={128}
+            height={128}
+            className="rounded-full border-2 border-white"
           />
           <div>
             <h1 className="text-3xl font-bold">{user.name}</h1>

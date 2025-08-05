@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 interface Media {
   id: number
@@ -36,10 +37,13 @@ export default function MediaGallery({ userId }: { userId: number }) {
       {mediaList.map((media) => (
         <div key={media.id} className="bg-gray-800 p-2 rounded shadow">
           {media.fileType.startsWith('image') ? (
-            <img
+            <Image
               src={media.fileUrl}
               alt="media"
+              width={400}
+              height={300}
               className="w-full h-48 object-cover rounded"
+              unoptimized
             />
           ) : media.fileType.startsWith('video') ? (
             <video controls className="w-full h-48 object-cover rounded">
