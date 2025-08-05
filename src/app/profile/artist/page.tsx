@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useAuth } from '@/context/AuthContext'
 import { useEffect, useRef, useState } from 'react'
@@ -26,6 +26,8 @@ export default function ArtistProfilePage() {
   const [radiusKm, setRadiusKm] = useState('')
   const [bio, setBio] = useState('')
   const [events, setEvents] = useState<EventInput[]>([])
+  const [selectedEvent, setSelectedEvent] = useState<EventInput | null>(null)
+  const [mediaFiles, setMediaFiles] = useState<File[]>([])
 
   const SPECIALTY_OPTIONS = ['DJ', 'Chanteur', 'Danseur', 'Guitariste', 'Saxophoniste']
 
@@ -36,26 +38,35 @@ export default function ArtistProfilePage() {
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     const title = prompt("Titre de l'événement :")
     if (!title) return
-
     const lieu = prompt('Lieu :') || ''
     const type = prompt('Type de prestation :') || ''
-    const start = prompt('Heure de début (ex : 18:00) :') || '00:00'
-    const end = prompt('Heure de fin (ex : 22:00) :') || '23:59'
 
     const newEvent = {
       id: String(events.length + 1),
-      title: `${title}${lieu ? ' @ ' + lieu : ''}${type ? ' [' + type + ']' : ''}`,
-      start: selectInfo.startStr + 'T' + start,
-      end: selectInfo.startStr + 'T' + end,
-      backgroundColor: 'green',
-      borderColor: 'green'
+      title,
+      extendedProps: { lieu, type },
+      start: selectInfo.startStr,
+      end: selectInfo.endStr,
+      allDay: selectInfo.allDay,
+      color: '#22c55e'
     }
     setEvents([...events, newEvent])
   }
 
   const handleEventClick = (clickInfo: EventClickArg) => {
-    if (confirm(`Supprimer l’événement "${clickInfo.event.title}" ?`)) {
-      setEvents(events.filter(e => e.id !== clickInfo.event.id))
+    setSelectedEvent({
+      id: clickInfo.event.id,
+      title: clickInfo.event.title,
+      start: clickInfo.event.startStr,
+      end: clickInfo.event.endStr,
+      extendedProps: clickInfo.event.extendedProps
+    })
+  }
+
+  const handleDeleteEvent = () => {
+    if (selectedEvent) {
+      setEvents(events.filter(e => e.id !== selectedEvent.id))
+      setSelectedEvent(null)
     }
   }
 
@@ -86,38 +97,37 @@ export default function ArtistProfilePage() {
     }
   }
 
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setMediaFiles([...mediaFiles, ...files])
+  }
+
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Bannière */}
       <div className="relative w-full h-64 bg-gray-800">
         <Image src={banner} alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
         <input type="file" ref={bannerInputRef} hidden onChange={(e) => {
           if (e.target.files?.[0]) setBanner(URL.createObjectURL(e.target.files[0]))
         }} />
-        <div className="absolute top-2 right-2 bg-white text-black px-2 py-1 rounded cursor-pointer text-sm" onClick={() => bannerInputRef.current?.click()}>
-          Modifier la bannière
-        </div>
-      </div>
-
-      {/* Avatar */}
-      <div className="relative -mt-12 ml-6 w-max cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
-        <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
         <input type="file" ref={avatarInputRef} hidden onChange={(e) => {
           if (e.target.files?.[0]) setAvatar(URL.createObjectURL(e.target.files[0]))
         }} />
+        <div className="absolute bottom-4 left-6 flex items-center gap-4">
+          <div onClick={() => avatarInputRef.current?.click()} className="cursor-pointer">
+            <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
+          </div>
+          <button onClick={() => bannerInputRef.current?.click()} className="bg-gray-700 px-3 py-1 rounded text-sm">Changer bannière</button>
+        </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-8">
-        {/* Colonne gauche */}
         <div className="md:col-span-2 space-y-6">
-          {/* Spécialités + localisation */}
           <section>
             <h2 className="text-xl font-semibold mb-2">🎭 Spécialités & Localisation</h2>
             <div className="flex flex-wrap gap-2 mb-4">
               {specialties.map((s, i) => (
                 <span key={i} className="bg-gray-700 px-3 py-1 rounded-full">
-                  {s}
-                  <button onClick={() => handleRemoveSpecialty(s)} className="ml-2 text-red-400">✕</button>
+                  {s}<button onClick={() => handleRemoveSpecialty(s)} className="ml-2 text-red-400">✕</button>
                 </span>
               ))}
             </div>
@@ -136,26 +146,27 @@ export default function ArtistProfilePage() {
             <button onClick={handleLocationSave} className="mt-3 bg-green-600 px-4 py-2 rounded">Sauvegarder la localisation</button>
           </section>
 
-          {/* Bio */}
           <section>
             <h2 className="text-xl font-semibold mb-2">📝 Biographie</h2>
-            <textarea
-              placeholder="Parle de toi, ton style, ton parcours..."
-              value={bio}
-              onChange={e => setBio(e.target.value)}
-              rows={5}
-              className="bg-gray-800 w-full p-4 rounded"
-            />
+            <textarea placeholder="Parle de toi, ton style, ton parcours..." value={bio} onChange={e => setBio(e.target.value)} rows={5} className="bg-gray-800 w-full p-4 rounded" />
           </section>
 
-          {/* Galerie médias */}
           <section>
             <h2 className="text-xl font-semibold mb-2">🎬 Galerie médias</h2>
-            <input type="file" multiple className="bg-gray-900 p-3 rounded" />
+            <input type="file" multiple onChange={handleMediaChange} className="bg-gray-900 p-3 rounded" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
+              {mediaFiles.map((file, i) => {
+                const url = URL.createObjectURL(file)
+                return file.type.startsWith('image') ? (
+                  <Image key={i} src={url} alt="media" width={300} height={200} className="rounded shadow" />
+                ) : file.type.startsWith('video') ? (
+                  <video key={i} src={url} controls className="rounded w-full h-48 object-cover" />
+                ) : null
+              })}
+            </div>
           </section>
         </div>
 
-        {/* Colonne droite */}
         <div className="space-y-6">
           <section>
             <h2 className="text-xl font-semibold mb-2">📅 Disponibilités</h2>
@@ -168,8 +179,8 @@ export default function ArtistProfilePage() {
                 select={handleDateSelect}
                 eventClick={handleEventClick}
                 events={events}
-                dayCellClassNames={() => 'bg-blue-100'}
                 height="auto"
+                dayCellClassNames={() => 'bg-blue-100'}
               />
             </div>
           </section>
@@ -187,6 +198,21 @@ export default function ArtistProfilePage() {
           </section>
         </div>
       </div>
+
+      {selectedEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 text-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
+            <h3 className="text-xl font-bold mb-2">{selectedEvent.title}</h3>
+            <p><strong>Date :</strong> {`${selectedEvent.start} → ${selectedEvent.end}`}</p>
+            <p><strong>Lieu :</strong> {selectedEvent.extendedProps?.lieu || 'N/A'}</p>
+            <p><strong>Type :</strong> {selectedEvent.extendedProps?.type || 'N/A'}</p>
+            <div className="flex justify-end mt-4 gap-2">
+              <button onClick={() => setSelectedEvent(null)} className="px-4 py-2 bg-gray-700 rounded">Fermer</button>
+              <button onClick={handleDeleteEvent} className="px-4 py-2 bg-red-600 rounded">Supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
