@@ -39,15 +39,16 @@ export default function ArtistProfilePage() {
 
     const lieu = prompt('Lieu :') || ''
     const type = prompt('Type de prestation :') || ''
-    const start = selectInfo.startStr
-    const end = selectInfo.endStr
+    const start = prompt('Heure de début (ex : 18:00) :') || '00:00'
+    const end = prompt('Heure de fin (ex : 22:00) :') || '23:59'
 
     const newEvent = {
       id: String(events.length + 1),
       title: `${title}${lieu ? ' @ ' + lieu : ''}${type ? ' [' + type + ']' : ''}`,
-      start,
-      end,
-      allDay: selectInfo.allDay
+      start: selectInfo.startStr + 'T' + start,
+      end: selectInfo.startStr + 'T' + end,
+      backgroundColor: 'green',
+      borderColor: 'green'
     }
     setEvents([...events, newEvent])
   }
@@ -87,18 +88,23 @@ export default function ArtistProfilePage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Bannière + avatar */}
+      {/* Bannière */}
       <div className="relative w-full h-64 bg-gray-800">
         <Image src={banner} alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
         <input type="file" ref={bannerInputRef} hidden onChange={(e) => {
           if (e.target.files?.[0]) setBanner(URL.createObjectURL(e.target.files[0]))
         }} />
-        <div className="absolute bottom-4 left-6 cursor-pointer" onClick={() => bannerInputRef.current?.click()}>
-          <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
-          <input type="file" ref={avatarInputRef} hidden onChange={(e) => {
-            if (e.target.files?.[0]) setAvatar(URL.createObjectURL(e.target.files[0]))
-          }} />
+        <div className="absolute top-2 right-2 bg-white text-black px-2 py-1 rounded cursor-pointer text-sm" onClick={() => bannerInputRef.current?.click()}>
+          Modifier la bannière
         </div>
+      </div>
+
+      {/* Avatar */}
+      <div className="relative -mt-12 ml-6 w-max cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+        <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
+        <input type="file" ref={avatarInputRef} hidden onChange={(e) => {
+          if (e.target.files?.[0]) setAvatar(URL.createObjectURL(e.target.files[0]))
+        }} />
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-8">
@@ -146,7 +152,6 @@ export default function ArtistProfilePage() {
           <section>
             <h2 className="text-xl font-semibold mb-2">🎬 Galerie médias</h2>
             <input type="file" multiple className="bg-gray-900 p-3 rounded" />
-            {/* À implémenter plus tard */}
           </section>
         </div>
 
@@ -163,6 +168,7 @@ export default function ArtistProfilePage() {
                 select={handleDateSelect}
                 eventClick={handleEventClick}
                 events={events}
+                dayCellClassNames={() => 'bg-blue-100'}
                 height="auto"
               />
             </div>
