@@ -8,15 +8,12 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
-import axios from 'axios'
 import Image from 'next/image'
 
 export default function ArtistProfilePage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  const [banner, setBanner] = useState('/default-banner.jpg')
-  const [avatar, setAvatar] = useState('/default-avatar.png')
   const [specialties, setSpecialties] = useState<string[]>([])
   const [selectedSpecialty, setSelectedSpecialty] = useState('')
   const [location, setLocation] = useState('')
@@ -68,9 +65,9 @@ export default function ArtistProfilePage() {
     <div className="min-h-screen bg-black text-white">
       {/* Bannière + avatar */}
       <div className="relative w-full h-64 bg-gray-800">
-        <Image src={banner} alt="Bannière" fill className="object-cover opacity-70" />
+        <Image src="/default-banner.jpg" alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
         <div className="absolute bottom-4 left-6">
-          <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
+          <Image src="/default-avatar.png" alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
         </div>
       </div>
 
