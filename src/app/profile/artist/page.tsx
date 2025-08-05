@@ -8,7 +8,6 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
-import axios from 'axios'
 import Image from 'next/image'
 
 export default function ArtistProfilePage() {
@@ -28,8 +27,10 @@ export default function ArtistProfilePage() {
   const SPECIALTY_OPTIONS = ['DJ', 'Chanteur', 'Danseur', 'Guitariste', 'Saxophoniste']
 
   useEffect(() => {
-    if (!user || user.role !== 'ARTIST') router.push('/home')
-  }, [user])
+    if (!user || user.role !== 'ARTIST') {
+      router.push('/home')
+    }
+  }, [user, router])
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     const title = prompt('Titre de l\'événement :')
@@ -68,9 +69,22 @@ export default function ArtistProfilePage() {
     <div className="min-h-screen bg-black text-white">
       {/* Bannière + avatar */}
       <div className="relative w-full h-64 bg-gray-800">
-        <Image src={banner} alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
+        <Image
+          src={banner}
+          alt="Bannière"
+          fill
+          className="object-cover opacity-70"
+          priority
+        />
         <div className="absolute bottom-4 left-6">
-          <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
+          <Image
+            src={avatar}
+            alt="Avatar"
+            width={100}
+            height={100}
+            className="rounded-full border-4 border-white"
+            priority
+          />
         </div>
       </div>
 
@@ -89,16 +103,38 @@ export default function ArtistProfilePage() {
               ))}
             </div>
             <div className="flex gap-3 items-center">
-              <select value={selectedSpecialty} onChange={e => setSelectedSpecialty(e.target.value)} className="bg-gray-800 px-3 py-2 rounded">
+              <select
+                value={selectedSpecialty}
+                onChange={e => setSelectedSpecialty(e.target.value)}
+                className="bg-gray-800 px-3 py-2 rounded"
+              >
                 <option value="">-- Ajouter --</option>
                 {SPECIALTY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
               </select>
               <button onClick={handleAddSpecialty} className="bg-blue-600 px-4 py-2 rounded">Ajouter</button>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-4">
-              <input type="text" placeholder="Ville" value={location} onChange={e => setLocation(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
-              <input type="text" placeholder="Pays" value={country} onChange={e => setCountry(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
-              <input type="number" placeholder="Rayon (km)" value={radiusKm} onChange={e => setRadiusKm(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
+              <input
+                type="text"
+                placeholder="Ville"
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+                className="bg-gray-800 px-3 py-2 rounded w-full"
+              />
+              <input
+                type="text"
+                placeholder="Pays"
+                value={country}
+                onChange={e => setCountry(e.target.value)}
+                className="bg-gray-800 px-3 py-2 rounded w-full"
+              />
+              <input
+                type="number"
+                placeholder="Rayon (km)"
+                value={radiusKm}
+                onChange={e => setRadiusKm(e.target.value)}
+                className="bg-gray-800 px-3 py-2 rounded w-full"
+              />
             </div>
           </section>
 
@@ -118,7 +154,7 @@ export default function ArtistProfilePage() {
           <section>
             <h2 className="text-xl font-semibold mb-2">🎬 Galerie médias</h2>
             <input type="file" multiple className="bg-gray-900 p-3 rounded" />
-            {/* À implémenter plus tard */}
+            {/* Galerie à implémenter */}
           </section>
         </div>
 
