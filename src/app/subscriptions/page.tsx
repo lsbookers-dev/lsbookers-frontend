@@ -12,7 +12,7 @@ export default function SubscriptionsPage() {
     if (!user) {
       router.replace('/login')
     }
-  }, [user])
+  }, [user, router]) // ✅ Ajout de router pour corriger le warning ESLint
 
   if (!user) {
     return <div className="text-white p-8">Chargement...</div>

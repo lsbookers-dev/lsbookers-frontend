@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
@@ -20,7 +20,6 @@ interface User {
 const SPECIALTIES = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
 const PROVIDER_TYPES = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
 const ESTABLISHMENT_TYPES = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
-
 const COUNTRIES = ['France', 'Belgium', 'Canada', 'United States', 'United Kingdom', 'Spain', 'Germany', 'Italy', 'Portugal', 'Switzerland']
 
 export default function SearchPage() {
@@ -37,12 +36,7 @@ export default function SearchPage() {
   const [radiusKm, setRadiusKm] = useState('')
   const [users, setUsers] = useState<User[]>([])
 
-  useEffect(() => {
-    if (!token) return
-    handleSearch()
-  }, [token])
-
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     if (!token) return
 
     const params = new URLSearchParams()
@@ -63,7 +57,12 @@ export default function SearchPage() {
       .then(res => res.json())
       .then(data => setUsers(data.users))
       .catch(err => console.error('Erreur recherche :', err))
-  }
+  }, [token, searchTerm, roleFilter, specialtyFilter, establishmentTypeFilter, typeProviderFilter, zone, country, radiusKm])
+
+  useEffect(() => {
+    if (!token) return
+    handleSearch()
+  }, [token, handleSearch])
 
   const goToProfile = (user: User) => {
     const route =
@@ -105,7 +104,6 @@ export default function SearchPage() {
           <option value="PROVIDER">Prestataires</option>
         </select>
 
-        {/* 🎵 Spécialité (si ARTIST) */}
         {roleFilter === 'ARTIST' && (
           <select
             className="px-4 py-2 rounded bg-gray-800 text-white"
@@ -119,7 +117,6 @@ export default function SearchPage() {
           </select>
         )}
 
-        {/* 🏢 Type d’établissement (si ORGANIZER) */}
         {roleFilter === 'ORGANIZER' && (
           <select
             className="px-4 py-2 rounded bg-gray-800 text-white"
@@ -133,7 +130,6 @@ export default function SearchPage() {
           </select>
         )}
 
-        {/* 🛠️ Type de prestataire (si PROVIDER) */}
         {roleFilter === 'PROVIDER' && (
           <select
             className="px-4 py-2 rounded bg-gray-800 text-white"

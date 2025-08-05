@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -27,21 +27,10 @@ export default function MessagesPage() {
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/login')
-    } else {
-      fetchConversations()
-      fetchUsers()
-    }
-  }, [user, router])
-
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/messages/conversations`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error('Erreur lors du chargement')
       const data = await res.json()
@@ -50,27 +39,32 @@ export default function MessagesPage() {
       console.error(err)
       setError('Impossible de charger les conversations.')
     }
-  }
+  }, [token])
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoadingUsers(true)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
       const data: User[] = await res.json()
-      const filtered = user?.id
-        ? data.filter((u: User) => u.id !== Number(user.id))
-        : data
+      const filtered = user?.id ? data.filter(u => u.id !== Number(user.id)) : data
       setAllUsers(filtered)
     } catch (err) {
       console.error('Erreur chargement utilisateurs :', err)
     } finally {
       setLoadingUsers(false)
     }
-  }
+  }, [token, user?.id])
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/login')
+    } else {
+      fetchConversations()
+      fetchUsers()
+    }
+  }, [user, router, fetchConversations, fetchUsers])
 
   const startConversation = async (recipientId: number) => {
     try {
@@ -80,10 +74,7 @@ export default function MessagesPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          recipientId,
-          content: 'Salut !',
-        }),
+        body: JSON.stringify({ recipientId, content: 'Salut !' }),
       })
 
       const data = await res.json()
@@ -98,12 +89,10 @@ export default function MessagesPage() {
   }
 
   const getOtherUser = (conv: Conversation) =>
-    conv.participants.find((p) => String(p.id) !== String(user?.id))
+    conv.participants.find(p => String(p.id) !== String(user?.id))
 
   const filteredUsers = search
-    ? allUsers.filter((u) =>
-        u.name?.toLowerCase().includes(search.toLowerCase())
-      )
+    ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
   return (
@@ -117,7 +106,7 @@ export default function MessagesPage() {
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={e => setSearch(e.target.value)}
           placeholder="Rechercher un utilisateur..."
           className="border border-gray-600 bg-[#1c1c1c] text-white p-3 rounded w-full mb-3"
         />
@@ -127,7 +116,7 @@ export default function MessagesPage() {
         {search && (
           <ul className="space-y-2 max-h-40 overflow-y-auto">
             {filteredUsers.length > 0 ? (
-              filteredUsers.map((u) => (
+              filteredUsers.map(u => (
                 <li
                   key={u.id}
                   onClick={() => startConversation(u.id)}
@@ -147,7 +136,7 @@ export default function MessagesPage() {
         <p className="text-gray-400">Aucune conversation pour le moment.</p>
       ) : (
         <ul className="space-y-3">
-          {conversations.map((conv) => {
+          {conversations.map(conv => {
             const other = getOtherUser(conv)
             return (
               <li

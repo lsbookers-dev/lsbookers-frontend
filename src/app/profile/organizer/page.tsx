@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 
 const typeOptions = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
 const MapOrganizerLocation = dynamic(() => import('@/components/MapSelector'), { ssr: false })
@@ -36,11 +37,11 @@ export default function OrganizerProfilePage() {
       setLocation(user.profile.location || '')
       setCountry(user.profile.country || '')
     }
-  }, [user])
+  }, [user, router])
 
   const updateProfile = async (fields: ProfileUpdateFields) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/profile/${user?.profile?.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user?.profile?.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -113,10 +114,12 @@ export default function OrganizerProfilePage() {
       <main className="flex-1 p-6 space-y-6">
         {/* Infos organisateur */}
         <section className="flex flex-col md:flex-row items-center gap-6">
-          <img
+          <Image
             src="/default-avatar.png"
             alt="Logo établissement"
-            className="w-32 h-32 rounded-full border-2 border-white"
+            width={128}
+            height={128}
+            className="rounded-full border-2 border-white"
           />
           <div>
             <h1 className="text-3xl font-bold">{user.name}</h1>

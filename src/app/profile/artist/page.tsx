@@ -8,7 +8,6 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
-import axios from 'axios'
 import Image from 'next/image'
 
 export default function ArtistProfilePage() {

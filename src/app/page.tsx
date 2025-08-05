@@ -1,19 +1,22 @@
-'use client';
+'use client'
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function LandingPage() {
-  const router = useRouter();
+  const router = useRouter()
 
   return (
     <div className="relative w-full h-screen overflow-hidden text-white">
-      {/* Image de fond */}
-      <img
+      {/* ✅ Image optimisée avec <Image /> */}
+      <Image
         src="/landing-background.jpg"
         alt="Fond LSBookers"
-        className="absolute top-0 left-0 w-full h-full object-cover z-0"
+        layout="fill"
+        objectFit="cover"
+        className="z-0"
+        priority
       />
-
 
       {/* Contenu principal */}
       <div className="relative z-20 flex flex-col justify-between h-full">
@@ -44,5 +47,5 @@ export default function LandingPage() {
         </footer>
       </div>
     </div>
-  );
+  )
 }
