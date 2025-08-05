@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useAuth } from '@/context/AuthContext'
 import { useEffect, useRef, useState } from 'react'
@@ -11,13 +11,6 @@ import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
 import axios from 'axios'
 import Image from 'next/image'
 
-interface Media {
-  id: number
-  url: string
-  type: 'IMAGE' | 'VIDEO'
-  createdAt: string
-}
-
 export default function ArtistProfilePage() {
   const { user } = useAuth()
   const router = useRouter()
@@ -29,30 +22,28 @@ export default function ArtistProfilePage() {
   const [specialties, setSpecialties] = useState<string[]>([])
   const [selectedSpecialty, setSelectedSpecialty] = useState('')
   const [location, setLocation] = useState('')
-  const [country, setCountry] = useState('')
-  const [radiusKm, setRadiusKm] = useState('')
-  const [bio, setBio] = useState('')
   const [events, setEvents] = useState<EventInput[]>([])
   const [selectedEvent, setSelectedEvent] = useState<EventInput | null>(null)
-  const [mediaList, setMediaList] = useState<Media[]>([])
+  const [mediaList, setMediaList] = useState<any[]>([])
 
   useEffect(() => {
     if (!user || user.role !== 'ARTIST') router.push('/home')
-    else fetchMedia()
+    else {
+      const fetchMedia = async () => {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/media/user/${user?.id}`)
+          const data = await res.json()
+          setMediaList(data.media || [])
+        } catch (err) {
+          console.error('Erreur chargement medias:', err)
+        }
+      }
+      fetchMedia()
+    }
   }, [user, router])
 
-  const fetchMedia = async () => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/media/user/${user?.id}`)
-      const data = await res.json()
-      setMediaList(data.media || [])
-    } catch (err) {
-      console.error('Erreur chargement medias:', err)
-    }
-  }
-
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const title = prompt("Titre de l'événement :")
+    const title = prompt("Titre de l'\u00e9v\u00e9nement :")
     if (!title) return
     const lieu = prompt('Lieu :') || ''
     const type = prompt('Type de prestation :') || ''
@@ -103,13 +94,16 @@ export default function ArtistProfilePage() {
         body: JSON.stringify({ url: fileUrl, type: fileType })
       })
     }
-    fetchMedia()
+    // recharge galerie
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/media/user/${user?.id}`)
+    const data = await res.json()
+    setMediaList(data.media || [])
   }
 
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="relative w-full h-64 bg-gray-800">
-        <Image src={banner} alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
+        <Image src={banner} alt="Banni\u00e8re" layout="fill" objectFit="cover" className="opacity-70" />
         <input type="file" ref={bannerInputRef} hidden onChange={(e) => {
           if (e.target.files?.[0]) setBanner(URL.createObjectURL(e.target.files[0]))
         }} />
@@ -120,14 +114,24 @@ export default function ArtistProfilePage() {
           <div onClick={() => avatarInputRef.current?.click()} className="cursor-pointer">
             <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
           </div>
-          <button onClick={() => bannerInputRef.current?.click()} className="bg-gray-700 px-3 py-1 rounded text-sm">Changer bannière</button>
+          <button onClick={() => bannerInputRef.current?.click()} className="bg-gray-700 px-3 py-1 rounded text-sm">Changer banni\u00e8re</button>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-6">
           <section>
-            <h2 className="text-xl font-semibold mb-2">🎬 Galerie médias</h2>
+            <h2 className="text-xl font-semibold mb-2">\ud83c\udfad Sp\u00e9cialit\u00e9s</h2>
+            <p className="text-sm text-gray-400">G\u00e9olocalisation et autres param\u00e8tres disponibles prochainement</p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-2">\ud83d\udcdd Biographie</h2>
+            <p className="text-sm text-gray-400 italic">(Fonctionnalit\u00e9 en cours)</p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-2">\ud83c\udfa5 Galerie m\u00e9dias</h2>
             <input type="file" multiple onChange={handleMediaChange} className="bg-gray-900 p-3 rounded" />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
               {mediaList.map((media) => (
@@ -147,7 +151,7 @@ export default function ArtistProfilePage() {
 
         <div className="space-y-6">
           <section>
-            <h2 className="text-xl font-semibold mb-2">📅 Disponibilités</h2>
+            <h2 className="text-xl font-semibold mb-2">\ud83d\uddd3 Disponibilit\u00e9s</h2>
             <div className="bg-white text-black rounded overflow-hidden">
               <FullCalendar
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -161,6 +165,18 @@ export default function ArtistProfilePage() {
                 dayCellClassNames={() => 'bg-blue-100'}
               />
             </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-2">\ud83c\udfb7 Mes titres</h2>
+            <iframe
+              className="w-full rounded"
+              height="160"
+              scrolling="no"
+              frameBorder="no"
+              allow="autoplay"
+              src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M?utm_source=generator"
+            ></iframe>
           </section>
         </div>
       </div>
