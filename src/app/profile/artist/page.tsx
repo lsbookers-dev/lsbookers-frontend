@@ -9,114 +9,43 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
 import axios from 'axios'
-
-interface Profile {
-  id: number
-  specialties?: string[]
-  location?: string
-  radiusKm?: number
-  country?: string
-}
-
-interface User {
-  id: number
-  name: string
-  role: 'ARTIST' | 'ORGANIZER' | 'ADMIN'
-  profile: Profile
-}
-
-const SPECIALTY_OPTIONS = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
+import Image from 'next/image'
 
 export default function ArtistProfilePage() {
-  const { user, setUser } = useAuth() as {
-    user: User | null
-    setUser: React.Dispatch<React.SetStateAction<User | null>>
-  }
-
+  const { user } = useAuth()
   const router = useRouter()
-  const [events, setEvents] = useState<EventInput[]>([])
-  const [selectedSpecialty, setSelectedSpecialty] = useState('')
+
+  const [banner, setBanner] = useState('/default-banner.jpg')
+  const [avatar, setAvatar] = useState('/default-avatar.png')
   const [specialties, setSpecialties] = useState<string[]>([])
+  const [selectedSpecialty, setSelectedSpecialty] = useState('')
   const [location, setLocation] = useState('')
-  const [radiusKm, setRadiusKm] = useState('')
   const [country, setCountry] = useState('')
+  const [radiusKm, setRadiusKm] = useState('')
+  const [bio, setBio] = useState('')
+  const [events, setEvents] = useState<EventInput[]>([])
+
+  const SPECIALTY_OPTIONS = ['DJ', 'Chanteur', 'Danseur', 'Guitariste', 'Saxophoniste']
 
   useEffect(() => {
-    if (!user || user.role !== 'ARTIST') {
-      router.push('/home')
-    } else {
-      setSpecialties(user.profile?.specialties || [])
-      setLocation(user.profile?.location || '')
-      setRadiusKm(user.profile?.radiusKm?.toString() || '')
-      setCountry(user.profile?.country || '')
-    }
+    if (!user || user.role !== 'ARTIST') router.push('/home')
   }, [user])
 
-  const handleAddSpecialty = async () => {
-    if (!selectedSpecialty || specialties.includes(selectedSpecialty)) return
-
-    const updated = [...specialties, selectedSpecialty]
-    setSpecialties(updated)
-
-    try {
-      const token = localStorage.getItem('token')
-      await axios.put(
-        `http://localhost:5001/api/profile/${user!.profile.id}`,
-        { specialties: updated },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-
-      setUser(prev => ({
-        ...prev!,
-        profile: {
-          ...prev!.profile,
-          specialties: updated
-        }
-      }))
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour des spécialités', error)
-    }
-  }
-
-  const handleRemoveSpecialty = async (spec: string) => {
-    const updated = specialties.filter(s => s !== spec)
-    setSpecialties(updated)
-
-    try {
-      const token = localStorage.getItem('token')
-      await axios.put(
-        `http://localhost:5001/api/profile/${user!.profile.id}`,
-        { specialties: updated },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-
-      setUser(prev => ({
-        ...prev!,
-        profile: {
-          ...prev!.profile,
-          specialties: updated
-        }
-      }))
-    } catch (error) {
-      console.error('Erreur lors de la suppression de la spécialité', error)
-    }
-  }
-
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const title = prompt('Titre de l’événement :')
+    const title = prompt('Titre de l\'événement :')
+    if (!title) return
+
     const calendarApi = selectInfo.view.calendar
     calendarApi.unselect()
 
-    if (title) {
-      const newEvent = {
-        id: String(events.length + 1),
-        title,
-        start: selectInfo.startStr,
-        end: selectInfo.endStr,
-        allDay: selectInfo.allDay,
-      }
-      setEvents([...events, newEvent])
+    const newEvent = {
+      id: String(events.length + 1),
+      title,
+      start: selectInfo.startStr,
+      end: selectInfo.endStr,
+      allDay: selectInfo.allDay
     }
+    setEvents([...events, newEvent])
   }
 
   const handleEventClick = (clickInfo: EventClickArg) => {
@@ -125,158 +54,120 @@ export default function ArtistProfilePage() {
     }
   }
 
-  const handleLocationUpdate = async () => {
-    try {
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
-      const geoData = await geoRes.json()
-      const countryName = geoData?.[0]?.address?.country || ''
-
-      const token = localStorage.getItem('token')
-      await axios.put(
-        `http://localhost:5001/api/profile/${user!.profile.id}`,
-        {
-          location,
-          radiusKm: parseInt(radiusKm),
-          country: countryName
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-
-      setUser(prev => ({
-        ...prev!,
-        profile: {
-          ...prev!.profile,
-          location,
-          radiusKm: parseInt(radiusKm),
-          country: countryName
-        }
-      }))
-    } catch (err) {
-      console.error('Erreur mise à jour localisation', err)
+  const handleAddSpecialty = () => {
+    if (selectedSpecialty && !specialties.includes(selectedSpecialty)) {
+      setSpecialties([...specialties, selectedSpecialty])
     }
   }
 
-  if (!user || user.role !== 'ARTIST') {
-    return <div className="text-white p-10">Chargement...</div>
+  const handleRemoveSpecialty = (s: string) => {
+    setSpecialties(specialties.filter(sp => sp !== s))
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white">
-      <main className="flex-1 p-6 space-y-6">
-        {/* Infos profil */}
-        <section className="flex flex-col md:flex-row items-center gap-6">
-          <img
-            src="/default-avatar.png"
-            alt="Photo de profil"
-            className="w-32 h-32 rounded-full border-2 border-white"
-          />
-          <div>
-            <h1 className="text-3xl font-bold">{user.name}</h1>
-            <p className="text-sm text-gray-300">
-              Spécialités : {specialties.length > 0 ? specialties.join(', ') : 'Aucune'}
-            </p>
-            <p className="mt-2 text-gray-400">Bio de l’artiste. À personnaliser.</p>
-          </div>
-        </section>
+    <div className="min-h-screen bg-black text-white">
+      {/* Bannière + avatar */}
+      <div className="relative w-full h-64 bg-gray-800">
+        <Image src={banner} alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
+        <div className="absolute bottom-4 left-6">
+          <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
+        </div>
+      </div>
 
-        {/* Modifier les spécialités */}
-        <section>
-          <h2 className="text-xl font-bold mb-2">🎵 Modifier mes spécialités</h2>
-          <div className="flex gap-4 mb-4">
-            <select
-              value={selectedSpecialty}
-              onChange={e => setSelectedSpecialty(e.target.value)}
-              className="bg-gray-800 px-4 py-2 rounded text-white"
-            >
-              <option value="">-- Sélectionner --</option>
-              {SPECIALTY_OPTIONS.filter(opt => !specialties.includes(opt)).map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-            <button
-              onClick={handleAddSpecialty}
-              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
-            >
-              Ajouter
-            </button>
-          </div>
-
-          {specialties.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {specialties.map((spec, i) => (
-                <span
-                  key={i}
-                  className="bg-gray-700 px-3 py-1 rounded-full flex items-center gap-2"
-                >
-                  {spec}
-                  <button
-                    onClick={() => handleRemoveSpecialty(spec)}
-                    className="text-red-400 hover:text-red-600"
-                  >
-                    ✕
-                  </button>
+      <div className="max-w-6xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-8">
+        {/* Colonne gauche */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Spécialités + localisation */}
+          <section>
+            <h2 className="text-xl font-semibold mb-2">🎭 Spécialités & Localisation</h2>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {specialties.map((s, i) => (
+                <span key={i} className="bg-gray-700 px-3 py-1 rounded-full">
+                  {s}
+                  <button onClick={() => handleRemoveSpecialty(s)} className="ml-2 text-red-400">✕</button>
                 </span>
               ))}
             </div>
-          )}
-        </section>
+            <div className="flex gap-3 items-center">
+              <select value={selectedSpecialty} onChange={e => setSelectedSpecialty(e.target.value)} className="bg-gray-800 px-3 py-2 rounded">
+                <option value="">-- Ajouter --</option>
+                {SPECIALTY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+              <button onClick={handleAddSpecialty} className="bg-blue-600 px-4 py-2 rounded">Ajouter</button>
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              <input type="text" placeholder="Ville" value={location} onChange={e => setLocation(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
+              <input type="text" placeholder="Pays" value={country} onChange={e => setCountry(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
+              <input type="number" placeholder="Rayon (km)" value={radiusKm} onChange={e => setRadiusKm(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
+            </div>
+          </section>
 
-        {/* Zone d’intervention */}
-        <section>
-          <h2 className="text-xl font-bold mb-2">📍 Zone d’intervention</h2>
-          <div className="flex gap-4 items-center">
-            <input
-              type="text"
-              placeholder="Ville"
-              className="bg-gray-800 px-4 py-2 rounded text-white w-1/3"
-              value={location}
-              onChange={e => setLocation(e.target.value)}
+          {/* Bio */}
+          <section>
+            <h2 className="text-xl font-semibold mb-2">📝 Biographie</h2>
+            <textarea
+              placeholder="Parle de toi, ton style, ton parcours..."
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              rows={5}
+              className="bg-gray-800 w-full p-4 rounded"
             />
-            <input
-              type="text"
-              placeholder="Pays"
-              className="bg-gray-800 px-4 py-2 rounded text-white w-1/3"
-              value={country}
-              onChange={e => setCountry(e.target.value)}
-            />
-            <input
-              type="number"
-              placeholder="Rayon (km)"
-              className="bg-gray-800 px-4 py-2 rounded text-white w-1/4"
-              value={radiusKm}
-              onChange={e => setRadiusKm(e.target.value)}
-            />
-            <button
-              onClick={handleLocationUpdate}
-              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
-            >
-              Sauvegarder
-            </button>
-          </div>
-        </section>
+          </section>
 
-        {/* Calendrier FullCalendar */}
-        <section>
-          <h2 className="text-2xl font-bold mb-4">📅 Événements à venir</h2>
-          <div className="bg-white text-black p-4 rounded shadow">
-            <FullCalendar
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              headerToolbar={{
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay',
-              }}
-              initialView="dayGridMonth"
-              selectable={true}
-              editable={true}
-              select={handleDateSelect}
-              events={events}
-              eventClick={handleEventClick}
-              height="auto"
-            />
-          </div>
-        </section>
-      </main>
+          {/* Galerie médias */}
+          <section>
+            <h2 className="text-xl font-semibold mb-2">🎬 Galerie médias</h2>
+            <input type="file" multiple className="bg-gray-900 p-3 rounded" />
+            {/* À implémenter plus tard */}
+          </section>
+        </div>
+
+        {/* Colonne droite */}
+        <div className="space-y-6">
+          <section>
+            <h2 className="text-xl font-semibold mb-2">📅 Disponibilités</h2>
+            <div className="bg-white text-black rounded overflow-hidden">
+              <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="dayGridMonth"
+                selectable
+                editable
+                select={handleDateSelect}
+                eventClick={handleEventClick}
+                events={events}
+                height="auto"
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-2">🎧 Écouter mes titres</h2>
+            <iframe
+              className="w-full rounded"
+              height="160"
+              scrolling="no"
+              frameBorder="no"
+              allow="autoplay"
+              src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M?utm_source=generator"
+            ></iframe>
+          </section>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-center py-6 text-sm">
+        <div className="flex justify-center gap-6 mb-2">
+          <a href="#" className="hover:text-blue-400">Instagram</a>
+          <a href="#" className="hover:text-blue-400">Facebook</a>
+          <a href="#" className="hover:text-blue-400">YouTube</a>
+        </div>
+        <button
+          onClick={() => router.push('/messages')}
+          className="mt-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-white"
+        >
+          📩 Contacter cet artiste
+        </button>
+      </footer>
     </div>
   )
 }
