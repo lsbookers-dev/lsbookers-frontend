@@ -1,19 +1,24 @@
 'use client'
 
 import { useAuth } from '@/context/AuthContext'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
+import axios from 'axios'
 import Image from 'next/image'
 
 export default function ArtistProfilePage() {
   const { user } = useAuth()
   const router = useRouter()
+  const bannerInputRef = useRef<HTMLInputElement>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
+  const [banner, setBanner] = useState('/default-banner.jpg')
+  const [avatar, setAvatar] = useState('/default-avatar.png')
   const [specialties, setSpecialties] = useState<string[]>([])
   const [selectedSpecialty, setSelectedSpecialty] = useState('')
   const [location, setLocation] = useState('')
@@ -29,17 +34,19 @@ export default function ArtistProfilePage() {
   }, [user, router])
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const title = prompt('Titre de l\'événement :')
+    const title = prompt("Titre de l'événement :")
     if (!title) return
 
-    const calendarApi = selectInfo.view.calendar
-    calendarApi.unselect()
+    const lieu = prompt('Lieu :') || ''
+    const type = prompt('Type de prestation :') || ''
+    const start = selectInfo.startStr
+    const end = selectInfo.endStr
 
     const newEvent = {
       id: String(events.length + 1),
-      title,
-      start: selectInfo.startStr,
-      end: selectInfo.endStr,
+      title: `${title}${lieu ? ' @ ' + lieu : ''}${type ? ' [' + type + ']' : ''}`,
+      start,
+      end,
       allDay: selectInfo.allDay
     }
     setEvents([...events, newEvent])
@@ -61,13 +68,36 @@ export default function ArtistProfilePage() {
     setSpecialties(specialties.filter(sp => sp !== s))
   }
 
+  const handleLocationSave = async () => {
+    const token = localStorage.getItem('token')
+    if (!user?.profile?.id) return
+    try {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user.profile.id}`, {
+        location,
+        country,
+        radiusKm: parseInt(radiusKm)
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      alert('Localisation sauvegardée ✅')
+    } catch (err) {
+      console.error('Erreur localisation', err)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Bannière + avatar */}
       <div className="relative w-full h-64 bg-gray-800">
-        <Image src="/default-banner.jpg" alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
-        <div className="absolute bottom-4 left-6">
-          <Image src="/default-avatar.png" alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
+        <Image src={banner} alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
+        <input type="file" ref={bannerInputRef} hidden onChange={(e) => {
+          if (e.target.files?.[0]) setBanner(URL.createObjectURL(e.target.files[0]))
+        }} />
+        <div className="absolute bottom-4 left-6 cursor-pointer" onClick={() => bannerInputRef.current?.click()}>
+          <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
+          <input type="file" ref={avatarInputRef} hidden onChange={(e) => {
+            if (e.target.files?.[0]) setAvatar(URL.createObjectURL(e.target.files[0]))
+          }} />
         </div>
       </div>
 
@@ -97,6 +127,7 @@ export default function ArtistProfilePage() {
               <input type="text" placeholder="Pays" value={country} onChange={e => setCountry(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
               <input type="number" placeholder="Rayon (km)" value={radiusKm} onChange={e => setRadiusKm(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
             </div>
+            <button onClick={handleLocationSave} className="mt-3 bg-green-600 px-4 py-2 rounded">Sauvegarder la localisation</button>
           </section>
 
           {/* Bio */}
@@ -115,6 +146,7 @@ export default function ArtistProfilePage() {
           <section>
             <h2 className="text-xl font-semibold mb-2">🎬 Galerie médias</h2>
             <input type="file" multiple className="bg-gray-900 p-3 rounded" />
+            {/* À implémenter plus tard */}
           </section>
         </div>
 
@@ -149,21 +181,6 @@ export default function ArtistProfilePage() {
           </section>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-center py-6 text-sm">
-        <div className="flex justify-center gap-6 mb-2">
-          <a href="#" className="hover:text-blue-400">Instagram</a>
-          <a href="#" className="hover:text-blue-400">Facebook</a>
-          <a href="#" className="hover:text-blue-400">YouTube</a>
-        </div>
-        <button
-          onClick={() => router.push('/messages')}
-          className="mt-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-white"
-        >
-          📩 Contacter cet artiste
-        </button>
-      </footer>
     </div>
   )
 }
