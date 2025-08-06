@@ -7,22 +7,17 @@ import Image from 'next/image'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import { DateSelectArg } from '@fullcalendar/core'
+import { DateSelectArg, EventInput } from '@fullcalendar/core'
 
-interface Media {
-  id: number
-  url: string
-  type: 'IMAGE' | 'VIDEO'
-}
+type Media = { id: number; url: string; type: 'IMAGE' | 'VIDEO' }
 
-interface Event {
-  id: number
-  title: string
-  start: string
-  end: string
-  allDay: boolean
-  lieu?: string
-  type?: string
+type ProfileFields = {
+  bio?: string
+  specialties?: string[]
+  location?: string
+  radiusKm?: number
+  country?: string
+  bannerUrl?: string
 }
 
 const SPECIALTY_OPTIONS = [
@@ -43,33 +38,53 @@ export default function ArtistProfilePage() {
   const [country, setCountry] = useState('')
   const [radiusKm, setRadiusKm] = useState('')
   const [mediaList, setMediaList] = useState<Media[]>([])
-  const [events, setEvents] = useState<Event[]>([])
+  const [events, setEvents] = useState<EventInput[]>([])
 
   useEffect(() => {
     if (!user || user.role !== 'ARTIST') {
       router.push('/home')
       return
     }
-    preloadProfile()
+
+    const profile = user.profile
+    if (profile) {
+      setAvatar(user.avatarUrl || '')
+      setBanner(profile.bannerUrl || '')
+      setBio((profile as any).bio || '')
+      setSpecialties(profile.specialties || [])
+      setLocation(profile.location || '')
+      setCountry(profile.country || '')
+      setRadiusKm(String(profile.radiusKm || ''))
+    }
+
+    const fetchMedia = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/media/user/${user.id}`)
+        const data = await res.json()
+        setMediaList(data.media || [])
+      } catch (err) {
+        console.error('Erreur chargement médias :', err)
+      }
+    }
+
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/user/${user.id}`)
+        const data = await res.json()
+        setEvents(data.events || [])
+      } catch (err) {
+        console.error('Erreur chargement événements :', err)
+      }
+    }
+
     fetchMedia()
     fetchEvents()
-  }, [user])
+  }, [user, router])
 
-  const preloadProfile = () => {
-    const profile = user?.profile
-    if (!profile) return
-    setAvatar(user.avatarUrl || '')
-    setBanner(profile.bannerUrl || '')
-    setBio((profile as unknown as { bio?: string })?.bio || '')
-    setSpecialties(profile.specialties || [])
-    setLocation(profile.location || '')
-    setCountry(profile.country || '')
-    setRadiusKm(String(profile.radiusKm || ''))
-  }
-
-  const updateProfile = async (fields: Record<string, unknown>) => {
+  const updateProfile = async (fields: ProfileFields) => {
+    if (!user?.profile?.id || !token) return
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user?.profile?.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user.profile.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -125,28 +140,10 @@ export default function ArtistProfilePage() {
       },
       body: JSON.stringify(newEvent),
     })
-      .then(() => fetchEvents())
+      .then(() => {
+        setEvents((prev) => [...prev, newEvent])
+      })
       .catch(err => console.error('Erreur création event', err))
-  }
-
-  const fetchMedia = async () => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/media/user/${user?.id}`)
-      const data = await res.json()
-      setMediaList(data.media || [])
-    } catch (err) {
-      console.error('Erreur chargement médias :', err)
-    }
-  }
-
-  const fetchEvents = async () => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/user/${user?.id}`)
-      const data = await res.json()
-      setEvents(data.events || [])
-    } catch (err) {
-      console.error('Erreur chargement événements :', err)
-    }
   }
 
   return (
