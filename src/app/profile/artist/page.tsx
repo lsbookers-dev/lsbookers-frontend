@@ -1,32 +1,69 @@
-"use client"
+'use client'
 
 import { useAuth } from '@/context/AuthContext'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
-import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
-import Image from 'next/image'
+import interactionPlugin, { DateSelectArg } from '@fullcalendar/interaction'
+
+interface Media {
+  id: number
+  url: string
+  type: 'IMAGE' | 'VIDEO'
+}
+
+interface Event {
+  id: number
+  title: string
+  start: string
+  end: string
+  allDay: boolean
+  lieu?: string
+  type?: string
+}
+
+const SPECIALTY_OPTIONS = [
+  'DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste',
+  'Magicien', 'Beatboxer', 'Violoniste', 'Percussionniste'
+]
 
 export default function ArtistProfilePage() {
-  const { user } = useAuth()
+  const { user, token, setUser } = useAuth()
   const router = useRouter()
-  const bannerInputRef = useRef<HTMLInputElement>(null)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
 
-  const [banner, setBanner] = useState('/default-banner.jpg')
-  const [avatar, setAvatar] = useState('/default-avatar.png')
-  const [events, setEvents] = useState<EventInput[]>([])
-  const [selectedEvent, setSelectedEvent] = useState<EventInput | null>(null)
-  const [mediaList, setMediaList] = useState<{ id: number; url: string; type: string }[]>([])
+  const [avatar, setAvatar] = useState('')
+  const [banner, setBanner] = useState('')
+  const [bio, setBio] = useState('')
+  const [specialties, setSpecialties] = useState<string[]>([])
+  const [selectedSpecialty, setSelectedSpecialty] = useState('')
+  const [location, setLocation] = useState('')
+  const [country, setCountry] = useState('')
+  const [radiusKm, setRadiusKm] = useState('')
+  const [mediaList, setMediaList] = useState<Media[]>([])
+  const [events, setEvents] = useState<Event[]>([])
 
   useEffect(() => {
     if (!user || user.role !== 'ARTIST') router.push('/home')
-    else fetchMedia()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    else {
+      fetchMedia()
+      fetchEvents()
+      preloadProfile()
+    }
   }, [user])
+
+  const preloadProfile = () => {
+    const profile = user?.profile
+    if (!profile) return
+    if (profile.avatarUrl) setAvatar(profile.avatarUrl)
+    if (profile.bannerUrl) setBanner(profile.bannerUrl)
+    if (profile.specialties) setSpecialties(profile.specialties)
+    if (profile.location) setLocation(profile.location)
+    if (profile.country) setCountry(profile.country)
+    if (profile.radiusKm) setRadiusKm(String(profile.radiusKm))
+    if (profile.bio) setBio(profile.bio)
+  }
 
   const fetchMedia = async () => {
     try {
@@ -34,150 +71,186 @@ export default function ArtistProfilePage() {
       const data = await res.json()
       setMediaList(data.media || [])
     } catch (err) {
-      console.error('Erreur chargement medias:', err)
+      console.error('Erreur chargement médias :', err)
+    }
+  }
+
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/user/${user?.id}`)
+      const data = await res.json()
+      setEvents(data.events || [])
+    } catch (err) {
+      console.error('Erreur chargement événements :', err)
+    }
+  }
+
+  const handleSpecialtyAdd = () => {
+    if (selectedSpecialty && !specialties.includes(selectedSpecialty)) {
+      const updated = [...specialties, selectedSpecialty]
+      setSpecialties(updated)
+      updateProfile({ specialties: updated })
+      setSelectedSpecialty('')
+    }
+  }
+
+  const updateProfile = async (fields: any) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user?.profile?.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(fields),
+      })
+
+      if (res.ok) {
+        setUser(prev => {
+          if (!prev || !prev.profile) return prev
+          return {
+            ...prev,
+            profile: {
+              ...prev.profile,
+              ...fields,
+            },
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Erreur MAJ profil', err)
     }
   }
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const title = prompt("Titre de l'événement :")
+    const title = prompt("Titre de l’événement :") || ''
     if (!title) return
-    const lieu = prompt('Lieu :') || ''
-    const type = prompt('Type de prestation :') || ''
+
+    const lieu = prompt('Lieu') || ''
+    const type = prompt('Type de prestation') || ''
 
     const newEvent = {
-      id: String(events.length + 1),
       title,
-      extendedProps: { lieu, type },
       start: selectInfo.startStr,
       end: selectInfo.endStr,
       allDay: selectInfo.allDay,
-      color: '#22c55e'
+      lieu,
+      type,
     }
-    setEvents([...events, newEvent])
-  }
 
-  const handleEventClick = (clickInfo: EventClickArg) => {
-    setSelectedEvent({
-      id: clickInfo.event.id,
-      title: clickInfo.event.title,
-      start: clickInfo.event.startStr,
-      end: clickInfo.event.endStr,
-      extendedProps: clickInfo.event.extendedProps
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(newEvent),
     })
-  }
-
-  const handleDeleteEvent = () => {
-    if (selectedEvent) {
-      setEvents(events.filter(e => e.id !== selectedEvent.id))
-      setSelectedEvent(null)
-    }
-  }
-
-  const handleMediaChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const token = localStorage.getItem('token')
-
-    for (const file of files) {
-      const fileUrl = URL.createObjectURL(file)
-      const fileType = file.type.startsWith('image') ? 'IMAGE' : 'VIDEO'
-
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/media`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ url: fileUrl, type: fileType })
-      })
-    }
-    fetchMedia()
+      .then(res => res.json())
+      .then(() => fetchEvents())
+      .catch(err => console.error('Erreur création event', err))
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="relative w-full h-64 bg-gray-800">
-        <Image src={banner} alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
-        <input type="file" ref={bannerInputRef} hidden onChange={(e) => {
-          if (e.target.files?.[0]) setBanner(URL.createObjectURL(e.target.files[0]))
-        }} />
-        <input type="file" ref={avatarInputRef} hidden onChange={(e) => {
-          if (e.target.files?.[0]) setAvatar(URL.createObjectURL(e.target.files[0]))
-        }} />
-        <div className="absolute bottom-4 left-6 flex items-center gap-4">
-          <div onClick={() => avatarInputRef.current?.click()} className="cursor-pointer">
-            <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
-          </div>
-          <button onClick={() => bannerInputRef.current?.click()} className="bg-gray-700 px-3 py-1 rounded text-sm">Changer bannière</button>
+    <div className="min-h-screen bg-black text-white p-6">
+      <h1 className="text-3xl font-bold mb-6">🎤 Profil artiste</h1>
+
+      {/* Avatar + bannière */}
+      <div className="flex gap-6 items-center mb-8">
+        <Image src={avatar || '/default-avatar.png'} alt="avatar" width={80} height={80} className="rounded-full" />
+        <button className="bg-gray-700 px-4 py-2 rounded">Changer bannière</button>
+      </div>
+
+      {/* Bio */}
+      <div className="mb-6">
+        <label className="block mb-1 font-semibold">📝 Bio</label>
+        <textarea
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          onBlur={() => updateProfile({ bio })}
+          className="w-full bg-gray-800 text-white p-2 rounded"
+        />
+      </div>
+
+      {/* Spécialités */}
+      <div className="mb-6">
+        <label className="block mb-2 font-semibold">🎵 Spécialités</label>
+        <div className="flex gap-4 mb-2">
+          <select
+            value={selectedSpecialty}
+            onChange={(e) => setSelectedSpecialty(e.target.value)}
+            className="text-black px-2 py-1 rounded"
+          >
+            <option value="">Ajouter une spécialité</option>
+            {SPECIALTY_OPTIONS.filter(opt => !specialties.includes(opt)).map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          <button onClick={handleSpecialtyAdd} className="bg-green-600 px-3 py-1 rounded">Ajouter</button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {specialties.map(spec => (
+            <span key={spec} className="bg-yellow-500 text-black px-2 py-1 rounded text-sm">{spec}</span>
+          ))}
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-6">
-          <section>
-            <h2 className="text-xl font-semibold mb-2">🎬 Galerie médias</h2>
-            <input type="file" multiple onChange={handleMediaChange} className="bg-gray-900 p-3 rounded" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
-              {mediaList.map((media) => (
-                <div key={media.id} className="bg-gray-800 p-2 rounded shadow">
-                  {media.type === 'IMAGE' ? (
-                    <Image src={media.url} alt="media" width={400} height={300} className="w-full h-48 object-cover rounded" unoptimized />
-                  ) : (
-                    <video controls className="w-full h-48 object-cover rounded">
-                      <source src={media.url} type="video/mp4" />
-                    </video>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
+      {/* Localisation */}
+      <div className="mb-6">
+        <label className="block mb-1 font-semibold">🌍 Ville</label>
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          onBlur={() => updateProfile({ location })}
+          className="bg-gray-800 text-white px-4 py-2 rounded w-full"
+        />
+        <label className="block mt-2 mb-1 font-semibold">🇫🇷 Pays</label>
+        <input
+          type="text"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          onBlur={() => updateProfile({ country })}
+          className="bg-gray-800 text-white px-4 py-2 rounded w-full"
+        />
+        <label className="block mt-2 mb-1 font-semibold">📏 Rayon (km)</label>
+        <input
+          type="number"
+          value={radiusKm}
+          onChange={(e) => setRadiusKm(e.target.value)}
+          onBlur={() => updateProfile({ radiusKm: Number(radiusKm) })}
+          className="bg-gray-800 text-white px-4 py-2 rounded w-full"
+        />
+      </div>
 
-        <div className="space-y-6">
-          <section>
-            <h2 className="text-xl font-semibold mb-2">📅 Disponibilités</h2>
-            <div className="bg-white text-black rounded overflow-hidden">
-              <FullCalendar
-                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                initialView="dayGridMonth"
-                selectable
-                editable
-                select={handleDateSelect}
-                eventClick={handleEventClick}
-                events={events}
-                height="auto"
-                dayCellClassNames={() => 'bg-blue-100'}
-              />
+      {/* Galerie média */}
+      <div className="mb-10">
+        <h2 className="text-xl font-bold mb-2">🖼️ Galerie média</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {mediaList.map(media => (
+            <div key={media.id} className="rounded overflow-hidden">
+              {media.type === 'IMAGE' ? (
+                <Image src={media.url} alt="media" width={300} height={200} className="rounded" />
+              ) : (
+                <video src={media.url} controls className="w-full h-auto rounded" />
+              )}
             </div>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-2">🎧 Écouter mes titres</h2>
-            <iframe
-              className="w-full rounded"
-              height="160"
-              scrolling="no"
-              frameBorder="no"
-              allow="autoplay"
-              src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M?utm_source=generator"
-            ></iframe>
-          </section>
+          ))}
         </div>
       </div>
 
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 text-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
-            <h3 className="text-xl font-bold mb-2">{selectedEvent.title}</h3>
-            <p><strong>Date :</strong> {`${selectedEvent.start} → ${selectedEvent.end}`}</p>
-            <p><strong>Lieu :</strong> {selectedEvent.extendedProps?.lieu || 'N/A'}</p>
-            <p><strong>Type :</strong> {selectedEvent.extendedProps?.type || 'N/A'}</p>
-            <div className="flex justify-end mt-4 gap-2">
-              <button onClick={() => setSelectedEvent(null)} className="px-4 py-2 bg-gray-700 rounded">Fermer</button>
-              <button onClick={handleDeleteEvent} className="px-4 py-2 bg-red-600 rounded">Supprimer</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Calendrier */}
+      <div className="mb-20">
+        <h2 className="text-xl font-bold mb-2">📅 Disponibilités</h2>
+        <FullCalendar
+          plugins={[dayGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          selectable={true}
+          select={handleDateSelect}
+          events={events}
+          height="auto"
+        />
+      </div>
     </div>
   )
 }
