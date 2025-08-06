@@ -50,7 +50,7 @@ export default function ArtistProfilePage() {
     if (profile) {
       setAvatar(user.avatarUrl || '')
       setBanner(profile.bannerUrl || '')
-      setBio((profile as any).bio || '')
+      setBio(profile.bio || '')
       setSpecialties(profile.specialties || [])
       setLocation(profile.location || '')
       setCountry(profile.country || '')
