@@ -1,12 +1,13 @@
 'use client'
 
 import { useAuth } from '@/context/AuthContext'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import interactionPlugin, { DateSelectArg } from '@fullcalendar/interaction'
+import interactionPlugin from '@fullcalendar/interaction'
+import { DateSelectArg } from '@fullcalendar/core'
 
 interface Media {
   id: number
@@ -33,11 +34,8 @@ export default function ArtistProfilePage() {
   const { user, token, setUser } = useAuth()
   const router = useRouter()
 
-  const avatarRef = useRef<HTMLInputElement>(null)
-  const bannerRef = useRef<HTMLInputElement>(null)
-
   const [avatar, setAvatar] = useState('')
-  const [bannerUrl, setBannerUrl] = useState('')
+  const [banner, setBanner] = useState('')
   const [bio, setBio] = useState('')
   const [specialties, setSpecialties] = useState<string[]>([])
   const [selectedSpecialty, setSelectedSpecialty] = useState('')
@@ -55,18 +53,18 @@ export default function ArtistProfilePage() {
     preloadProfile()
     fetchMedia()
     fetchEvents()
-  }, [user])
+  }, [user, router])
 
   const preloadProfile = () => {
     const profile = user?.profile
     if (!profile) return
     setAvatar(user.avatarUrl || '')
-    setBannerUrl(profile.bannerUrl || '')
+    setBanner(profile.bannerUrl || '')
     setSpecialties(profile.specialties || [])
     setLocation(profile.location || '')
     setCountry(profile.country || '')
     setRadiusKm(String(profile.radiusKm || ''))
-    setBio(profile.bio || '')
+    setBio((profile as any).bio || '') // 'bio' temporairement typé en any
   }
 
   const updateProfile = async (fields: any) => {
@@ -158,7 +156,7 @@ export default function ArtistProfilePage() {
       {/* Avatar + bannière */}
       <div className="flex gap-6 items-center mb-8">
         <Image src={avatar || '/default-avatar.png'} alt="avatar" width={80} height={80} className="rounded-full" />
-        <button className="bg-gray-700 px-4 py-2 rounded">Changer bannière</button>
+        <Image src={banner || '/default-banner.jpg'} alt="bannière" width={300} height={80} className="rounded" />
       </div>
 
       {/* Bio */}
