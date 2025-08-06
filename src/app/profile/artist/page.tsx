@@ -53,21 +53,21 @@ export default function ArtistProfilePage() {
     preloadProfile()
     fetchMedia()
     fetchEvents()
-  }, [user, router])
+  }, [user])
 
   const preloadProfile = () => {
     const profile = user?.profile
     if (!profile) return
     setAvatar(user.avatarUrl || '')
     setBanner(profile.bannerUrl || '')
+    setBio((profile as unknown as { bio?: string })?.bio || '')
     setSpecialties(profile.specialties || [])
     setLocation(profile.location || '')
     setCountry(profile.country || '')
     setRadiusKm(String(profile.radiusKm || ''))
-    setBio((profile as any).bio || '') // 'bio' temporairement typé en any
   }
 
-  const updateProfile = async (fields: any) => {
+  const updateProfile = async (fields: Record<string, unknown>) => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user?.profile?.id}`, {
         method: 'PUT',
