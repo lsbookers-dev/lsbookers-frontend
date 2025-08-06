@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import interactionPlugin, { DateSelectArg } from '@fullcalendar/interaction'
+import interactionPlugin from '@fullcalendar/interaction'
+import { DateSelectArg } from '@fullcalendar/core'
 
 interface Media {
   id: number
@@ -45,24 +46,59 @@ export default function ArtistProfilePage() {
   const [events, setEvents] = useState<Event[]>([])
 
   useEffect(() => {
-    if (!user || user.role !== 'ARTIST') router.push('/home')
-    else {
+    if (!user || user.role !== 'ARTIST') {
+      router.push('/home')
+    } else {
+      preloadProfile()
       fetchMedia()
       fetchEvents()
-      preloadProfile()
     }
-  }, [user])
+  }, [user, router])
 
   const preloadProfile = () => {
     const profile = user?.profile
     if (!profile) return
-    if (profile.avatarUrl) setAvatar(profile.avatarUrl)
-    if (profile.bannerUrl) setBanner(profile.bannerUrl)
-    if (profile.specialties) setSpecialties(profile.specialties)
-    if (profile.location) setLocation(profile.location)
-    if (profile.country) setCountry(profile.country)
-    if (profile.radiusKm) setRadiusKm(String(profile.radiusKm))
-    if (profile.bio) setBio(profile.bio)
+    setAvatar(profile.avatarUrl || '')
+    setBanner(profile.bannerUrl || '')
+    setBio(profile.bio || '')
+    setSpecialties(profile.specialties || [])
+    setLocation(profile.location || '')
+    setCountry(profile.country || '')
+    setRadiusKm(profile.radiusKm?.toString() || '')
+  }
+
+  const updateProfile = async (fields: Partial<typeof user.profile>) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user?.profile?.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(fields),
+      })
+
+      if (res.ok) {
+        setUser((prev) => {
+          if (!prev?.profile) return prev
+          return {
+            ...prev,
+            profile: { ...prev.profile, ...fields },
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Erreur mise à jour profil :', err)
+    }
+  }
+
+  const handleSpecialtyAdd = () => {
+    if (selectedSpecialty && !specialties.includes(selectedSpecialty)) {
+      const updated = [...specialties, selectedSpecialty]
+      setSpecialties(updated)
+      updateProfile({ specialties: updated })
+      setSelectedSpecialty('')
+    }
   }
 
   const fetchMedia = async () => {
@@ -85,58 +121,11 @@ export default function ArtistProfilePage() {
     }
   }
 
-  const handleSpecialtyAdd = () => {
-    if (selectedSpecialty && !specialties.includes(selectedSpecialty)) {
-      const updated = [...specialties, selectedSpecialty]
-      setSpecialties(updated)
-      updateProfile({ specialties: updated })
-      setSelectedSpecialty('')
-    }
-  }
-
-  const updateProfile = async (fields: any) => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user?.profile?.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(fields),
-      })
-
-      if (res.ok) {
-        setUser(prev => {
-          if (!prev || !prev.profile) return prev
-          return {
-            ...prev,
-            profile: {
-              ...prev.profile,
-              ...fields,
-            },
-          }
-        })
-      }
-    } catch (err) {
-      console.error('Erreur MAJ profil', err)
-    }
-  }
-
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     const title = prompt("Titre de l’événement :") || ''
     if (!title) return
-
-    const lieu = prompt('Lieu') || ''
-    const type = prompt('Type de prestation') || ''
-
-    const newEvent = {
-      title,
-      start: selectInfo.startStr,
-      end: selectInfo.endStr,
-      allDay: selectInfo.allDay,
-      lieu,
-      type,
-    }
+    const lieu = prompt("Lieu :") || ''
+    const type = prompt("Type de prestation :") || ''
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
       method: 'POST',
@@ -144,11 +133,17 @@ export default function ArtistProfilePage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(newEvent),
+      body: JSON.stringify({
+        title,
+        start: selectInfo.startStr,
+        end: selectInfo.endStr,
+        allDay: selectInfo.allDay,
+        lieu,
+        type,
+      }),
     })
-      .then(res => res.json())
       .then(() => fetchEvents())
-      .catch(err => console.error('Erreur création event', err))
+      .catch((err) => console.error('Erreur création événement :', err))
   }
 
   return (
