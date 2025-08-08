@@ -14,8 +14,8 @@ type Profile = {
   latitude?: number
   longitude?: number
   typeEtablissement?: string
-  bannerUrl?: string        // ✅ ajouté pour corriger TS dans profil artiste
-  bio?: string              // ✅ ajouté pour corriger TS dans profil artiste
+  bannerUrl?: string        // ✅ requis pour la bannière
+  bio?: string              // ✅ requis pour la bio
 }
 
 type User = {
