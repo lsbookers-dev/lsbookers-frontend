@@ -1,55 +1,59 @@
-'use client';
+'use client'
 
-import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
 
-// Couleurs du thème (accord avec ton backend AdminSettings par défaut)
-const ACCENT = '#FF0055';
-
-type PromotedProfile = {
-  id: number;
-  name: string;
-  roleLabel: string;
-  city: string;
-  avatar: string; // chemin local /public
-};
+/* -------------------------------------------------------
+   Types
+------------------------------------------------------- */
+type Featured = {
+  id: number
+  name: string
+  city: string
+  country: string
+  image: string // chemin public/
+}
 
 type Post = {
-  id: number;
-  author: { name: string; avatar: string; roleLabel: string };
-  image?: string;
-  video?: string;
-  caption: string;
-  likes: number;
-  time: string;
-};
+  id: number
+  author: { name: string; avatar: string; roleLabel: string }
+  image: string
+  caption: string
+  likes: number
+  time: string
+}
 
-type LeaderboardItem = {
-  id: number;
-  name: string;
-  tag: string;
-  avatar: string;
-  rank: number;
-};
+type RankedItem = {
+  id: number
+  name: string
+  role: string
+  city: string
+  avatar: string
+}
 
-type Announcement = {
-  id: number;
-  title: string;
-  place: string;
-  date: string;
-  need: string;
-};
+type AdCard = {
+  id: number
+  organizer: { name: string; city: string; avatar: string }
+  venue: string
+  city: string
+  eventName: string
+  date: string
+  lookingFor: string
+}
 
-const promoted: PromotedProfile[] = [
-  { id: 1, name: 'Mike', roleLabel: 'DJ - Marseille', city: 'Marseille', avatar: '/avatars/a1.png' },
-  { id: 2, name: 'Manon', roleLabel: 'Traiteur - Marseille', city: 'Marseille', avatar: '/avatars/a2.png' },
-  { id: 3, name: 'Lena', roleLabel: 'Wedding Planner - Toulon', city: 'Toulon', avatar: '/avatars/a3.png' },
-  { id: 4, name: 'Yoann', roleLabel: 'Décorateur - Marseille', city: 'Marseille', avatar: '/avatars/a4.png' },
-  { id: 5, name: 'Théo', roleLabel: 'Photobooth - Avignon', city: 'Avignon', avatar: '/avatars/a5.png' },
-  { id: 6, name: 'Jérôme', roleLabel: 'Traiteur - Paris', city: 'Paris', avatar: '/avatars/a6.png' },
-];
+/* -------------------------------------------------------
+   Données de test (à remplacer par l’API plus tard)
+   ➜ Mets tes images dans /public/...
+------------------------------------------------------- */
+const featuredSeed: Featured[] = [
+  { id: 1, name: 'Mike', city: 'Marseille', country: 'France', image: '/carousel/mike.jpg' },
+  { id: 2, name: 'Manon', city: 'Marseille', country: 'France', image: '/carousel/manon.jpg' },
+  { id: 3, name: 'Nicolas', city: 'Paris', country: 'France', image: '/carousel/nicolas.jpg' },
+  { id: 4, name: 'Emilie', city: 'Lyon', country: 'France', image: '/carousel/emilie.jpg' },
+]
 
-const posts: Post[] = [
+const postsSeed: Post[] = [
   {
     id: 1,
     author: { name: 'Studio 88', avatar: '/avatars/a7.png', roleLabel: 'Club - Marseille' },
@@ -60,256 +64,323 @@ const posts: Post[] = [
   },
   {
     id: 2,
-    author: { name: 'Emilie', avatar: '/avatars/a8.png', roleLabel: 'Chanteuse - Lyon' },
-    image: '/media/mix2.jpg',
-    caption: 'Retour de scène incroyable !',
-    likes: 24,
-    time: 'Il y a 1j',
+    author: { name: 'Mike Mike', avatar: '/avatars/a1.png', roleLabel: 'DJ - Marseille' },
+    image: '/media/crowd1.jpg',
+    caption: 'Quelle énergie !',
+    likes: 21,
+    time: 'Il y a 9h',
   },
-];
+]
 
-const topArtists: LeaderboardItem[] = [
-  { id: 1, name: 'Mike Mike', tag: 'DJ - Marseille', avatar: '/avatars/a1.png', rank: 1 },
-  { id: 2, name: 'Emilie', tag: 'Chanteuse - Lyon', avatar: '/avatars/a8.png', rank: 2 },
-  { id: 3, name: 'Nicolas', tag: 'DJ - Marseille', avatar: '/avatars/a9.png', rank: 3 },
-  { id: 4, name: 'Coralie', tag: 'Danseuse - Lille', avatar: '/avatars/a10.png', rank: 4 },
-  { id: 5, name: 'Lena', tag: 'Chanteuse - Paris', avatar: '/avatars/a3.png', rank: 5 },
-];
+const topArtistsSeed: RankedItem[] = [
+  { id: 1, name: 'Mike Mike', role: 'DJ', city: 'Marseille', avatar: '/avatars/a1.png' },
+  { id: 2, name: 'Emilie', role: 'Chanteuse', city: 'Lyon', avatar: '/avatars/a2.png' },
+  { id: 3, name: 'Nicolas', role: 'DJ', city: 'Marseille', avatar: '/avatars/a3.png' },
+  { id: 4, name: 'Coralie', role: 'Danseuse', city: 'Lille', avatar: '/avatars/a4.png' },
+  { id: 5, name: 'Lena', role: 'Chanteuse', city: 'Paris', avatar: '/avatars/a5.png' },
+]
 
-const topProviders: LeaderboardItem[] = [
-  { id: 1, name: 'Bob Sainfoncé', tag: 'Traiteur - Aubagne', avatar: '/avatars/a22.png', rank: 1 },
-  { id: 2, name: 'La Sicile Authentique', tag: 'Traiteur - Marseille', avatar: '/avatars/a11.png', rank: 2 },
-  { id: 3, name: 'Photobooth Pro', tag: 'Photobooth - Avignon', avatar: '/avatars/a15.png', rank: 3 },
-  { id: 4, name: 'Wedding Planing', tag: 'Wedding Planner - Toulon', avatar: '/avatars/a23.png', rank: 4 },
-  { id: 5, name: 'Décoratrice Marie', tag: 'Décoratrice - Marseille', avatar: '/avatars/a14.png', rank: 5 },
-];
+const topVendorsSeed: RankedItem[] = [
+  { id: 1, name: 'Bob Sainfoncé', role: 'Traiteur', city: 'Aubagne', avatar: '/avatars/p1.png' },
+  { id: 2, name: 'La Sicile Authentique', role: 'Traiteur', city: 'Marseille', avatar: '/avatars/p2.png' },
+  { id: 3, name: 'Photobooth Pro', role: 'Photobooth', city: 'Avignon', avatar: '/avatars/p3.png' },
+  { id: 4, name: 'Wedding Planing', role: 'Wedding Planner', city: 'Toulon', avatar: '/avatars/p4.png' },
+  { id: 5, name: 'Décoratrice Marie', role: 'Décoratrice', city: 'Marseille', avatar: '/avatars/p5.png' },
+]
 
-const annonces: Announcement[] = [
-  { id: 1, title: 'Studio 88', place: 'Marseille', date: '25/10/2025', need: 'DJ' },
-  { id: 2, title: 'Concert', place: 'Marseille', date: '21/06/2025', need: 'Chanteur' },
-  { id: 3, title: 'Rooftop', place: 'La Ciotat', date: '25/08/2025', need: 'Danseur' },
-  { id: 4, title: 'Société', place: 'Avignon', date: '25/11/2025', need: 'Traiteur' },
-  { id: 5, title: 'Chez Mario', place: 'Cassis', date: '08/10/2025', need: 'Chanteur' },
-  { id: 6, title: 'Wedding Planing', place: 'Aubagne', date: '25/10/2025', need: 'DJ' },
-];
+const adsSeed: AdCard[] = [
+  {
+    id: 1,
+    organizer: { name: 'Studio 88', city: 'Marseille', avatar: '/avatars/org1.png' },
+    venue: 'Studio 88',
+    city: 'Marseille',
+    eventName: 'Soirée R&B',
+    date: '25/10/2025',
+    lookingFor: 'DJ',
+  },
+  {
+    id: 2,
+    organizer: { name: 'Concert', city: 'Marseille', avatar: '/avatars/org2.png' },
+    venue: 'Concert',
+    city: 'Marseille',
+    eventName: 'Fête de la Musique',
+    date: '21/06/2025',
+    lookingFor: 'Chanteur',
+  },
+  {
+    id: 3,
+    organizer: { name: 'Rooftop', city: 'La Ciotat', avatar: '/avatars/org3.png' },
+    venue: 'Rooftop',
+    city: 'La Ciotat',
+    eventName: 'Soirée Disco',
+    date: '25/08/2025',
+    lookingFor: 'Danseur',
+  },
+  {
+    id: 4,
+    organizer: { name: 'Société', city: 'Avignon', avatar: '/avatars/org4.png' },
+    venue: 'Société',
+    city: 'Avignon',
+    eventName: 'Séminaire',
+    date: '25/11/2025',
+    lookingFor: 'Traiteur',
+  },
+  {
+    id: 5,
+    organizer: { name: 'Chez Mario', city: 'Cassis', avatar: '/avatars/org5.png' },
+    venue: 'Chez Mario',
+    city: 'Cassis',
+    eventName: 'Soirée Italienne',
+    date: '08/10/2025',
+    lookingFor: 'Chanteur',
+  },
+  {
+    id: 6,
+    organizer: { name: 'Wedding Planing', city: 'Aubagne', avatar: '/avatars/org6.png' },
+    venue: 'Wedding Planing',
+    city: 'Aubagne',
+    eventName: 'Soirée R&B',
+    date: '25/10/2025',
+    lookingFor: 'DJ',
+  },
+]
 
-export default function HomePage() {
-  // index = première carte visible (on en affiche 2 à la fois)
-  const [index, setIndex] = useState(0);
-  const maxIndex = Math.max(0, promoted.length - 2);
+/* -------------------------------------------------------
+   Carrousel 2 par slide (auto + flèches)
+------------------------------------------------------- */
+function FeaturedCarousel({ items }: { items: Featured[] }) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [index, setIndex] = useState(0)
 
-  const next = () => setIndex((i) => (i >= maxIndex ? 0 : i + 1));
-  const prev = () => setIndex((i) => (i <= 0 ? maxIndex : i - 1));
+  // On groupe par 2 éléments par "slide"
+  const slides = useMemo(() => {
+    const chunked: Featured[][] = []
+    for (let i = 0; i < items.length; i += 2) {
+      chunked.push(items.slice(i, i + 2))
+    }
+    return chunked
+  }, [items])
+
+  // Auto défilement
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((prev) => (prev + 1) % slides.length)
+    }, 4000)
+    return () => clearInterval(id)
+  }, [slides.length])
+
+  // Scroll vers la slide active
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const slideWidth = el.clientWidth
+    el.scrollTo({ left: slideWidth * index, behavior: 'smooth' })
+  }, [index])
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      {/* Wrapper largeur */}
-      <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16">
-        {/* CARROUSEL */}
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl md:text-2xl font-bold">Mises en avant</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={prev}
-                className="rounded-full border border-white/20 px-3 py-1 hover:bg-white/10"
-                aria-label="Précédent"
+    <div className="relative">
+      <div
+        ref={containerRef}
+        className="flex overflow-x-hidden scroll-smooth snap-x snap-mandatory rounded-2xl border border-white/10"
+      >
+        {slides.map((pair, sIdx) => (
+          <div key={sIdx} className="shrink-0 w-full grid grid-cols-1 md:grid-cols-2 gap-4 p-4 snap-start">
+            {pair.map((p) => (
+              <div
+                key={p.id}
+                className="relative h-40 md:h-44 lg:h-48 xl:h-56 rounded-xl overflow-hidden bg-zinc-900"
               >
-                ‹
-              </button>
-              <button
-                onClick={next}
-                className="rounded-full border border-white/20 px-3 py-1 hover:bg-white/10"
-                aria-label="Suivant"
-              >
-                ›
-              </button>
-            </div>
-          </div>
-
-          <div className="relative overflow-hidden rounded-2xl bg-[#0f0f0f] p-4">
-            <div
-              className="flex gap-4 transition-transform duration-500"
-              style={{ transform: `translateX(calc(${index} * -50% - ${index} * 0.5rem))` }}
-            >
-              {promoted.map((p) => (
-                <div key={p.id} className="w-1/2 shrink-0">
-                  <div className="rounded-xl bg-[#111] border border-white/10 p-4 hover:border-white/20 transition">
-                    <div className="flex items-center gap-3">
-                      <div className="relative h-14 w-14 overflow-hidden rounded-full ring-2 ring-white/10">
-                        <Image src={p.avatar} alt={p.name} fill className="object-cover" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">{p.name}</p>
-                        <p className="text-sm text-white/60">{p.roleLabel}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <span
-                        className="inline-block rounded-full px-3 py-1 text-xs"
-                        style={{ background: `${ACCENT}22`, color: ACCENT }}
-                      >
-                        {p.city}
-                      </span>
-                    </div>
+                <Image
+                  src={p.image}
+                  alt={p.name}
+                  fill
+                  className="object-cover opacity-90"
+                  priority={sIdx === 0}
+                />
+                {/* Overlay infos */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-white">{p.name}</p>
+                    <p className="text-xs text-white/80">{p.city}, {p.country}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* GRID PRINCIPALE : Publications + Classements */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-          {/* Publications (col-span-2) */}
-          <div className="lg:col-span-2">
-            <h3 className="mb-4 text-lg md:text-xl font-semibold">Publications</h3>
-            <div className="rounded-2xl bg-[#0f0f0f] border border-white/10 p-0">
-              <div className="max-h-[70vh] overflow-y-auto divide-y divide-white/10">
-                {posts.map((post) => (
-                  <article key={post.id} className="p-4">
-                    <header className="mb-3 flex items-center gap-3">
-                      <div className="relative h-10 w-10 overflow-hidden rounded-full ring-2 ring-white/10">
-                        <Image src={post.author.avatar} alt={post.author.name} fill className="object-cover" />
-                      </div>
-                      <div>
-                        <p className="font-semibold leading-tight">{post.author.name}</p>
-                        <p className="text-xs text-white/60">{post.author.roleLabel} • {post.time}</p>
-                      </div>
-                    </header>
-
-                    {post.image && (
-                      <div className="relative mb-3 w-full overflow-hidden rounded-xl border border-white/10">
-                        <Image
-                          src={post.image}
-                          alt={post.caption}
-                          width={1200}
-                          height={800}
-                          className="h-auto w-full object-cover"
-                        />
-                      </div>
-                    )}
-
-                    <p className="text-sm leading-relaxed">{post.caption}</p>
-
-                    <footer className="mt-3 flex items-center gap-4 text-sm">
-                      <button className="hover:text-white/90 text-white/70">❤️ {post.likes}</button>
-                      <button className="hover:text-white/90 text-white/70">💬 Commenter</button>
-                      <button className="hover:text-white/90 text-white/70">↗️ Partager</button>
-                    </footer>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Classements (col 3) */}
-          <div className="space-y-6">
-            <div className="rounded-2xl bg-[#0f0f0f] border border-white/10 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h4 className="font-semibold">TOP ARTISTES</h4>
-                <select
-                  className="rounded-md bg-black/40 text-sm px-2 py-1 border border-white/10"
-                  defaultValue="France"
-                  aria-label="Filtre territoire"
-                >
-                  <option>France</option>
-                  <option>Région</option>
-                  <option>Ville</option>
-                </select>
-              </div>
-
-              <ul className="space-y-3">
-                {topArtists.map((a) => (
-                  <li key={a.id} className="flex items-center gap-3 rounded-lg border border-white/10 p-2 hover:border-white/20 transition">
-                    <span
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold"
-                      style={{ background: `${ACCENT}22`, color: ACCENT }}
-                    >
-                      {a.rank}
-                    </span>
-                    <div className="relative h-10 w-10 overflow-hidden rounded-full ring-2 ring-white/10">
-                      <Image src={a.avatar} alt={a.name} fill className="object-cover" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{a.name}</p>
-                      <p className="truncate text-xs text-white/60">{a.tag}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-2xl bg-[#0f0f0f] border border-white/10 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h4 className="font-semibold">TOP PRESTATAIRES</h4>
-                <select
-                  className="rounded-md bg-black/40 text-sm px-2 py-1 border border-white/10"
-                  defaultValue="France"
-                  aria-label="Filtre territoire"
-                >
-                  <option>France</option>
-                  <option>Région</option>
-                  <option>Ville</option>
-                </select>
-              </div>
-
-              <ul className="space-y-3">
-                {topProviders.map((p) => (
-                  <li key={p.id} className="flex items-center gap-3 rounded-lg border border-white/10 p-2 hover:border-white/20 transition">
-                    <span
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold"
-                      style={{ background: `${ACCENT}22`, color: ACCENT }}
-                    >
-                      {p.rank}
-                    </span>
-                    <div className="relative h-10 w-10 overflow-hidden rounded-full ring-2 ring-white/10">
-                      <Image src={p.avatar} alt={p.name} fill className="object-cover" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{p.name}</p>
-                      <p className="truncate text-xs text-white/60">{p.tag}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* ANNONCES */}
-        <section className="mb-4">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg md:text-xl font-semibold">Annonces</h3>
-            <button
-              className="rounded-md border border-white/10 px-3 py-1 text-sm hover:bg-white/10"
-              aria-label="Voir toutes les annonces"
-            >
-              Voir tout
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {annonces.map((a) => (
-              <div key={a.id} className="rounded-xl bg-[#0f0f0f] border border-white/10 p-4 hover:border-white/20 transition">
-                <h5 className="font-semibold">{a.title}</h5>
-                <p className="text-sm text-white/60">{a.place}</p>
-                <div className="mt-3 space-y-1 text-sm">
-                  <p>Événement : <span className="text-white/90">—</span></p>
-                  <p>Date : <span className="text-white/90">{a.date}</span></p>
-                  <p>Recherche : <span className="text-white/90">{a.need}</span></p>
-                </div>
-                <button
-                  className="mt-4 w-full rounded-lg py-2 font-medium"
-                  style={{ background: ACCENT }}
-                >
-                  Contacter
-                </button>
               </div>
             ))}
           </div>
-        </section>
+        ))}
       </div>
-    </main>
-  );
+
+      {/* Flèches */}
+      <button
+        aria-label="Précédent"
+        onClick={() => setIndex((prev) => (prev - 1 + slides.length) % slides.length)}
+        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/10 backdrop-blur px-2 py-2 rounded-full hover:bg-white/20"
+      >
+        ‹
+      </button>
+      <button
+        aria-label="Suivant"
+        onClick={() => setIndex((prev) => (prev + 1) % slides.length)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/10 backdrop-blur px-2 py-2 rounded-full hover:bg-white/20"
+      >
+        ›
+      </button>
+    </div>
+  )
 }
+
+/* -------------------------------------------------------
+   Liste classement (Top 5) + lien Voir tout
+------------------------------------------------------- */
+function TopList({
+  title,
+  items,
+  viewAllHref,
+}: {
+  title: string
+  items: RankedItem[]
+  viewAllHref: string
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-900/40">
+      <div className="flex items-center justify-between px-4 py-3">
+        <h3 className="text-sm font-bold tracking-wide text-white">{title}</h3>
+        <select className="bg-zinc-800 text-xs rounded px-2 py-1 border border-white/10">
+          <option>France</option>
+          <option>Région</option>
+          <option>Ville</option>
+        </select>
+      </div>
+      <ul className="px-2 pb-2">
+        {items.slice(0, 5).map((it, idx) => (
+          <li
+            key={it.id}
+            className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5"
+          >
+            <span className="w-6 text-center text-xs font-semibold text-pink-500">{idx + 1}</span>
+            <Image src={it.avatar} alt={it.name} width={36} height={36} className="rounded-full" />
+            <div className="flex-1">
+              <p className="text-sm text-white">{it.name}</p>
+              <p className="text-xs text-white/70">{it.role} - {it.city}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="px-4 pb-4">
+        <Link
+          href={viewAllHref}
+          className="block w-full text-center text-xs font-medium bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg py-2"
+        >
+          Voir tout
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------
+   Carte Annonce (avec avatar organisateur)
+------------------------------------------------------- */
+function Ad({ ad }: { ad: AdCard }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-900/40 p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <Image src={ad.organizer.avatar} alt={ad.organizer.name} width={36} height={36} className="rounded-full" />
+        <div>
+          <p className="text-sm font-semibold text-white">{ad.venue}</p>
+          <p className="text-xs text-white/70">{ad.city}</p>
+        </div>
+      </div>
+      <div className="space-y-1 text-sm">
+        <p><span className="text-white/70">Événement : </span>{ad.eventName || '—'}</p>
+        <p><span className="text-white/70">Date : </span>{ad.date}</p>
+        <p><span className="text-white/70">Recherche : </span>{ad.lookingFor}</p>
+      </div>
+      <button className="mt-4 w-full rounded-lg py-2 text-sm font-medium bg-pink-600 hover:bg-pink-500">
+        Contacter
+      </button>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------
+   Page
+------------------------------------------------------- */
+export default function HomePage() {
+  // (Si tu as un thème global, cette page s’y adapte déjà)
+  const [featured] = useState<Featured[]>(featuredSeed)
+  const [posts] = useState<Post[]>(postsSeed)
+  const [topArtists] = useState<RANKED[]>(topArtistsSeed as unknown as RANKED[])
+  const [topVendors] = useState<RANKED[]>(topVendorsSeed as unknown as RANKED[])
+  const [ads] = useState<AdCard[]>(adsSeed)
+
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-6 text-white">
+      {/* Carrousel */}
+      <section className="mb-8">
+        <FeaturedCarousel items={featured} />
+      </section>
+
+      {/* Publications + Side classements */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Colonne publications (prend la hauteur naturelle → plus de “trou”) */}
+        <div className="lg:col-span-2 space-y-6">
+          <h2 className="text-xl font-bold">Publications</h2>
+
+          {posts.map((p) => (
+            <article key={p.id} className="rounded-2xl border border-white/10 bg-zinc-900/40 p-4">
+              <header className="flex items-center gap-3 mb-3">
+                <Image src={p.author.avatar} alt={p.author.name} width={40} height={40} className="rounded-full" />
+                <div>
+                  <p className="text-sm font-semibold">{p.author.name}</p>
+                  <p className="text-xs text-white/70">{p.author.roleLabel} • {p.time}</p>
+                </div>
+              </header>
+
+              <div className="relative w-full aspect-[16/9] overflow-hidden rounded-xl">
+                <Image src={p.image} alt={p.caption} fill className="object-cover" />
+              </div>
+
+              <footer className="mt-3 flex items-center gap-4 text-sm">
+                <span>❤️ {p.likes}</span>
+                <button className="hover:underline">💬 Commenter</button>
+                <button className="hover:underline">📎 Partager</button>
+              </footer>
+
+              <p className="mt-2 text-sm">{p.caption}</p>
+            </article>
+          ))}
+        </div>
+
+        {/* Colonne classements */}
+        <aside className="space-y-6">
+          <TopList title="TOP ARTISTES" items={topArtistsSeed} viewAllHref="/classements/artistes" />
+          <TopList title="TOP PRESTATAIRES" items={topVendorsSeed} viewAllHref="/classements/prestataires" />
+        </aside>
+      </section>
+
+      {/* Annonces */}
+      <section className="mt-10">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold">Annonces</h2>
+          <Link
+            href="/annonces"
+            className="text-xs font-medium bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg px-3 py-2"
+          >
+            Voir tout
+          </Link>
+        </div>
+
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+          {ads.map((ad) => (
+            <Ad key={ad.id} ad={ad} />
+          ))}
+        </div>
+      </section>
+    </main>
+  )
+}
+
+/* Petit type utilitaire pour éviter une erreur TS mineure si tu changes les seeds plus tard */
+type RANKED = RankedItem
