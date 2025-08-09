@@ -64,8 +64,8 @@ const postsSeed: Post[] = [
   },
   {
     id: 2,
-    author: { name: 'Mike Mike', avatar: '/avatars/a1.png', roleLabel: 'DJ - Marseille' },
-    image: '/media/crowd1.jpg',
+    author: { name: 'Mike', avatar: '/avatars/a1.png', roleLabel: 'DJ - Marseille' },
+    image: '/media/mix2.jpg',
     caption: 'Quelle énergie !',
     likes: 21,
     time: 'Il y a 9h',
@@ -81,7 +81,7 @@ const topArtistsSeed: RankedItem[] = [
 ]
 
 const topVendorsSeed: RankedItem[] = [
-  { id: 1, name: 'Bob Sainfoncé', role: 'Traiteur', city: 'Aubagne', avatar: '/avatars/p1.png' },
+  { id: 1, name: 'Le Buffet', role: 'Traiteur', city: 'Aubagne', avatar: '/avatars/p1.png' },
   { id: 2, name: 'La Sicile Authentique', role: 'Traiteur', city: 'Marseille', avatar: '/avatars/p2.png' },
   { id: 3, name: 'Photobooth Pro', role: 'Photobooth', city: 'Avignon', avatar: '/avatars/p3.png' },
   { id: 4, name: 'Wedding Planing', role: 'Wedding Planner', city: 'Toulon', avatar: '/avatars/p4.png' },
