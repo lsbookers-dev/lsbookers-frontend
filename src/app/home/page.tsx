@@ -311,8 +311,6 @@ export default function HomePage() {
   // (Si tu as un thème global, cette page s’y adapte déjà)
   const [featured] = useState<Featured[]>(featuredSeed)
   const [posts] = useState<Post[]>(postsSeed)
-  const [topArtists] = useState<RANKED[]>(topArtistsSeed as unknown as RANKED[])
-  const [topVendors] = useState<RANKED[]>(topVendorsSeed as unknown as RANKED[])
   const [ads] = useState<AdCard[]>(adsSeed)
 
   return (
