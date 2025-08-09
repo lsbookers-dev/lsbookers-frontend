@@ -56,7 +56,7 @@ const featuredSeed: Featured[] = [
 const postsSeed: Post[] = [
   {
     id: 1,
-    author: { name: 'Studio 88', avatar: '/avatars/a7.png', roleLabel: 'Club - Marseille' },
+    author: { name: 'Studio 88', avatar: '/avatars/org1.png', roleLabel: 'Club - Marseille' },
     image: '/media/mix1.jpg',
     caption: 'Mix hier soir à Marseille 🎧🔥',
     likes: 39,
