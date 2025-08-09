@@ -41,7 +41,7 @@ type Announcement = {
 };
 
 const promoted: PromotedProfile[] = [
-  { id: 1, name: 'Mike Mike', roleLabel: 'DJ - Marseille', city: 'Marseille', avatar: '/avatars/a1.png' },
+  { id: 1, name: 'Mike', roleLabel: 'DJ - Marseille', city: 'Marseille', avatar: '/avatars/a1.png' },
   { id: 2, name: 'Manon', roleLabel: 'Traiteur - Marseille', city: 'Marseille', avatar: '/avatars/a2.png' },
   { id: 3, name: 'Lena', roleLabel: 'Wedding Planner - Toulon', city: 'Toulon', avatar: '/avatars/a3.png' },
   { id: 4, name: 'Yoann', roleLabel: 'Décorateur - Marseille', city: 'Marseille', avatar: '/avatars/a4.png' },
@@ -77,11 +77,11 @@ const topArtists: LeaderboardItem[] = [
 ];
 
 const topProviders: LeaderboardItem[] = [
-  { id: 1, name: 'Bob Sainfoncé', tag: 'Traiteur - Aubagne', avatar: '/avatars/a2.png', rank: 1 },
+  { id: 1, name: 'Bob Sainfoncé', tag: 'Traiteur - Aubagne', avatar: '/avatars/a22.png', rank: 1 },
   { id: 2, name: 'La Sicile Authentique', tag: 'Traiteur - Marseille', avatar: '/avatars/a11.png', rank: 2 },
-  { id: 3, name: 'Photobooth Pro', tag: 'Photobooth - Avignon', avatar: '/avatars/a5.png', rank: 3 },
-  { id: 4, name: 'Wedding Planing', tag: 'Wedding Planner - Toulon', avatar: '/avatars/a12.png', rank: 4 },
-  { id: 5, name: 'Décoratrice Marie', tag: 'Décoratrice - Marseille', avatar: '/avatars/a4.png', rank: 5 },
+  { id: 3, name: 'Photobooth Pro', tag: 'Photobooth - Avignon', avatar: '/avatars/a15.png', rank: 3 },
+  { id: 4, name: 'Wedding Planing', tag: 'Wedding Planner - Toulon', avatar: '/avatars/a23.png', rank: 4 },
+  { id: 5, name: 'Décoratrice Marie', tag: 'Décoratrice - Marseille', avatar: '/avatars/a14.png', rank: 5 },
 ];
 
 const annonces: Announcement[] = [
