@@ -379,6 +379,3 @@ export default function HomePage() {
     </main>
   )
 }
-
-/* Petit type utilitaire pour éviter une erreur TS mineure si tu changes les seeds plus tard */
-type RANKED = RankedItem
