@@ -3,343 +3,522 @@
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, Settings2, Plus, MessageCircle, UserPlus, X } from 'lucide-react'
+import {
+  Settings2,
+  ChevronDown,
+  Plus,
+  MessageCircle,
+  UserPlus,
+  Star,
+} from 'lucide-react'
 
-// ---------- Types ----------
+/* ============================= Types ============================= */
+
 type RoleTag = { label: string }
-type Publication = { id: number; image: string; caption?: string }
-type Review = { id: number; author: string; text: string }
-type PriceLine = { label: string; price: string }
+type Publication = { id: number; title: string; image: string; caption?: string; time?: string }
+type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
+type PriceLine = { id: number; label: string; price: string }
 type SocialLink = { label: string; href: string }
 
-// ---------- Page ----------
+/* ============================= Page ============================= */
+
 export default function ArtistProfilePage() {
   const router = useRouter()
 
-  // ----- Mock data (remplaçable par l’API ensuite) -----
+  /* ---------- Mock data (remplaçable par l’API ensuite) ---------- */
   const artist = useMemo(
     () => ({
       id: 1,
-      banner: '/banners/artist_banner.jpg',     // place l’image ici: public/banners/artist_banner.jpg
-      avatar: '/avatars/a1.png',                // public/avatars/a1.png
+      banner: '/banners/artist_banner.jpg',       // public/banners/artist_banner.jpg
+      avatar: '/avatars/a1.png',                   // public/avatars/a1.png
       name: 'Test Artist',
       location: 'Marseille',
       country: 'France',
       roles: [{ label: 'DJ' }, { label: 'Saxophoniste' }] as RoleTag[],
       description:
-        "L’artiste écrit ici sa description, en expliquant sa carrière, son parcours etc...",
+        "L’artiste écris ici sa description, en expliquant sa carrière, son parcours etc...",
       soundcloudEmbedUrl:
-        'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/209262931&auto_play=false&hide_related=false&show_comments=false&show_user=true&show_reposts=false&visual=true',
-      showSoundcloud: true, // optionnel, contrôlé plus tard via réglages
+        'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/209262932&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true',
+      showSoundcloud: true,
     }),
     []
   )
 
-  const publications = useMemo<Publication[]>(
-    () => [
-      { id: 1, image: '/media/pub1.jpg', caption: 'Live au Studio 88' }, // public/media/pub1.jpg
-      { id: 2, image: '/media/pub2.jpg', caption: 'Merci Marseille !' },
-      { id: 3, image: '/media/pub3.jpg', caption: 'Backstage 🎧' },
-      { id: 4, image: '/media/pub4.jpg', caption: 'Summer vibes' },
-      { id: 5, image: '/media/pub5.jpg', caption: 'Night session' },
-    ],
+  const [roles, setRoles] = useState<RoleTag[]>(artist.roles)
+  const allRoleOptions = useMemo(
+    () => ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste', 'Violoniste', 'Photographe'],
     []
   )
+  const [rolePickerOpen, setRolePickerOpen] = useState(false)
 
-  const reviews = useMemo<Review[]>(
-    () => [
-      { id: 1, author: 'Studio 88', text: 'Très bonne prestation et très professionnel.' },
-      { id: 2, author: 'Studio 88', text: 'Merci pour cette prestation, ravis, je recommande !' },
-    ],
-    []
-  )
-
-  const prices = useMemo<PriceLine[]>(
-    () => [
-      { label: 'Mix de 2h · Région PACA', price: 'à partir de 400 €' },
-      { label: 'Mix de 4h · Région PACA', price: 'à partir de 700 €' },
-    ],
-    []
-  )
-
-  const social: SocialLink[] = [
-    { label: 'Instagram', href: '#' },
-    { label: 'Facebook', href: '#' },
-    { label: 'TikTok', href: '#' },
-    { label: 'Site web', href: '#' },
-  ]
-
-  const styleTags = ['R&B', 'Latino', 'Rap US', 'Rap FR', 'Deep/House', 'Electro']
-
-  // ----- UI state -----
-  const [rolesOpen, setRolesOpen] = useState(false)
+  const [publications, setPublications] = useState<Publication[]>([
+    {
+      id: 1,
+      title: 'Live au Studio 88',
+      image: '/media/pub1.jpg',
+      caption: 'Mix hier soir à Marseille 🎧🔥',
+      time: 'Il y a 6h',
+    },
+    { id: 2, title: 'Merci Marseille !', image: '/media/pub2.jpg' },
+    { id: 3, title: 'Backstage 🎧', image: '/media/pub3.jpg' },
+    { id: 4, title: 'Répètes', image: '/media/pub4.jpg' },
+  ])
   const [showAllPubs, setShowAllPubs] = useState(false)
 
-  // ----- Actions (stub) -----
-  const onContact = () => router.push(`/messages/new?to=${artist.id}`)
-  const onFollow = () => alert('Follow enregistré (à brancher)')
-  const onOpenSettings = () => router.push('/settings/profile') // route à créer
-  const onAddPublication = () => alert('Ajouter une publication (à brancher)')
+  const [reviews, setReviews] = useState<Review[]>([
+    {
+      id: 1,
+      author: 'Studio 88',
+      authorAvatar: '/avatars/pro1.png',
+      rating: 5,
+      text: 'Merci pour cette prestation, ravis — je recommande !',
+    },
+    {
+      id: 2,
+      author: 'Wedding Planning',
+      authorAvatar: '/avatars/pro2.png',
+      rating: 4,
+      text: 'Très bonne prestation et très professionnel.',
+    },
+  ])
 
-  // ----- Layout -----
+  const [styles, setStyles] = useState<string[]>([
+    'R&B',
+    'Latino',
+    'Rap US',
+    'Rap FR',
+    'Deep/House',
+    'Electro',
+  ])
+  const [newStyle, setNewStyle] = useState('')
+
+  const [prices, setPrices] = useState<PriceLine[]>([
+    { id: 1, label: 'Mix de 2h · Région PACA', price: 'À partir de 400€' },
+    { id: 2, label: 'Mix de 4h · Région PACA', price: 'À partir de 700€' },
+  ])
+  const [newPriceLabel, setNewPriceLabel] = useState('')
+  const [newPriceValue, setNewPriceValue] = useState('')
+
+  /* ============================= Actions ============================= */
+
+  const toggleRole = (label: string) => {
+    setRoles(prev =>
+      prev.some(r => r.label === label)
+        ? prev.filter(r => r.label !== label)
+        : [...prev, { label }]
+    )
+  }
+
+  const addPublication = () => {
+    const title = window.prompt("Titre de la publication ?")
+    if (!title) return
+    const image = window.prompt("URL de l'image (ex: /media/pub5.jpg) ?") || '/media/pub_placeholder.jpg'
+    setPublications(prev => [{ id: Date.now(), title, image }, ...prev])
+  }
+
+  const addStyle = () => {
+    const s = newStyle.trim()
+    if (!s || styles.includes(s)) return
+    setStyles(prev => [...prev, s])
+    setNewStyle('')
+  }
+
+  const removeStyle = (s: string) => {
+    setStyles(prev => prev.filter(x => x !== s))
+  }
+
+  const addPrice = () => {
+    const lbl = newPriceLabel.trim()
+    const val = newPriceValue.trim()
+    if (!lbl || !val) return
+    setPrices(prev => [...prev, { id: Date.now(), label: lbl, price: val }])
+    setNewPriceLabel('')
+    setNewPriceValue('')
+  }
+
+  const removePrice = (id: number) => {
+    setPrices(prev => prev.filter(p => p.id !== id))
+  }
+
+  const contact = () => {
+    // vers ta messagerie /messages/[id]
+    router.push('/messages')
+  }
+
+  const follow = () => {
+    // mock: affiche juste une notification
+    alert('Vous suivez maintenant cet artiste ✅')
+  }
+
+  /* ============================= UI ============================= */
+
+  // Publications : hero + autres
+  const heroPub = publications[0]
+  const restPubs = publications.slice(1, 7) // on en montre quelques unes
+
   return (
-    <main className="min-h-screen bg-black text-white">
-      {/* Banner */}
-      <section className="relative w-full h-64 md:h-80 lg:h-96">
+    <div className="min-h-screen bg-black text-white">
+      {/* ====== Bannière ====== */}
+      <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
         <Image
           src={artist.banner}
           alt="Bannière"
           fill
-          className="object-cover opacity-90"
           priority
+          className="object-cover opacity-90"
         />
-
-        {/* Bouton réglages */}
         <button
-          onClick={onOpenSettings}
-          className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur hover:bg-white/20 transition"
+          onClick={() => router.push('/settings/profile')}
+          className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 backdrop-blur"
         >
           <Settings2 size={18} />
-          <span className="text-sm font-medium">Réglages</span>
+          Réglages
         </button>
+      </div>
 
-        {/* Avatar + header infos (chevauche la bannière) */}
-        <div className="absolute -bottom-10 left-4 right-4 md:left-8 md:right-8">
-          <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <div className="relative h-24 w-24 md:h-28 md:w-28 rounded-full overflow-hidden ring-4 ring-black/60">
+      {/* ====== En-tête (sous la bannière) ====== */}
+      <div className="max-w-6xl mx-auto px-4 -mt-10 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
               <Image src={artist.avatar} alt="Avatar" fill className="object-cover" />
             </div>
-
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 md:gap-6">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold">{artist.name}</h1>
-                <p className="text-sm text-white/70">
-                  {artist.location}, {artist.country}
-                </p>
-                {/* Rôles + menu */}
-                <div className="mt-2 relative inline-block">
-                  <button
-                    onClick={() => setRolesOpen((v) => !v)}
-                    className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20 transition"
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">{artist.name}</h1>
+              <p className="text-sm text-neutral-300">
+                {artist.location}, {artist.country}
+              </p>
+              {/* Rôles (tags) */}
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {roles.map(r => (
+                  <span
+                    key={r.label}
+                    className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40"
                   >
-                    {artist.roles.map((r) => r.label).join(' - ')}
-                    <ChevronDown size={16} />
+                    {r.label}
+                  </span>
+                ))}
+                <div className="relative">
+                  <button
+                    onClick={() => setRolePickerOpen(v => !v)}
+                    className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/20 flex items-center gap-1"
+                  >
+                    Gérer
+                    <ChevronDown size={14} />
                   </button>
-                  {rolesOpen && (
-                    <div
-                      className="absolute z-20 mt-2 w-56 rounded-lg border border-white/10 bg-neutral-900 p-2 shadow-xl"
-                      onMouseLeave={() => setRolesOpen(false)}
-                    >
-                      <p className="px-2 py-1 text-xs text-white/60">
-                        Ajouter / supprimer (stub)
-                      </p>
-                      <div className="mt-1 grid grid-cols-2 gap-2">
-                        {['DJ', 'Saxophoniste', 'Chanteur', 'Danseur', 'Guitariste'].map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-white/10 px-2 py-1 text-xs text-center"
+                  {rolePickerOpen && (
+                    <div className="absolute z-20 mt-2 w-48 rounded-xl bg-neutral-900 border border-white/10 p-2">
+                      {allRoleOptions.map(opt => {
+                        const active = roles.some(r => r.label === opt)
+                        return (
+                          <button
+                            key={opt}
+                            onClick={() => toggleRole(opt)}
+                            className={`w-full text-left text-sm px-2 py-1 rounded hover:bg-white/10 ${
+                              active ? 'text-pink-400' : 'text-white'
+                            }`}
                           >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
+                            {active ? '— ' : '+ '} {opt}
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 md:justify-end">
-                <button
-                  onClick={onContact}
-                  className="inline-flex items-center gap-2 rounded-full bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition"
-                >
-                  <MessageCircle size={16} />
-                  Contacter
-                </button>
-                <button
-                  onClick={onFollow}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/20 transition"
-                >
-                  <UserPlus size={16} />
-                  Suivre
-                </button>
-              </div>
             </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 sm:ml-auto">
+            <button
+              onClick={contact}
+              className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200"
+            >
+              <MessageCircle size={18} />
+              Contacter
+            </button>
+            <button
+              onClick={follow}
+              className="bg-pink-600 rounded-full px-5 py-2 flex items-center gap-2 hover:bg-pink-500"
+            >
+              <UserPlus size={18} />
+              Suivre
+            </button>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Spacer sous la bannière (pour l’avatar chevauchant) */}
-      <div className="h-14 md:h-16" />
-
-      {/* Corps */}
-      <section className="mx-auto max-w-7xl px-4 md:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Colonne gauche : Publications + Description */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Publications */}
-            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Publications</h2>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowAllPubs(true)}
-                    className="rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20 transition"
-                    aria-label="Voir toutes les publications"
-                  >
-                    Voir tout
-                  </button>
-                  <button
-                    onClick={onAddPublication}
-                    className="inline-flex items-center gap-2 rounded-full bg-white text-black px-3 py-1 text-sm font-semibold hover:bg-white/90 transition"
-                  >
-                    <Plus size={16} /> Ajouter
-                  </button>
-                </div>
-              </div>
-
-              {/* Aperçu (max 3) */}
-              <div className="grid grid-cols-3 gap-3">
-                {publications.slice(0, 3).map((p) => (
-                  <figure key={p.id} className="relative h-40 w-full overflow-hidden rounded-xl">
-                    <Image src={p.image} alt={p.caption || 'publication'} fill className="object-cover" />
-                  </figure>
-                ))}
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Description</h2>
-                <button className="rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20 transition">
-                  Modifier
+      {/* ====== Corps ====== */}
+      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
+        {/* ====== Colonne principale ====== */}
+        <div className="space-y-6">
+          {/* Publications */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Publications</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAllPubs(true)}
+                  className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
+                >
+                  Voir tout
+                </button>
+                <button
+                  onClick={addPublication}
+                  className="text-sm px-3 py-1 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1"
+                >
+                  <Plus size={16} />
+                  Ajouter
                 </button>
               </div>
-              <p className="whitespace-pre-wrap text-white/85">{artist.description}</p>
             </div>
-          </div>
 
-          {/* Colonne droite : SoundCloud (optionnel) + Avis + Tarifs + Réseaux + Styles */}
-          <div className="space-y-6">
-            {/* SoundCloud (optionnel) */}
-            {artist.showSoundcloud && (
-              <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-2">
-                <iframe
-                  title="SoundCloud"
-                  width="100%"
-                  height="240"
-                  scrolling="no"
-                  frameBorder="no"
-                  allow="autoplay"
-                  src={artist.soundcloudEmbedUrl}
-                  className="rounded-xl"
-                />
-              </div>
-            )}
+            {/* Hero + grid */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {heroPub && (
+                <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                  <div className="relative w-full h-64">
+                    <Image
+                      src={heroPub.image}
+                      alt={heroPub.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="p-3">
+                    <p className="font-medium">{heroPub.title}</p>
+                    {heroPub.caption && (
+                      <p className="text-sm text-neutral-300 mt-1">{heroPub.caption}</p>
+                    )}
+                    {heroPub.time && (
+                      <p className="text-xs text-neutral-400 mt-1">{heroPub.time}</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
-            {/* Avis */}
-            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
-              <h2 className="mb-3 text-lg font-semibold">Avis</h2>
-              <div className="space-y-3">
-                {reviews.map((r) => (
-                  <div key={r.id} className="rounded-xl bg-white/5 p-3">
-                    <p className="text-sm font-semibold">{r.author}</p>
-                    <p className="text-sm text-white/85">{r.text}</p>
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
+                {restPubs.map(p => (
+                  <div
+                    key={p.id}
+                    className="rounded-xl overflow-hidden border border-white/10 bg-black/30"
+                  >
+                    <div className="relative w-full h-28">
+                      <Image src={p.image} alt={p.title} fill className="object-cover" />
+                    </div>
+                    <div className="p-3">
+                      <p className="text-sm font-medium truncate">{p.title}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+          </section>
 
-            {/* Tarifs */}
-            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
-              <h2 className="mb-3 text-lg font-semibold">Tarifs</h2>
-              <ul className="space-y-2">
-                {prices.map((l, idx) => (
-                  <li key={idx} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-                    <span className="text-sm">{l.label}</span>
-                    <span className="text-sm font-semibold">{l.price}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* Description */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Description</h2>
+              <button className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">
+                Modifier
+              </button>
             </div>
+            <p className="text-neutral-200 mt-3 leading-relaxed">{artist.description}</p>
+          </section>
 
-            {/* Réseaux sociaux */}
-            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
-              <h2 className="mb-3 text-lg font-semibold">Réseaux sociaux</h2>
-              <ul className="flex flex-wrap gap-2">
-                {social.map((s) => (
-                  <li key={s.label}>
-                    <a
-                      href={s.href}
-                      className="inline-block rounded-full bg-white text-black px-3 py-1 text-sm font-semibold hover:bg-white/90 transition"
-                    >
-                      {s.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+          {/* Agenda (placeholder pour l’instant) */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <h2 className="text-lg font-semibold">Mon agenda</h2>
+            <p className="text-neutral-300 mt-2">
+              (On détaillera ici la gestion avancée des disponibilités et bookings.)
+            </p>
+            <div className="mt-3 h-48 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center">
+              <span className="text-neutral-500 text-sm">Calendrier à venir</span>
             </div>
-
-            {/* Styles */}
-            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
-              <h2 className="mb-3 text-lg font-semibold">Styles</h2>
-              <div className="flex flex-wrap gap-2">
-                {styleTags.map((t) => (
-                  <span key={t} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+          </section>
         </div>
 
-        {/* Agenda (placeholder propre → on branchera FullCalendar ensuite) */}
-        <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Mon Agenda</h2>
-            <button className="rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20 transition">
-              Gérer
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
-            {Array.from({ length: 14 }).map((_, i) => (
-              <div key={i} className="h-24 rounded-lg border border-white/10 bg-white/5 p-2 text-xs">
-                <p className="text-white/60">JJ/MM</p>
-                <p className="mt-2 truncate">—</p>
+        {/* ====== Colonne droite ====== */}
+        <aside className="space-y-6">
+          {/* SoundCloud (optionnel) */}
+          {artist.showSoundcloud && (
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3">
+              <div className="rounded-lg overflow-hidden">
+                <iframe
+                  title="Soundcloud"
+                  width="100%"
+                  height="180"
+                  scrolling="no"
+                  frameBorder="no"
+                  allow="autoplay"
+                  src={artist.soundcloudEmbedUrl}
+                />
               </div>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-white/60">
-            (Agenda interactif à venir — intégration FullCalendar une fois le backend prêt)
-          </p>
-        </div>
-      </section>
+            </section>
+          )}
 
-      {/* Modale “voir toutes les publications” */}
+          {/* --- Tarifs (inversé avec styles) --- */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Tarifs</h2>
+            </div>
+
+            <ul className="mt-3 space-y-2">
+              {prices.map(p => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{p.label}</p>
+                    <p className="text-xs text-neutral-300">{p.price}</p>
+                  </div>
+                  <button
+                    onClick={() => removePrice(p.id)}
+                    className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20"
+                  >
+                    Supprimer
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Intitulé (ex: Mix 2h · PACA)"
+                value={newPriceLabel}
+                onChange={e => setNewPriceLabel(e.target.value)}
+              />
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Tarif (ex: À partir de 400€)"
+                value={newPriceValue}
+                onChange={e => setNewPriceValue(e.target.value)}
+              />
+              <button
+                onClick={addPrice}
+                className="text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500"
+              >
+                Ajouter un tarif
+              </button>
+            </div>
+          </section>
+
+          {/* --- Styles (inversé) --- */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <h2 className="text-lg font-semibold">Styles</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {styles.map(s => (
+                <button
+                  key={s}
+                  onClick={() => removeStyle(s)}
+                  className="text-xs px-2 py-1 rounded-full bg-white/10 hover:bg-white/20"
+                  title="Supprimer"
+                >
+                  {s} ✕
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                className="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Ajouter un style"
+                value={newStyle}
+                onChange={e => setNewStyle(e.target.value)}
+              />
+              <button
+                onClick={addStyle}
+                className="text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500"
+              >
+                Ajouter
+              </button>
+            </div>
+          </section>
+
+          {/* Avis */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Avis</h2>
+              <button
+                onClick={() => alert('Ouverture de la liste complète des avis')}
+                className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
+              >
+                Voir tout
+              </button>
+            </div>
+
+            <div className="mt-3 space-y-3">
+              {reviews.map(r => (
+                <div
+                  key={r.id}
+                  className="rounded-xl border border-white/10 bg-black/30 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-9 w-9 rounded-full overflow-hidden">
+                      <Image
+                        src={r.authorAvatar}
+                        alt={r.author}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{r.author}</p>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            size={14}
+                            className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-neutral-600'}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-neutral-200 mt-2 leading-relaxed">{r.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      {/* ====== Modal "Voir tout" publications ====== */}
       {showAllPubs && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="relative max-h-[85vh] w-full max-w-5xl overflow-auto rounded-2xl border border-white/10 bg-neutral-950 p-4">
-            <button
-              onClick={() => setShowAllPubs(false)}
-              className="absolute right-3 top-3 rounded-full bg-white/10 p-2 hover:bg-white/20 transition"
-              aria-label="Fermer"
-            >
-              <X size={18} />
-            </button>
-            <h3 className="mb-4 text-lg font-semibold">Toutes les publications</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {publications.map((p) => (
-                <figure key={p.id} className="relative aspect-square overflow-hidden rounded-xl">
-                  <Image src={p.image} alt={p.caption || 'publication'} fill className="object-cover" />
-                </figure>
+        <div
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowAllPubs(false)}
+        >
+          <div
+            className="max-w-5xl w-full bg-neutral-950 border border-white/10 rounded-2xl p-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Toutes les publications</h3>
+              <button
+                onClick={() => setShowAllPubs(false)}
+                className="text-sm px-3 py-1 rounded bg-white/10 hover:bg-white/20"
+              >
+                Fermer
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {publications.map(p => (
+                <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                  <div className="relative w-full h-40">
+                    <Image src={p.image} alt={p.title} fill className="object-cover" />
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-medium">{p.title}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
         </div>
       )}
-    </main>
+    </div>
   )
 }
