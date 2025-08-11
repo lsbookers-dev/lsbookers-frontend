@@ -1,217 +1,345 @@
-"use client"
+'use client'
 
-import { useAuth } from '@/context/AuthContext'
-import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
-import { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
-import axios from 'axios'
+import { useMemo, useState } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { ChevronDown, Settings2, Plus, MessageCircle, UserPlus, X } from 'lucide-react'
 
+// ---------- Types ----------
+type RoleTag = { label: string }
+type Publication = { id: number; image: string; caption?: string }
+type Review = { id: number; author: string; text: string }
+type PriceLine = { label: string; price: string }
+type SocialLink = { label: string; href: string }
+
+// ---------- Page ----------
 export default function ArtistProfilePage() {
-  const { user } = useAuth()
   const router = useRouter()
-  const bannerInputRef = useRef<HTMLInputElement>(null)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
 
-  const [banner, setBanner] = useState('/default-banner.jpg')
-  const [avatar, setAvatar] = useState('/default-avatar.png')
-  const [specialties, setSpecialties] = useState<string[]>([])
-  const [selectedSpecialty, setSelectedSpecialty] = useState('')
-  const [location, setLocation] = useState('')
-  const [country, setCountry] = useState('')
-  const [radiusKm, setRadiusKm] = useState('')
-  const [bio, setBio] = useState('')
-  const [events, setEvents] = useState<EventInput[]>([])
-  const [selectedEvent, setSelectedEvent] = useState<EventInput | null>(null)
-  const [mediaFiles, setMediaFiles] = useState<File[]>([])
+  // ----- Mock data (remplaçable par l’API ensuite) -----
+  const artist = useMemo(
+    () => ({
+      id: 1,
+      banner: '/banners/artist_banner.jpg',     // place l’image ici: public/banners/artist_banner.jpg
+      avatar: '/avatars/a1.png',                // public/avatars/a1.png
+      name: 'Test Artist',
+      location: 'Marseille',
+      country: 'France',
+      roles: [{ label: 'DJ' }, { label: 'Saxophoniste' }] as RoleTag[],
+      description:
+        "L’artiste écrit ici sa description, en expliquant sa carrière, son parcours etc...",
+      soundcloudEmbedUrl:
+        'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/209262931&auto_play=false&hide_related=false&show_comments=false&show_user=true&show_reposts=false&visual=true',
+      showSoundcloud: true, // optionnel, contrôlé plus tard via réglages
+    }),
+    []
+  )
 
-  const SPECIALTY_OPTIONS = ['DJ', 'Chanteur', 'Danseur', 'Guitariste', 'Saxophoniste']
+  const publications = useMemo<Publication[]>(
+    () => [
+      { id: 1, image: '/media/pub1.jpg', caption: 'Live au Studio 88' }, // public/media/pub1.jpg
+      { id: 2, image: '/media/pub2.jpg', caption: 'Merci Marseille !' },
+      { id: 3, image: '/media/pub3.jpg', caption: 'Backstage 🎧' },
+      { id: 4, image: '/media/pub4.jpg', caption: 'Summer vibes' },
+      { id: 5, image: '/media/pub5.jpg', caption: 'Night session' },
+    ],
+    []
+  )
 
-  useEffect(() => {
-    if (!user || user.role !== 'ARTIST') router.push('/home')
-  }, [user, router])
+  const reviews = useMemo<Review[]>(
+    () => [
+      { id: 1, author: 'Studio 88', text: 'Très bonne prestation et très professionnel.' },
+      { id: 2, author: 'Studio 88', text: 'Merci pour cette prestation, ravis, je recommande !' },
+    ],
+    []
+  )
 
-  const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const title = prompt("Titre de l'événement :")
-    if (!title) return
-    const lieu = prompt('Lieu :') || ''
-    const type = prompt('Type de prestation :') || ''
+  const prices = useMemo<PriceLine[]>(
+    () => [
+      { label: 'Mix de 2h · Région PACA', price: 'à partir de 400 €' },
+      { label: 'Mix de 4h · Région PACA', price: 'à partir de 700 €' },
+    ],
+    []
+  )
 
-    const newEvent = {
-      id: String(events.length + 1),
-      title,
-      extendedProps: { lieu, type },
-      start: selectInfo.startStr,
-      end: selectInfo.endStr,
-      allDay: selectInfo.allDay,
-      color: '#22c55e'
-    }
-    setEvents([...events, newEvent])
-  }
+  const social: SocialLink[] = [
+    { label: 'Instagram', href: '#' },
+    { label: 'Facebook', href: '#' },
+    { label: 'TikTok', href: '#' },
+    { label: 'Site web', href: '#' },
+  ]
 
-  const handleEventClick = (clickInfo: EventClickArg) => {
-    setSelectedEvent({
-      id: clickInfo.event.id,
-      title: clickInfo.event.title,
-      start: clickInfo.event.startStr,
-      end: clickInfo.event.endStr,
-      extendedProps: clickInfo.event.extendedProps
-    })
-  }
+  const styleTags = ['R&B', 'Latino', 'Rap US', 'Rap FR', 'Deep/House', 'Electro']
 
-  const handleDeleteEvent = () => {
-    if (selectedEvent) {
-      setEvents(events.filter(e => e.id !== selectedEvent.id))
-      setSelectedEvent(null)
-    }
-  }
+  // ----- UI state -----
+  const [rolesOpen, setRolesOpen] = useState(false)
+  const [showAllPubs, setShowAllPubs] = useState(false)
 
-  const handleAddSpecialty = () => {
-    if (selectedSpecialty && !specialties.includes(selectedSpecialty)) {
-      setSpecialties([...specialties, selectedSpecialty])
-    }
-  }
+  // ----- Actions (stub) -----
+  const onContact = () => router.push(`/messages/new?to=${artist.id}`)
+  const onFollow = () => alert('Follow enregistré (à brancher)')
+  const onOpenSettings = () => router.push('/settings/profile') // route à créer
+  const onAddPublication = () => alert('Ajouter une publication (à brancher)')
 
-  const handleRemoveSpecialty = (s: string) => {
-    setSpecialties(specialties.filter(sp => sp !== s))
-  }
-
-  const handleLocationSave = async () => {
-    const token = localStorage.getItem('token')
-    if (!user?.profile?.id) return
-    try {
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/profile/${user.profile.id}`, {
-        location,
-        country,
-        radiusKm: parseInt(radiusKm)
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      alert('Localisation sauvegardée ✅')
-    } catch (err) {
-      console.error('Erreur localisation', err)
-    }
-  }
-
-  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    setMediaFiles([...mediaFiles, ...files])
-  }
-
+  // ----- Layout -----
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="relative w-full h-64 bg-gray-800">
-        <Image src={banner} alt="Bannière" layout="fill" objectFit="cover" className="opacity-70" />
-        <input type="file" ref={bannerInputRef} hidden onChange={(e) => {
-          if (e.target.files?.[0]) setBanner(URL.createObjectURL(e.target.files[0]))
-        }} />
-        <input type="file" ref={avatarInputRef} hidden onChange={(e) => {
-          if (e.target.files?.[0]) setAvatar(URL.createObjectURL(e.target.files[0]))
-        }} />
-        <div className="absolute bottom-4 left-6 flex items-center gap-4">
-          <div onClick={() => avatarInputRef.current?.click()} className="cursor-pointer">
-            <Image src={avatar} alt="Avatar" width={100} height={100} className="rounded-full border-4 border-white" />
+    <main className="min-h-screen bg-black text-white">
+      {/* Banner */}
+      <section className="relative w-full h-64 md:h-80 lg:h-96">
+        <Image
+          src={artist.banner}
+          alt="Bannière"
+          fill
+          className="object-cover opacity-90"
+          priority
+        />
+
+        {/* Bouton réglages */}
+        <button
+          onClick={onOpenSettings}
+          className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur hover:bg-white/20 transition"
+        >
+          <Settings2 size={18} />
+          <span className="text-sm font-medium">Réglages</span>
+        </button>
+
+        {/* Avatar + header infos (chevauche la bannière) */}
+        <div className="absolute -bottom-10 left-4 right-4 md:left-8 md:right-8">
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <div className="relative h-24 w-24 md:h-28 md:w-28 rounded-full overflow-hidden ring-4 ring-black/60">
+              <Image src={artist.avatar} alt="Avatar" fill className="object-cover" />
+            </div>
+
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 md:gap-6">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold">{artist.name}</h1>
+                <p className="text-sm text-white/70">
+                  {artist.location}, {artist.country}
+                </p>
+                {/* Rôles + menu */}
+                <div className="mt-2 relative inline-block">
+                  <button
+                    onClick={() => setRolesOpen((v) => !v)}
+                    className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20 transition"
+                  >
+                    {artist.roles.map((r) => r.label).join(' - ')}
+                    <ChevronDown size={16} />
+                  </button>
+                  {rolesOpen && (
+                    <div
+                      className="absolute z-20 mt-2 w-56 rounded-lg border border-white/10 bg-neutral-900 p-2 shadow-xl"
+                      onMouseLeave={() => setRolesOpen(false)}
+                    >
+                      <p className="px-2 py-1 text-xs text-white/60">
+                        Ajouter / supprimer (stub)
+                      </p>
+                      <div className="mt-1 grid grid-cols-2 gap-2">
+                        {['DJ', 'Saxophoniste', 'Chanteur', 'Danseur', 'Guitariste'].map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full bg-white/10 px-2 py-1 text-xs text-center"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 md:justify-end">
+                <button
+                  onClick={onContact}
+                  className="inline-flex items-center gap-2 rounded-full bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition"
+                >
+                  <MessageCircle size={16} />
+                  Contacter
+                </button>
+                <button
+                  onClick={onFollow}
+                  className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/20 transition"
+                >
+                  <UserPlus size={16} />
+                  Suivre
+                </button>
+              </div>
+            </div>
           </div>
-          <button onClick={() => bannerInputRef.current?.click()} className="bg-gray-700 px-3 py-1 rounded text-sm">Changer bannière</button>
         </div>
-      </div>
+      </section>
 
-      <div className="max-w-6xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-6">
-          <section>
-            <h2 className="text-xl font-semibold mb-2">🎭 Spécialités & Localisation</h2>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {specialties.map((s, i) => (
-                <span key={i} className="bg-gray-700 px-3 py-1 rounded-full">
-                  {s}<button onClick={() => handleRemoveSpecialty(s)} className="ml-2 text-red-400">✕</button>
-                </span>
+      {/* Spacer sous la bannière (pour l’avatar chevauchant) */}
+      <div className="h-14 md:h-16" />
+
+      {/* Corps */}
+      <section className="mx-auto max-w-7xl px-4 md:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Colonne gauche : Publications + Description */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Publications */}
+            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Publications</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowAllPubs(true)}
+                    className="rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20 transition"
+                    aria-label="Voir toutes les publications"
+                  >
+                    Voir tout
+                  </button>
+                  <button
+                    onClick={onAddPublication}
+                    className="inline-flex items-center gap-2 rounded-full bg-white text-black px-3 py-1 text-sm font-semibold hover:bg-white/90 transition"
+                  >
+                    <Plus size={16} /> Ajouter
+                  </button>
+                </div>
+              </div>
+
+              {/* Aperçu (max 3) */}
+              <div className="grid grid-cols-3 gap-3">
+                {publications.slice(0, 3).map((p) => (
+                  <figure key={p.id} className="relative h-40 w-full overflow-hidden rounded-xl">
+                    <Image src={p.image} alt={p.caption || 'publication'} fill className="object-cover" />
+                  </figure>
+                ))}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Description</h2>
+                <button className="rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20 transition">
+                  Modifier
+                </button>
+              </div>
+              <p className="whitespace-pre-wrap text-white/85">{artist.description}</p>
+            </div>
+          </div>
+
+          {/* Colonne droite : SoundCloud (optionnel) + Avis + Tarifs + Réseaux + Styles */}
+          <div className="space-y-6">
+            {/* SoundCloud (optionnel) */}
+            {artist.showSoundcloud && (
+              <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-2">
+                <iframe
+                  title="SoundCloud"
+                  width="100%"
+                  height="240"
+                  scrolling="no"
+                  frameBorder="no"
+                  allow="autoplay"
+                  src={artist.soundcloudEmbedUrl}
+                  className="rounded-xl"
+                />
+              </div>
+            )}
+
+            {/* Avis */}
+            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
+              <h2 className="mb-3 text-lg font-semibold">Avis</h2>
+              <div className="space-y-3">
+                {reviews.map((r) => (
+                  <div key={r.id} className="rounded-xl bg-white/5 p-3">
+                    <p className="text-sm font-semibold">{r.author}</p>
+                    <p className="text-sm text-white/85">{r.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tarifs */}
+            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
+              <h2 className="mb-3 text-lg font-semibold">Tarifs</h2>
+              <ul className="space-y-2">
+                {prices.map((l, idx) => (
+                  <li key={idx} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                    <span className="text-sm">{l.label}</span>
+                    <span className="text-sm font-semibold">{l.price}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Réseaux sociaux */}
+            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
+              <h2 className="mb-3 text-lg font-semibold">Réseaux sociaux</h2>
+              <ul className="flex flex-wrap gap-2">
+                {social.map((s) => (
+                  <li key={s.label}>
+                    <a
+                      href={s.href}
+                      className="inline-block rounded-full bg-white text-black px-3 py-1 text-sm font-semibold hover:bg-white/90 transition"
+                    >
+                      {s.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Styles */}
+            <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
+              <h2 className="mb-3 text-lg font-semibold">Styles</h2>
+              <div className="flex flex-wrap gap-2">
+                {styleTags.map((t) => (
+                  <span key={t} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Agenda (placeholder propre → on branchera FullCalendar ensuite) */}
+        <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Mon Agenda</h2>
+            <button className="rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20 transition">
+              Gérer
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
+            {Array.from({ length: 14 }).map((_, i) => (
+              <div key={i} className="h-24 rounded-lg border border-white/10 bg-white/5 p-2 text-xs">
+                <p className="text-white/60">JJ/MM</p>
+                <p className="mt-2 truncate">—</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-white/60">
+            (Agenda interactif à venir — intégration FullCalendar une fois le backend prêt)
+          </p>
+        </div>
+      </section>
+
+      {/* Modale “voir toutes les publications” */}
+      {showAllPubs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="relative max-h-[85vh] w-full max-w-5xl overflow-auto rounded-2xl border border-white/10 bg-neutral-950 p-4">
+            <button
+              onClick={() => setShowAllPubs(false)}
+              className="absolute right-3 top-3 rounded-full bg-white/10 p-2 hover:bg-white/20 transition"
+              aria-label="Fermer"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="mb-4 text-lg font-semibold">Toutes les publications</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {publications.map((p) => (
+                <figure key={p.id} className="relative aspect-square overflow-hidden rounded-xl">
+                  <Image src={p.image} alt={p.caption || 'publication'} fill className="object-cover" />
+                </figure>
               ))}
-            </div>
-            <div className="flex gap-3 items-center">
-              <select value={selectedSpecialty} onChange={e => setSelectedSpecialty(e.target.value)} className="bg-gray-800 px-3 py-2 rounded">
-                <option value="">-- Ajouter --</option>
-                {SPECIALTY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-              <button onClick={handleAddSpecialty} className="bg-blue-600 px-4 py-2 rounded">Ajouter</button>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-4">
-              <input type="text" placeholder="Ville" value={location} onChange={e => setLocation(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
-              <input type="text" placeholder="Pays" value={country} onChange={e => setCountry(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
-              <input type="number" placeholder="Rayon (km)" value={radiusKm} onChange={e => setRadiusKm(e.target.value)} className="bg-gray-800 px-3 py-2 rounded w-full" />
-            </div>
-            <button onClick={handleLocationSave} className="mt-3 bg-green-600 px-4 py-2 rounded">Sauvegarder la localisation</button>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-2">📝 Biographie</h2>
-            <textarea placeholder="Parle de toi, ton style, ton parcours..." value={bio} onChange={e => setBio(e.target.value)} rows={5} className="bg-gray-800 w-full p-4 rounded" />
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-2">🎬 Galerie médias</h2>
-            <input type="file" multiple onChange={handleMediaChange} className="bg-gray-900 p-3 rounded" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
-              {mediaFiles.map((file, i) => {
-                const url = URL.createObjectURL(file)
-                return file.type.startsWith('image') ? (
-                  <Image key={i} src={url} alt="media" width={300} height={200} className="rounded shadow" />
-                ) : file.type.startsWith('video') ? (
-                  <video key={i} src={url} controls className="rounded w-full h-48 object-cover" />
-                ) : null
-              })}
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-6">
-          <section>
-            <h2 className="text-xl font-semibold mb-2">📅 Disponibilités</h2>
-            <div className="bg-white text-black rounded overflow-hidden">
-              <FullCalendar
-                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                initialView="dayGridMonth"
-                selectable
-                editable
-                select={handleDateSelect}
-                eventClick={handleEventClick}
-                events={events}
-                height="auto"
-                dayCellClassNames={() => 'bg-blue-100'}
-              />
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-2">🎧 Écouter mes titres</h2>
-            <iframe
-              className="w-full rounded"
-              height="160"
-              scrolling="no"
-              frameBorder="no"
-              allow="autoplay"
-              src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M?utm_source=generator"
-            ></iframe>
-          </section>
-        </div>
-      </div>
-
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 text-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
-            <h3 className="text-xl font-bold mb-2">{selectedEvent.title}</h3>
-            <p><strong>Lieu :</strong> {selectedEvent.extendedProps?.lieu || 'N/A'}</p>
-            <p><strong>Type :</strong> {selectedEvent.extendedProps?.type || 'N/A'}</p>
-            <div className="flex justify-end mt-4 gap-2">
-              <button onClick={() => setSelectedEvent(null)} className="px-4 py-2 bg-gray-700 rounded">Fermer</button>
-              <button onClick={handleDeleteEvent} className="px-4 py-2 bg-red-600 rounded">Supprimer</button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }
