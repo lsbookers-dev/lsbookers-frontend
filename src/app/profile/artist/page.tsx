@@ -18,7 +18,6 @@ type RoleTag = { label: string }
 type Publication = { id: number; title: string; image: string; caption?: string; time?: string }
 type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
 type PriceLine = { id: number; label: string; price: string }
-type SocialLink = { label: string; href: string }
 
 /* ============================= Page ============================= */
 
@@ -52,44 +51,23 @@ export default function ArtistProfilePage() {
   const [rolePickerOpen, setRolePickerOpen] = useState(false)
 
   const [publications, setPublications] = useState<Publication[]>([
-    {
-      id: 1,
-      title: 'Live au Studio 88',
-      image: '/media/pub1.jpg',
-      caption: 'Mix hier soir à Marseille 🎧🔥',
-      time: 'Il y a 6h',
-    },
+    { id: 1, title: 'Live au Studio 88', image: '/media/pub1.jpg', caption: 'Mix hier soir à Marseille 🎧🔥', time: 'Il y a 6h' },
     { id: 2, title: 'Merci Marseille !', image: '/media/pub2.jpg' },
     { id: 3, title: 'Backstage 🎧', image: '/media/pub3.jpg' },
     { id: 4, title: 'Répètes', image: '/media/pub4.jpg' },
   ])
   const [showAllPubs, setShowAllPubs] = useState(false)
 
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: 1,
-      author: 'Studio 88',
-      authorAvatar: '/avatars/pro1.png',
-      rating: 5,
-      text: 'Merci pour cette prestation, ravis — je recommande !',
-    },
-    {
-      id: 2,
-      author: 'Wedding Planning',
-      authorAvatar: '/avatars/pro2.png',
-      rating: 4,
-      text: 'Très bonne prestation et très professionnel.',
-    },
-  ])
+  // ✅ plus de setReviews non utilisé
+  const reviews = useMemo<Review[]>(
+    () => [
+      { id: 1, author: 'Studio 88',        authorAvatar: '/avatars/pro1.png', rating: 5, text: 'Merci pour cette prestation, ravis — je recommande !' },
+      { id: 2, author: 'Wedding Planning', authorAvatar: '/avatars/pro2.png', rating: 4, text: 'Très bonne prestation et très professionnel.' },
+    ],
+    []
+  )
 
-  const [styles, setStyles] = useState<string[]>([
-    'R&B',
-    'Latino',
-    'Rap US',
-    'Rap FR',
-    'Deep/House',
-    'Electro',
-  ])
+  const [styles, setStyles] = useState<string[]>(['R&B', 'Latino', 'Rap US', 'Rap FR', 'Deep/House', 'Electro'])
   const [newStyle, setNewStyle] = useState('')
 
   const [prices, setPrices] = useState<PriceLine[]>([
@@ -123,9 +101,7 @@ export default function ArtistProfilePage() {
     setNewStyle('')
   }
 
-  const removeStyle = (s: string) => {
-    setStyles(prev => prev.filter(x => x !== s))
-  }
+  const removeStyle = (s: string) => setStyles(prev => prev.filter(x => x !== s))
 
   const addPrice = () => {
     const lbl = newPriceLabel.trim()
@@ -136,25 +112,15 @@ export default function ArtistProfilePage() {
     setNewPriceValue('')
   }
 
-  const removePrice = (id: number) => {
-    setPrices(prev => prev.filter(p => p.id !== id))
-  }
+  const removePrice = (id: number) => setPrices(prev => prev.filter(p => p.id !== id))
 
-  const contact = () => {
-    // vers ta messagerie /messages/[id]
-    router.push('/messages')
-  }
-
-  const follow = () => {
-    // mock: affiche juste une notification
-    alert('Vous suivez maintenant cet artiste ✅')
-  }
+  const contact = () => router.push('/messages')
+  const follow = () => alert('Vous suivez maintenant cet artiste ✅')
 
   /* ============================= UI ============================= */
 
-  // Publications : hero + autres
   const heroPub = publications[0]
-  const restPubs = publications.slice(1, 7) // on en montre quelques unes
+  const restPubs = publications.slice(1, 7)
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -165,6 +131,7 @@ export default function ArtistProfilePage() {
           alt="Bannière"
           fill
           priority
+          sizes="100vw"
           className="object-cover opacity-90"
         />
         <button
@@ -181,7 +148,7 @@ export default function ArtistProfilePage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
           <div className="flex items-center gap-4">
             <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
-              <Image src={artist.avatar} alt="Avatar" fill className="object-cover" />
+              <Image src={artist.avatar} alt="Avatar" fill sizes="80px" className="object-cover" />
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">{artist.name}</h1>
@@ -283,6 +250,7 @@ export default function ArtistProfilePage() {
                       src={heroPub.image}
                       alt={heroPub.title}
                       fill
+                      sizes="(min-width: 768px) 66vw, 100vw"
                       className="object-cover"
                     />
                   </div>
@@ -305,7 +273,13 @@ export default function ArtistProfilePage() {
                     className="rounded-xl overflow-hidden border border-white/10 bg-black/30"
                   >
                     <div className="relative w-full h-28">
-                      <Image src={p.image} alt={p.title} fill className="object-cover" />
+                      <Image
+                        src={p.image}
+                        alt={p.title}
+                        fill
+                        sizes="(min-width: 768px) 33vw, 50vw"
+                        className="object-cover"
+                      />
                     </div>
                     <div className="p-3">
                       <p className="text-sm font-medium truncate">{p.title}</p>
@@ -451,18 +425,10 @@ export default function ArtistProfilePage() {
 
             <div className="mt-3 space-y-3">
               {reviews.map(r => (
-                <div
-                  key={r.id}
-                  className="rounded-xl border border-white/10 bg-black/30 p-3"
-                >
+                <div key={r.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
                   <div className="flex items-center gap-3">
                     <div className="relative h-9 w-9 rounded-full overflow-hidden">
-                      <Image
-                        src={r.authorAvatar}
-                        alt={r.author}
-                        fill
-                        className="object-cover"
-                      />
+                      <Image src={r.authorAvatar} alt={r.author} fill sizes="36px" className="object-cover" />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">{r.author}</p>
@@ -508,7 +474,7 @@ export default function ArtistProfilePage() {
               {publications.map(p => (
                 <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
                   <div className="relative w-full h-40">
-                    <Image src={p.image} alt={p.title} fill className="object-cover" />
+                    <Image src={p.image} alt={p.title} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover" />
                   </div>
                   <div className="p-3">
                     <p className="text-sm font-medium">{p.title}</p>
