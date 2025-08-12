@@ -20,6 +20,7 @@ type PriceLine = { id: number; label: string; price: string }
 export default function ArtistProfilePage() {
   const router = useRouter()
 
+  // --------- mock artiste (remplaçable par l’API) ----------
   const artist = useMemo(
     () => ({
       id: 1,
@@ -31,8 +32,9 @@ export default function ArtistProfilePage() {
       roles: [{ label: 'DJ' }, { label: 'Saxophoniste' }] as RoleTag[],
       description:
         "L’artiste écris ici sa description, en expliquant sa carrière, son parcours etc...",
+      // Embed SoundCloud vers un artiste connu (profil public)
       soundcloudEmbedUrl:
-        'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/209262932&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true',
+        'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/martingarrix&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true',
       showSoundcloud: true,
     }),
     []
@@ -50,6 +52,7 @@ export default function ArtistProfilePage() {
     { id: 2, title: 'Merci Marseille !', image: '/media/pub2.jpg' },
     { id: 3, title: 'Backstage 🎧', image: '/media/pub3.jpg' },
     { id: 4, title: 'Répètes', image: '/media/pub4.jpg' },
+    { id: 5, title: 'Aftermovie', image: '/media/pub5.jpg' }, // (affiché seulement dans "Voir tout")
   ])
   const [showAllPubs, setShowAllPubs] = useState(false)
 
@@ -67,6 +70,13 @@ export default function ArtistProfilePage() {
   ])
   const [newPriceLabel, setNewPriceLabel] = useState('')
   const [newPriceValue, setNewPriceValue] = useState('')
+
+  // Description éditable
+  const [description, setDescription] = useState(artist.description)
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [descDraft, setDescDraft] = useState(description)
+
+  /* ========================= Actions ========================= */
 
   const toggleRole = (label: string) => {
     setRoles(prev =>
@@ -87,7 +97,6 @@ export default function ArtistProfilePage() {
     setStyles(prev => [...prev, s])
     setNewStyle('')
   }
-
   const removeStyle = (s: string) => setStyles(prev => prev.filter(x => x !== s))
 
   const addPrice = () => {
@@ -98,18 +107,22 @@ export default function ArtistProfilePage() {
     setNewPriceLabel('')
     setNewPriceValue('')
   }
-
   const removePrice = (id: number) => setPrices(prev => prev.filter(p => p.id !== id))
 
-  const contact = () => router.push('/messages')
+  // Ouvrir une nouvelle conversation avec l'artiste (ton backend pourra rediriger vers la conv existante si elle existe)
+  const contact = () => router.push(`/messages/new?to=${artist.id}`)
   const follow = () => alert('Vous suivez maintenant cet artiste ✅')
 
-  const heroPub = publications[0]
-  const restPubs = publications.slice(1, 7)
+  // Publications : afficher au MAX 4 sur la page (1 hero + 3 vignettes)
+  const sorted = [...publications].sort((a, b) => b.id - a.id)
+  const heroPub = sorted[0]
+  const restPubs = sorted.slice(1, 4) // <= seulement 3
+
+  /* =========================== UI =========================== */
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* ===== Bannière (seule) ===== */}
+      {/* ===== Bannière ===== */}
       <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
         <Image src={artist.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
         <button
@@ -236,18 +249,54 @@ export default function ArtistProfilePage() {
             </div>
           </section>
 
-          {/* Description */}
+          {/* Description (éditable) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Description</h2>
-              <button className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">
-                Modifier
-              </button>
+              {!editingDesc ? (
+                <button
+                  onClick={() => {
+                    setDescDraft(description)
+                    setEditingDesc(true)
+                  }}
+                  className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
+                >
+                  Modifier
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setDescription(descDraft)
+                      setEditingDesc(false)
+                    }}
+                    className="text-sm px-3 py-1 rounded-full bg-pink-600 hover:bg-pink-500"
+                  >
+                    Enregistrer
+                  </button>
+                  <button
+                    onClick={() => setEditingDesc(false)}
+                    className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              )}
             </div>
-            <p className="text-neutral-200 mt-3 leading-relaxed">{artist.description}</p>
+
+            {!editingDesc ? (
+              <p className="text-neutral-200 mt-3 leading-relaxed">{description}</p>
+            ) : (
+              <textarea
+                className="mt-3 w-full rounded-lg bg-black/30 border border-white/10 p-3 text-sm"
+                rows={5}
+                value={descDraft}
+                onChange={e => setDescDraft(e.target.value)}
+              />
+            )}
           </section>
 
-          {/* Agenda */}
+          {/* Agenda (placeholder) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Mon agenda</h2>
             <p className="text-neutral-300 mt-2">
@@ -259,9 +308,9 @@ export default function ArtistProfilePage() {
           </section>
         </div>
 
-        {/* Colonne droite */}
+        {/* Colonne droite (ordre demandé) */}
         <aside className="space-y-6">
-          {/* SoundCloud */}
+          {/* 1) SoundCloud (optionnel) */}
           {artist.showSoundcloud && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3">
               <div className="rounded-lg overflow-hidden">
@@ -278,7 +327,76 @@ export default function ArtistProfilePage() {
             </section>
           )}
 
-          {/* Tarifs */}
+          {/* 2) Styles */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <h2 className="text-lg font-semibold">Styles</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {styles.map(s => (
+                <button
+                  key={s}
+                  onClick={() => removeStyle(s)}
+                  className="text-xs px-2 py-1 rounded-full bg-white/10 hover:bg-white/20"
+                  title="Supprimer"
+                >
+                  {s} ✕
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                className="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Ajouter un style"
+                value={newStyle}
+                onChange={e => setNewStyle(e.target.value)}
+              />
+              <button
+                onClick={addStyle}
+                className="text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500"
+              >
+                Ajouter
+              </button>
+            </div>
+          </section>
+
+          {/* 3) Avis */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Avis</h2>
+              <button
+                onClick={() => alert('Ouverture de la liste complète des avis')}
+                className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
+              >
+                Voir tout
+              </button>
+            </div>
+
+            <div className="mt-3 space-y-3">
+              {reviews.map(r => (
+                <div key={r.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-9 w-9 rounded-full overflow-hidden">
+                      <Image src={r.authorAvatar} alt={r.author} fill className="object-cover" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{r.author}</p>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            size={14}
+                            className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-neutral-600'}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-neutral-200 mt-2 leading-relaxed">{r.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 4) Tarifs (tout en bas) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Tarifs</h2>
@@ -323,75 +441,6 @@ export default function ArtistProfilePage() {
               >
                 Ajouter un tarif
               </button>
-            </div>
-          </section>
-
-          {/* Styles */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold">Styles</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {styles.map(s => (
-                <button
-                  key={s}
-                  onClick={() => removeStyle(s)}
-                  className="text-xs px-2 py-1 rounded-full bg-white/10 hover:bg-white/20"
-                  title="Supprimer"
-                >
-                  {s} ✕
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <input
-                className="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Ajouter un style"
-                value={newStyle}
-                onChange={e => setNewStyle(e.target.value)}
-              />
-              <button
-                onClick={addStyle}
-                className="text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500"
-              >
-                Ajouter
-              </button>
-            </div>
-          </section>
-
-          {/* Avis */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Avis</h2>
-              <button
-                onClick={() => alert('Ouverture de la liste complète des avis')}
-                className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
-              >
-                Voir tout
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-3">
-              {reviews.map(r => (
-                <div key={r.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-9 w-9 rounded-full overflow-hidden">
-                      <Image src={r.authorAvatar} alt={r.author} fill className="object-cover" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{r.author}</p>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            size={14}
-                            className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-neutral-600'}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-neutral-200 mt-2 leading-relaxed">{r.text}</p>
-                </div>
-              ))}
             </div>
           </section>
         </aside>
