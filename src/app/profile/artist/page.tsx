@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
@@ -16,6 +16,31 @@ type RoleTag = { label: string }
 type Publication = { id: number; title: string; image: string; caption?: string; time?: string }
 type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
 type PriceLine = { id: number; label: string; price: string }
+
+/* ================= Helpers ================= */
+async function uploadToCloudinary(
+  file: File,
+  folder: 'avatars' | 'banners' | 'media',
+  type: 'image' | 'video' | 'auto' = 'auto'
+) {
+  const API = process.env.NEXT_PUBLIC_API_URL
+  if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant dans le frontend')
+  const base = API.replace(/\/$/, '') // retire / final si présent
+
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('folder', folder)
+  fd.append('type', type)
+
+  const res = await fetch(`${base}/upload`, { method: 'POST', body: fd })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err?.details || 'UPLOAD_FAILED')
+  }
+  return res.json() as Promise<{ url: string; public_id: string }>
+}
+
+/* ============================================================ */
 
 export default function ArtistProfilePage() {
   const router = useRouter()
@@ -39,6 +64,14 @@ export default function ArtistProfilePage() {
     }),
     []
   )
+
+  // états visuels pour banner/avatar (MAJ immédiate après upload)
+  const [bannerUrl, setBannerUrl] = useState<string>(artist.banner)
+  const [avatarUrl, setAvatarUrl] = useState<string>(artist.avatar)
+  const bannerInputRef = useRef<HTMLInputElement | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement | null>(null)
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
 
   const [roles, setRoles] = useState<RoleTag[]>(artist.roles)
   const allRoleOptions = useMemo(
@@ -109,14 +142,49 @@ export default function ArtistProfilePage() {
   }
   const removePrice = (id: number) => setPrices(prev => prev.filter(p => p.id !== id))
 
-  // Ouvrir une nouvelle conversation avec l'artiste (ton backend pourra rediriger vers la conv existante si elle existe)
+  // Ouvrir une nouvelle conversation avec l'artiste
   const contact = () => router.push(`/messages/new?to=${artist.id}`)
   const follow = () => alert('Vous suivez maintenant cet artiste ✅')
 
   // Publications : afficher au MAX 4 sur la page (1 hero + 3 vignettes)
   const sorted = [...publications].sort((a, b) => b.id - a.id)
   const heroPub = sorted[0]
-  const restPubs = sorted.slice(1, 4) // <= seulement 3
+  const restPubs = sorted.slice(1, 4)
+
+  // Upload handlers
+  const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      setBannerUploading(true)
+      const { url } = await uploadToCloudinary(file, 'banners', 'image')
+      setBannerUrl(url) // maj visuelle immédiate
+      // TODO: plus tard => appel PUT /api/profile/:id pour persister
+    } catch (err) {
+      console.error(err)
+      alert('Upload bannière échoué')
+    } finally {
+      setBannerUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const onSelectAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      setAvatarUploading(true)
+      const { url } = await uploadToCloudinary(file, 'avatars', 'image')
+      setAvatarUrl(url) // maj visuelle immédiate
+      // TODO: plus tard => appel PUT /api/profile/:id pour persister
+    } catch (err) {
+      console.error(err)
+      alert('Upload avatar échoué')
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
+  }
 
   /* =========================== UI =========================== */
 
@@ -124,7 +192,7 @@ export default function ArtistProfilePage() {
     <div className="min-h-screen bg-black text-white">
       {/* ===== Bannière ===== */}
       <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
-        <Image src={artist.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
+        <Image src={bannerUrl} alt="Bannière" fill priority className="object-cover opacity-90" />
         <button
           onClick={() => router.push('/settings/profile')}
           className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 backdrop-blur"
@@ -132,13 +200,44 @@ export default function ArtistProfilePage() {
           <Settings2 size={18} />
           Réglages
         </button>
+
+        {/* Changer la bannière */}
+        <button
+          onClick={() => bannerInputRef.current?.click()}
+          className="absolute bottom-3 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-lg text-sm"
+          disabled={bannerUploading}
+        >
+          {bannerUploading ? 'Envoi…' : 'Changer la bannière'}
+        </button>
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={onSelectBanner}
+        />
       </div>
 
       {/* ===== Bloc infos sous la bannière ===== */}
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
-            <Image src={artist.avatar} alt="Avatar" fill className="object-cover" />
+            <Image src={avatarUrl} alt="Avatar" fill className="object-cover" />
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              className="absolute bottom-1 right-1 bg-black/60 hover:bg-black/80 text-xs px-2 py-0.5 rounded"
+              disabled={avatarUploading}
+              title="Changer la photo"
+            >
+              {avatarUploading ? '...' : '✎'}
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onSelectAvatar}
+            />
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">{artist.name}</h1>
