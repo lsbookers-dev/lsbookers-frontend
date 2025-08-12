@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
@@ -41,27 +41,12 @@ async function uploadToCloudinary(
   return res.json() as Promise<{ url: string; public_id: string }>
 }
 
-async function saveProfile(fields: Record<string, unknown>, profileId: number) {
-  const API = process.env.NEXT_PUBLIC_API_URL
-  if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant dans le frontend')
-  const base = API.replace(/\/$/, '')
-  const res = await fetch(`${base}/api/profile/${profileId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(fields),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err?.message || 'PROFILE_SAVE_FAILED')
-  }
-}
-
 /* ============================================================ */
 
 export default function ArtistProfilePage() {
   const router = useRouter()
 
-  // --------- mock artiste (remplaçable par l’API) ----------
+  // --------- mock artiste (visuel uniquement) ----------
   const artist = useMemo(
     () => ({
       id: 1,
@@ -80,7 +65,49 @@ export default function ArtistProfilePage() {
     []
   )
 
-  const profileId = artist.id
+  /* ===== Auth + Profile ID réels (pour persister) ===== */
+  const [token, setToken] = useState<string | null>(null)
+  const [userId, setUserId] = useState<number | null>(null)
+  const [profileId, setProfileId] = useState<number | null>(null)
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem('token')
+      const uStr = localStorage.getItem('user')
+      if (t) setToken(t)
+      if (uStr) {
+        const u = JSON.parse(uStr)
+        // user.id peut être string selon ton backend → on force en number si possible
+        const uid = typeof u?.id === 'string' ? parseInt(u.id, 10) : u?.id
+        setUserId(uid || null)
+
+        // si le user stocké contient déjà son profile.id
+        const pid = u?.profile?.id
+        if (pid) setProfileId(pid)
+      }
+
+      // Si on n'a pas encore profileId mais on a userId, on va le chercher
+      // GET /api/profile/user/:userId → { profile: { id, ... } }
+      const fetchProfileId = async () => {
+        if (!API_BASE || !userId || profileId) return
+        try {
+          const r = await fetch(`${API_BASE}/api/profile/user/${userId}`)
+          if (r.ok) {
+            const data = await r.json()
+            if (data?.profile?.id) setProfileId(data.profile.id)
+          }
+        } catch (e) {
+          console.warn('Impossible de récupérer profileId', e)
+        }
+      }
+
+      fetchProfileId()
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    } catch (e) {
+      console.warn('Lecture localStorage échouée', e)
+    }
+  }, [API_BASE, userId, profileId])
 
   // états visuels pour banner/avatar (MAJ immédiate après upload)
   const [bannerUrl, setBannerUrl] = useState<string>(artist.banner)
@@ -160,13 +187,33 @@ export default function ArtistProfilePage() {
   const removePrice = (id: number) => setPrices(prev => prev.filter(p => p.id !== id))
 
   // Ouvrir une nouvelle conversation avec l'artiste
-  const contact = () => router.push(`/messages/new?to=${artist.id}`)
+  const contact = () => router.push(`/messages/new?to=${userId ?? artist.id}`)
   const follow = () => alert('Vous suivez maintenant cet artiste ✅')
 
   // Publications : afficher au MAX 4 sur la page (1 hero + 3 vignettes)
   const sorted = [...publications].sort((a, b) => b.id - a.id)
   const heroPub = sorted[0]
   const restPubs = sorted.slice(1, 4)
+
+  // Persistance profil (avec token + vrai profileId)
+  const saveProfile = async (fields: Record<string, unknown>) => {
+    if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
+    if (!token) throw new Error('TOKEN_ABSENT')
+    if (!profileId) throw new Error('PROFILE_ID_ABSENT')
+
+    const res = await fetch(`${API_BASE}/api/profile/${profileId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(fields),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err?.error || 'PROFILE_SAVE_FAILED')
+    }
+  }
 
   // Upload handlers (+ persistance)
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,11 +223,11 @@ export default function ArtistProfilePage() {
       setBannerUploading(true)
       const { url } = await uploadToCloudinary(file, 'banners', 'image')
       setBannerUrl(url) // maj visuelle immédiate
-      await saveProfile({ bannerUrl: url }, profileId) // ✅ persistance backend
+      await saveProfile({ bannerUrl: url })
       alert('Bannière mise à jour ✅')
     } catch (err) {
       console.error(err)
-      alert('Upload ou sauvegarde bannière échoué')
+      alert("Échec de sauvegarde de la bannière (auth ou profil ?)")
       setBannerUrl(artist.banner) // rollback visuel
     } finally {
       setBannerUploading(false)
@@ -195,11 +242,11 @@ export default function ArtistProfilePage() {
       setAvatarUploading(true)
       const { url } = await uploadToCloudinary(file, 'avatars', 'image')
       setAvatarUrl(url)
-      await saveProfile({ avatarUrl: url }, profileId) // ✅ persistance backend
+      await saveProfile({ avatarUrl: url })
       alert('Photo de profil mise à jour ✅')
     } catch (err) {
       console.error(err)
-      alert('Upload ou sauvegarde avatar échoué')
+      alert("Échec de sauvegarde de l'avatar (auth ou profil ?)")
       setAvatarUrl(artist.avatar)
     } finally {
       setAvatarUploading(false)
@@ -227,6 +274,7 @@ export default function ArtistProfilePage() {
           onClick={() => bannerInputRef.current?.click()}
           className="absolute bottom-3 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-lg text-sm"
           disabled={bannerUploading}
+          title={!token || !profileId ? 'Connecte-toi pour sauvegarder' : 'Changer la bannière'}
         >
           {bannerUploading ? 'Envoi…' : 'Changer la bannière'}
         </button>
@@ -248,7 +296,7 @@ export default function ArtistProfilePage() {
               onClick={() => avatarInputRef.current?.click()}
               className="absolute bottom-1 right-1 bg-black/60 hover:bg-black/80 text-xs px-2 py-0.5 rounded"
               disabled={avatarUploading}
-              title="Changer la photo"
+              title={!token || !profileId ? 'Connecte-toi pour sauvegarder' : 'Changer la photo'}
             >
               {avatarUploading ? '...' : '✎'}
             </button>
