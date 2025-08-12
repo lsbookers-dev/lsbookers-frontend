@@ -25,19 +25,35 @@ async function uploadToCloudinary(
 ) {
   const API = process.env.NEXT_PUBLIC_API_URL
   if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant dans le frontend')
-  const base = API.replace(/\/$/, '') // retire / final si présent
+  const base = API.replace(/\/$/, '')
 
   const fd = new FormData()
   fd.append('file', file)
   fd.append('folder', folder)
   fd.append('type', type)
 
-  const res = await fetch(`${base}/upload`, { method: 'POST', body: fd })
+  // ✅ route backend correcte
+  const res = await fetch(`${base}/api/upload`, { method: 'POST', body: fd })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err?.details || 'UPLOAD_FAILED')
   }
   return res.json() as Promise<{ url: string; public_id: string }>
+}
+
+async function saveProfile(fields: Record<string, unknown>, profileId: number) {
+  const API = process.env.NEXT_PUBLIC_API_URL
+  if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant dans le frontend')
+  const base = API.replace(/\/$/, '')
+  const res = await fetch(`${base}/api/profile/${profileId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err?.message || 'PROFILE_SAVE_FAILED')
+  }
 }
 
 /* ============================================================ */
@@ -57,13 +73,14 @@ export default function ArtistProfilePage() {
       roles: [{ label: 'DJ' }, { label: 'Saxophoniste' }] as RoleTag[],
       description:
         "L’artiste écris ici sa description, en expliquant sa carrière, son parcours etc...",
-      // Embed SoundCloud vers un artiste connu (profil public)
       soundcloudEmbedUrl:
         'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/martingarrix&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true',
       showSoundcloud: true,
     }),
     []
   )
+
+  const profileId = artist.id
 
   // états visuels pour banner/avatar (MAJ immédiate après upload)
   const [bannerUrl, setBannerUrl] = useState<string>(artist.banner)
@@ -85,7 +102,7 @@ export default function ArtistProfilePage() {
     { id: 2, title: 'Merci Marseille !', image: '/media/pub2.jpg' },
     { id: 3, title: 'Backstage 🎧', image: '/media/pub3.jpg' },
     { id: 4, title: 'Répètes', image: '/media/pub4.jpg' },
-    { id: 5, title: 'Aftermovie', image: '/media/pub5.jpg' }, // (affiché seulement dans "Voir tout")
+    { id: 5, title: 'Aftermovie', image: '/media/pub5.jpg' },
   ])
   const [showAllPubs, setShowAllPubs] = useState(false)
 
@@ -151,7 +168,7 @@ export default function ArtistProfilePage() {
   const heroPub = sorted[0]
   const restPubs = sorted.slice(1, 4)
 
-  // Upload handlers
+  // Upload handlers (+ persistance)
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -159,10 +176,12 @@ export default function ArtistProfilePage() {
       setBannerUploading(true)
       const { url } = await uploadToCloudinary(file, 'banners', 'image')
       setBannerUrl(url) // maj visuelle immédiate
-      // TODO: plus tard => appel PUT /api/profile/:id pour persister
+      await saveProfile({ bannerUrl: url }, profileId) // ✅ persistance backend
+      alert('Bannière mise à jour ✅')
     } catch (err) {
       console.error(err)
-      alert('Upload bannière échoué')
+      alert('Upload ou sauvegarde bannière échoué')
+      setBannerUrl(artist.banner) // rollback visuel
     } finally {
       setBannerUploading(false)
       e.target.value = ''
@@ -175,11 +194,13 @@ export default function ArtistProfilePage() {
     try {
       setAvatarUploading(true)
       const { url } = await uploadToCloudinary(file, 'avatars', 'image')
-      setAvatarUrl(url) // maj visuelle immédiate
-      // TODO: plus tard => appel PUT /api/profile/:id pour persister
+      setAvatarUrl(url)
+      await saveProfile({ avatarUrl: url }, profileId) // ✅ persistance backend
+      alert('Photo de profil mise à jour ✅')
     } catch (err) {
       console.error(err)
-      alert('Upload avatar échoué')
+      alert('Upload ou sauvegarde avatar échoué')
+      setAvatarUrl(artist.avatar)
     } finally {
       setAvatarUploading(false)
       e.target.value = ''
