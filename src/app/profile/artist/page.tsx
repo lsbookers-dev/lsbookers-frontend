@@ -17,6 +17,39 @@ type Publication = { id: number; title: string; image: string; caption?: string;
 type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
 type PriceLine = { id: number; label: string; price: string }
 
+// ---- Types pour éviter les "any" ----
+type StoredUser = {
+  id: number | string
+  name?: string
+  email?: string
+  role?: string
+  profile?: { id: number }
+}
+
+type ApiUser = {
+  id: number
+  name: string
+  email?: string
+  role?: string
+}
+
+type ApiProfile = {
+  id: number
+  userId: number
+  bio?: string | null
+  profession?: string | null
+  location?: string | null
+  country?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  radiusKm?: number | null
+  specialties?: string[] | null
+  typeEtablissement?: string | null
+  avatar?: string | null
+  banner?: string | null
+  user?: ApiUser
+}
+
 /* ================= Helpers ================= */
 async function uploadToCloudinary(
   file: File,
@@ -35,7 +68,7 @@ async function uploadToCloudinary(
   const res = await fetch(`${base}/api/upload`, { method: 'POST', body: fd })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err?.details || 'UPLOAD_FAILED')
+    throw new Error((err as { details?: string })?.details || 'UPLOAD_FAILED')
   }
   return res.json() as Promise<{ url: string; public_id: string }>
 }
@@ -71,8 +104,8 @@ export default function ArtistProfilePage() {
   const [profileId, setProfileId] = useState<number | null>(null)
 
   // Nouveaux états pour afficher les vraies infos
-  const [currentUser, setCurrentUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null)
+  const [profile, setProfile] = useState<ApiProfile | null>(null)
 
   // 1) Lire token / user dans le localStorage
   useEffect(() => {
@@ -81,7 +114,7 @@ export default function ArtistProfilePage() {
       const uStr = localStorage.getItem('user')
       if (t) setToken(t)
       if (uStr) {
-        const u = JSON.parse(uStr)
+        const u: StoredUser = JSON.parse(uStr)
         setCurrentUser(u) // <= pour afficher le vrai nom
         const uid = typeof u?.id === 'string' ? parseInt(u.id, 10) : u?.id
         setUserId(uid || null)
@@ -143,7 +176,7 @@ export default function ArtistProfilePage() {
       try {
         const r = await fetch(`${API_BASE}/api/profile/user/${userId}`)
         if (!r.ok) return
-        const data = await r.json()
+        const data = (await r.json()) as { profile?: ApiProfile }
         const p = data?.profile
         if (p) {
           setProfile(p) // <= pour location/country/etc.
@@ -167,7 +200,7 @@ export default function ArtistProfilePage() {
   }
 
   const addPublication = () => {
-    const title = window.prompt("Titre de la publication ?")
+    const title = window.prompt('Titre de la publication ?')
     if (!title) return
     const image = window.prompt("URL de l'image ?") || '/media/pub_placeholder.jpg'
     setPublications(prev => [{ id: Date.now(), title, image }, ...prev])
@@ -215,7 +248,7 @@ export default function ArtistProfilePage() {
       body: JSON.stringify(fields),
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
+      const err = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(err?.error || 'PROFILE_SAVE_FAILED')
     }
   }
