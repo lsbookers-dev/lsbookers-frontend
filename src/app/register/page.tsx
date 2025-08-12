@@ -1,28 +1,64 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
 
-// Définition complète des rôles disponibles
+// Rôles autorisés
 type UserRole = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
 
 export default function RegisterPage() {
-  const { register } = useAuth()
+  const router = useRouter()
 
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('ARTIST')
-  const [name, setName] = useState('')
+
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setLoading(true)
+
     try {
-      console.log('🟡 Tentative d’inscription...')
-      await register({ email, password, role, name })
+      const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+      if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant')
+
+      const res = await fetch(`${API}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // ok même si le backend ne pose pas de cookie
+        body: JSON.stringify({ name, email, password, role }),
+      })
+
+      if (!res.ok) {
+        // Tentative d’explication selon le status
+        let msg = "Échec de l'inscription. Réessaie."
+        if (res.status === 409) msg = 'Un compte existe déjà avec cet email.'
+        else if (res.status === 400) msg = 'Données invalides (email ou mot de passe).'
+        else if (res.status === 404) msg = 'Endpoint introuvable (vérifie NEXT_PUBLIC_API_URL).'
+
+        // Récupération éventuelle du message backend
+        try {
+          const data = await res.json()
+          if (data?.message) msg = data.message
+          if (data?.error) msg = data.error
+        } catch {
+          // ignore si pas de JSON
+        }
+        throw new Error(msg)
+      }
+
+      // Succès -> on redirige vers la page de connexion
+      router.push('/login')
     } catch (err) {
-      console.error('❌ Erreur d’inscription', err)
-      setError('Échec de l’inscription. Vérifie les champs ou l’email.')
+      const msg =
+        err instanceof Error ? err.message : "Échec de l'inscription. Réessaie."
+      setError(msg)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -38,7 +74,7 @@ export default function RegisterPage() {
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
-          className="w-full px-4 py-2 mb-4 text-black"
+          className="w-full px-4 py-2 mb-4 text-black rounded"
           required
         />
 
@@ -47,7 +83,7 @@ export default function RegisterPage() {
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          className="w-full px-4 py-2 mb-4 text-black"
+          className="w-full px-4 py-2 mb-4 text-black rounded"
           required
         />
 
@@ -56,7 +92,7 @@ export default function RegisterPage() {
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          className="w-full px-4 py-2 mb-4 text-black"
+          className="w-full px-4 py-2 mb-4 text-black rounded"
           required
         />
 
@@ -64,7 +100,7 @@ export default function RegisterPage() {
         <select
           value={role}
           onChange={e => setRole(e.target.value as UserRole)}
-          className="w-full px-4 py-2 mb-6 text-black"
+          className="w-full px-4 py-2 mb-6 text-black rounded"
         >
           <option value="ARTIST">Artiste</option>
           <option value="ORGANIZER">Organisateur</option>
@@ -73,10 +109,18 @@ export default function RegisterPage() {
 
         <button
           type="submit"
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded"
+          disabled={loading}
+          className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-2 rounded"
         >
-          S’inscrire
+          {loading ? 'Création…' : "S'inscrire"}
         </button>
+
+        <p className="mt-4 text-sm text-center">
+          Déjà un compte ?{' '}
+          <a href="/login" className="text-blue-400 underline">
+            Se connecter
+          </a>
+        </p>
       </form>
     </div>
   )
