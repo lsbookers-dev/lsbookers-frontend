@@ -70,6 +70,10 @@ export default function ArtistProfilePage() {
   const [userId, setUserId] = useState<number | null>(null)
   const [profileId, setProfileId] = useState<number | null>(null)
 
+  // Nouveaux états pour afficher les vraies infos
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+
   // 1) Lire token / user dans le localStorage
   useEffect(() => {
     try {
@@ -78,9 +82,9 @@ export default function ArtistProfilePage() {
       if (t) setToken(t)
       if (uStr) {
         const u = JSON.parse(uStr)
+        setCurrentUser(u) // <= pour afficher le vrai nom
         const uid = typeof u?.id === 'string' ? parseInt(u.id, 10) : u?.id
         setUserId(uid || null)
-        // si déjà présent
         if (u?.profile?.id) setProfileId(u.profile.id)
       }
     } catch {
@@ -132,7 +136,7 @@ export default function ArtistProfilePage() {
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
 
-  /* ===== Charger les données du profil pour hydrater avatar/banner ===== */
+  /* ===== Charger les données du profil pour hydrater TOUT (avatar/banner/nom/lieu) ===== */
   useEffect(() => {
     const loadProfile = async () => {
       if (!API_BASE || !userId) return
@@ -141,9 +145,12 @@ export default function ArtistProfilePage() {
         if (!r.ok) return
         const data = await r.json()
         const p = data?.profile
-        if (p?.banner) setBannerUrl(p.banner)
-        if (p?.avatar) setAvatarUrl(p.avatar)
-        if (!profileId && p?.id) setProfileId(p.id)
+        if (p) {
+          setProfile(p) // <= pour location/country/etc.
+          if (p.banner) setBannerUrl(p.banner)
+          if (p.avatar) setAvatarUrl(p.avatar)
+          if (!profileId && p.id) setProfileId(p.id)
+        }
       } catch {
         // ignore
       }
@@ -226,8 +233,6 @@ export default function ArtistProfilePage() {
     } catch (err) {
       console.error(err)
       alert("Échec de sauvegarde de la bannière (auth ou profil ?)")
-      // rollback visuel seulement si c'était une ancienne URL locale
-      // sinon on laisse l'URL cloudinary affichée mais non persistée
     } finally {
       setBannerUploading(false)
       e.target.value = ''
@@ -307,8 +312,12 @@ export default function ArtistProfilePage() {
             />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">{artist.name}</h1>
-            <p className="text-sm text-neutral-300">{artist.location}, {artist.country}</p>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              {currentUser?.name ?? profile?.user?.name ?? artist.name}
+            </h1>
+            <p className="text-sm text-neutral-300">
+              {(profile?.location ?? artist.location)}, {profile?.country ?? artist.country}
+            </p>
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {roles.map(r => (
                 <span key={r.label} className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40">
