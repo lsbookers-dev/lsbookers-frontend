@@ -12,44 +12,70 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
+  // Nettoyage d’une éventuelle session locale si on arrive déjà connecté
   useEffect(() => {
     if (user) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       setUser(null)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setLoading(true)
+
     try {
-      console.log('🟡 Tentative de connexion...')
+      const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+      if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant')
+
+      // 👉 IMPORTANT : /api/auth/login (et pas /auth/login)
+      const url = `${API}/api/auth/login`
 
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+        url,
+        { email, password },
         {
-          email,
-          password
+          headers: { 'Content-Type': 'application/json' },
+          // Laisse à true si ton backend pose un cookie HttpOnly,
+          // sinon ça ne gêne pas.
+          withCredentials: true,
+          timeout: 15_000,
         }
       )
 
-      const { token, user } = response.data
+      const { token, user } = response.data || {}
 
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
+      // Si ton backend renvoie un JWT dans le body
+      if (token) localStorage.setItem('token', token)
+      if (user) localStorage.setItem('user', JSON.stringify(user))
 
-      setUser(user)
+      setUser(user || null)
 
-      if (user.isAdmin) {
-        console.log('🔐 Utilisateur admin détecté')
+      if (user?.isAdmin) {
         router.push('/admin/settings')
       } else {
         router.push('/home')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Erreur de connexion', err)
-      setError('Échec de la connexion. Vérifie tes identifiants.')
+      // Messages d’erreur plus explicites
+      const msg =
+        err?.response?.status === 401
+          ? 'Identifiants incorrects.'
+          : err?.response?.status === 404
+          ? 'Endpoint introuvable (vérifie NEXT_PUBLIC_API_URL).'
+          : err?.message?.includes('NEXT_PUBLIC_API_URL')
+          ? 'Configuration manquante côté frontend.'
+          : "Échec de la connexion. Réessaie."
+
+      setError(msg)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -65,7 +91,7 @@ export default function LoginPage() {
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          className="w-full px-4 py-2 mb-4 text-black"
+          className="w-full px-4 py-2 mb-4 text-black rounded"
           required
         />
 
@@ -74,15 +100,16 @@ export default function LoginPage() {
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          className="w-full px-4 py-2 mb-6 text-black"
+          className="w-full px-4 py-2 mb-6 text-black rounded"
           required
         />
 
         <button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded"
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2 rounded"
         >
-          Se connecter
+          {loading ? 'Connexion…' : 'Se connecter'}
         </button>
       </form>
     </div>
