@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
+import axios, { isAxiosError } from 'axios'
 import { useAuth } from '@/context/AuthContext'
 
 export default function LoginPage() {
@@ -41,8 +41,6 @@ export default function LoginPage() {
         { email, password },
         {
           headers: { 'Content-Type': 'application/json' },
-          // Laisse à true si ton backend pose un cookie HttpOnly,
-          // sinon ça ne gêne pas.
           withCredentials: true,
           timeout: 15_000,
         }
@@ -50,7 +48,6 @@ export default function LoginPage() {
 
       const { token, user } = response.data || {}
 
-      // Si ton backend renvoie un JWT dans le body
       if (token) localStorage.setItem('token', token)
       if (user) localStorage.setItem('user', JSON.stringify(user))
 
@@ -61,17 +58,20 @@ export default function LoginPage() {
       } else {
         router.push('/home')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Erreur de connexion', err)
-      // Messages d’erreur plus explicites
-      const msg =
-        err?.response?.status === 401
-          ? 'Identifiants incorrects.'
-          : err?.response?.status === 404
-          ? 'Endpoint introuvable (vérifie NEXT_PUBLIC_API_URL).'
-          : err?.message?.includes('NEXT_PUBLIC_API_URL')
-          ? 'Configuration manquante côté frontend.'
-          : "Échec de la connexion. Réessaie."
+
+      let msg = "Échec de la connexion. Réessaie."
+
+      if (isAxiosError(err)) {
+        const status = err.response?.status
+        if (status === 401) msg = 'Identifiants incorrects.'
+        else if (status === 404) msg = 'Endpoint introuvable (vérifie NEXT_PUBLIC_API_URL).'
+        else if (err.code === 'ECONNABORTED') msg = 'La requête a expiré.'
+        else if (err.message?.includes('Network Error')) msg = 'Erreur réseau (CORS ou indisponible).'
+      } else if (err instanceof Error && err.message.includes('NEXT_PUBLIC_API_URL')) {
+        msg = 'Configuration manquante côté frontend.'
+      }
 
       setError(msg)
     } finally {
