@@ -6,7 +6,6 @@ import Image from 'next/image'
 export default function LandingPage() {
   const router = useRouter()
 
-  // Tu peux définir NEXT_PUBLIC_LANDING_BG dans .env.local pour changer l’image sans toucher le code.
   const BG =
     process.env.NEXT_PUBLIC_LANDING_BG ||
     'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
@@ -23,10 +22,10 @@ export default function LandingPage() {
         className="z-0 object-cover"
       />
 
-      {/* Overlays pour la lisibilité */}
-      <div className="absolute inset-0 z-10 bg-black/20" />
-      <div className="absolute inset-x-0 top-0 z-10 h-40 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 z-10 h-56 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+      {/* Overlays plus clairs */}
+      <div className="absolute inset-0 z-10 bg-black/10" /> {/* avant : /20 */}
+      <div className="absolute inset-x-0 top-0 z-10 h-40 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" /> {/* avant : /50 */}
+      <div className="absolute inset-x-0 bottom-0 z-10 h-56 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" /> {/* avant : /60 */}
 
       {/* Contenu principal */}
       <div className="relative z-20 flex flex-col justify-between min-h-screen h-dvh">
