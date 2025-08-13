@@ -35,7 +35,7 @@ export default function LandingPage() {
               Bienvenue sur LSBookers
             </h1>
             <p className="text-lg md:text-xl mb-8 mx-auto max-w-2xl text-white/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-              La Plateforme qui Connecte Artistes et Organisateurs en un Clic.
+              La Plateforme qui Connecte Le Monde de L'évenementiel en un Clic.
             </p>
 
             {/* CTA */}
