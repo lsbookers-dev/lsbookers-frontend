@@ -28,8 +28,9 @@ const nextConfig = {
       },
     ],
   },
+  // ✅ Next 15 attend un objet vide ici, pas un booléen
   experimental: {
-    serverActions: true,
+    serverActions: {},
   },
 }
 
