@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 
-type RoleTag = string
-
 type UserLite = {
   id: number
   name?: string
@@ -145,7 +143,7 @@ export default function ArtistSettingsPage() {
       if (kind === 'avatar') setAvatar(url)
       else setBanner(url)
       setOkMsg(`${kind === 'avatar' ? 'Photo de profil' : 'Bannière'} chargée ✅ (pense à enregistrer)`)
-    } catch (e) {
+    } catch {
       setError("Échec de l'upload.")
     } finally {
       setUploading(s => ({ ...s, [kind]: false }))
@@ -171,7 +169,7 @@ export default function ArtistSettingsPage() {
         styles,
       })
       setOkMsg('Profil enregistré ✅')
-    } catch (e) {
+    } catch {
       setError('Sauvegarde impossible.')
     } finally {
       setSaving(false)
