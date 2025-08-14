@@ -19,9 +19,18 @@ type Message = {
   createdAt: string
   sender: Sender
   seen: boolean
+  // champs potentiels renvoyés par l’API pour les pièces jointes
+  fileUrl?: string | null
+  attachmentUrl?: string | null
+  mediaUrl?: string | null
+  mimeType?: string | null
 }
 
 type ApiMessagesResponse = Message[] | { messages: Message[] }
+type SendFileResponse =
+  | { message: Message }
+  | { id: string } // si l’API ne renvoie pas l’objet complet
+  | Record<string, unknown>
 
 /* ---------- Helpers ---------- */
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -31,6 +40,9 @@ function isArrayResp(x: unknown): x is Message[] {
 }
 function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
+}
+function pickAttachmentUrl(m: Message): string | undefined {
+  return m.fileUrl || m.attachmentUrl || m.mediaUrl || undefined
 }
 
 /* ---------- Page ---------- */
@@ -54,7 +66,7 @@ export default function ConversationPage() {
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
       setMessages(list)
     } catch {
-      // tentative fallback si l’endpoint diffère
+      // fallback si route différente
       try {
         const token = getAuthToken()
         const res2: AxiosResponse<ApiMessagesResponse> = await axios.get(
@@ -90,7 +102,7 @@ export default function ConversationPage() {
       if (content) formData.append('content', content)
       if (file) formData.append('file', file)
 
-      // Optimistic UI (facultatif, n’affiche que du texte)
+      // Optimistic UI si message texte seul
       if (content && !file) {
         const optimistic: Message = {
           id: `temp-${Date.now()}`,
@@ -102,13 +114,23 @@ export default function ConversationPage() {
         setMessages(prev => [...prev, optimistic])
       }
 
-      await axios.post(`${API_BASE}/messages/send-file`, formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
-      })
+      const res: AxiosResponse<SendFileResponse> = await axios.post(
+        `${API_BASE}/messages/send-file`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      )
+
+      // Si l’API renvoie le message créé, on l’ajoute directement
+      const data = res.data as SendFileResponse
+      if (data && typeof data === 'object' && 'message' in data && data.message) {
+        setMessages(prev => [...prev, (data as { message: Message }).message])
+      } else {
+        // sinon on recharge la conversation
+        await fetchMessages()
+      }
 
       setContent('')
       setFile(null)
-      await fetchMessages()
     } catch (error) {
       console.error('Erreur envoi message :', error)
     }
@@ -118,15 +140,24 @@ export default function ConversationPage() {
     if (e.key === 'Enter') handleSend()
   }
 
-  const renderFile = (url: string) => {
-    const cleanUrl = url.trim()
+  const renderFile = (rawUrl: string) => {
+    const cleanUrl = rawUrl.trim()
     const lower = cleanUrl.toLowerCase()
-    if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
-      return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" />
-    }
-    if (/\.(mp4|webm)$/.test(lower)) {
+    if (/\.(jpg|jpeg|png|gif|webp|avif)$/.test(lower)) {
       return (
-        <video controls className="w-64 rounded">
+        <Image
+          src={cleanUrl}
+          alt="media"
+          width={220}
+          height={220}
+          className="rounded"
+          unoptimized
+        />
+      )
+    }
+    if (/\.(mp4|webm|mov|m4v)$/.test(lower)) {
+      return (
+        <video controls className="max-w-xs rounded">
           <source src={cleanUrl} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
@@ -149,16 +180,34 @@ export default function ConversationPage() {
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
         >
           {messages.map((msg) => {
-            // convention backend : première ligne = texte, ligne contenant "http" = lien fichier
-            const parts = msg.content.split('\n')
-            const text = parts[0] ?? ''
-            const urlLine = parts.find(line => line.includes('http'))
-            const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
+            // 1) URL jointe via champ dédié
+            const attachment = pickAttachmentUrl(msg)
+
+            // 2) Ou URL incluse dans le contenu (ex: "Lien: https://...")
+            let parsedUrl = ''
+            if (!attachment && msg.content) {
+              const lines = msg.content.split('\n')
+              const urlLine = lines.find(line => line.includes('http'))
+              parsedUrl = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
+            }
+
+            // 3) Texte (première ligne si on a une convention, sinon tout)
+            const lines = msg.content ? msg.content.split('\n') : []
+            const text = lines[0] || msg.content || ''
+
+            const mediaUrl = attachment || parsedUrl || ''
 
             return (
               <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
                 {msg.sender?.image ? (
-                  <Image src={msg.sender.image} alt={msg.sender.name} width={40} height={40} className="rounded-full" />
+                  <Image
+                    src={msg.sender.image}
+                    alt={msg.sender.name}
+                    width={40}
+                    height={40}
+                    className="rounded-full"
+                    unoptimized
+                  />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gray-700 grid place-items-center text-white font-bold">
                     {msg.sender?.name?.charAt(0) ?? '?'}
@@ -169,7 +218,7 @@ export default function ConversationPage() {
                     {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
                   </p>
                   {text && <p className="mb-1 text-base leading-relaxed">{text}</p>}
-                  {url && renderFile(url)}
+                  {mediaUrl && renderFile(mediaUrl)}
                   <p className="text-xs text-right text-gray-500 mt-1">{msg.seen ? '✓ Vu' : 'Non lu'}</p>
                 </div>
               </div>
@@ -209,7 +258,7 @@ export default function ConversationPage() {
           {file && (
             <div className="flex items-center justify-between bg-gray-800 p-3 rounded">
               {file.type.startsWith('image') ? (
-                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" />
+                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" unoptimized />
               ) : file.type.startsWith('video') ? (
                 <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
               ) : (
