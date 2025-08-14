@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
+
 interface User {
   id: number
   name: string
-  role: string
+  role: Role
 }
 
 interface Conversation {
@@ -18,75 +20,113 @@ interface Conversation {
   updatedAt: string
 }
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
 export default function MessagesPage() {
   const { user, token } = useAuth()
   const router = useRouter()
+
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [error, setError] = useState<string | null>(null)
+
   const [search, setSearch] = useState('')
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
 
+  const authedHeaders = useMemo(
+    () =>
+      token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : undefined,
+    [token]
+  )
+
   const fetchConversations = useCallback(async () => {
+    if (!API_BASE || !token) return
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/messages/conversations`, {
-        headers: { Authorization: `Bearer ${token}` },
+      setError(null)
+      const res = await fetch(`${API_BASE}/api/messages/conversations`, {
+        headers: authedHeaders,
+        cache: 'no-store',
       })
-      if (!res.ok) throw new Error('Erreur lors du chargement')
-      const data = await res.json()
-      setConversations(data)
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      // Le backend peut renvoyer soit {conversations: [...]}, soit directement [...]
+      const raw = await res.json()
+      const list: Conversation[] = raw?.conversations ?? raw ?? []
+      setConversations(Array.isArray(list) ? list : [])
     } catch (err) {
-      console.error(err)
+      console.error('Conversations load error:', err)
       setError('Impossible de charger les conversations.')
     }
-  }, [token])
+  }, [API_BASE, token, authedHeaders])
 
   const fetchUsers = useCallback(async () => {
+    if (!API_BASE || !token) return
     try {
       setLoadingUsers(true)
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API_BASE}/api/users`, {
+        headers: authedHeaders,
+        cache: 'no-store',
       })
-      const data: User[] = await res.json()
-      const filtered = user?.id ? data.filter(u => u.id !== Number(user.id)) : data
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const raw = (await res.json()) as { users?: User[] } | User[]
+      const list: User[] = Array.isArray(raw) ? raw : raw?.users ?? []
+      const filtered = user?.id ? list.filter(u => Number(u.id) !== Number(user.id)) : list
       setAllUsers(filtered)
     } catch (err) {
-      console.error('Erreur chargement utilisateurs :', err)
+      console.error('Users load error:', err)
+      // pas d’error UI bloquante ici
     } finally {
       setLoadingUsers(false)
     }
-  }, [token, user?.id])
+  }, [API_BASE, token, authedHeaders, user?.id])
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login')
-    } else {
-      fetchConversations()
-      fetchUsers()
-    }
-  }, [user, router, fetchConversations, fetchUsers])
+    if (!token) return
+    fetchConversations()
+    fetchUsers()
+  }, [token, fetchConversations, fetchUsers])
 
-  const startConversation = async (recipientId: number) => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/messages/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ recipientId, content: 'Salut !' }),
-      })
+  useEffect(() => {
+    // redirige si non connecté
+    if (user === null) router.push('/login')
+  }, [user, router])
 
-      const data = await res.json()
-      if (data?.conversationId) {
-        router.push(`/messages/${data.conversationId}`)
-      } else {
-        fetchConversations()
+  const startConversation = useCallback(
+    async (recipientId: number) => {
+      if (!API_BASE || !token) return
+      try {
+        const res = await fetch(`${API_BASE}/api/messages/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authedHeaders || {}),
+          },
+          body: JSON.stringify({ recipientId, content: 'Salut !' }),
+        })
+
+        const data = await res.json().catch(() => ({}))
+        // on accepte plusieurs formes possibles de réponse
+        const convId =
+          data?.conversationId ??
+          data?.conversation?.id ??
+          data?.id ??
+          null
+
+        if (convId) {
+          router.push(`/messages/${convId}`)
+        } else {
+          // si pas d’id renvoyé, on recharge la liste
+          await fetchConversations()
+        }
+      } catch (err) {
+        console.error('Erreur démarrage conversation :', err)
       }
-    } catch (err) {
-      console.error('Erreur démarrage conversation :', err)
-    }
-  }
+    },
+    [API_BASE, token, authedHeaders, router, fetchConversations]
+  )
 
   const getOtherUser = (conv: Conversation) =>
     conv.participants.find(p => String(p.id) !== String(user?.id))
@@ -99,7 +139,7 @@ export default function MessagesPage() {
     <div className="flex flex-col min-h-screen bg-black text-white p-6">
       <h1 className="text-3xl font-bold mb-4">💬 Vos conversations</h1>
 
-      {error && <p className="text-red-500">{error}</p>}
+      {error && <p className="text-red-500 mb-4">{error}</p>}
 
       <div className="mb-10">
         <h2 className="text-lg font-semibold mb-2">📨 Démarrer une nouvelle conversation</h2>
@@ -143,14 +183,16 @@ export default function MessagesPage() {
                 key={conv.id}
                 className="bg-gray-800 rounded p-4 hover:bg-gray-700 transition"
               >
-                <Link href={`/messages/${conv.id}`}>
+                <Link href={`/messages/${conv.id}`} className="block">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h2 className="text-lg font-semibold">{other?.name}</h2>
-                      <p className="text-sm text-gray-300 truncate max-w-md">{conv.lastMessage}</p>
+                      <h2 className="text-lg font-semibold">{other?.name ?? 'Conversation'}</h2>
+                      <p className="text-sm text-gray-300 truncate max-w-md">
+                        {conv.lastMessage || '…'}
+                      </p>
                     </div>
                     <span className="text-xs text-gray-400">
-                      {new Date(conv.updatedAt).toLocaleString()}
+                      {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
                     </span>
                   </div>
                 </Link>
