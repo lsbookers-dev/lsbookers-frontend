@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, KeyboardEvent } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import axios, { AxiosResponse } from 'axios'
 import { getAuthToken } from '@/utils/auth'
@@ -19,18 +19,11 @@ type Message = {
   createdAt: string
   sender: Sender
   seen: boolean
-  // champs potentiels renvoyés par l’API pour les pièces jointes
-  fileUrl?: string | null
-  attachmentUrl?: string | null
-  mediaUrl?: string | null
-  mimeType?: string | null
 }
 
 type ApiMessagesResponse = Message[] | { messages: Message[] }
-type SendFileResponse =
-  | { message: Message }
-  | { id: string } // si l’API ne renvoie pas l’objet complet
-  | Record<string, unknown>
+type SendJsonResp = { conversationId?: string | number; message?: Message }
+type SendFileResp = { conversationId?: string | number; message?: Message }
 
 /* ---------- Helpers ---------- */
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -41,45 +34,48 @@ function isArrayResp(x: unknown): x is Message[] {
 function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
-function pickAttachmentUrl(m: Message): string | undefined {
-  return m.fileUrl || m.attachmentUrl || m.mediaUrl || undefined
-}
 
 /* ---------- Page ---------- */
 export default function ConversationPage() {
+  const router = useRouter()
   const params = useParams<{ id: string }>()
   const conversationId = params?.id
+
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState<string>('')
   const [file, setFile] = useState<File | null>(null)
+
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchMessages = async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
-    try {
-      const token = getAuthToken()
-      const res: AxiosResponse<ApiMessagesResponse> = await axios.get(
-        `${API_BASE}/messages/messages/${conversationId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      const payload = res.data
-      const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
-      setMessages(list)
-    } catch {
-      // fallback si route différente
+    const token = getAuthToken()
+    const commonHeaders = { Authorization: `Bearer ${token}` }
+
+    // essaie plusieurs routes possibles selon le backend
+    const candidates = [
+      `${API_BASE}/messages/messages/${conversationId}`,
+      `${API_BASE}/messages/conversation/${conversationId}`,
+      `${API_BASE}/messages/${conversationId}`,
+    ]
+
+    for (const url of candidates) {
       try {
-        const token = getAuthToken()
-        const res2: AxiosResponse<ApiMessagesResponse> = await axios.get(
-          `${API_BASE}/messages/conversation/${conversationId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        const payload2 = res2.data
-        const list2 = isArrayResp(payload2) ? payload2 : isObjResp(payload2) ? payload2.messages : []
-        setMessages(list2)
-      } catch (e) {
-        console.error('Erreur récupération messages :', e)
+        const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
+        const payload = res.data
+        const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
+        if (Array.isArray(list)) {
+          setMessages(list)
+          return
+        }
+      } catch {
+        // on tente la suivante
       }
     }
+
+    // si aucune route n’a répondu correctement:
+    console.error('Aucun endpoint de récupération des messages ne répond.')
   }
 
   useEffect(() => {
@@ -87,6 +83,7 @@ export default function ConversationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId])
 
+  // Scroll auto vers le bas quand les messages changent
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
@@ -94,70 +91,70 @@ export default function ConversationPage() {
   }, [messages])
 
   const handleSend = async (): Promise<void> => {
-    if (!conversationId || (!content && !file)) return
+    if (!conversationId) return
+    if (!content.trim() && !file) return
+
+    const token = getAuthToken()
+
     try {
-      const token = getAuthToken()
-      const formData = new FormData()
-      formData.append('conversationId', conversationId)
-      if (content) formData.append('content', content)
-      if (file) formData.append('file', file)
+      let newConvId: string | number | undefined
 
-      // Optimistic UI si message texte seul
-      if (content && !file) {
-        const optimistic: Message = {
-          id: `temp-${Date.now()}`,
-          content,
-          createdAt: new Date().toISOString(),
-          sender: { id: 0, name: 'Vous' },
-          seen: false,
-        }
-        setMessages(prev => [...prev, optimistic])
-      }
+      if (file) {
+        // --------- envoi fichier (multipart) ---------
+        const fd = new FormData()
+        fd.append('conversationId', conversationId)
+        if (content.trim()) fd.append('content', content.trim())
+        fd.append('file', file)
 
-      const res: AxiosResponse<SendFileResponse> = await axios.post(
-        `${API_BASE}/messages/send-file`,
-        formData,
-        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
-      )
-
-      // Si l’API renvoie le message créé, on l’ajoute directement
-      const data = res.data as SendFileResponse
-      if (data && typeof data === 'object' && 'message' in data && data.message) {
-        setMessages(prev => [...prev, (data as { message: Message }).message])
+        await axios.post<SendFileResp>(`${API_BASE}/messages/send-file`, fd, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+        })
+        // certaines API renvoient { conversationId }, on l’attrape pour être sûr
+        // (on ne force pas ici, on refetch juste)
       } else {
-        // sinon on recharge la conversation
-        await fetchMessages()
+        // --------- envoi texte (JSON) ---------
+        const res = await axios.post<SendJsonResp>(
+          `${API_BASE}/messages/send`,
+          { conversationId, content: content.trim() },
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+        )
+        newConvId = res.data?.conversationId
       }
 
+      // Nettoyage champ + fichier (forcé)
       setContent('')
       setFile(null)
+      if (inputRef.current) inputRef.current.value = ''
+
+      // Si l’API crée/retourne un autre conversationId, on redirige dessus
+      if (newConvId && String(newConvId) !== String(conversationId)) {
+        router.replace(`/messages/${newConvId}`)
+        return
+      }
+
+      // sinon on recharge la conversation courante
+      await fetchMessages()
     } catch (error) {
       console.error('Erreur envoi message :', error)
     }
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === 'Enter') handleSend()
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSend()
+    }
   }
 
-  const renderFile = (rawUrl: string) => {
-    const cleanUrl = rawUrl.trim()
+  const renderFile = (url: string) => {
+    const cleanUrl = url.trim()
     const lower = cleanUrl.toLowerCase()
-    if (/\.(jpg|jpeg|png|gif|webp|avif)$/.test(lower)) {
-      return (
-        <Image
-          src={cleanUrl}
-          alt="media"
-          width={220}
-          height={220}
-          className="rounded"
-          unoptimized
-        />
-      )
+    if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
+      return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" />
     }
-    if (/\.(mp4|webm|mov|m4v)$/.test(lower)) {
+    if (/\.(mp4|webm)$/.test(lower)) {
       return (
-        <video controls className="max-w-xs rounded">
+        <video controls className="w-64 rounded">
           <source src={cleanUrl} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
@@ -180,34 +177,16 @@ export default function ConversationPage() {
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
         >
           {messages.map((msg) => {
-            // 1) URL jointe via champ dédié
-            const attachment = pickAttachmentUrl(msg)
-
-            // 2) Ou URL incluse dans le contenu (ex: "Lien: https://...")
-            let parsedUrl = ''
-            if (!attachment && msg.content) {
-              const lines = msg.content.split('\n')
-              const urlLine = lines.find(line => line.includes('http'))
-              parsedUrl = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
-            }
-
-            // 3) Texte (première ligne si on a une convention, sinon tout)
-            const lines = msg.content ? msg.content.split('\n') : []
-            const text = lines[0] || msg.content || ''
-
-            const mediaUrl = attachment || parsedUrl || ''
+            // convention backend : première ligne = texte, une ligne contenant "http" = lien fichier
+            const parts = msg.content.split('\n')
+            const text = parts[0] ?? ''
+            const urlLine = parts.find(line => line.includes('http'))
+            const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
 
             return (
               <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
                 {msg.sender?.image ? (
-                  <Image
-                    src={msg.sender.image}
-                    alt={msg.sender.name}
-                    width={40}
-                    height={40}
-                    className="rounded-full"
-                    unoptimized
-                  />
+                  <Image src={msg.sender.image} alt={msg.sender.name} width={40} height={40} className="rounded-full" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gray-700 grid place-items-center text-white font-bold">
                     {msg.sender?.name?.charAt(0) ?? '?'}
@@ -218,7 +197,7 @@ export default function ConversationPage() {
                     {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
                   </p>
                   {text && <p className="mb-1 text-base leading-relaxed">{text}</p>}
-                  {mediaUrl && renderFile(mediaUrl)}
+                  {url && renderFile(url)}
                   <p className="text-xs text-right text-gray-500 mt-1">{msg.seen ? '✓ Vu' : 'Non lu'}</p>
                 </div>
               </div>
@@ -229,6 +208,7 @@ export default function ConversationPage() {
         <div className="mt-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <input
+              ref={inputRef}
               type="text"
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -240,6 +220,7 @@ export default function ConversationPage() {
             <input
               id="fileInput"
               type="file"
+              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"
             />
@@ -249,7 +230,8 @@ export default function ConversationPage() {
 
             <button
               onClick={handleSend}
-              className="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded text-white font-semibold"
+              disabled={!content.trim() && !file}
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 px-6 py-2 rounded text-white font-semibold"
             >
               Envoyer
             </button>
@@ -258,7 +240,7 @@ export default function ConversationPage() {
           {file && (
             <div className="flex items-center justify-between bg-gray-800 p-3 rounded">
               {file.type.startsWith('image') ? (
-                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" unoptimized />
+                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" />
               ) : file.type.startsWith('video') ? (
                 <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
               ) : (
