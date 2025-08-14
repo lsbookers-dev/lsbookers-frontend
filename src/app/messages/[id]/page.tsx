@@ -53,7 +53,7 @@ export default function ConversationPage() {
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
       setMessages(list)
-    } catch (err) {
+    } catch (_e) {
       // tentative fallback si l’endpoint diffère
       try {
         const token = getAuthToken()
