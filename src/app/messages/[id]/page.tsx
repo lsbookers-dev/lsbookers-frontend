@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, KeyboardEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react'
 import { useParams } from 'next/navigation'
 import axios from 'axios'
 import { getAuthToken } from '@/utils/auth'
 import Image from 'next/image'
 
-interface Message {
-  id: string
+type Message = {
+  id: string | number
   content: string
   createdAt: string
   sender: {
@@ -18,28 +18,45 @@ interface Message {
   seen: boolean
 }
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
 export default function ConversationPage() {
-  const { id } = useParams()
+  const params = useParams()
+  const id = String(params?.id ?? '')
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
-  const fetchMessages = async () => {
+  /** Charge les messages d'une conversation */
+  const fetchMessages = useCallback(async () => {
+    if (!id || !API_BASE) return
     try {
       const token = getAuthToken()
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/messages/messages/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setMessages(res.data)
+      const common = { headers: { Authorization: `Bearer ${token}` } }
+
+      // endpoint principal (nouvelle convention)
+      let res = await axios.get(`${API_BASE}/api/messages/${id}`, common)
+      // certains anciens back renvoient /api/messages/messages/:id
+      if (res.status === 204 || (Array.isArray(res.data) && res.data.length === 0)) {
+        try {
+          const fallback = await axios.get(`${API_BASE}/api/messages/messages/${id}`, common)
+          res = fallback
+        } catch {
+          /* ignore si inexistant */
+        }
+      }
+
+      const data = res.data?.messages ?? res.data ?? []
+      setMessages(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Erreur récupération messages:', error)
     }
-  }
+  }, [id])
 
   useEffect(() => {
     fetchMessages()
-  }, [id])
+  }, [fetchMessages])
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -47,22 +64,33 @@ export default function ConversationPage() {
     }
   }, [messages])
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
+    if (!id || !API_BASE) return
     try {
       const token = getAuthToken()
       if (!content && !file) return
 
-      const formData = new FormData()
-      formData.append('conversationId', id as string)
-      if (content) formData.append('content', content)
-      if (file) formData.append('file', file)
+      if (file) {
+        // Envoi multipart si fichier
+        const formData = new FormData()
+        formData.append('conversationId', id)
+        if (content) formData.append('content', content)
+        formData.append('file', file)
 
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/messages/send-file`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      })
+        await axios.post(`${API_BASE}/api/messages/send-file`, formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        })
+      } else {
+        // Envoi JSON si pas de fichier
+        await axios.post(
+          `${API_BASE}/api/messages/send`,
+          { conversationId: id, content },
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+      }
 
       setContent('')
       setFile(null)
@@ -70,34 +98,32 @@ export default function ConversationPage() {
     } catch (error) {
       console.error('Erreur envoi message:', error)
     }
-  }
+  }, [id, content, file, fetchMessages])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSend()
-    }
+    if (e.key === 'Enter') handleSend()
   }
 
   const renderFile = (url: string) => {
     const cleanUrl = url.trim()
     const lower = cleanUrl.toLowerCase()
 
-    if (lower.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+    if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
       return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" />
-    } else if (lower.match(/\.(mp4|webm)$/)) {
+    }
+    if (/\.(mp4|webm)$/.test(lower)) {
       return (
         <video controls className="w-64 rounded">
           <source src={cleanUrl} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
       )
-    } else {
-      return (
-        <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-          Télécharger le fichier
-        </a>
-      )
     }
+    return (
+      <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+        Télécharger le fichier
+      </a>
+    )
   }
 
   return (
@@ -110,13 +136,14 @@ export default function ConversationPage() {
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
         >
           {messages.map((msg) => {
-            const parts = msg.content.split('\n')
-            const text = parts[0]
-            const urlLine = parts.find(line => line.includes('http'))
-            const url = urlLine?.replace('Lien:', '').trim()
+            // si le backend concatène texte + lien sur plusieurs lignes
+            const parts = (msg.content || '').split('\n')
+            const text = parts[0] || ''
+            const urlLine = parts.find((line) => line.includes('http'))
+            const url = urlLine?.replace(/^Lien:\s*/i, '').trim()
 
             return (
-              <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
+              <div key={String(msg.id)} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
                 {msg.sender?.image ? (
                   <Image src={msg.sender.image} alt={msg.sender.name} width={40} height={40} className="rounded-full" />
                 ) : (
@@ -128,7 +155,7 @@ export default function ConversationPage() {
                   <p className="text-sm text-gray-400 mb-1">
                     {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
                   </p>
-                  {text && <p className="mb-1 text-base leading-relaxed">{text}</p>}
+                  {text && <p className="mb-1 text-base leading-relaxed whitespace-pre-wrap">{text}</p>}
                   {url && renderFile(url)}
                   <p className="text-xs text-right text-gray-500 mt-1">{msg.seen ? '✓ Vu' : 'Non lu'}</p>
                 </div>
