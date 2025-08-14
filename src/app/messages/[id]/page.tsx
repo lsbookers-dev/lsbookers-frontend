@@ -1,128 +1,120 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, KeyboardEvent } from 'react'
 import { useParams } from 'next/navigation'
-import axios from 'axios'
-import { getAuthToken } from '@/utils/auth'
 import Image from 'next/image'
+import axios, { AxiosResponse } from 'axios'
+import { getAuthToken } from '@/utils/auth'
 
-interface Sender {
+/* ---------- Types ---------- */
+type Sender = {
   id: number
   name: string
-  image?: string
+  image?: string | null
 }
-interface Message {
-  id: string | number
+
+type Message = {
+  id: string
   content: string
   createdAt: string
   sender: Sender
   seen: boolean
 }
 
-const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+type ApiMessagesResponse = Message[] | { messages: Message[] }
 
+/* ---------- Helpers ---------- */
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
+function isArrayResp(x: unknown): x is Message[] {
+  return Array.isArray(x)
+}
+function isObjResp(x: unknown): x is { messages: Message[] } {
+  return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
+}
+
+/* ---------- Page ---------- */
 export default function ConversationPage() {
-  const { id } = useParams() as { id?: string }
+  const params = useParams<{ id: string }>()
+  const conversationId = params?.id
   const [messages, setMessages] = useState<Message[]>([])
-  const [content, setContent] = useState('')
+  const [content, setContent] = useState<string>('')
   const [file, setFile] = useState<File | null>(null)
-  const [loading, setLoading] = useState(false)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
-  const scrollToBottom = () => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
-    }
-  }
-
-  const pickMessagesArray = (data: any): Message[] => {
-    if (Array.isArray(data)) return data as Message[]
-    if (Array.isArray(data?.messages)) return data.messages as Message[]
-    if (Array.isArray(data?.data)) return data.data as Message[]
-    if (Array.isArray(data?.items)) return data.items as Message[]
-    return []
-  }
-
-  const fetchMessages = useCallback(async () => {
-    if (!id) return
-    setLoading(true)
-    const token = getAuthToken()
-
-    // Essaye plusieurs routes possibles (compat anciennes/nouvelles API)
-    const candidates = [
-      `${API}/messages/messages/${id}`,
-      `${API}/messages/${id}`,
-      `${API}/messages/conversation/${id}`,
-      `${API}/messages/conversations/${id}/messages`,
-    ]
-
-    for (const url of candidates) {
+  const fetchMessages = async (): Promise<void> => {
+    if (!conversationId || !API_BASE) return
+    try {
+      const token = getAuthToken()
+      const res: AxiosResponse<ApiMessagesResponse> = await axios.get(
+        `${API_BASE}/messages/messages/${conversationId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const payload = res.data
+      const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
+      setMessages(list)
+    } catch (err) {
+      // tentative fallback si l’endpoint diffère
       try {
-        const res = await axios.get(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const arr = pickMessagesArray(res.data)
-        if (arr.length || res.status === 200) {
-          // trie par date ASC
-          arr.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-          setMessages(arr)
-          setLoading(false)
-          return
-        }
-      } catch {
-        // on tente la suivante
+        const token = getAuthToken()
+        const res2: AxiosResponse<ApiMessagesResponse> = await axios.get(
+          `${API_BASE}/messages/conversation/${conversationId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        const payload2 = res2.data
+        const list2 = isArrayResp(payload2) ? payload2 : isObjResp(payload2) ? payload2.messages : []
+        setMessages(list2)
+      } catch (e) {
+        console.error('Erreur récupération messages :', e)
       }
     }
-
-    setMessages([])
-    setLoading(false)
-  }, [id])
+  }
 
   useEffect(() => {
     fetchMessages()
-  }, [fetchMessages])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId])
 
   useEffect(() => {
-    scrollToBottom()
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
   }, [messages])
 
-  const handleSend = async () => {
-    const token = getAuthToken()
-    if (!id || (!content && !file)) return
-
-    const formData = new FormData()
-    formData.append('conversationId', id)
-    if (content) formData.append('content', content)
-    if (file) formData.append('file', file)
-
-    // Optimistic UI (ajoute un message local en attendant la réponse)
-    const optimistic: Message = {
-      id: `tmp-${Date.now()}`,
-      content,
-      createdAt: new Date().toISOString(),
-      sender: { id: 0, name: 'Vous' },
-      seen: false,
-    }
-    setMessages(prev => [...prev, optimistic])
-    setContent('')
-    setFile(null)
-    scrollToBottom()
-
+  const handleSend = async (): Promise<void> => {
+    if (!conversationId || (!content && !file)) return
     try {
-      // utilise la route utilisée pour envoyer un fichier/texte
-      await axios.post(`${API}/messages/send-file`, formData, {
+      const token = getAuthToken()
+      const formData = new FormData()
+      formData.append('conversationId', conversationId)
+      if (content) formData.append('content', content)
+      if (file) formData.append('file', file)
+
+      // Optimistic UI (facultatif, n’affiche que du texte)
+      if (content && !file) {
+        const optimistic: Message = {
+          id: `temp-${Date.now()}`,
+          content,
+          createdAt: new Date().toISOString(),
+          sender: { id: 0, name: 'Vous' },
+          seen: false,
+        }
+        setMessages(prev => [...prev, optimistic])
+      }
+
+      await axios.post(`${API_BASE}/messages/send-file`, formData, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
       })
-      // refetch pour obtenir l’ID réel et l’état vu/non-vu
-      fetchMessages()
+
+      setContent('')
+      setFile(null)
+      await fetchMessages()
     } catch (error) {
-      console.error('Erreur envoi message:', error)
-      // rollback en cas d’erreur
-      setMessages(prev => prev.filter(m => m.id !== optimistic.id))
+      console.error('Erreur envoi message :', error)
     }
   }
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') handleSend()
   }
 
@@ -156,14 +148,12 @@ export default function ConversationPage() {
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
         >
-          {loading && <p className="text-white/60">Chargement…</p>}
-
-          {!loading && messages.map((msg) => {
-            // Compat : content peut contenir une ligne "Lien: <url>" ou juste du texte
-            const parts = (msg.content || '').split('\n')
-            const text = parts[0]?.trim()
-            const linkLine = parts.find(l => l.includes('http'))
-            const url = linkLine?.replace(/^Lien:\s*/i, '').trim()
+          {messages.map((msg) => {
+            // convention backend : première ligne = texte, ligne contenant "http" = lien fichier
+            const parts = msg.content.split('\n')
+            const text = parts[0] ?? ''
+            const urlLine = parts.find(line => line.includes('http'))
+            const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
 
             return (
               <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
@@ -185,10 +175,6 @@ export default function ConversationPage() {
               </div>
             )
           })}
-
-          {!loading && messages.length === 0 && (
-            <p className="text-white/60">Aucun message pour le moment.</p>
-          )}
         </div>
 
         <div className="mt-4 flex flex-col gap-3">
@@ -201,11 +187,21 @@ export default function ConversationPage() {
               placeholder="Écris ton message..."
               className="border border-gray-600 bg-[#1c1c1c] text-white p-3 rounded flex-grow placeholder-gray-400"
             />
-            <input id="fileInput" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="hidden" />
+
+            <input
+              id="fileInput"
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="hidden"
+            />
             <label htmlFor="fileInput" className="cursor-pointer bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm">
               Fichier
             </label>
-            <button onClick={handleSend} className="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded text-white font-semibold">
+
+            <button
+              onClick={handleSend}
+              className="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded text-white font-semibold"
+            >
               Envoyer
             </button>
           </div>
@@ -219,7 +215,11 @@ export default function ConversationPage() {
               ) : (
                 <p className="text-sm text-white truncate mr-3">{file.name}</p>
               )}
-              <button onClick={() => setFile(null)} className="text-red-500 hover:text-red-700 text-sm font-bold" title="Supprimer le fichier">
+              <button
+                onClick={() => setFile(null)}
+                className="text-red-500 hover:text-red-700 text-sm font-bold"
+                title="Supprimer le fichier"
+              >
                 ✖
               </button>
             </div>
