@@ -1,54 +1,45 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
-import { useAuth } from '@/context/AuthContext'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { useAuth } from '@/context/AuthContext'
 import {
-  Search,
   Bell,
-  MessageCircle,
   ChevronDown,
+  LogOut,
+  Mail,
+  Settings,
+  UserRound,
 } from 'lucide-react'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
-type Profile = {
-  id?: number
-  avatar?: string | null
-  banner?: string | null
-  location?: string | null
-}
-
-type AppUser = {
+type AuthUser = {
   id: number | string
-  role: Role
   name?: string
-  email?: string
-  avatarUrl?: string | null
-  profile?: Profile | null
+  role: Role
+  avatar?: string | null
+  profile?: { id?: number | string } | null
 }
 
 export default function Header() {
-  // Contexte auth typé
-  const { user, logout } = useAuth() as {
-    user: AppUser | null
-    logout: () => void
-  }
-
   const router = useRouter()
-  const pathname = usePathname()
-  const [menuOpen, setMenuOpen] = useState<boolean>(false)
+  const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [notifCount] = useState<number>(3)
 
-  // Logo gérable via Cloudinary / admin
-  const LOGO_URL =
+  // Logo depuis Cloudinary (modifiable en admin) sinon fallback local
+  const LOGO =
     process.env.NEXT_PUBLIC_LOGO_URL ||
     'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
 
-  // Fallback avatar robuste
-  const avatarSrc = useMemo(() => {
-    return user?.profile?.avatar || user?.avatarUrl || '/default-avatar.png'
-  }, [user])
+  // Avatar courant (fallback si vide)
+  const avatarUrl = useMemo(() => {
+    return user?.avatar ||
+      (typeof window !== 'undefined' ? localStorage.getItem('avatar') : null) ||
+      '/default-avatar.png'
+  }, [user?.avatar])
 
   const goTo = (path: string) => router.push(path)
 
@@ -72,250 +63,166 @@ export default function Header() {
     }
   }
 
-  const isActive = (path: string) => pathname?.startsWith(path)
+  // Fermer le menu au changement de route (sécurité UX)
+  useEffect(() => {
+    const onPop = () => setMenuOpen(false)
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   return (
-    <header className="sticky top-0 z-50">
-      {/* Bandeau “glass” + dégradé */}
-      <div className="w-full border-b border-white/10 bg-gradient-to-b from-neutral-950/90 to-neutral-900/60 backdrop-blur-xl supports-[backdrop-filter]:bg-neutral-950/70">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 md:px-6" style={{ height: '88px' }}>
-          {/* Logo + nom */}
-          <button
+    <header className="sticky top-0 z-50 w-full bg-neutral-950/80 backdrop-blur-md border-b border-white/10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="h-16 md:h-18 flex items-center justify-between gap-4">
+          {/* Left : Logo + tagline */}
+          <div
+            className="flex items-center gap-3 cursor-pointer group"
             onClick={() => goTo('/home')}
-            className="group flex items-center gap-3"
-            aria-label="Aller à l’accueil"
+            title="Retour à l'accueil"
           >
-            <div className="relative h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-white/10 group-hover:ring-white/20 transition">
+            <div className="relative h-10 w-10 md:h-12 md:w-12 rounded-2xl overflow-hidden ring-1 ring-white/15 group-hover:ring-white/30 transition">
               <Image
-                src={LOGO_URL}
-                alt="Logo LSBookers"
+                src={LOGO}
+                alt="LSBookers"
                 fill
                 sizes="48px"
                 className="object-cover"
                 priority
               />
             </div>
-            <div className="hidden sm:flex flex-col leading-tight text-left">
-              <span className="text-lg font-bold tracking-wide text-white/95 group-hover:text-white">
-                LSBookers
-              </span>
-              <span className="text-[11px] uppercase tracking-widest text-white/50">
-                Connect • Book • Perform
-              </span>
-            </div>
-          </button>
-
-          {/* Barre de recherche (desktop) */}
-          <div className="hidden md:flex flex-1 justify-center">
-            <div className="relative w-full max-w-xl">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/50" />
-              <input
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') goTo('/search')
-                }}
-                placeholder="Rechercher un artiste, un organisateur, un style…"
-                className="w-full rounded-full bg-white/5 pl-11 pr-4 py-3 text-sm text-white placeholder-white/50 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-white/20 transition"
-              />
+            <div className="leading-tight">
+              <div className="text-white font-semibold text-lg md:text-xl">LSBookers</div>
+              <div className="text-[10px] md:text-xs text-white/60 tracking-wide">
+                CONNECT • BOOK • PERFORM
+              </div>
             </div>
           </div>
 
-          {/* Nav principale */}
-          <nav className="hidden lg:flex items-center gap-7 text-sm font-medium">
-            <HeaderLink label="Recherche" href="/search" active={isActive('/search')} onClick={goTo} />
-            <HeaderLink label="Messagerie" href="/messages" active={isActive('/messages')} onClick={goTo} />
-            <HeaderLink label="Événements" href="/events" active={isActive('/events')} onClick={goTo} />
-            <HeaderLink label="Abonnements" href="/subscriptions" active={isActive('/subscriptions')} onClick={goTo} />
+          {/* Center : NAV (⚠️ barre de recherche SUPPRIMÉE) */}
+          <nav className="hidden md:flex items-center gap-6 text-sm">
+            <button
+              onClick={() => goTo('/search')}
+              className="text-white/80 hover:text-white transition"
+            >
+              Recherche
+            </button>
+
+            {/* “Messagerie” texte SUPPRIMÉ — on garde l’icône à droite */}
+            <button
+              onClick={() => goTo('/booking')}
+              className="text-white/80 hover:text-white transition"
+            >
+              Booking
+            </button>
+
+            <button
+              onClick={() => goTo('/subscriptions')}
+              className="text-white/80 hover:text-white transition"
+            >
+              Abonnements
+            </button>
           </nav>
 
-          {/* Actions droites */}
-          <div className="ml-auto flex items-center gap-4">
-            {/* Messagerie quick */}
-            <IconButton
-              label="Messages"
+          {/* Right : quick actions */}
+          <div className="flex items-center gap-3 md:gap-4">
+            {/* Messages (on garde l’icône uniquement) */}
+            <button
               onClick={() => goTo('/messages')}
-              icon={<MessageCircle className="h-[18px] w-[18px]" />}
-            />
+              className="relative rounded-full p-2 hover:bg-white/10 transition"
+              title="Messagerie"
+            >
+              <Mail className="h-5 w-5 text-white/90" />
+            </button>
 
-            {/* Notifications avec badge */}
-            <div className="relative">
-              <IconButton
-                label="Notifications"
-                onClick={() => alert('Notifications à venir')}
-                icon={<Bell className="h-[18px] w-[18px]" />}
-              />
-              <span className="pointer-events-none absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-pink-600 text-[10px] font-bold text-white ring-2 ring-neutral-900/80">
-                3
-              </span>
-            </div>
+            {/* Notifications */}
+            <button
+              onClick={() => goTo('/notifications')}
+              className="relative rounded-full p-2 hover:bg-white/10 transition"
+              title="Notifications"
+            >
+              <Bell className="h-5 w-5 text-white/90" />
+              {notifCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-pink-600 text-[10px] font-semibold text-white grid place-items-center shadow">
+                  {notifCount}
+                </span>
+              )}
+            </button>
 
-            {/* User chip + avatar + menu */}
+            {/* Avatar + menu */}
             <div className="relative">
               <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="group flex items-center gap-3 rounded-full bg-white/5 px-3 py-1.5 ring-1 ring-white/10 hover:ring-white/20 transition"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                aria-label="Ouvrir le menu utilisateur"
+                onClick={() => setMenuOpen(v => !v)}
+                className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 pl-1 pr-2 py-1 hover:bg-white/10 transition"
+                title="Compte"
               >
-                <div className="text-right hidden md:block leading-tight">
-                  <div className="text-[13px] font-semibold text-white/90 group-hover:text-white">
-                    {user?.name ?? 'Invité'}
-                  </div>
-                  <div className="text-[11px] uppercase tracking-wide text-white/50">
-                    {user ? roleLabel(user.role) : 'non connecté'}
-                  </div>
-                </div>
-                <div className="relative h-11 w-11 overflow-hidden rounded-full ring-2 ring-white/10 group-hover:ring-white/20 transition">
+                <span className="relative h-9 w-9 rounded-full overflow-hidden ring-1 ring-white/20 shadow">
                   <Image
-                    src={avatarSrc}
-                    alt="Photo de profil"
+                    src={avatarUrl}
+                    alt={user?.name || 'Profil'}
                     fill
-                    sizes="44px"
+                    sizes="36px"
                     className="object-cover"
                     unoptimized
                   />
+                </span>
+                <div className="hidden sm:flex flex-col items-start leading-tight mr-1">
+                  <span className="text-xs text-white/70">
+                    {user?.role === 'ARTIST'
+                      ? 'ARTISTE'
+                      : user?.role === 'ORGANIZER'
+                      ? 'ORGANISATEUR'
+                      : user?.role === 'PROVIDER'
+                      ? 'PRESTATAIRE'
+                      : user?.role === 'ADMIN'
+                      ? 'ADMIN'
+                      : 'COMPTE'}
+                  </span>
+                  <span className="text-sm font-medium text-white">
+                    {user?.name || 'Mon compte'}
+                  </span>
                 </div>
-                <ChevronDown className="hidden md:block h-4 w-4 text-white/60 group-hover:text-white/80 transition" />
+                <ChevronDown className="h-4 w-4 text-white/70" />
               </button>
 
               {menuOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/95 backdrop-blur shadow-2xl"
-                >
-                  <div className="px-4 py-3 border-b border-white/10">
-                    <div className="text-sm font-semibold text-white/90">{user?.name ?? 'Invité'}</div>
-                    <div className="text-[11px] text-white/50">{user?.email ?? '—'}</div>
-                  </div>
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-white/10 bg-neutral-900/95 backdrop-blur shadow-xl overflow-hidden z-50">
                   <button
-                    role="menuitem"
                     onClick={() => {
                       setMenuOpen(false)
                       goToProfile()
                     }}
-                    className="block w-full px-4 py-2 text-left text-sm text-white/90 hover:bg-white/10"
+                    className="w-full px-3 py-2.5 text-left text-sm hover:bg-white/5 flex items-center gap-2"
                   >
+                    <UserRound className="h-4 w-4 text-white/80" />
                     Voir le profil
                   </button>
                   <button
-                    role="menuitem"
                     onClick={() => {
                       setMenuOpen(false)
                       goTo('/settings/profile')
                     }}
-                    className="block w-full px-4 py-2 text-left text-sm text-white/90 hover:bg-white/10"
+                    className="w-full px-3 py-2.5 text-left text-sm hover:bg-white/5 flex items-center gap-2"
                   >
+                    <Settings className="h-4 w-4 text-white/80" />
                     Paramètres
                   </button>
-                  <div className="h-px bg-white/10 my-1" />
-                  {user ? (
-                    <button
-                      role="menuitem"
-                      onClick={() => {
-                        logout()
-                        setMenuOpen(false)
-                      }}
-                      className="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-white/10"
-                    >
-                      Se déconnecter
-                    </button>
-                  ) : (
-                    <button
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        goTo('/login')
-                      }}
-                      className="block w-full px-4 py-2 text-left text-sm text-white/90 hover:bg-white/10"
-                    >
-                      Se connecter
-                    </button>
-                  )}
+                  <div className="my-1 h-px bg-white/10" />
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false)
+                      logout()
+                    }}
+                    className="w-full px-3 py-2.5 text-left text-sm hover:bg-white/5 flex items-center gap-2 text-rose-400"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Se déconnecter
+                  </button>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Nav secondaire mobile (sous le header) */}
-      <div className="lg:hidden border-b border-white/10 bg-neutral-950/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-          <button onClick={() => goTo('/search')} className={mobileLink(isActive('/search'))}>Recherche</button>
-          <button onClick={() => goTo('/messages')} className={mobileLink(isActive('/messages'))}>Messagerie</button>
-          <button onClick={() => goTo('/events')} className={mobileLink(isActive('/events'))}>Événements</button>
-          <button onClick={() => goTo('/subscriptions')} className={mobileLink(isActive('/subscriptions'))}>Abonnements</button>
-        </div>
-      </div>
     </header>
   )
-}
-
-/* ======= sous-composants ======= */
-function HeaderLink({
-  label,
-  href,
-  active,
-  onClick,
-}: {
-  label: string
-  href: string
-  active?: boolean
-  onClick: (path: string) => void
-}) {
-  return (
-    <button
-      onClick={() => onClick(href)}
-      className={`relative text-white/80 hover:text-white transition-colors ${
-        active ? 'text-white' : ''
-      }`}
-    >
-      {label}
-      <span
-        className={`absolute -bottom-2 left-0 h-[2px] w-full rounded bg-white/80 transition-transform ${
-          active ? 'scale-100' : 'scale-0 group-hover:scale-100'
-        }`}
-      />
-    </button>
-  )
-}
-
-function IconButton({
-  label,
-  onClick,
-  icon,
-}: {
-  label: string
-  onClick: () => void
-  icon: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 hover:ring-white/20 hover:bg-white/10 transition"
-      aria-label={label}
-      title={label}
-    >
-      <span className="text-white/80">{icon}</span>
-    </button>
-  )
-}
-
-function roleLabel(role?: Role) {
-  switch (role) {
-    case 'ARTIST':
-      return 'Artiste'
-    case 'ORGANIZER':
-      return 'Organisateur'
-    case 'PROVIDER':
-      return 'Prestataire'
-    case 'ADMIN':
-      return 'Admin'
-    default:
-      return 'Utilisateur'
-  }
-}
-
-function mobileLink(active: boolean) {
-  return `px-2 py-1 text-sm ${active ? 'text-white' : 'text-white/80 hover:text-white'}`
 }
