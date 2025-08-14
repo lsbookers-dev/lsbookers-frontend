@@ -14,6 +14,7 @@ interface User {
     country?: string
     specialties?: string[]
     typeEtablissement?: string
+    avatar?: string | null
   }
 }
 
@@ -21,6 +22,8 @@ const SPECIALTIES = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
 const PROVIDER_TYPES = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
 const ESTABLISHMENT_TYPES = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
 const COUNTRIES = ['France', 'Belgium', 'Canada', 'United States', 'United Kingdom', 'Spain', 'Germany', 'Italy', 'Portugal', 'Switzerland']
+
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 export default function SearchPage() {
   const router = useRouter()
@@ -37,26 +40,36 @@ export default function SearchPage() {
   const [users, setUsers] = useState<User[]>([])
 
   const handleSearch = useCallback(() => {
-    if (!token) return
+    if (!token || !API_BASE) return
 
     const params = new URLSearchParams()
     if (searchTerm) params.append('name', searchTerm)
     if (roleFilter) params.append('role', roleFilter)
     if (specialtyFilter) params.append('specialty', specialtyFilter)
-    if (typeProviderFilter) params.append('specialty', typeProviderFilter)
+    if (typeProviderFilter) params.append('specialty', typeProviderFilter) // côté API, même clé
     if (establishmentTypeFilter) params.append('typeEtablissement', establishmentTypeFilter)
     if (zone) params.append('zone', zone)
     if (country) params.append('country', country)
     if (radiusKm) params.append('radius', radiusKm)
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/search?${params.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    fetch(`${API_BASE}/api/search?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.json())
-      .then(data => setUsers(data.users))
-      .catch(err => console.error('Erreur recherche :', err))
+      .then(async (res) => {
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '')
+          throw new Error(`HTTP ${res.status} ${txt}`)
+        }
+        return res.json()
+      })
+      .then((data) => {
+        const list = Array.isArray(data?.users) ? data.users : []
+        setUsers(list)
+      })
+      .catch(err => {
+        console.error('Erreur recherche :', err)
+        setUsers([])
+      })
   }, [token, searchTerm, roleFilter, specialtyFilter, establishmentTypeFilter, typeProviderFilter, zone, country, radiusKm])
 
   useEffect(() => {
@@ -65,6 +78,8 @@ export default function SearchPage() {
   }, [token, handleSearch])
 
   const goToProfile = (user: User) => {
+    // NOTE: ta navigation par ID n’est pas encore implémentée côté pages.
+    // On laisse tel quel, mais sache que /artist/:id /organizer/:id /provider/:id doivent exister pour que le clic fonctionne.
     const route =
       user.role === 'ARTIST'
         ? `/artist/${user.id}`
@@ -186,11 +201,12 @@ export default function SearchPage() {
           >
             <div className="flex items-center gap-4">
               <Image
-                src="/default-avatar.png"
+                src={user.profile?.avatar || '/default-avatar.png'}
                 alt="avatar"
                 width={50}
                 height={50}
                 className="rounded-full"
+                unoptimized
               />
               <div>
                 <h2 className="text-lg font-semibold">{user.name}</h2>
@@ -203,8 +219,8 @@ export default function SearchPage() {
                 </p>
                 {(user.profile?.location || user.profile?.country) && (
                   <p className="text-xs text-gray-500">
-                    📍 {user.profile.location}
-                    {user.profile.country ? `, ${user.profile.country}` : ''}
+                    📍 {user.profile?.location}
+                    {user.profile?.country ? `, ${user.profile.country}` : ''}
                   </p>
                 )}
               </div>
