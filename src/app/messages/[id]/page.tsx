@@ -53,29 +53,18 @@ export default function ConversationPage() {
     const token = getAuthToken()
     const commonHeaders = { Authorization: `Bearer ${token}` }
 
-    // essaie plusieurs routes possibles selon le backend
-    const candidates = [
-      `${API_BASE}/messages/messages/${conversationId}`,
-      `${API_BASE}/messages/conversation/${conversationId}`,
-      `${API_BASE}/messages/${conversationId}`,
-    ]
-
-    for (const url of candidates) {
-      try {
-        const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
-        const payload = res.data
-        const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
-        if (Array.isArray(list)) {
-          setMessages(list)
-          return
-        }
-      } catch {
-        // on tente la suivante
+    try {
+      const url = `${API_BASE}/messages/${conversationId}` // Utilise la route /api/messages/:conversationId
+      const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
+      const payload = res.data
+      const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
+      if (Array.isArray(list)) {
+        setMessages(list)
+        return
       }
+    } catch {
+      console.error('Aucun endpoint de récupération des messages ne répond.')
     }
-
-    // si aucune route n’a répondu correctement:
-    console.error('Aucun endpoint de récupération des messages ne répond.')
   }
 
   useEffect(() => {
@@ -106,19 +95,18 @@ export default function ConversationPage() {
         if (content.trim()) fd.append('content', content.trim())
         fd.append('file', file)
 
-        await axios.post<SendFileResp>(`${API_BASE}/messages/send-file`, fd, {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+        const res = await axios.post<SendFileResp>(`${API_BASE}/send-file`, fd, {
+          headers: { Authorization: `Bearer ${token}` }, // Pas de Content-Type, FormData le gère
         })
-        // certaines API renvoient { conversationId }, on l’attrape pour être sûr
-        // (on ne force pas ici, on refetch juste)
+        newConvId = res.data.conversationId
       } else {
         // --------- envoi texte (JSON) ---------
         const res = await axios.post<SendJsonResp>(
-          `${API_BASE}/messages/send`,
+          `${API_BASE}/send`,
           { conversationId, content: content.trim() },
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
         )
-        newConvId = res.data?.conversationId
+        newConvId = res.data.conversationId
       }
 
       // Nettoyage champ + fichier (forcé)
@@ -136,6 +124,7 @@ export default function ConversationPage() {
       await fetchMessages()
     } catch (error) {
       console.error('Erreur envoi message :', error)
+      alert('Erreur lors de l\'envoi. Vérifie la console.')
     }
   }
 
@@ -259,4 +248,4 @@ export default function ConversationPage() {
       </div>
     </main>
   )
-}
+  }
