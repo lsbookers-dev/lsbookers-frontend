@@ -35,6 +35,30 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 
+async function tryGet<T = unknown>(urls: string[], headers: Record<string, string>) {
+  for (const url of urls) {
+    try {
+      const res: AxiosResponse<T> = await axios.get(url, { headers })
+      return res
+    } catch (e: unknown) {
+      // tente l’URL suivante
+    }
+  }
+  throw new Error('Toutes les URL GET ont échoué')
+}
+
+async function tryPost<T = unknown>(urls: string[], data: any, headers: Record<string, string>) {
+  for (const url of urls) {
+    try {
+      const res: AxiosResponse<T> = await axios.post(url, data, { headers })
+      return res
+    } catch (e: unknown) {
+      // tente l’URL suivante
+    }
+  }
+  throw new Error('Toutes les URL POST ont échoué')
+}
+
 /* ---------- Page ---------- */
 export default function ConversationPage() {
   const router = useRouter()
@@ -51,17 +75,19 @@ export default function ConversationPage() {
   const fetchMessages = async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
-    const commonHeaders = { Authorization: `Bearer ${token}` }
+    const headers = { Authorization: `Bearer ${token}` }
 
     try {
-      const url = `${API_BASE}/messages/messages/${conversationId}` // Ajusté pour /api/messages/messages/:id
-      const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
+      const urls = [
+        `${API_BASE}/api/messages/messages/${conversationId}`,
+        `${API_BASE}/messages/messages/${conversationId}`,
+        `${API_BASE}/api/messages/conversation/${conversationId}`,
+        `${API_BASE}/messages/conversation/${conversationId}`,
+      ]
+      const res = await tryGet<ApiMessagesResponse>(urls, headers)
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
-      if (Array.isArray(list)) {
-        setMessages(list)
-        return
-      }
+      setMessages(Array.isArray(list) ? list : [])
     } catch (error) {
       console.error('Erreur fetch messages :', error)
     }
@@ -95,18 +121,24 @@ export default function ConversationPage() {
         if (content.trim()) fd.append('content', content.trim())
         fd.append('file', file)
 
-        const res = await axios.post<SendFileResp>(`${API_BASE}/messages/send-file`, fd, {
-          headers: { Authorization: `Bearer ${token}` }, // Pas de Content-Type, FormData le gère
-        })
-        newConvId = res.data.conversationId
+        const urls = [
+          `${API_BASE}/api/messages/send-file`,
+          `${API_BASE}/messages/send-file`,
+        ]
+        const res = await tryPost<SendFileResp>(urls, fd, { Authorization: `Bearer ${token}` })
+        newConvId = res.data?.conversationId
       } else {
         // --------- envoi texte (JSON) ---------
-        const res = await axios.post<SendJsonResp>(
+        const body = { conversationId, content: content.trim() }
+        const urls = [
+          `${API_BASE}/api/messages/send`,
           `${API_BASE}/messages/send`,
-          { conversationId, content: content.trim() },
-          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-        )
-        newConvId = res.data.conversationId
+        ]
+        const res = await tryPost<SendJsonResp>(urls, body, {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        })
+        newConvId = res.data?.conversationId
       }
 
       // Nettoyage champ + fichier (forcé)
@@ -114,17 +146,17 @@ export default function ConversationPage() {
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
-      // Si l’API crée/retourne un autre conversationId, on redirige dessus
+      // Redirection si un nouvel id est renvoyé
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
         return
       }
 
-      // sinon on recharge la conversation courante
+      // Recharge la conversation courante
       await fetchMessages()
     } catch (error) {
       console.error('Erreur envoi message :', error)
-      alert('Erreur lors de l\'envoi. Vérifie la console.')
+      alert("Erreur lors de l'envoi. Vérifie la console.")
     }
   }
 
@@ -248,4 +280,4 @@ export default function ConversationPage() {
       </div>
     </main>
   )
-  }
+}

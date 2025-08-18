@@ -44,7 +44,7 @@ export default function MessagesPage() {
   )
 
   const fetchConversations = useCallback(async () => {
-    if (!API_BASE || !token) return
+    if (!token) return
     try {
       setError(null)
       const res = await fetch(`${API_BASE}/api/messages/conversations`, {
@@ -52,7 +52,6 @@ export default function MessagesPage() {
         cache: 'no-store',
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
-      // Le backend peut renvoyer soit {conversations: [...]}, soit directement [...]
       const raw = await res.json()
       const list: Conversation[] = raw?.conversations ?? raw ?? []
       setConversations(Array.isArray(list) ? list : [])
@@ -60,10 +59,10 @@ export default function MessagesPage() {
       console.error('Conversations load error:', err)
       setError('Impossible de charger les conversations.')
     }
-  }, [API_BASE, token, authedHeaders])
+  }, [token, authedHeaders])
 
   const fetchUsers = useCallback(async () => {
-    if (!API_BASE || !token) return
+    if (!token) return
     try {
       setLoadingUsers(true)
       const res = await fetch(`${API_BASE}/api/users`, {
@@ -77,11 +76,10 @@ export default function MessagesPage() {
       setAllUsers(filtered)
     } catch (err) {
       console.error('Users load error:', err)
-      // pas d’error UI bloquante ici
     } finally {
       setLoadingUsers(false)
     }
-  }, [API_BASE, token, authedHeaders, user?.id])
+  }, [token, authedHeaders, user?.id])
 
   useEffect(() => {
     if (!token) return
@@ -90,13 +88,12 @@ export default function MessagesPage() {
   }, [token, fetchConversations, fetchUsers])
 
   useEffect(() => {
-    // redirige si non connecté
     if (user === null) router.push('/login')
   }, [user, router])
 
   const startConversation = useCallback(
     async (recipientId: number) => {
-      if (!API_BASE || !token) return
+      if (!token) return
       try {
         const res = await fetch(`${API_BASE}/api/messages/send`, {
           method: 'POST',
@@ -107,25 +104,23 @@ export default function MessagesPage() {
           body: JSON.stringify({ recipientId, content: 'Salut !' }),
         })
 
-        const data = await res.json().catch(() => ({}))
-        // on accepte plusieurs formes possibles de réponse
+        const data = await res.json().catch(() => ({} as unknown))
         const convId =
-          data?.conversationId ??
-          data?.conversation?.id ??
-          data?.id ??
+          (data as { conversationId?: number })?.conversationId ??
+          (data as { conversation?: { id?: number } })?.conversation?.id ??
+          (data as { id?: number })?.id ??
           null
 
         if (convId) {
           router.push(`/messages/${convId}`)
         } else {
-          // si pas d’id renvoyé, on recharge la liste
           await fetchConversations()
         }
       } catch (err) {
         console.error('Erreur démarrage conversation :', err)
       }
     },
-    [API_BASE, token, authedHeaders, router, fetchConversations]
+    [token, authedHeaders, router, fetchConversations]
   )
 
   const getOtherUser = (conv: Conversation) =>
