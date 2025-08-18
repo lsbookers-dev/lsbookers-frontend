@@ -22,8 +22,7 @@ type Message = {
 }
 
 type ApiMessagesResponse = Message[] | { messages: Message[] }
-type SendJsonResp = { conversationId?: string | number; message?: Message }
-type SendFileResp = { conversationId?: string | number; message?: Message }
+type SendResp = { conversationId?: string | number; message?: Message }
 
 /* ---------- Helpers ---------- */
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -61,7 +60,6 @@ export default function ConversationPage() {
       setMessages(Array.isArray(list) ? list : [])
       return
     } catch {
-      // Fallback si l’API est mappée différemment
       try {
         const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
         const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: commonHeaders })
@@ -69,7 +67,6 @@ export default function ConversationPage() {
         const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
         setMessages(Array.isArray(listAlt) ? listAlt : [])
       } catch {
-        // Dernier fallback: ancienne route sans /api
         try {
           const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
           const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: commonHeaders })
@@ -88,7 +85,6 @@ export default function ConversationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId])
 
-  // Scroll auto vers le bas quand les messages changent
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
@@ -102,45 +98,47 @@ export default function ConversationPage() {
     const token = getAuthToken()
 
     try {
-      let newConvId: string | number | undefined
-
-      if (file) {
-        // --------- envoi fichier (multipart) ---------
-        const fd = new FormData()
-        fd.append('conversationId', conversationId)
-        if (content.trim()) fd.append('content', content.trim())
-        fd.append('file', file)
-
-        const res = await axios.post<SendFileResp>(`${API_BASE}/api/messages/send-file`, fd, {
-          headers: { Authorization: `Bearer ${token}` }, // FormData gère le Content-Type
-        })
-        newConvId = res.data.conversationId
-      } else {
-        // --------- envoi texte (JSON) ---------
-        const res = await axios.post<SendJsonResp>(
-          `${API_BASE}/api/messages/send`,
-          { conversationId, content: content.trim() },
-          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-        )
-        newConvId = res.data.conversationId
+      // Optimistic UI si texte seul (pas de fichier)
+      if (content.trim() && !file) {
+        const optimistic: Message = {
+          id: `temp-${Date.now()}`,
+          content,
+          createdAt: new Date().toISOString(),
+          sender: { id: 0, name: 'Vous' },
+          seen: false,
+        }
+        setMessages(prev => [...prev, optimistic])
       }
 
-      // Nettoyage champ + fichier (forcé)
+      // Utilise TOUJOURS le multipart + endpoint send-file (même sans fichier)
+      const fd = new FormData()
+      fd.append('conversationId', conversationId)
+      if (content.trim()) fd.append('content', content.trim())
+      if (file) fd.append('file', file)
+
+      const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      // Reset des inputs
       setContent('')
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
-      // Si l’API crée/retourne un autre conversationId, on redirige dessus
+      // Si l’API renvoie un nouvel id de conversation, on redirige
+      const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
         return
       }
 
-      // sinon on recharge la conversation courante
+      // sinon, on recharge
       await fetchMessages()
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
+      // rollback possible: retirer l’optimistic si besoin
+      setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')))
     }
   }
 
@@ -182,7 +180,6 @@ export default function ConversationPage() {
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
         >
           {messages.map((msg) => {
-            // convention backend : première ligne = texte, une ligne contenant "http" = lien fichier
             const parts = msg.content.split('\n')
             const text = parts[0] ?? ''
             const urlLine = parts.find((line: string) => line.includes('http'))
