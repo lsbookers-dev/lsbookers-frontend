@@ -54,7 +54,7 @@ export default function ConversationPage() {
     const commonHeaders = { Authorization: `Bearer ${token}` }
 
     try {
-      const url = `${API_BASE}/messages/${conversationId}` // Utilise la route /api/messages/:conversationId
+      const url = `${API_BASE}/messages/messages/${conversationId}` // Ajusté pour /api/messages/messages/:id
       const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
@@ -62,8 +62,8 @@ export default function ConversationPage() {
         setMessages(list)
         return
       }
-    } catch {
-      console.error('Aucun endpoint de récupération des messages ne répond.')
+    } catch (error) {
+      console.error('Erreur fetch messages :', error)
     }
   }
 
@@ -95,14 +95,14 @@ export default function ConversationPage() {
         if (content.trim()) fd.append('content', content.trim())
         fd.append('file', file)
 
-        const res = await axios.post<SendFileResp>(`${API_BASE}/send-file`, fd, {
+        const res = await axios.post<SendFileResp>(`${API_BASE}/messages/send-file`, fd, {
           headers: { Authorization: `Bearer ${token}` }, // Pas de Content-Type, FormData le gère
         })
         newConvId = res.data.conversationId
       } else {
         // --------- envoi texte (JSON) ---------
         const res = await axios.post<SendJsonResp>(
-          `${API_BASE}/send`,
+          `${API_BASE}/messages/send`,
           { conversationId, content: content.trim() },
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
         )
