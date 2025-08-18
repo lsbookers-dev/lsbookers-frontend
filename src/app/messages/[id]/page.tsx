@@ -39,6 +39,7 @@ function toAbsoluteUrl(u: string): string {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
   if (u.startsWith('//')) return `https:${u}`
+  if (u.startsWith('blob:') || u.startsWith('data:')) return u
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
@@ -46,6 +47,15 @@ function toAbsoluteUrl(u: string): string {
 function extractUrlFromContent(content: string): string {
   const m = content.match(/https?:\/\/[^\s)"]+/i)
   return m ? m[0] : ''
+}
+
+/** Détecte si une URL semble être une vidéo (extensions communes + Cloudinary /video/upload/) */
+function isVideoUrl(url: string): boolean {
+  const lower = url.toLowerCase()
+  if (/\.(mp4|webm|mov|mkv|m4v)$/.test(lower)) return true
+  // Heuristique Cloudinary
+  if (lower.includes('/video/upload/')) return true
+  return false
 }
 
 /* ---------- Page ---------- */
@@ -125,13 +135,12 @@ export default function ConversationPage() {
         setMessages(prev => [...prev, optimistic])
       }
 
-      // Utilise multipart pour TOUT, et on donne des hints quand c’est une vidéo
+      // Utilise multipart pour TOUT, et hints pour aider le backend/Cloudinary
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
       if (file) {
         fd.append('file', file)
-        // Hints côté backend (tolérés si ignorés) :
         if (file.type.startsWith('video')) {
           fd.append('type', 'video')
           fd.append('folder', 'messages')
@@ -147,8 +156,8 @@ export default function ConversationPage() {
         res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
           headers: { Authorization: `Bearer ${token}` },
         })
-      } catch (err) {
-        // Fallback legacy si serveur attend /messages/send-file
+      } catch {
+        // Fallback legacy
         res = await axios.post<SendResp>(`${API_BASE}/messages/send-file`, fd, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -159,7 +168,7 @@ export default function ConversationPage() {
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
-      // Redirige si nouvel id conversation
+      // Redirige si nouvel id de conversation
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
@@ -186,13 +195,15 @@ export default function ConversationPage() {
     const abs = toAbsoluteUrl(rawUrl.trim())
     const lower = abs.toLowerCase()
 
-    if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
+    // Détection Cloudinary vidéo même sans extension
+    const videoDetected = isVideoUrl(abs)
+
+    if (!videoDetected && /\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
       return <Image src={abs} alt="media" width={240} height={240} className="rounded" unoptimized />
     }
-    if (/\.(mp4|webm)$/.test(lower)) {
+    if (videoDetected) {
       return (
-        <video controls className="w-64 rounded">
-          {/* type aide certains navigateurs */}
+        <video controls playsInline className="w-64 rounded">
           <source src={abs} type={lower.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
@@ -277,7 +288,7 @@ export default function ConversationPage() {
               {file.type.startsWith('image') ? (
                 <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" unoptimized />
               ) : file.type.startsWith('video') ? (
-                <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
+                <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls playsInline />
               ) : (
                 <p className="text-sm text-white truncate mr-3">{file.name}</p>
               )}
