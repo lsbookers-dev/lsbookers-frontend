@@ -34,20 +34,6 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 
-/** Préfixe les chemins relatifs (ex: /uploads/xxx.jpg) avec l’API */
-function toAbsoluteUrl(u: string): string {
-  if (!u) return ''
-  if (u.startsWith('http://') || u.startsWith('https://')) return u
-  if (u.startsWith('//')) return `https:${u}`
-  return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
-}
-
-/** Extrait la 1ère URL http(s) depuis un contenu de message */
-function extractUrlFromContent(content: string): string {
-  const m = content.match(/https?:\/\/[^\s)"]+/i)
-  return m ? m[0] : ''
-}
-
 /* ---------- Page ---------- */
 export default function ConversationPage() {
   const router = useRouter()
@@ -80,7 +66,6 @@ export default function ConversationPage() {
         const payloadAlt = resAlt.data
         const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
         setMessages(Array.isArray(listAlt) ? listAlt : [])
-        return
       } catch {
         try {
           const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
@@ -122,53 +107,38 @@ export default function ConversationPage() {
           sender: { id: 0, name: 'Vous' },
           seen: false,
         }
-        setMessages((prev: Message[]) => [...prev, optimistic])
+        setMessages(prev => [...prev, optimistic])
       }
 
-      // Utilise multipart pour TOUT, et on donne des hints quand c’est une vidéo
+      // Utilise TOUJOURS le multipart + endpoint send-file (même sans fichier)
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
-      if (file) {
-        fd.append('file', file)
-        if (file.type.startsWith('video')) {
-          fd.append('type', 'video')
-          fd.append('folder', 'messages')
-        } else if (file.type.startsWith('image')) {
-          fd.append('type', 'image')
-          fd.append('folder', 'messages')
-        }
-      }
+      if (file) fd.append('file', file)
 
-      // Endpoint principal puis fallback
-      let res: AxiosResponse<SendResp>
-      try {
-        res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      } catch {
-        res = await axios.post<SendResp>(`${API_BASE}/messages/send-file`, fd, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      }
+      const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
       // Reset des inputs
       setContent('')
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
+      // Si l’API renvoie un nouvel id de conversation, on redirige
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
         return
       }
 
+      // sinon, on recharge
       await fetchMessages()
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
-      // rollback de l’optimistic si échec (ne retire que les temp-)
-      setMessages((prev: Message[]) => prev.filter((m: Message) => !m.id.startsWith('temp-')))
+      // rollback possible: retirer l’optimistic si besoin
+      setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')))
     }
   }
 
@@ -179,23 +149,22 @@ export default function ConversationPage() {
     }
   }
 
-  const renderFile = (rawUrl: string) => {
-    const abs = toAbsoluteUrl(rawUrl.trim())
-    const lower = abs.toLowerCase()
-
+  const renderFile = (url: string) => {
+    const cleanUrl = url.trim()
+    const lower = cleanUrl.toLowerCase()
     if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
-      return <Image src={abs} alt="media" width={240} height={240} className="rounded" unoptimized />
+      return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" />
     }
     if (/\.(mp4|webm)$/.test(lower)) {
       return (
         <video controls className="w-64 rounded">
-          <source src={abs} type={lower.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
+          <source src={cleanUrl} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
       )
     }
     return (
-      <a href={abs} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
+      <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
         Télécharger le fichier
       </a>
     )
@@ -210,14 +179,16 @@ export default function ConversationPage() {
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
         >
-          {messages.map((msg: Message) => {
-            const firstLine = msg.content.split('\n')[0] ?? ''
-            const extracted = extractUrlFromContent(msg.content)
+          {messages.map((msg) => {
+            const parts = msg.content.split('\n')
+            const text = parts[0] ?? ''
+            const urlLine = parts.find((line: string) => line.includes('http'))
+            const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
 
             return (
               <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
                 {msg.sender?.image ? (
-                  <Image src={toAbsoluteUrl(msg.sender.image)} alt={msg.sender.name} width={40} height={40} className="rounded-full" unoptimized />
+                  <Image src={msg.sender.image} alt={msg.sender.name} width={40} height={40} className="rounded-full" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gray-700 grid place-items-center text-white font-bold">
                     {msg.sender?.name?.charAt(0) ?? '?'}
@@ -227,8 +198,8 @@ export default function ConversationPage() {
                   <p className="text-sm text-gray-400 mb-1">
                     {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
                   </p>
-                  {firstLine && <p className="mb-1 text-base leading-relaxed">{firstLine}</p>}
-                  {extracted && renderFile(extracted)}
+                  {text && <p className="mb-1 text-base leading-relaxed">{text}</p>}
+                  {url && renderFile(url)}
                   <p className="text-xs text-right text-gray-500 mt-1">{msg.seen ? '✓ Vu' : 'Non lu'}</p>
                 </div>
               </div>
@@ -271,7 +242,7 @@ export default function ConversationPage() {
           {file && (
             <div className="flex items-center justify-between bg-gray-800 p-3 rounded">
               {file.type.startsWith('image') ? (
-                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" unoptimized />
+                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" />
               ) : file.type.startsWith('video') ? (
                 <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
               ) : (
