@@ -42,7 +42,7 @@ function toAbsoluteUrl(u: string): string {
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
-/** Extrait la première URL http(s) présente dans le contenu */
+/** Extrait la 1ère URL http(s) depuis un contenu de message */
 function extractUrlFromContent(content: string): string {
   const m = content.match(/https?:\/\/[^\s)"]+/i)
   return m ? m[0] : ''
@@ -80,6 +80,7 @@ export default function ConversationPage() {
         const payloadAlt = resAlt.data
         const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
         setMessages(Array.isArray(listAlt) ? listAlt : [])
+        return
       } catch {
         try {
           const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
@@ -124,29 +125,41 @@ export default function ConversationPage() {
         setMessages(prev => [...prev, optimistic])
       }
 
-      // Envoi via multipart (même sans fichier)
+      // Utilise multipart pour TOUT, et on donne des hints quand c’est une vidéo
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
       if (file) {
         fd.append('file', file)
-        // ⚠️ Indice pour le backend / Cloudinary
-        fd.append('type', file.type.startsWith('video') ? 'video' : 'image')
-        fd.append('folder', 'messages')
-        // Info utile (certains serveurs s’en servent)
-        fd.append('mimetype', file.type)
-        fd.append('filename', file.name)
+        // Hints côté backend (tolérés si ignorés) :
+        if (file.type.startsWith('video')) {
+          fd.append('type', 'video')
+          fd.append('folder', 'messages')
+        } else if (file.type.startsWith('image')) {
+          fd.append('type', 'image')
+          fd.append('folder', 'messages')
+        }
       }
 
-      const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      // Endpoint principal
+      let res: AxiosResponse<SendResp>
+      try {
+        res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      } catch (err) {
+        // Fallback legacy si serveur attend /messages/send-file
+        res = await axios.post<SendResp>(`${API_BASE}/messages/send-file`, fd, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      }
 
       // Reset des inputs
       setContent('')
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
+      // Redirige si nouvel id conversation
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
@@ -157,6 +170,7 @@ export default function ConversationPage() {
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
+      // rollback de l’optimistic si échec
       setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')))
     }
   }
@@ -172,17 +186,14 @@ export default function ConversationPage() {
     const abs = toAbsoluteUrl(rawUrl.trim())
     const lower = abs.toLowerCase()
 
-    // Détection robuste (gère ?query / #hash)
-    const isImage = /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(lower)
-    const isVideo = /\.(mp4|webm)(\?|#|$)/i.test(lower) || lower.includes('/video/upload/')
-
-    if (isImage) {
+    if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
       return <Image src={abs} alt="media" width={240} height={240} className="rounded" unoptimized />
     }
-    if (isVideo) {
+    if (/\.(mp4|webm)$/.test(lower)) {
       return (
         <video controls className="w-64 rounded">
-          <source src={abs} />
+          {/* type aide certains navigateurs */}
+          <source src={abs} type={lower.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
       )
