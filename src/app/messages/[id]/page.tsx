@@ -39,11 +39,10 @@ function toAbsoluteUrl(u: string): string {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
   if (u.startsWith('//')) return `https:${u}`
-  // chemin relatif => on préfixe par l’API
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
-/** Extrait la première URL http(s) présente dans le contenu, peu importe la forme */
+/** Extrait la première URL http(s) présente dans le contenu */
 function extractUrlFromContent(content: string): string {
   const m = content.match(/https?:\/\/[^\s)"]+/i)
   return m ? m[0] : ''
@@ -77,14 +76,14 @@ export default function ConversationPage() {
     } catch {
       try {
         const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
-        const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+        const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: commonHeaders })
         const payloadAlt = resAlt.data
         const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
         setMessages(Array.isArray(listAlt) ? listAlt : [])
       } catch {
         try {
           const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
-          const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+          const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: commonHeaders })
           const payloadLegacy = resLegacy.data
           const listLegacy = isArrayResp(payloadLegacy) ? payloadLegacy : isObjResp(payloadLegacy) ? payloadLegacy.messages : []
           setMessages(Array.isArray(listLegacy) ? listLegacy : [])
@@ -129,7 +128,15 @@ export default function ConversationPage() {
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
-      if (file) fd.append('file', file)
+      if (file) {
+        fd.append('file', file)
+        // ⚠️ Indice pour le backend / Cloudinary
+        fd.append('type', file.type.startsWith('video') ? 'video' : 'image')
+        fd.append('folder', 'messages')
+        // Info utile (certains serveurs s’en servent)
+        fd.append('mimetype', file.type)
+        fd.append('filename', file.name)
+      }
 
       const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
         headers: { Authorization: `Bearer ${token}` },
@@ -161,41 +168,25 @@ export default function ConversationPage() {
     }
   }
 
-  /** ✅ rendu fichiers corrigé (images + vidéos fonctionnels) */
   const renderFile = (rawUrl: string) => {
     const abs = toAbsoluteUrl(rawUrl.trim())
-    const base = abs.split('?')[0].toLowerCase()
+    const lower = abs.toLowerCase()
 
-    const isImage =
-      /\.(jpg|jpeg|png|gif|webp|avif)$/.test(base) ||
-      (base.includes('res.cloudinary.com') && base.includes('/image/upload'))
+    // Détection robuste (gère ?query / #hash)
+    const isImage = /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(lower)
+    const isVideo = /\.(mp4|webm)(\?|#|$)/i.test(lower) || lower.includes('/video/upload/')
 
     if (isImage) {
-      return (
-        <Image
-          src={abs}
-          alt="media"
-          width={240}
-          height={240}
-          className="rounded"
-          unoptimized
-        />
-      )
+      return <Image src={abs} alt="media" width={240} height={240} className="rounded" unoptimized />
     }
-
-    const isVideo =
-      /\.(mp4|webm|mov|m4v)$/.test(base) ||
-      (base.includes('res.cloudinary.com') && base.includes('/video/upload'))
-
     if (isVideo) {
       return (
-        <video controls className="w-64 rounded" preload="metadata">
+        <video controls className="w-64 rounded">
           <source src={abs} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
       )
     }
-
     return (
       <a href={abs} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
         Télécharger le fichier
