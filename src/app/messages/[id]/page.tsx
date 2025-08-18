@@ -34,19 +34,37 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 
-/** Préfixe les chemins relatifs (ex: /uploads/xxx.jpg) avec l’API */
-function toAbsoluteUrl(u: string): string {
-  if (!u) return ''
-  if (u.startsWith('http://') || u.startsWith('https://')) return u
-  if (u.startsWith('//')) return `https:${u}`
-  // chemin relatif => on préfixe par l’API
-  return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
+// Nettoie et extrait une URL plausible depuis une ligne de texte
+function extractUrl(raw: string): string | null {
+  if (!raw) return null
+  const line = raw.replace(/^Lien\s*:\s*/i, '').trim()
+  // capture http(s):// jusqu’à espace/fin/parenthèse
+  const m = line.match(/https?:\/\/[^\s)]+/i)
+  return (m?.[0] || line).trim()
 }
 
-/** Extrait la première URL http(s) présente dans le contenu, peu importe la forme (Lien: …, etc.) */
-function extractUrlFromContent(content: string): string {
-  const m = content.match(/https?:\/\/[^\s)"]+/i)
-  return m ? m[0] : ''
+// Transforme en URL absolue si le backend renvoie /uploads/...
+function toAbsoluteUrl(u: string): string {
+  if (!u) return u
+  if (u.startsWith('http://') || u.startsWith('https://')) return u
+  if (u.startsWith('/')) return `${API_BASE}${u}`
+  return u
+}
+
+// Détection robuste des types média (ignore la query string)
+function extOf(url: string): string {
+  const clean = url.split('?')[0].toLowerCase()
+  return clean
+}
+function isImageUrl(url: string): boolean {
+  const u = extOf(url)
+  return /\.(jpg|jpeg|png|gif|webp|avif)$/.test(u)
+}
+function isVideoUrl(url: string): boolean {
+  const u = extOf(url)
+  // Ajout de mov/m4v + webm/mp4
+  return /\.(mp4|webm|mov|m4v)$/.test(u) ||
+         u.includes('res.cloudinary.com') && (u.includes('/video/upload') || u.includes('fm_mp4'))
 }
 
 /* ---------- Page ---------- */
@@ -65,34 +83,29 @@ export default function ConversationPage() {
   const fetchMessages = async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
-    const commonHeaders = { Authorization: `Bearer ${token}` }
+    const headers = { Authorization: `Bearer ${token}` }
 
-    try {
-      const url = `${API_BASE}/api/messages/messages/${conversationId}`
-      const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
-      const payload = res.data
-      const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
-      setMessages(Array.isArray(list) ? list : [])
-      return
-    } catch {
+    // on essaie plusieurs endpoints possibles
+    const endpoints = [
+      `${API_BASE}/api/messages/messages/${conversationId}`,
+      `${API_BASE}/api/messages/conversation/${conversationId}`,
+      `${API_BASE}/messages/messages/${conversationId}`,
+    ]
+
+    for (const url of endpoints) {
       try {
-        const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
-        const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
-        const payloadAlt = resAlt.data
-        const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
-        setMessages(Array.isArray(listAlt) ? listAlt : [])
-      } catch {
-        try {
-          const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
-          const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
-          const payloadLegacy = resLegacy.data
-          const listLegacy = isArrayResp(payloadLegacy) ? payloadLegacy : isObjResp(payloadLegacy) ? payloadLegacy.messages : []
-          setMessages(Array.isArray(listLegacy) ? listLegacy : [])
-        } catch (err: unknown) {
-          console.error('Erreur fetch messages :', err)
+        const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers })
+        const payload = res.data
+        const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
+        if (Array.isArray(list)) {
+          setMessages(list)
+          return
         }
+      } catch {
+        // on tente l’endpoint suivant
       }
     }
+    console.error('Erreur fetch messages : aucun endpoint valide')
   }
 
   useEffect(() => {
@@ -113,7 +126,7 @@ export default function ConversationPage() {
     const token = getAuthToken()
 
     try {
-      // Optimistic UI si texte seul (pas de fichier)
+      // Optimistic UI si texte seul
       if (content.trim() && !file) {
         const optimistic: Message = {
           id: `temp-${Date.now()}`,
@@ -125,17 +138,30 @@ export default function ConversationPage() {
         setMessages(prev => [...prev, optimistic])
       }
 
-      // Envoi via multipart (même sans fichier)
+      // Utiliser toujours le multipart (même sans fichier)
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
       if (file) fd.append('file', file)
 
-      const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      // Préférence pour l’endpoint /api/messages/send-file
+      const endpoints = [
+        `${API_BASE}/api/messages/send-file`,
+        `${API_BASE}/messages/send-file`,
+      ]
 
-      // Reset des inputs
+      let res: AxiosResponse<SendResp> | null = null
+      for (const url of endpoints) {
+        try {
+          res = await axios.post<SendResp>(url, fd, { headers: { Authorization: `Bearer ${token}` } })
+          break
+        } catch {
+          // on essaye le suivant
+        }
+      }
+      if (!res) throw new Error('Tous les endpoints send-file ont échoué')
+
+      // reset
       setContent('')
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
@@ -147,9 +173,10 @@ export default function ConversationPage() {
       }
 
       await fetchMessages()
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
+      // rollback optimistic
       setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')))
     }
   }
@@ -162,24 +189,23 @@ export default function ConversationPage() {
   }
 
   const renderFile = (rawUrl: string) => {
-    // tolérant: accepte URL absolue, protocole sans schéma, ou chemin relatif
-    const abs = toAbsoluteUrl(rawUrl.trim())
-    const lower = abs.toLowerCase()
+    const extracted = extractUrl(rawUrl)
+    if (!extracted) return null
+    const absolute = toAbsoluteUrl(extracted)
 
-    if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
-      // Si jamais le domaine n’est pas listé dans next.config, on peut forcer unoptimized
-      return <Image src={abs} alt="media" width={240} height={240} className="rounded" unoptimized />
+    if (isImageUrl(absolute)) {
+      return <Image src={absolute} alt="media" width={320} height={320} className="rounded max-w-full h-auto" />
     }
-    if (/\.(mp4|webm)$/.test(lower)) {
+    if (isVideoUrl(absolute)) {
       return (
-        <video controls className="w-64 rounded">
-          <source src={abs} />
+        <video controls className="w-72 max-w-full rounded" preload="metadata">
+          <source src={absolute} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
       )
     }
     return (
-      <a href={abs} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
+      <a href={absolute} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline break-all">
         Télécharger le fichier
       </a>
     )
@@ -195,15 +221,16 @@ export default function ConversationPage() {
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
         >
           {messages.map((msg) => {
-            // 1) on récupère le texte (ligne 1)
-            const firstLine = msg.content.split('\n')[0] ?? ''
-            // 2) on tente d’extraire la 1ère URL trouvée dans tout le contenu
-            const extracted = extractUrlFromContent(msg.content)
+            // convention : 1ère ligne = texte, une autre avec http = lien fichier
+            const parts = msg.content.split('\n')
+            const text = parts[0] ?? ''
+            const urlLine = parts.find(line => line.includes('http'))
+            const url = urlLine ? extractUrl(urlLine) : null
 
             return (
               <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
                 {msg.sender?.image ? (
-                  <Image src={toAbsoluteUrl(msg.sender.image)} alt={msg.sender.name} width={40} height={40} className="rounded-full" unoptimized />
+                  <Image src={msg.sender.image} alt={msg.sender.name} width={40} height={40} className="rounded-full" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gray-700 grid place-items-center text-white font-bold">
                     {msg.sender?.name?.charAt(0) ?? '?'}
@@ -213,8 +240,8 @@ export default function ConversationPage() {
                   <p className="text-sm text-gray-400 mb-1">
                     {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
                   </p>
-                  {firstLine && <p className="mb-1 text-base leading-relaxed">{firstLine}</p>}
-                  {extracted && renderFile(extracted)}
+                  {text && <p className="mb-1 text-base leading-relaxed break-words">{text}</p>}
+                  {url && renderFile(url)}
                   <p className="text-xs text-right text-gray-500 mt-1">{msg.seen ? '✓ Vu' : 'Non lu'}</p>
                 </div>
               </div>
@@ -257,7 +284,7 @@ export default function ConversationPage() {
           {file && (
             <div className="flex items-center justify-between bg-gray-800 p-3 rounded">
               {file.type.startsWith('image') ? (
-                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" unoptimized />
+                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" />
               ) : file.type.startsWith('video') ? (
                 <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
               ) : (
