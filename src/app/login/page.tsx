@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import axios, { isAxiosError } from 'axios'
 import { useAuth } from '@/context/AuthContext'
+import Link from 'next/link' // ✅ AJOUT
 
 export default function LoginPage() {
   const router = useRouter()
@@ -115,8 +116,9 @@ export default function LoginPage() {
         </button>
 
         <div className="flex justify-between mt-4 text-sm">
+          {/* Laisse en <a> tant que tu n'as pas de route dédiée */}
           <a href="#" className="text-gray-300 hover:underline">Mot de passe oublié ?</a>
-          <a href="/" className="text-gray-300 hover:underline">Retour</a>
+          <Link href="/" className="text-gray-300 hover:underline">Retour</Link> {/* ✅ FIX */}
         </div>
       </form>
     </div>
