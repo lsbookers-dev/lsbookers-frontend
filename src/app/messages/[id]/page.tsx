@@ -34,6 +34,14 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 
+// ✔️ formats image acceptés côté upload
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+])
+
 /* ---------- Page ---------- */
 export default function ConversationPage() {
   const router = useRouter()
@@ -110,15 +118,25 @@ export default function ConversationPage() {
         setMessages(prev => [...prev, optimistic])
       }
 
-      // Utilise TOUJOURS le multipart + endpoint send-file (même sans fichier)
+      // ✅ Envoi multipart (même sans fichier)
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
+
       if (file) {
+        // 👉 Bloque les formats image problématiques (ex: .heic)
+        if (file.type.startsWith('image') && !ALLOWED_IMAGE_TYPES.has(file.type)) {
+          alert("Format d'image non pris en charge (utilise JPG, PNG, WEBP ou GIF).")
+          return
+        }
         fd.append('file', file)
-        // 👉 Ajout pour les IMAGES uniquement (ne rien changer pour les vidéos)
+
+        // 👉 Indices pour le backend (ignorés si non utilisés côté serveur)
         if (file.type.startsWith('image')) {
           fd.append('type', 'image')
+          fd.append('folder', 'messages')
+        } else if (file.type.startsWith('video')) {
+          fd.append('type', 'video')
           fd.append('folder', 'messages')
         }
       }
@@ -139,13 +157,12 @@ export default function ConversationPage() {
         return
       }
 
-      // sinon, on recharge
       await fetchMessages()
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
-      // rollback possible: retirer l’optimistic si besoin
-      setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')))
+      // rollback de l’optimistic si échec
+      setMessages(prev => prev.filter(m => typeof m.id === 'string' && m.id.startsWith('temp-')))
     }
   }
 
@@ -160,7 +177,8 @@ export default function ConversationPage() {
     const cleanUrl = url.trim()
     const lower = cleanUrl.toLowerCase()
     if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
-      return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" />
+      // 🔧 unoptimized pour éviter toute restriction de domaine
+      return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" unoptimized />
     }
     if (/\.(mp4|webm)$/.test(lower)) {
       return (
@@ -229,7 +247,8 @@ export default function ConversationPage() {
             <input
               id="fileInput"
               type="file"
-              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+              // 🔒 on liste explicitement les formats supportés (pas de .heic)
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"
             />
@@ -249,7 +268,7 @@ export default function ConversationPage() {
           {file && (
             <div className="flex items-center justify-between bg-gray-800 p-3 rounded">
               {file.type.startsWith('image') ? (
-                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" />
+                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" unoptimized />
               ) : file.type.startsWith('video') ? (
                 <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
               ) : (
