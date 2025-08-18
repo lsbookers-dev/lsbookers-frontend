@@ -60,7 +60,7 @@ export default function ConversationPage() {
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
       setMessages(Array.isArray(list) ? list : [])
       return
-    } catch (_unused) {
+    } catch {
       // Fallback si l’API est mappée différemment
       try {
         const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
@@ -68,7 +68,7 @@ export default function ConversationPage() {
         const payloadAlt = resAlt.data
         const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
         setMessages(Array.isArray(listAlt) ? listAlt : [])
-      } catch (_unused2) {
+      } catch {
         // Dernier fallback: ancienne route sans /api
         try {
           const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
