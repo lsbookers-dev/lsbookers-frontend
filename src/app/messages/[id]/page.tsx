@@ -3,14 +3,18 @@
 import { useEffect, useRef, useState, KeyboardEvent } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
-import axios, { AxiosError, AxiosResponse } from 'axios'
+import axios, { AxiosResponse } from 'axios'
 import { getAuthToken } from '@/utils/auth'
 
 /* ---------- Types ---------- */
-type Sender = { id: number; name: string; image?: string | null }
+type Sender = {
+  id: number
+  name: string
+  image?: string | null
+}
 
 type Message = {
-  id: string | number
+  id: string
   content: string
   createdAt: string
   sender: Sender
@@ -18,7 +22,7 @@ type Message = {
 }
 
 type ApiMessagesResponse = Message[] | { messages: Message[] }
-type SendResp = { conversationId?: string | number; message?: Message; error?: string }
+type SendResp = { conversationId?: string | number; message?: Message }
 
 /* ---------- Helpers ---------- */
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -62,28 +66,33 @@ export default function ConversationPage() {
     const token = getAuthToken()
     const commonHeaders = { Authorization: `Bearer ${token}` }
 
-    // On tente plusieurs endpoints de lecture
-    const candidates = [
-      `${API_BASE}/api/messages/messages/${conversationId}`,
-      `${API_BASE}/api/messages/conversation/${conversationId}`,
-      `${API_BASE}/messages/messages/${conversationId}`,
-    ]
-
-    for (const url of candidates) {
+    try {
+      const url = `${API_BASE}/api/messages/messages/${conversationId}`
+      const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
+      const payload = res.data
+      const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
+      setMessages(Array.isArray(list) ? list : [])
+      return
+    } catch {
       try {
-        const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
-        const payload = res.data
-        const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
-        if (Array.isArray(list)) {
-          setMessages(list)
-          return
-        }
+        const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
+        const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: commonHeaders })
+        const payloadAlt = resAlt.data
+        const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
+        setMessages(Array.isArray(listAlt) ? listAlt : [])
+        return
       } catch {
-        // on essaie la suivante
+        try {
+          const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
+          const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: commonHeaders })
+          const payloadLegacy = resLegacy.data
+          const listLegacy = isArrayResp(payloadLegacy) ? payloadLegacy : isObjResp(payloadLegacy) ? payloadLegacy.messages : []
+          setMessages(Array.isArray(listLegacy) ? listLegacy : [])
+        } catch (err: unknown) {
+          console.error('Erreur fetch messages :', err)
+        }
       }
     }
-
-    console.error('Erreur fetch messages : aucun endpoint de lecture n’a répondu correctement.')
   }
 
   useEffect(() => {
@@ -103,26 +112,25 @@ export default function ConversationPage() {
 
     const token = getAuthToken()
 
-    // Optimistic UI si texte seul (pas de fichier)
-    const optimisticId = `temp-${Date.now()}`
-    if (content.trim() && !file) {
-      const optimistic: Message = {
-        id: optimisticId,
-        content,
-        createdAt: new Date().toISOString(),
-        sender: { id: 0, name: 'Vous' },
-        seen: false,
-      }
-      setMessages(prev => [...prev, optimistic])
-    }
-
     try {
+      // Optimistic UI si texte seul (pas de fichier)
+      if (content.trim() && !file) {
+        const optimistic: Message = {
+          id: `temp-${Date.now()}`,
+          content,
+          createdAt: new Date().toISOString(),
+          sender: { id: 0, name: 'Vous' },
+          seen: false,
+        }
+        setMessages((prev: Message[]) => [...prev, optimistic])
+      }
+
+      // Utilise multipart pour TOUT, et on donne des hints quand c’est une vidéo
       const fd = new FormData()
-      fd.append('conversationId', String(conversationId))
+      fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
       if (file) {
         fd.append('file', file)
-        // Hints pour backend (ignorés si non utilisés)
         if (file.type.startsWith('video')) {
           fd.append('type', 'video')
           fd.append('folder', 'messages')
@@ -132,81 +140,35 @@ export default function ConversationPage() {
         }
       }
 
-      // On tente l’endpoint principal puis 2 fallbacks
-      const endpoints = [
-        `${API_BASE}/api/messages/send-file`,
-        `${API_BASE}/messages/send-file`,
-        // si vraiment rien : essai /api/messages/send en JSON (uniquement si pas de fichier)
-      ]
-
-      let sent = false
-      let lastErr: unknown = null
-
-      for (const url of endpoints) {
-        try {
-          const res = await axios.post<SendResp>(url, fd, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-          // Si le serveur renvoie une erreur dans le body
-          if (res.data?.error) throw new Error(res.data.error)
-
-          // Reset inputs
-          setContent('')
-          setFile(null)
-          if (inputRef.current) inputRef.current.value = ''
-
-          const newConvId = res.data?.conversationId
-          if (newConvId && String(newConvId) !== String(conversationId)) {
-            router.replace(`/messages/${newConvId}`)
-          } else {
-            await fetchMessages()
-          }
-          sent = true
-          break
-        } catch (e) {
-          lastErr = e
-          // on essaie le suivant
-        }
+      // Endpoint principal puis fallback
+      let res: AxiosResponse<SendResp>
+      try {
+        res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      } catch {
+        res = await axios.post<SendResp>(`${API_BASE}/messages/send-file`, fd, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
       }
 
-      // Dernier recours : si PAS de fichier, tente /api/messages/send (JSON)
-      if (!sent && !file) {
-        try {
-          const res = await axios.post<SendResp>(
-            `${API_BASE}/api/messages/send`,
-            { conversationId, content: content.trim() },
-            { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-          )
-          if (res.data?.error) throw new Error(res.data.error)
-          setContent('')
-          if (inputRef.current) inputRef.current.value = ''
-          const newConvId = res.data?.conversationId
-          if (newConvId && String(newConvId) !== String(conversationId)) {
-            router.replace(`/messages/${newConvId}`)
-          } else {
-            await fetchMessages()
-          }
-          sent = true
-        } catch (e) {
-          lastErr = e
-        }
+      // Reset des inputs
+      setContent('')
+      setFile(null)
+      if (inputRef.current) inputRef.current.value = ''
+
+      const newConvId = res.data?.conversationId
+      if (newConvId && String(newConvId) !== String(conversationId)) {
+        router.replace(`/messages/${newConvId}`)
+        return
       }
 
-      if (!sent) {
-        let msg = "Erreur lors de l'envoi."
-        if (lastErr && axios.isAxiosError(lastErr)) {
-          const status = lastErr.response?.status
-          const serverMsg = (lastErr.response?.data as any)?.error || (lastErr.response?.data as any)?.message
-          msg += status ? ` (HTTP ${status})` : ''
-          msg += serverMsg ? ` — ${serverMsg}` : ''
-        }
-        throw new Error(msg)
-      }
-    } catch (err) {
+      await fetchMessages()
+    } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
-      alert("Échec de l'envoi du message (détails console).")
-      // rollback de l’optimistic si échec
-      setMessages(prev => prev.filter(m => !String(m.id).startsWith('temp-')))
+      alert("Erreur lors de l'envoi. Vérifie la console.")
+      // rollback de l’optimistic si échec (ne retire que les temp-)
+      setMessages((prev: Message[]) => prev.filter((m: Message) => !m.id.startsWith('temp-')))
     }
   }
 
@@ -224,16 +186,10 @@ export default function ConversationPage() {
     if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
       return <Image src={abs} alt="media" width={240} height={240} className="rounded" unoptimized />
     }
-    if (/\.(mp4|webm|mov|m4v)$/.test(lower)) {
-      // on précise le type pour aider certains navigateurs
-      const type =
-        lower.endsWith('.webm') ? 'video/webm'
-        : lower.endsWith('.mov') ? 'video/quicktime'
-        : lower.endsWith('.m4v') ? 'video/x-m4v'
-        : 'video/mp4'
+    if (/\.(mp4|webm)$/.test(lower)) {
       return (
-        <video controls playsInline className="w-64 rounded">
-          <source src={abs} type={type} />
+        <video controls className="w-64 rounded">
+          <source src={abs} type={lower.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
       )
@@ -254,12 +210,12 @@ export default function ConversationPage() {
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
         >
-          {messages.map((msg) => {
+          {messages.map((msg: Message) => {
             const firstLine = msg.content.split('\n')[0] ?? ''
             const extracted = extractUrlFromContent(msg.content)
 
             return (
-              <div key={String(msg.id)} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
+              <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
                 {msg.sender?.image ? (
                   <Image src={toAbsoluteUrl(msg.sender.image)} alt={msg.sender.name} width={40} height={40} className="rounded-full" unoptimized />
                 ) : (
