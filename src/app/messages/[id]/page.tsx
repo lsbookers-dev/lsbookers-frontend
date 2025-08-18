@@ -114,7 +114,14 @@ export default function ConversationPage() {
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
-      if (file) fd.append('file', file)
+      if (file) {
+        fd.append('file', file)
+        // 👉 Ajout pour les IMAGES uniquement (ne rien changer pour les vidéos)
+        if (file.type.startsWith('image')) {
+          fd.append('type', 'image')
+          fd.append('folder', 'messages')
+        }
+      }
 
       const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
         headers: { Authorization: `Bearer ${token}` },
