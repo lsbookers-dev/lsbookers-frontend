@@ -35,35 +35,11 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 
-async function tryGet<T = unknown>(urls: string[], headers: Record<string, string>) {
-  for (const url of urls) {
-    try {
-      const res: AxiosResponse<T> = await axios.get(url, { headers })
-      return res
-    } catch (e: unknown) {
-      // tente l’URL suivante
-    }
-  }
-  throw new Error('Toutes les URL GET ont échoué')
-}
-
-async function tryPost<T = unknown>(urls: string[], data: any, headers: Record<string, string>) {
-  for (const url of urls) {
-    try {
-      const res: AxiosResponse<T> = await axios.post(url, data, { headers })
-      return res
-    } catch (e: unknown) {
-      // tente l’URL suivante
-    }
-  }
-  throw new Error('Toutes les URL POST ont échoué')
-}
-
 /* ---------- Page ---------- */
 export default function ConversationPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
-  const conversationId = params?.id
+  const conversationId = params?.id ?? ''
 
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState<string>('')
@@ -75,21 +51,35 @@ export default function ConversationPage() {
   const fetchMessages = async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
-    const headers = { Authorization: `Bearer ${token}` }
+    const commonHeaders = { Authorization: `Bearer ${token}` }
 
     try {
-      const urls = [
-        `${API_BASE}/api/messages/messages/${conversationId}`,
-        `${API_BASE}/messages/messages/${conversationId}`,
-        `${API_BASE}/api/messages/conversation/${conversationId}`,
-        `${API_BASE}/messages/conversation/${conversationId}`,
-      ]
-      const res = await tryGet<ApiMessagesResponse>(urls, headers)
+      const url = `${API_BASE}/api/messages/messages/${conversationId}`
+      const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
       setMessages(Array.isArray(list) ? list : [])
-    } catch (error) {
-      console.error('Erreur fetch messages :', error)
+      return
+    } catch (_unused) {
+      // Fallback si l’API est mappée différemment
+      try {
+        const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
+        const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: commonHeaders })
+        const payloadAlt = resAlt.data
+        const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
+        setMessages(Array.isArray(listAlt) ? listAlt : [])
+      } catch (_unused2) {
+        // Dernier fallback: ancienne route sans /api
+        try {
+          const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
+          const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: commonHeaders })
+          const payloadLegacy = resLegacy.data
+          const listLegacy = isArrayResp(payloadLegacy) ? payloadLegacy : isObjResp(payloadLegacy) ? payloadLegacy.messages : []
+          setMessages(Array.isArray(listLegacy) ? listLegacy : [])
+        } catch (err: unknown) {
+          console.error('Erreur fetch messages :', err)
+        }
+      }
     }
   }
 
@@ -121,24 +111,18 @@ export default function ConversationPage() {
         if (content.trim()) fd.append('content', content.trim())
         fd.append('file', file)
 
-        const urls = [
-          `${API_BASE}/api/messages/send-file`,
-          `${API_BASE}/messages/send-file`,
-        ]
-        const res = await tryPost<SendFileResp>(urls, fd, { Authorization: `Bearer ${token}` })
-        newConvId = res.data?.conversationId
+        const res = await axios.post<SendFileResp>(`${API_BASE}/api/messages/send-file`, fd, {
+          headers: { Authorization: `Bearer ${token}` }, // FormData gère le Content-Type
+        })
+        newConvId = res.data.conversationId
       } else {
         // --------- envoi texte (JSON) ---------
-        const body = { conversationId, content: content.trim() }
-        const urls = [
+        const res = await axios.post<SendJsonResp>(
           `${API_BASE}/api/messages/send`,
-          `${API_BASE}/messages/send`,
-        ]
-        const res = await tryPost<SendJsonResp>(urls, body, {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        })
-        newConvId = res.data?.conversationId
+          { conversationId, content: content.trim() },
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+        )
+        newConvId = res.data.conversationId
       }
 
       // Nettoyage champ + fichier (forcé)
@@ -146,16 +130,16 @@ export default function ConversationPage() {
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
-      // Redirection si un nouvel id est renvoyé
+      // Si l’API crée/retourne un autre conversationId, on redirige dessus
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
         return
       }
 
-      // Recharge la conversation courante
+      // sinon on recharge la conversation courante
       await fetchMessages()
-    } catch (error) {
-      console.error('Erreur envoi message :', error)
+    } catch (err: unknown) {
+      console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
     }
   }
@@ -201,7 +185,7 @@ export default function ConversationPage() {
             // convention backend : première ligne = texte, une ligne contenant "http" = lien fichier
             const parts = msg.content.split('\n')
             const text = parts[0] ?? ''
-            const urlLine = parts.find(line => line.includes('http'))
+            const urlLine = parts.find((line: string) => line.includes('http'))
             const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
 
             return (
