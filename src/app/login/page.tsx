@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import axios, { isAxiosError } from 'axios'
 import { useAuth } from '@/context/AuthContext'
-import Link from 'next/link' // ✅ AJOUT
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -15,8 +15,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // image de fond modifiable via l'admin (Cloudinary)
   const loginBg = process.env.NEXT_PUBLIC_LOGIN_BG
 
+  // Si on arrive déjà connecté, on nettoie la session locale
   useEffect(() => {
     if (user) {
       localStorage.removeItem('token')
@@ -34,7 +36,7 @@ export default function LoginPage() {
       const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
       if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant')
 
-      const url = `${API}/api/auth/login`
+      const url = `${API}/api/auth/login` // ✅ bon endpoint
 
       const response = await axios.post(
         url,
@@ -46,21 +48,14 @@ export default function LoginPage() {
         }
       )
 
-      const { token, user } = response.data || {}
-
+      const { token, user: u } = response.data || {}
       if (token) localStorage.setItem('token', token)
-      if (user) localStorage.setItem('user', JSON.stringify(user))
+      if (u) localStorage.setItem('user', JSON.stringify(u))
+      setUser(u || null)
 
-      setUser(user || null)
-
-      if (user?.isAdmin) {
-        router.push('/admin/settings')
-      } else {
-        router.push('/home')
-      }
+      router.push(u?.isAdmin ? '/admin/settings' : '/home')
     } catch (err: unknown) {
       console.error('❌ Erreur de connexion', err)
-
       let msg = "Échec de la connexion. Réessaie."
 
       if (isAxiosError(err)) {
@@ -82,19 +77,26 @@ export default function LoginPage() {
   return (
     <div
       className="flex items-center justify-center min-h-screen bg-black text-white bg-cover bg-center"
-      style={{ backgroundImage: `url(${loginBg})` }}
+      style={loginBg ? { backgroundImage: `url(${loginBg})` } : undefined}
     >
-      <form onSubmit={handleSubmit} className="bg-black/70 backdrop-blur-md p-8 rounded shadow-md w-full max-w-md">
+      {/* léger voile sombre pour le contraste global */}
+      <div className="absolute inset-0 bg-black/40" aria-hidden />
+
+      {/* ✅ Carte d’authentification “comme avant” (solide, net) */}
+      <form
+        onSubmit={handleSubmit}
+        className="relative z-10 w-full max-w-md bg-gray-900 rounded-xl shadow-2xl p-8"
+      >
         <h2 className="text-2xl font-bold mb-6 text-center">Se connecter</h2>
 
-        {error && <p className="text-red-500 mb-4">{error}</p>}
+        {error && <p className="text-red-400 mb-4">{error}</p>}
 
         <label className="block mb-2">Email</label>
         <input
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          className="w-full px-4 py-2 mb-4 text-black rounded"
+          className="w-full px-4 py-2 mb-4 rounded bg-white text-black outline-none"
           required
         />
 
@@ -103,22 +105,26 @@ export default function LoginPage() {
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          className="w-full px-4 py-2 mb-6 text-black rounded"
+          className="w-full px-4 py-2 mb-6 rounded bg-white text-black outline-none"
           required
         />
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2 rounded"
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2 rounded transition"
         >
           {loading ? 'Connexion…' : 'Se connecter'}
         </button>
 
         <div className="flex justify-between mt-4 text-sm">
-          {/* Laisse en <a> tant que tu n'as pas de route dédiée */}
-          <a href="#" className="text-gray-300 hover:underline">Mot de passe oublié ?</a>
-          <Link href="/" className="text-gray-300 hover:underline">Retour</Link> {/* ✅ FIX */}
+          {/* tu mettras la vraie route plus tard */}
+          <a href="#" className="text-gray-300 hover:underline">
+            Mot de passe oublié ?
+          </a>
+          <Link href="/" className="text-gray-300 hover:underline">
+            Retour
+          </Link>
         </div>
       </form>
     </div>
