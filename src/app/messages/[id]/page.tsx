@@ -39,7 +39,6 @@ function toAbsoluteUrl(u: string): string {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
   if (u.startsWith('//')) return `https:${u}`
-  if (u.startsWith('blob:') || u.startsWith('data:')) return u
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
@@ -49,12 +48,13 @@ function extractUrlFromContent(content: string): string {
   return m ? m[0] : ''
 }
 
-/** Détecte si une URL semble être une vidéo (extensions communes + Cloudinary /video/upload/) */
-function isVideoUrl(url: string): boolean {
-  const lower = url.toLowerCase()
-  if (/\.(mp4|webm|mov|mkv|m4v)$/.test(lower)) return true
-  // Heuristique Cloudinary
-  if (lower.includes('/video/upload/')) return true
+/** Détection souple des vidéos (extensions OU chemins Cloudinary vidéo) */
+function isLikelyVideo(url: string): boolean {
+  const u = url.toLowerCase()
+  // extensions courantes
+  if (/\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(u)) return true
+  // Cloudinary vidéo : contient souvent /video/upload/
+  if (u.includes('/video/upload/')) return true
   return false
 }
 
@@ -123,7 +123,7 @@ export default function ConversationPage() {
     const token = getAuthToken()
 
     try {
-      // Optimistic UI si texte seul (pas de fichier)
+      // Optimistic UI si texte seul
       if (content.trim() && !file) {
         const optimistic: Message = {
           id: `temp-${Date.now()}`,
@@ -135,40 +135,46 @@ export default function ConversationPage() {
         setMessages(prev => [...prev, optimistic])
       }
 
-      // Utilise multipart pour TOUT, et hints pour aider le backend/Cloudinary
+      // Utilise multipart pour tout, avec hints vidéo si besoin
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
       if (file) {
-        fd.append('file', file)
+        // donne un nom explicite au fichier pour certains backends
+        const fallbackName =
+          file.type.startsWith('video') ? `video_${Date.now()}.mp4` :
+          file.type.startsWith('image') ? `image_${Date.now()}.jpg` :
+          file.name || `file_${Date.now()}`
+        fd.append('file', file, file.name || fallbackName)
+
         if (file.type.startsWith('video')) {
           fd.append('type', 'video')
           fd.append('folder', 'messages')
+          // Certains backends attendent "video" au lieu de "file"
+          fd.append('video', file, file.name || fallbackName)
         } else if (file.type.startsWith('image')) {
           fd.append('type', 'image')
           fd.append('folder', 'messages')
         }
       }
 
-      // Endpoint principal
+      // Endpoint principal + fallback
       let res: AxiosResponse<SendResp>
       try {
         res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
           headers: { Authorization: `Bearer ${token}` },
         })
       } catch {
-        // Fallback legacy
         res = await axios.post<SendResp>(`${API_BASE}/messages/send-file`, fd, {
           headers: { Authorization: `Bearer ${token}` },
         })
       }
 
-      // Reset des inputs
+      // Reset UI
       setContent('')
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
-      // Redirige si nouvel id de conversation
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
@@ -179,7 +185,6 @@ export default function ConversationPage() {
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
-      // rollback de l’optimistic si échec
       setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')))
     }
   }
@@ -193,22 +198,20 @@ export default function ConversationPage() {
 
   const renderFile = (rawUrl: string) => {
     const abs = toAbsoluteUrl(rawUrl.trim())
-    const lower = abs.toLowerCase()
 
-    // Détection Cloudinary vidéo même sans extension
-    const videoDetected = isVideoUrl(abs)
-
-    if (!videoDetected && /\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
-      return <Image src={abs} alt="media" width={240} height={240} className="rounded" unoptimized />
-    }
-    if (videoDetected) {
+    if (isLikelyVideo(abs)) {
       return (
-        <video controls playsInline className="w-64 rounded">
-          <source src={abs} type={lower.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
+        <video controls className="w-64 rounded" preload="metadata">
+          <source src={abs} type={abs.toLowerCase().endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
       )
     }
+
+    if (/\.(jpg|jpeg|png|gif|webp)(\?|#|$)/i.test(abs.toLowerCase())) {
+      return <Image src={abs} alt="media" width={240} height={240} className="rounded" unoptimized />
+    }
+
     return (
       <a href={abs} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
         Télécharger le fichier
@@ -266,7 +269,7 @@ export default function ConversationPage() {
             <input
               id="fileInput"
               type="file"
-              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.mov,.m4v"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"
             />
@@ -288,7 +291,7 @@ export default function ConversationPage() {
               {file.type.startsWith('image') ? (
                 <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" unoptimized />
               ) : file.type.startsWith('video') ? (
-                <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls playsInline />
+                <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
               ) : (
                 <p className="text-sm text-white truncate mr-3">{file.name}</p>
               )}
