@@ -34,8 +34,13 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 
-// formats image acceptés
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+// ✔️ formats image acceptés côté upload
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+])
 
 /* ---------- Page ---------- */
 export default function ConversationPage() {
@@ -50,29 +55,6 @@ export default function ConversationPage() {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  // ---- Mark as read (essaye plusieurs endpoints connus) ----
-  const markAsRead = async () => {
-    if (!conversationId || !API_BASE) return
-    const token = getAuthToken()
-    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    const body = JSON.stringify({ conversationId })
-
-    const candidates = [
-      `${API_BASE}/api/messages/mark-read`,
-      `${API_BASE}/api/messages/conversation/${conversationId}/read`,
-      `${API_BASE}/messages/mark-read`,
-    ]
-
-    for (const url of candidates) {
-      try {
-        const res = await fetch(url, { method: 'POST', headers, body })
-        if (res.ok) return
-      } catch {
-        /* ignore and try next */
-      }
-    }
-  }
-
   const fetchMessages = async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -84,7 +66,6 @@ export default function ConversationPage() {
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
       setMessages(Array.isArray(list) ? list : [])
-      await markAsRead()
       return
     } catch {
       try {
@@ -93,8 +74,6 @@ export default function ConversationPage() {
         const payloadAlt = resAlt.data
         const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
         setMessages(Array.isArray(listAlt) ? listAlt : [])
-        await markAsRead()
-        return
       } catch {
         try {
           const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
@@ -102,7 +81,6 @@ export default function ConversationPage() {
           const payloadLegacy = resLegacy.data
           const listLegacy = isArrayResp(payloadLegacy) ? payloadLegacy : isObjResp(payloadLegacy) ? payloadLegacy.messages : []
           setMessages(Array.isArray(listLegacy) ? listLegacy : [])
-          await markAsRead()
         } catch (err: unknown) {
           console.error('Erreur fetch messages :', err)
         }
@@ -140,17 +118,20 @@ export default function ConversationPage() {
         setMessages(prev => [...prev, optimistic])
       }
 
-      // Envoi multipart (même sans fichier)
+      // ✅ Envoi multipart (même sans fichier)
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
 
       if (file) {
+        // 👉 Bloque les formats image problématiques (ex: .heic)
         if (file.type.startsWith('image') && !ALLOWED_IMAGE_TYPES.has(file.type)) {
           alert("Format d'image non pris en charge (utilise JPG, PNG, WEBP ou GIF).")
           return
         }
         fd.append('file', file)
+
+        // 👉 Indices pour le backend (ignorés si non utilisés côté serveur)
         if (file.type.startsWith('image')) {
           fd.append('type', 'image')
           fd.append('folder', 'messages')
@@ -169,7 +150,7 @@ export default function ConversationPage() {
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
-      // Redirection si nouvel id conversation
+      // Si l’API renvoie un nouvel id de conversation, on redirige
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
@@ -180,8 +161,8 @@ export default function ConversationPage() {
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
-      // ✅ rollback: on retire les “temp-” (on ne garde PAS uniquement eux)
-      setMessages(prev => prev.filter(m => !(typeof m.id === 'string' && m.id.startsWith('temp-'))))
+      // rollback de l’optimistic si échec
+      setMessages(prev => prev.filter(m => typeof m.id === 'string' && m.id.startsWith('temp-')))
     }
   }
 
@@ -196,6 +177,7 @@ export default function ConversationPage() {
     const cleanUrl = url.trim()
     const lower = cleanUrl.toLowerCase()
     if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
+      // 🔧 unoptimized pour éviter toute restriction de domaine
       return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" unoptimized />
     }
     if (/\.(mp4|webm)$/.test(lower)) {
@@ -265,6 +247,7 @@ export default function ConversationPage() {
             <input
               id="fileInput"
               type="file"
+              // 🔒 on liste explicitement les formats supportés (pas de .heic)
               accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"
