@@ -24,13 +24,14 @@ interface Conversation {
   participants: User[]
   lastMessage: string
   updatedAt: string
-  unread?: boolean // <- si le backend le renvoie, on stylise. Sinon false par défaut.
+  unread?: boolean
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-// petite couleur d’accent du site
-const ACCENT = 'from-indigo-600/40 to-fuchsia-600/40'
+// Palette d’accent utilisée sur le site
+const ACCENT_FROM = 'from-indigo-500/40'
+const ACCENT_TO = 'to-fuchsia-500/40'
 
 export default function MessagesPage() {
   const { user, token } = useAuth()
@@ -45,10 +46,7 @@ export default function MessagesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const authedHeaders = useMemo(
-    () =>
-      token
-        ? { Authorization: `Bearer ${token}` }
-        : undefined,
+    () => (token ? { Authorization: `Bearer ${token}` } : undefined),
     [token]
   )
 
@@ -69,15 +67,12 @@ export default function MessagesPage() {
       const raw = await res.json()
       const list: Conversation[] = (raw?.conversations ?? raw ?? []) as Conversation[]
 
-      // tri: plus récents en premier
-      const sorted = Array.isArray(list)
-        ? [...list].sort((a, b) => {
-            const ta = new Date(a.updatedAt || 0).getTime()
-            const tb = new Date(b.updatedAt || 0).getTime()
-            return tb - ta
-          })
-        : []
-
+      // tri pour afficher les plus récents en haut
+      const sorted = [...(Array.isArray(list) ? list : [])].sort((a, b) => {
+        const ta = new Date(a.updatedAt || 0).getTime()
+        const tb = new Date(b.updatedAt || 0).getTime()
+        return tb - ta
+      })
       setConversations(sorted)
     } catch (err) {
       console.error('Conversations load error:', err)
@@ -115,9 +110,22 @@ export default function MessagesPage() {
     if (user === null) router.push('/login')
   }, [user, router])
 
+  // 👉 Ne pas créer de doublon : si une conv existe déjà avec le destinataire, on l’ouvre.
   const startConversation = useCallback(
     async (recipientId: number) => {
       if (!token) return
+
+      // Chercher une conversation existante avec cet utilisateur
+      const existing = conversations.find(conv =>
+        conv.participants.some(p => Number(p.id) === Number(recipientId)) &&
+        conv.participants.some(p => Number(p.id) === Number(user?.id))
+      )
+      if (existing) {
+        router.push(`/messages/${existing.id}`)
+        return
+      }
+
+      // Sinon, créer
       try {
         const res = await fetch(`${API_BASE}/api/messages/send`, {
           method: 'POST',
@@ -144,17 +152,16 @@ export default function MessagesPage() {
         console.error('Erreur démarrage conversation :', err)
       }
     },
-    [token, authedHeaders, router, fetchConversations]
+    [token, authedHeaders, conversations, router, fetchConversations, user?.id]
   )
 
   const deleteConversation = useCallback(
     async (convId: number) => {
       if (!token) return
-      const ok = confirm('Supprimer cette conversation ? Cette action est irréversible.')
+      const ok = confirm('Supprimer cette conversation ?')
       if (!ok) return
       try {
         setDeletingId(convId)
-        // on tente endpoint principal puis un fallback
         const res = await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
           method: 'DELETE',
           headers: authedHeaders,
@@ -184,18 +191,20 @@ export default function MessagesPage() {
     : []
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white font-poppins p-6">
+    <div className="flex flex-col min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto w-full">
         <h1 className="text-3xl md:text-4xl font-extrabold mb-2">Messagerie</h1>
         <p className="text-white/70 mb-8">Retrouvez vos conversations et démarrez de nouveaux échanges.</p>
 
-        <div className="grid md:grid-cols-[360px,1fr] gap-6">
-          {/* Colonne gauche : nouvelle conversation */}
-          <section className="rounded-2xl border border-white/10 bg-[#111]/80 p-5">
-            <h2 className="text-lg font-semibold mb-2">Nouvelle conversation</h2>
+        {/* ----- Grille 2 colonnes ----- */}
+        <div className="grid gap-6 md:grid-cols-[360px,1fr]">
+          {/* Colonne gauche */}
+          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5">
+            <div className={`pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-10`} />
+            <h2 className="text-lg font-semibold mb-1">Nouvelle conversation</h2>
             <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
 
-            <div className="relative mb-4">
+            <div className="relative">
               <input
                 type="text"
                 value={search}
@@ -203,14 +212,13 @@ export default function MessagesPage() {
                 placeholder="Rechercher un utilisateur…"
                 className="w-full rounded-xl bg-black/50 border border-white/15 focus:border-white/35 outline-none px-4 py-3"
               />
-              {/* fin bordure légère en dégradé */}
-              <div className={`pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-r ${ACCENT} opacity-10`} />
+              <div className={`pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-10`} />
             </div>
 
-            {loadingUsers && <p className="text-gray-400 text-sm">Chargement des utilisateurs…</p>}
+            {loadingUsers && <p className="text-gray-400 text-sm mt-3">Chargement des utilisateurs…</p>}
 
             {search && (
-              <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              <ul className="space-y-2 max-h-80 overflow-y-auto pr-1 mt-3">
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map(u => {
                     const avatar = getAvatar(u)
@@ -218,7 +226,7 @@ export default function MessagesPage() {
                       <li
                         key={u.id}
                         onClick={() => startConversation(u.id)}
-                        className="cursor-pointer rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 p-3 flex items-center gap-3 transition"
+                        className="cursor-pointer rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 flex items-center gap-3 transition"
                       >
                         {avatar ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -242,8 +250,8 @@ export default function MessagesPage() {
             )}
           </section>
 
-          {/* Colonne droite : conversations */}
-          <section className="rounded-2xl border border-white/10 bg-[#111]/80 p-5 relative overflow-hidden">
+          {/* Colonne droite */}
+          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 overflow-hidden">
             <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-transparent via-white/[0.03] to-transparent pointer-events-none" />
             <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
 
@@ -264,11 +272,9 @@ export default function MessagesPage() {
                           : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
                       `}
                     >
-                      {/* Bord de statut (non lu) */}
+                      {/* barre de statut non-lu */}
                       <span
-                        className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl
-                          ${unread ? 'bg-indigo-500' : 'bg-transparent'}
-                        `}
+                        className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`}
                       />
                       <Link href={`/messages/${conv.id}`} className="flex-1 min-w-0 flex items-start gap-4">
                         {avatar ? (
@@ -280,16 +286,22 @@ export default function MessagesPage() {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
-                            {other?.name ?? 'Conversation'}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
+                              {other?.name ?? 'Conversation'}
+                            </h3>
+                            {unread && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-600/30 border border-indigo-400/40 text-indigo-200">
+                                Non lu
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-white/60 truncate max-w-[60ch]">
                             {conv.lastMessage || '…'}
                           </p>
                         </div>
                       </Link>
 
-                      {/* date + delete */}
                       <div className="flex flex-col items-end gap-2">
                         <span className="text-[11px] text-white/50 whitespace-nowrap">
                           {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
@@ -298,7 +310,7 @@ export default function MessagesPage() {
                           onClick={() => deleteConversation(conv.id)}
                           disabled={deletingId === conv.id}
                           title="Supprimer la conversation"
-                          className="text-white/70 hover:text-red-400 text-xs border border-white/20 hover:border-red-400 rounded-md px-2 py-1"
+                          className="text-white/80 hover:text-red-400 text-xs border border-white/15 hover:border-red-400/70 rounded-md px-2 py-1"
                         >
                           {deletingId === conv.id ? '…' : 'Supprimer'}
                         </button>
