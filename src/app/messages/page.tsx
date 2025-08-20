@@ -7,10 +7,7 @@ import Link from 'next/link'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
-interface ProfileLite {
-  avatar?: string | null
-}
-
+interface ProfileLite { avatar?: string | null }
 interface User {
   id: number
   name: string
@@ -18,26 +15,38 @@ interface User {
   image?: string | null
   profile?: ProfileLite | null
 }
-
 interface Conversation {
   id: number
   participants: User[]
   lastMessage: string
   updatedAt: string
-  unread?: boolean
+  // unread?: boolean // côté backend, si dispo
+}
+interface MessageLite {
+  id: string | number
+  seen: boolean
+  sender: { id: number }
+  createdAt: string
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-// Palette d’accent utilisée sur le site
 const ACCENT_FROM = 'from-indigo-500/40'
 const ACCENT_TO = 'to-fuchsia-500/40'
+
+/* Helpers */
+const toAbs = (u?: string | null) => {
+  if (!u) return ''
+  if (u.startsWith('http://') || u.startsWith('https://')) return u
+  if (u.startsWith('//')) return `https:${u}`
+  return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
+}
 
 export default function MessagesPage() {
   const { user, token } = useAuth()
   const router = useRouter()
 
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [unreadMap, setUnreadMap] = useState<Record<number, boolean>>({})
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
@@ -50,11 +59,9 @@ export default function MessagesPage() {
     [token]
   )
 
-  const getAvatar = (u?: User | null) =>
-    (u?.image && u.image.trim()) ||
-    (u?.profile?.avatar && u.profile.avatar.trim()) ||
-    ''
+  const getAvatar = (u?: User | null) => toAbs(u?.image || u?.profile?.avatar || '')
 
+  /* Charge les conversations + tri plus récents en haut */
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
@@ -66,19 +73,46 @@ export default function MessagesPage() {
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const raw = await res.json()
       const list: Conversation[] = (raw?.conversations ?? raw ?? []) as Conversation[]
-
-      // tri pour afficher les plus récents en haut
-      const sorted = [...(Array.isArray(list) ? list : [])].sort((a, b) => {
-        const ta = new Date(a.updatedAt || 0).getTime()
-        const tb = new Date(b.updatedAt || 0).getTime()
-        return tb - ta
-      })
+      const sorted = [...(Array.isArray(list) ? list : [])].sort(
+        (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+      )
       setConversations(sorted)
     } catch (err) {
       console.error('Conversations load error:', err)
       setError('Impossible de charger les conversations.')
     }
   }, [token, authedHeaders])
+
+  /* Calcule “non lu” côté front (provisoire) */
+  const computeUnread = useCallback(async (convs: Conversation[]) => {
+    if (!token || !user?.id) return
+    try {
+      const entries = await Promise.all(
+        convs.map(async (c) => {
+          try {
+            // On récupère la conversation et prend le dernier message
+            const r = await fetch(`${API_BASE}/api/messages/messages/${c.id}`, {
+              headers: authedHeaders,
+              cache: 'no-store',
+            })
+            if (!r.ok) throw new Error('HTTP ' + r.status)
+            const data = await r.json()
+            const arr: MessageLite[] = (Array.isArray(data) ? data : data?.messages) ?? []
+            const last = arr[arr.length - 1]
+            const unread = !!last && last.sender?.id !== Number(user.id) && !last.seen
+            return [c.id, unread] as const
+          } catch {
+            return [c.id, false] as const
+          }
+        })
+      )
+      const map: Record<number, boolean> = {}
+      entries.forEach(([id, u]) => (map[id] = u))
+      setUnreadMap(map)
+    } catch (e) {
+      // silencieux
+    }
+  }, [token, authedHeaders, user?.id])
 
   const fetchUsers = useCallback(async () => {
     if (!token) return
@@ -110,12 +144,15 @@ export default function MessagesPage() {
     if (user === null) router.push('/login')
   }, [user, router])
 
-  // 👉 Ne pas créer de doublon : si une conv existe déjà avec le destinataire, on l’ouvre.
+  /* Recalcule les non-lus à chaque changement de liste */
+  useEffect(() => {
+    if (conversations.length) computeUnread(conversations)
+  }, [conversations, computeUnread])
+
+  /* Pas de doublon : ouvrir si conv existe déjà avec l’utilisateur */
   const startConversation = useCallback(
     async (recipientId: number) => {
       if (!token) return
-
-      // Chercher une conversation existante avec cet utilisateur
       const existing = conversations.find(conv =>
         conv.participants.some(p => Number(p.id) === Number(recipientId)) &&
         conv.participants.some(p => Number(p.id) === Number(user?.id))
@@ -125,7 +162,6 @@ export default function MessagesPage() {
         return
       }
 
-      // Sinon, créer
       try {
         const res = await fetch(`${API_BASE}/api/messages/send`, {
           method: 'POST',
@@ -135,19 +171,14 @@ export default function MessagesPage() {
           },
           body: JSON.stringify({ recipientId, content: 'Salut !' }),
         })
-
         const data = await res.json().catch(() => ({} as unknown))
         const convId =
           (data as { conversationId?: number })?.conversationId ??
           (data as { conversation?: { id?: number } })?.conversation?.id ??
           (data as { id?: number })?.id ??
           null
-
-        if (convId) {
-          router.push(`/messages/${convId}`)
-        } else {
-          await fetchConversations()
-        }
+        if (convId) router.push(`/messages/${convId}`)
+        else await fetchConversations()
       } catch (err) {
         console.error('Erreur démarrage conversation :', err)
       }
@@ -196,7 +227,6 @@ export default function MessagesPage() {
         <h1 className="text-3xl md:text-4xl font-extrabold mb-2">Messagerie</h1>
         <p className="text-white/70 mb-8">Retrouvez vos conversations et démarrez de nouveaux échanges.</p>
 
-        {/* ----- Grille 2 colonnes ----- */}
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
           {/* Colonne gauche */}
           <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5">
@@ -262,7 +292,7 @@ export default function MessagesPage() {
                 {conversations.map(conv => {
                   const other = getOtherUser(conv)
                   const avatar = getAvatar(other)
-                  const unread = !!conv.unread
+                  const unread = !!unreadMap[conv.id] // calcul front provisoire
                   return (
                     <li
                       key={conv.id}
@@ -272,10 +302,7 @@ export default function MessagesPage() {
                           : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
                       `}
                     >
-                      {/* barre de statut non-lu */}
-                      <span
-                        className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`}
-                      />
+                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
                       <Link href={`/messages/${conv.id}`} className="flex-1 min-w-0 flex items-start gap-4">
                         {avatar ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -296,9 +323,7 @@ export default function MessagesPage() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-white/60 truncate max-w-[60ch]">
-                            {conv.lastMessage || '…'}
-                          </p>
+                          <p className="text-xs text-white/60 truncate max-w-[60ch]">{conv.lastMessage || '…'}</p>
                         </div>
                       </Link>
 
