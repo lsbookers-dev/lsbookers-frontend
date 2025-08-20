@@ -24,22 +24,13 @@ interface Conversation {
   participants: User[]
   lastMessage: string
   updatedAt: string
+  unread?: boolean // <- si le backend le renvoie, on stylise. Sinon false par défaut.
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-/* ------- helpers ------- */
-function toAbsoluteUrl(u?: string | null) {
-  if (!u) return ''
-  if (u.startsWith('http://') || u.startsWith('https://')) return u
-  if (u.startsWith('//')) return `https:${u}`
-  return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
-}
-
-function getUserAvatar(u?: User) {
-  const raw = u?.image || u?.profile?.avatar || ''
-  return toAbsoluteUrl(raw)
-}
+// petite couleur d’accent du site
+const ACCENT = 'from-indigo-600/40 to-fuchsia-600/40'
 
 export default function MessagesPage() {
   const { user, token } = useAuth()
@@ -51,36 +42,46 @@ export default function MessagesPage() {
   const [search, setSearch] = useState('')
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
-  const [loadingConvs, setLoadingConvs] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const authedHeaders = useMemo(
     () =>
       token
-        ? {
-            Authorization: `Bearer ${token}`,
-          }
+        ? { Authorization: `Bearer ${token}` }
         : undefined,
     [token]
   )
+
+  const getAvatar = (u?: User | null) =>
+    (u?.image && u.image.trim()) ||
+    (u?.profile?.avatar && u.profile.avatar.trim()) ||
+    ''
 
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
       setError(null)
-      setLoadingConvs(true)
       const res = await fetch(`${API_BASE}/api/messages/conversations`, {
         headers: authedHeaders,
         cache: 'no-store',
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const raw = await res.json()
-      const list: Conversation[] = raw?.conversations ?? raw ?? []
-      setConversations(Array.isArray(list) ? list : [])
+      const list: Conversation[] = (raw?.conversations ?? raw ?? []) as Conversation[]
+
+      // tri: plus récents en premier
+      const sorted = Array.isArray(list)
+        ? [...list].sort((a, b) => {
+            const ta = new Date(a.updatedAt || 0).getTime()
+            const tb = new Date(b.updatedAt || 0).getTime()
+            return tb - ta
+          })
+        : []
+
+      setConversations(sorted)
     } catch (err) {
       console.error('Conversations load error:', err)
       setError('Impossible de charger les conversations.')
-    } finally {
-      setLoadingConvs(false)
     }
   }, [token, authedHeaders])
 
@@ -146,6 +147,35 @@ export default function MessagesPage() {
     [token, authedHeaders, router, fetchConversations]
   )
 
+  const deleteConversation = useCallback(
+    async (convId: number) => {
+      if (!token) return
+      const ok = confirm('Supprimer cette conversation ? Cette action est irréversible.')
+      if (!ok) return
+      try {
+        setDeletingId(convId)
+        // on tente endpoint principal puis un fallback
+        const res = await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
+          method: 'DELETE',
+          headers: authedHeaders,
+        })
+        if (!res.ok) {
+          await fetch(`${API_BASE}/api/messages/conversation/${convId}`, {
+            method: 'DELETE',
+            headers: authedHeaders,
+          })
+        }
+        setConversations(prev => prev.filter(c => c.id !== convId))
+      } catch (err) {
+        console.error('Erreur suppression conversation :', err)
+        alert('Suppression impossible.')
+      } finally {
+        setDeletingId(null)
+      }
+    },
+    [token, authedHeaders]
+  )
+
   const getOtherUser = (conv: Conversation) =>
     conv.participants.find(p => String(p.id) !== String(user?.id))
 
@@ -154,140 +184,132 @@ export default function MessagesPage() {
     : []
 
   return (
-    <div className="min-h-screen bg-black text-white font-poppins">
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="text-[40px] font-extrabold tracking-tight mb-2">Messagerie</h1>
-        <p className="text-white/70 mb-8">
-          Retrouvez vos conversations et démarrez de nouveaux échanges.
-        </p>
+    <div className="flex flex-col min-h-screen bg-black text-white font-poppins p-6">
+      <div className="max-w-6xl mx-auto w-full">
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-2">Messagerie</h1>
+        <p className="text-white/70 mb-8">Retrouvez vos conversations et démarrez de nouveaux échanges.</p>
 
-        {/* Layout 2 colonnes */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-[360px,1fr] gap-6">
           {/* Colonne gauche : nouvelle conversation */}
-          <section className="rounded-2xl border border-white/10 bg-[#0e0e0e]">
-            <div className="p-6 border-b border-white/10">
-              <h2 className="text-lg font-semibold">Nouvelle conversation</h2>
-              <p className="text-sm text-white/60">
-                Cherche un artiste, un organisateur ou un prestataire.
-              </p>
-            </div>
+          <section className="rounded-2xl border border-white/10 bg-[#111]/80 p-5">
+            <h2 className="text-lg font-semibold mb-2">Nouvelle conversation</h2>
+            <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
 
-            <div className="p-6 pt-5">
-              {/* Champ de recherche */}
+            <div className="relative mb-4">
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Tape un nom…"
-                className="w-full rounded-xl bg-[#151515] border border-white/10 px-4 py-3 outline-none focus:border-white/30"
+                placeholder="Rechercher un utilisateur…"
+                className="w-full rounded-xl bg-black/50 border border-white/15 focus:border-white/35 outline-none px-4 py-3"
               />
-
-              {/* Liste scrollable avec hauteur contrôlée */}
-              <div className="mt-4 max-h-[420px] overflow-y-auto pr-1">
-                {loadingUsers && (
-                  <p className="text-center text-sm text-white/60">Chargement des utilisateurs…</p>
-                )}
-
-                {search && (
-                  <ul className="space-y-2">
-                    {filteredUsers.length > 0 ? (
-                      filteredUsers.map(u => {
-                        const avatar = getUserAvatar(u)
-                        return (
-                          <li
-                            key={u.id}
-                            onClick={() => startConversation(u.id)}
-                            className="cursor-pointer rounded-xl bg-[#141414] hover:bg-[#191919] border border-white/10 px-4 py-3 flex items-center gap-3 transition"
-                          >
-                            {avatar ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={avatar} alt={u.name} className="w-9 h-9 rounded-full object-cover" />
-                            ) : (
-                              <div className="w-9 h-9 rounded-full bg-gray-700 grid place-items-center font-bold">
-                                {u.name?.charAt(0)?.toUpperCase() ?? '?'}
-                              </div>
-                            )}
-                            <div className="leading-tight">
-                              <p className="font-medium">{u.name}</p>
-                              <p className="text-xs text-white/50">{u.role}</p>
-                            </div>
-                          </li>
-                        )
-                      })
-                    ) : search ? (
-                      <li className="text-center text-sm text-white/50 italic">
-                        Aucun utilisateur trouvé.
-                      </li>
-                    ) : null}
-                  </ul>
-                )}
-              </div>
+              {/* fin bordure légère en dégradé */}
+              <div className={`pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-r ${ACCENT} opacity-10`} />
             </div>
+
+            {loadingUsers && <p className="text-gray-400 text-sm">Chargement des utilisateurs…</p>}
+
+            {search && (
+              <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map(u => {
+                    const avatar = getAvatar(u)
+                    return (
+                      <li
+                        key={u.id}
+                        onClick={() => startConversation(u.id)}
+                        className="cursor-pointer rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 p-3 flex items-center gap-3 transition"
+                      >
+                        {avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-white/10 grid place-items-center font-semibold">
+                            {u.name?.charAt(0) ?? '?'}
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">{u.name}</span>
+                          <span className="text-xs text-white/50">{u.role}</span>
+                        </div>
+                      </li>
+                    )
+                  })
+                ) : (
+                  <li className="text-gray-500 italic text-sm text-center py-2">Aucun utilisateur trouvé.</li>
+                )}
+              </ul>
+            )}
           </section>
 
           {/* Colonne droite : conversations */}
-          <section className="rounded-2xl border border-white/10 bg-[#0e0e0e] overflow-hidden">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Vos conversations</h2>
-              <button
-                onClick={fetchConversations}
-                className="text-sm rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-1.5"
-              >
-                Rafraîchir
-              </button>
-            </div>
+          <section className="rounded-2xl border border-white/10 bg-[#111]/80 p-5 relative overflow-hidden">
+            <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-transparent via-white/[0.03] to-transparent pointer-events-none" />
+            <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
 
-            <div className="p-3 sm:p-4 overflow-x-hidden">
-              {loadingConvs && (
-                <p className="text-center text-sm text-white/60 py-4">Chargement…</p>
-              )}
-
-              {conversations.length === 0 && !error ? (
-                <p className="text-center text-white/60 py-4">
-                  Aucune conversation pour le moment.
-                </p>
-              ) : (
-                <ul className="space-y-3">
-                  {conversations.map(conv => {
-                    const other = getOtherUser(conv)
-                    const avatar = getUserAvatar(other || undefined)
-                    return (
-                      <li key={conv.id} className="w-full">
-                        <Link
-                          href={`/messages/${conv.id}`}
-                          className="block w-full rounded-2xl bg-[#141414] hover:bg-[#191919] border border-white/10 px-4 py-4 transition"
-                        >
-                          <div className="flex items-center gap-4 min-w-0">
-                            {avatar ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={avatar} alt={other?.name ?? 'User'} className="w-11 h-11 rounded-full object-cover flex-none" />
-                            ) : (
-                              <div className="w-11 h-11 rounded-full bg-gray-700 grid place-items-center font-bold flex-none">
-                                {other?.name?.charAt(0)?.toUpperCase() ?? '?'}
-                              </div>
-                            )}
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-3">
-                                <h3 className="font-semibold truncate">
-                                  {other?.name ?? 'Conversation'}
-                                </h3>
-                                <span className="text-[11px] text-white/50 flex-none">
-                                  {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
-                                </span>
-                              </div>
-                              <p className="text-sm text-white/70 truncate">
-                                {conv.lastMessage || '…'}
-                              </p>
-                            </div>
+            {conversations.length === 0 && !error ? (
+              <p className="text-gray-400 text-sm">Aucune conversation pour le moment.</p>
+            ) : (
+              <ul className="space-y-3">
+                {conversations.map(conv => {
+                  const other = getOtherUser(conv)
+                  const avatar = getAvatar(other)
+                  const unread = !!conv.unread
+                  return (
+                    <li
+                      key={conv.id}
+                      className={`rounded-xl border p-4 transition flex items-start gap-4 relative
+                        ${unread
+                          ? 'bg-indigo-500/10 border-indigo-500/25'
+                          : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
+                      `}
+                    >
+                      {/* Bord de statut (non lu) */}
+                      <span
+                        className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl
+                          ${unread ? 'bg-indigo-500' : 'bg-transparent'}
+                        `}
+                      />
+                      <Link href={`/messages/${conv.id}`} className="flex-1 min-w-0 flex items-start gap-4">
+                        {avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={avatar} alt={other?.name ?? 'User'} className="w-12 h-12 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-white/10 grid place-items-center font-semibold">
+                            {other?.name?.charAt(0) ?? '?'}
                           </div>
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
+                            {other?.name ?? 'Conversation'}
+                          </h3>
+                          <p className="text-xs text-white/60 truncate max-w-[60ch]">
+                            {conv.lastMessage || '…'}
+                          </p>
+                        </div>
+                      </Link>
+
+                      {/* date + delete */}
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="text-[11px] text-white/50 whitespace-nowrap">
+                          {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
+                        </span>
+                        <button
+                          onClick={() => deleteConversation(conv.id)}
+                          disabled={deletingId === conv.id}
+                          title="Supprimer la conversation"
+                          className="text-white/70 hover:text-red-400 text-xs border border-white/20 hover:border-red-400 rounded-md px-2 py-1"
+                        >
+                          {deletingId === conv.id ? '…' : 'Supprimer'}
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
           </section>
         </div>
       </div>
