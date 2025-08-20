@@ -7,11 +7,16 @@ import Link from 'next/link'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
+interface ProfileLite {
+  avatar?: string | null
+}
+
 interface User {
   id: number
   name: string
   role: Role
   image?: string | null
+  profile?: ProfileLite | null
 }
 
 interface Conversation {
@@ -22,6 +27,19 @@ interface Conversation {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
+/* ------- helpers ------- */
+function toAbsoluteUrl(u?: string | null) {
+  if (!u) return ''
+  if (u.startsWith('http://') || u.startsWith('https://')) return u
+  if (u.startsWith('//')) return `https:${u}`
+  return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
+}
+
+function getUserAvatar(u?: User) {
+  const raw = u?.image || u?.profile?.avatar || ''
+  return toAbsoluteUrl(raw)
+}
 
 export default function MessagesPage() {
   const { user, token } = useAuth()
@@ -135,149 +153,143 @@ export default function MessagesPage() {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
-  /* ---------------- UI ---------------- */
-
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Bandeau / Hero compact */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 via-pink-500/10 to-transparent blur-3xl -z-10" />
-        <div className="max-w-6xl mx-auto px-4 pt-8 pb-4">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            Messagerie
-          </h1>
-          <p className="text-white/70 mt-1">
-            Retrouvez vos conversations et démarrez de nouveaux échanges.
-          </p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-black text-white font-poppins">
+      <div className="mx-auto max-w-6xl px-4 py-10">
+        <h1 className="text-[40px] font-extrabold tracking-tight mb-2">Messagerie</h1>
+        <p className="text-white/70 mb-8">
+          Retrouvez vos conversations et démarrez de nouveaux échanges.
+        </p>
 
-      <div className="max-w-6xl mx-auto px-4 pb-16 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
-        {/* Colonne gauche : Nouvelle conversation */}
-        <aside className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md p-5">
-          <h2 className="text-lg font-semibold">Nouvelle conversation</h2>
-          <p className="text-sm text-white/60 mt-1">
-            Cherche un artiste, un organisateur ou un prestataire.
-          </p>
+        {/* Layout 2 colonnes */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Colonne gauche : nouvelle conversation */}
+          <section className="rounded-2xl border border-white/10 bg-[#0e0e0e]">
+            <div className="p-6 border-b border-white/10">
+              <h2 className="text-lg font-semibold">Nouvelle conversation</h2>
+              <p className="text-sm text-white/60">
+                Cherche un artiste, un organisateur ou un prestataire.
+              </p>
+            </div>
 
-          <div className="mt-4">
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un utilisateur…"
-              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-white/30"
-            />
-          </div>
+            <div className="p-6 pt-5">
+              {/* Champ de recherche */}
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Tape un nom…"
+                className="w-full rounded-xl bg-[#151515] border border-white/10 px-4 py-3 outline-none focus:border-white/30"
+              />
 
-          {loadingUsers && (
-            <p className="text-sm text-white/60 mt-3">Chargement des utilisateurs…</p>
-          )}
+              {/* Liste scrollable avec hauteur contrôlée */}
+              <div className="mt-4 max-h-[420px] overflow-y-auto pr-1">
+                {loadingUsers && (
+                  <p className="text-center text-sm text-white/60">Chargement des utilisateurs…</p>
+                )}
 
-          {search && (
-            <ul className="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map(u => (
-                  <li key={u.id}>
-                    <button
-                      onClick={() => startConversation(u.id)}
-                      className="w-full flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition px-3 py-2.5 text-left"
-                    >
-                      {u.image ? (
-                        <img
-                          src={u.image}
-                          alt={u.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-neutral-700 grid place-items-center text-white font-bold">
-                          {u.name?.charAt(0) ?? '?'}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{u.name}</p>
-                        <p className="text-xs text-white/60">{u.role}</p>
-                      </div>
-                    </button>
-                  </li>
-                ))
-              ) : (
-                <li className="text-sm text-white/50 italic">Aucun utilisateur trouvé.</li>
-              )}
-            </ul>
-          )}
-        </aside>
+                {search && (
+                  <ul className="space-y-2">
+                    {filteredUsers.length > 0 ? (
+                      filteredUsers.map(u => {
+                        const avatar = getUserAvatar(u)
+                        return (
+                          <li
+                            key={u.id}
+                            onClick={() => startConversation(u.id)}
+                            className="cursor-pointer rounded-xl bg-[#141414] hover:bg-[#191919] border border-white/10 px-4 py-3 flex items-center gap-3 transition"
+                          >
+                            {avatar ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={avatar} alt={u.name} className="w-9 h-9 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-gray-700 grid place-items-center font-bold">
+                                {u.name?.charAt(0)?.toUpperCase() ?? '?'}
+                              </div>
+                            )}
+                            <div className="leading-tight">
+                              <p className="font-medium">{u.name}</p>
+                              <p className="text-xs text-white/50">{u.role}</p>
+                            </div>
+                          </li>
+                        )
+                      })
+                    ) : search ? (
+                      <li className="text-center text-sm text-white/50 italic">
+                        Aucun utilisateur trouvé.
+                      </li>
+                    ) : null}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </section>
 
-        {/* Colonne droite : Conversations */}
-        <section className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Vos conversations</h2>
-            <div className="flex items-center gap-2 text-xs text-white/60">
-              {loadingConvs && <span>Actualisation…</span>}
+          {/* Colonne droite : conversations */}
+          <section className="rounded-2xl border border-white/10 bg-[#0e0e0e] overflow-hidden">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Vos conversations</h2>
               <button
                 onClick={fetchConversations}
-                className="rounded-lg border border-white/10 px-3 py-1.5 hover:bg-white/10 transition"
-                title="Rafraîchir"
+                className="text-sm rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-1.5"
               >
                 Rafraîchir
               </button>
             </div>
-          </div>
 
-          {error && (
-            <p className="text-sm mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
-              {error}
-            </p>
-          )}
+            <div className="p-3 sm:p-4 overflow-x-hidden">
+              {loadingConvs && (
+                <p className="text-center text-sm text-white/60 py-4">Chargement…</p>
+              )}
 
-          {conversations.length === 0 && !error ? (
-            <div className="mt-6 rounded-xl border border-white/10 bg-black/40 p-6 text-center">
-              <p className="text-white/70">Aucune conversation pour le moment.</p>
+              {conversations.length === 0 && !error ? (
+                <p className="text-center text-white/60 py-4">
+                  Aucune conversation pour le moment.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {conversations.map(conv => {
+                    const other = getOtherUser(conv)
+                    const avatar = getUserAvatar(other || undefined)
+                    return (
+                      <li key={conv.id} className="w-full">
+                        <Link
+                          href={`/messages/${conv.id}`}
+                          className="block w-full rounded-2xl bg-[#141414] hover:bg-[#191919] border border-white/10 px-4 py-4 transition"
+                        >
+                          <div className="flex items-center gap-4 min-w-0">
+                            {avatar ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={avatar} alt={other?.name ?? 'User'} className="w-11 h-11 rounded-full object-cover flex-none" />
+                            ) : (
+                              <div className="w-11 h-11 rounded-full bg-gray-700 grid place-items-center font-bold flex-none">
+                                {other?.name?.charAt(0)?.toUpperCase() ?? '?'}
+                              </div>
+                            )}
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-3">
+                                <h3 className="font-semibold truncate">
+                                  {other?.name ?? 'Conversation'}
+                                </h3>
+                                <span className="text-[11px] text-white/50 flex-none">
+                                  {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
+                                </span>
+                              </div>
+                              <p className="text-sm text-white/70 truncate">
+                                {conv.lastMessage || '…'}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </div>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {conversations.map(conv => {
-                const other = getOtherUser(conv)
-                return (
-                  <li key={conv.id}>
-                    <Link
-                      href={`/messages/${conv.id}`}
-                      className="block rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition px-4 py-3"
-                    >
-                      <div className="flex items-center gap-4">
-                        {other?.image ? (
-                          <img
-                            src={other.image}
-                            alt={other.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-neutral-700 grid place-items-center text-white font-bold">
-                            {other?.name?.charAt(0) ?? '?'}
-                          </div>
-                        )}
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-3">
-                            <h3 className="text-base font-semibold truncate">
-                              {other?.name ?? 'Conversation'}
-                            </h3>
-                            <span className="text-[11px] text-white/50 whitespace-nowrap">
-                              {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
-                            </span>
-                          </div>
-                          <p className="text-sm text-white/70 truncate">
-                            {conv.lastMessage || '…'}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   )
