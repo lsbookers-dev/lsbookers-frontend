@@ -109,7 +109,7 @@ export default function MessagesPage() {
       const map: Record<number, boolean> = {}
       entries.forEach(([id, u]) => (map[id] = u))
       setUnreadMap(map)
-    } catch (e) {
+    } catch {
       // silencieux
     }
   }, [token, authedHeaders, user?.id])
