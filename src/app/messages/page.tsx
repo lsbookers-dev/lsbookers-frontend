@@ -131,71 +131,73 @@ export default function MessagesPage() {
     : []
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white p-6">
-      <h1 className="text-3xl font-bold mb-4">💬 Vos conversations</h1>
+    <div className="flex flex-col min-h-screen bg-[#1e1e1e] text-white font-poppins p-6">
+      <div className="max-w-xl mx-auto">
+        <h1 className="text-2xl md:text-3xl font-bold mb-6">💬 Vos conversations</h1>
 
-      {error && <p className="text-red-500 mb-4">{error}</p>}
+        {error && <p className="text-red-500 mb-6">{error}</p>}
 
-      <div className="mb-10">
-        <h2 className="text-lg font-semibold mb-2">📨 Démarrer une nouvelle conversation</h2>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher un utilisateur..."
-          className="border border-gray-600 bg-[#1c1c1c] text-white p-3 rounded w-full mb-3"
-        />
+        <div className="mb-10">
+          <h2 className="text-lg md:text-xl font-semibold mb-4">📨 Démarrer une nouvelle conversation</h2>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher un utilisateur..."
+            className="border border-[#555555] bg-[#2a2a2a] text-white text-base p-3 rounded-lg w-full mb-4"
+          />
 
-        {loadingUsers && <p className="text-gray-400">Chargement des utilisateurs...</p>}
+          {loadingUsers && <p className="text-gray-400 text-base">Chargement des utilisateurs...</p>}
 
-        {search && (
-          <ul className="space-y-2 max-h-40 overflow-y-auto">
-            {filteredUsers.length > 0 ? (
-              filteredUsers.map(u => (
+          {search && (
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map(u => (
+                  <li
+                    key={u.id}
+                    onClick={() => startConversation(u.id)}
+                    className="cursor-pointer hover:bg-[#3d3d3d] p-3 rounded-lg bg-[#2d2d2d] text-base"
+                  >
+                    {u.name}
+                  </li>
+                ))
+              ) : (
+                <li className="text-gray-500 italic text-base">Aucun utilisateur trouvé.</li>
+              )}
+            </ul>
+          )}
+        </div>
+
+        {conversations.length === 0 && !error ? (
+          <p className="text-gray-400 text-base">Aucune conversation pour le moment.</p>
+        ) : (
+          <ul className="space-y-4">
+            {conversations.map(conv => {
+              const other = getOtherUser(conv)
+              return (
                 <li
-                  key={u.id}
-                  onClick={() => startConversation(u.id)}
-                  className="cursor-pointer hover:bg-gray-700 p-3 rounded bg-gray-800"
+                  key={conv.id}
+                  className="bg-[#2d2d2d] rounded-lg p-4 hover:bg-[#3d3d3d] transition"
                 >
-                  {u.name}
+                  <Link href={`/messages/${conv.id}`} className="block">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h2 className="text-lg font-semibold">{other?.name ?? 'Conversation'}</h2>
+                        <p className="text-sm text-gray-300 truncate max-w-md">
+                          {conv.lastMessage || '…'}
+                        </p>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
+                      </span>
+                    </div>
+                  </Link>
                 </li>
-              ))
-            ) : (
-              <li className="text-gray-500 italic">Aucun utilisateur trouvé.</li>
-            )}
+              )
+            })}
           </ul>
         )}
       </div>
-
-      {conversations.length === 0 && !error ? (
-        <p className="text-gray-400">Aucune conversation pour le moment.</p>
-      ) : (
-        <ul className="space-y-3">
-          {conversations.map(conv => {
-            const other = getOtherUser(conv)
-            return (
-              <li
-                key={conv.id}
-                className="bg-gray-800 rounded p-4 hover:bg-gray-700 transition"
-              >
-                <Link href={`/messages/${conv.id}`} className="block">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h2 className="text-lg font-semibold">{other?.name ?? 'Conversation'}</h2>
-                      <p className="text-sm text-gray-300 truncate max-w-md">
-                        {conv.lastMessage || '…'}
-                      </p>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      )}
     </div>
   )
 }
