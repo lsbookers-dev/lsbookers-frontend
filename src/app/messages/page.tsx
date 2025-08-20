@@ -11,7 +11,7 @@ interface User {
   id: number
   name: string
   role: Role
-  image?: string | null // Ajouté pour supporter les photos de profil
+  image?: string | null
 }
 
 interface Conversation {
@@ -33,6 +33,7 @@ export default function MessagesPage() {
   const [search, setSearch] = useState('')
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [loadingConvs, setLoadingConvs] = useState(false)
 
   const authedHeaders = useMemo(
     () =>
@@ -48,6 +49,7 @@ export default function MessagesPage() {
     if (!token) return
     try {
       setError(null)
+      setLoadingConvs(true)
       const res = await fetch(`${API_BASE}/api/messages/conversations`, {
         headers: authedHeaders,
         cache: 'no-store',
@@ -59,6 +61,8 @@ export default function MessagesPage() {
     } catch (err) {
       console.error('Conversations load error:', err)
       setError('Impossible de charger les conversations.')
+    } finally {
+      setLoadingConvs(false)
     }
   }, [token, authedHeaders])
 
@@ -131,87 +135,149 @@ export default function MessagesPage() {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
+  /* ---------------- UI ---------------- */
+
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white font-poppins p-6">
-      <div className="max-w-4xl mx-auto w-full">
-        <h1 className="text-3xl font-bold mb-8 text-center">💬 Vos conversations</h1>
+    <div className="min-h-screen bg-black text-white">
+      {/* Bandeau / Hero compact */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 via-pink-500/10 to-transparent blur-3xl -z-10" />
+        <div className="max-w-6xl mx-auto px-4 pt-8 pb-4">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+            Messagerie
+          </h1>
+          <p className="text-white/70 mt-1">
+            Retrouvez vos conversations et démarrez de nouveaux échanges.
+          </p>
+        </div>
+      </div>
 
-        {error && <p className="text-red-500 mb-6 text-center">{error}</p>}
+      <div className="max-w-6xl mx-auto px-4 pb-16 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
+        {/* Colonne gauche : Nouvelle conversation */}
+        <aside className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md p-5">
+          <h2 className="text-lg font-semibold">Nouvelle conversation</h2>
+          <p className="text-sm text-white/60 mt-1">
+            Cherche un artiste, un organisateur ou un prestataire.
+          </p>
 
-        <div className="mb-12 bg-[#121212] rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold mb-4">📨 Démarrer une nouvelle conversation</h2>
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher un utilisateur..."
-            className="border border-[#333333] bg-[#1a1a1a] text-white text-base p-3 rounded-lg w-full mb-4 focus:outline-none focus:border-[#4a90e2] transition"
-          />
+          <div className="mt-4">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher un utilisateur…"
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-white/30"
+            />
+          </div>
 
-          {loadingUsers && <p className="text-gray-400 text-base text-center">Chargement des utilisateurs...</p>}
+          {loadingUsers && (
+            <p className="text-sm text-white/60 mt-3">Chargement des utilisateurs…</p>
+          )}
 
           {search && (
-            <ul className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-[#4a90e2] scrollbar-track-[#1a1a1a]">
+            <ul className="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">
               {filteredUsers.length > 0 ? (
                 filteredUsers.map(u => (
-                  <li
-                    key={u.id}
-                    onClick={() => startConversation(u.id)}
-                    className="cursor-pointer hover:bg-[#222222] p-3 rounded-lg bg-[#1a1a1a] text-base flex items-center gap-3 transition"
-                  >
-                    {u.image ? (
-                      <img src={u.image} alt={u.name} className="w-10 h-10 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold">
-                        {u.name.charAt(0)}
+                  <li key={u.id}>
+                    <button
+                      onClick={() => startConversation(u.id)}
+                      className="w-full flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition px-3 py-2.5 text-left"
+                    >
+                      {u.image ? (
+                        <img
+                          src={u.image}
+                          alt={u.name}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-neutral-700 grid place-items-center text-white font-bold">
+                          {u.name?.charAt(0) ?? '?'}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{u.name}</p>
+                        <p className="text-xs text-white/60">{u.role}</p>
                       </div>
-                    )}
-                    {u.name}
+                    </button>
                   </li>
                 ))
               ) : (
-                <li className="text-gray-500 italic text-base text-center">Aucun utilisateur trouvé.</li>
+                <li className="text-sm text-white/50 italic">Aucun utilisateur trouvé.</li>
               )}
             </ul>
           )}
-        </div>
+        </aside>
 
-        {conversations.length === 0 && !error ? (
-          <p className="text-gray-400 text-base text-center">Aucune conversation pour le moment.</p>
-        ) : (
-          <ul className="space-y-4">
-            {conversations.map(conv => {
-              const other = getOtherUser(conv)
-              return (
-                <li
-                  key={conv.id}
-                  className="bg-[#121212] rounded-lg p-4 hover:bg-[#1a1a1a] transition shadow-md"
-                >
-                  <Link href={`/messages/${conv.id}`} className="block">
-                    <div className="flex items-center gap-4">
-                      {other?.image ? (
-                        <img src={other.image} alt={other.name} className="w-12 h-12 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold">
-                          {other?.name?.charAt(0) ?? '?'}
+        {/* Colonne droite : Conversations */}
+        <section className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Vos conversations</h2>
+            <div className="flex items-center gap-2 text-xs text-white/60">
+              {loadingConvs && <span>Actualisation…</span>}
+              <button
+                onClick={fetchConversations}
+                className="rounded-lg border border-white/10 px-3 py-1.5 hover:bg-white/10 transition"
+                title="Rafraîchir"
+              >
+                Rafraîchir
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-sm mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          {conversations.length === 0 && !error ? (
+            <div className="mt-6 rounded-xl border border-white/10 bg-black/40 p-6 text-center">
+              <p className="text-white/70">Aucune conversation pour le moment.</p>
+            </div>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {conversations.map(conv => {
+                const other = getOtherUser(conv)
+                return (
+                  <li key={conv.id}>
+                    <Link
+                      href={`/messages/${conv.id}`}
+                      className="block rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition px-4 py-3"
+                    >
+                      <div className="flex items-center gap-4">
+                        {other?.image ? (
+                          <img
+                            src={other.image}
+                            alt={other.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-neutral-700 grid place-items-center text-white font-bold">
+                            {other?.name?.charAt(0) ?? '?'}
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <h3 className="text-base font-semibold truncate">
+                              {other?.name ?? 'Conversation'}
+                            </h3>
+                            <span className="text-[11px] text-white/50 whitespace-nowrap">
+                              {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
+                            </span>
+                          </div>
+                          <p className="text-sm text-white/70 truncate">
+                            {conv.lastMessage || '…'}
+                          </p>
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <h2 className="text-lg font-semibold">{other?.name ?? 'Conversation'}</h2>
-                        <p className="text-sm text-gray-300 truncate max-w-md">
-                          {conv.lastMessage || '…'}
-                        </p>
                       </div>
-                      <span className="text-xs text-gray-400 whitespace-nowrap">
-                        {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
-                      </span>
-                    </div>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
       </div>
     </div>
   )
