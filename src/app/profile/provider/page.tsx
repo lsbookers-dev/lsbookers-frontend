@@ -1,52 +1,63 @@
 'use client'
 
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
-import type { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
-import { Settings2, ChevronDown, Plus, MessageCircle, UserPlus } from 'lucide-react'
+import {
+  Settings2,
+  ChevronDown,
+  Plus,
+  MessageCircle,
+  UserPlus,
+  Star,
+  MapPin,
+  SlidersHorizontal,
+} from 'lucide-react'
 
 /* ================= Types ================= */
+type RoleTag = { label: string }
+type Publication = {
+  id: number
+  title: string
+  image: string
+  caption?: string
+  time?: string
+  likes?: number
+  comments?: number
+}
+type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
+type PriceLine = { id: number; label: string; price: string }
+
 type StoredUser = {
   id: number | string
   name?: string
-  email?: string
-  role?: 'PROVIDER' | 'ARTIST' | 'ORGANIZER' | 'ADMIN'
+  role?: string
   profile?: { id: number }
 }
 
-type ApiUser = {
-  id: number
-  name: string
-  email?: string
-  role?: string
-}
-
+type ApiUser = { id: number; name: string }
 type ApiProfile = {
   id: number
   userId: number
-  description?: string | null
+  avatar?: string | null
+  banner?: string | null
+  bio?: string | null
   location?: string | null
   country?: string | null
   radiusKm?: number | null
   specialties?: string[] | null
-  avatar?: string | null
-  banner?: string | null
+  bannerPositionY?: number | null // nouveau: position Y de la bannière (%)
   user?: ApiUser
 }
 
 /* ================= Helpers ================= */
 async function uploadToCloudinary(
   file: File,
-  folder: 'avatars' | 'banners' | 'messages' | 'media',
+  folder: 'avatars' | 'banners' | 'media',
   type: 'image' | 'video' | 'auto' = 'auto'
 ) {
   const API = process.env.NEXT_PUBLIC_API_URL
-  if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant côté frontend')
+  if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant')
   const base = API.replace(/\/$/, '')
 
   const fd = new FormData()
@@ -56,22 +67,11 @@ async function uploadToCloudinary(
 
   const res = await fetch(`${base}/api/upload`, { method: 'POST', body: fd })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({} as { details?: string }))
-    throw new Error(err?.details || 'UPLOAD_FAILED')
+    const err = await res.json().catch(() => ({} as any))
+    throw new Error((err as { details?: string })?.details || 'UPLOAD_FAILED')
   }
-  return res.json() as Promise<{ url: string; public_id?: string }>
+  return res.json() as Promise<{ url: string; public_id: string }>
 }
-
-/* ================= Constantes ================= */
-const PROVIDER_OPTIONS = [
-  'Traiteur',
-  'Photobooth',
-  'Artificier',
-  'Photographe',
-  'Décorateur',
-  'Son / Lumière',
-  'Sécurité',
-]
 
 /* ============================================================ */
 
@@ -79,11 +79,28 @@ export default function ProviderProfilePage() {
   const router = useRouter()
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-  /* ===== Auth + IDs ===== */
+  // --------- “mock” valeurs de départ pour l’UI ----------
+  const providerDefaults = useMemo(
+    () => ({
+      banner: '/banners/provider_banner.jpg',
+      avatar: '/avatars/provider.png',
+      name: 'Prestataire',
+      location: 'Marseille',
+      country: 'France',
+      radiusKm: 200,
+      roles: [{ label: 'Traiteur' }, { label: 'Photobooth' }, { label: 'Artificier' }] as RoleTag[],
+      description:
+        'Décrivez vos prestations, votre matériel, vos conditions d’intervention, etc.',
+    }),
+    []
+  )
+
+  /* ===== Auth + profile réels ===== */
   const [token, setToken] = useState<string | null>(null)
   const [userId, setUserId] = useState<number | null>(null)
   const [profileId, setProfileId] = useState<number | null>(null)
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null)
+  const [profile, setProfile] = useState<ApiProfile | null>(null)
 
   useEffect(() => {
     try {
@@ -92,61 +109,69 @@ export default function ProviderProfilePage() {
       if (t) setToken(t)
       if (uStr) {
         const u: StoredUser = JSON.parse(uStr)
-        if (u?.role !== 'PROVIDER') {
-          router.push('/home')
-          return
-        }
         setCurrentUser(u)
-        const uid = typeof u.id === 'string' ? parseInt(u.id, 10) : u.id
+        const uid = typeof u?.id === 'string' ? parseInt(u.id, 10) : u?.id
         setUserId(uid || null)
-        if (u.profile?.id) setProfileId(u.profile.id)
+        if (u?.profile?.id) setProfileId(u.profile.id)
       }
     } catch {
-      // ignore
+      /* ignore */
     }
-  }, [router])
+  }, [])
 
-  /* ===== État profil affiché ===== */
-  const fallback = useMemo(
-    () => ({
-      banner: '/banners/provider_banner.jpg',
-      avatar: '/default-avatar.png',
-      name: 'Prestataire',
-      location: '—',
-      country: '',
-      description:
-        "Décrivez vos prestations, votre matériel, vos conditions d’intervention, etc.",
-      specialties: [] as string[],
-    }),
-    []
-  )
-
-  const [profile, setProfile] = useState<ApiProfile | null>(null)
-
-  // visuels
-  const [bannerUrl, setBannerUrl] = useState<string>(fallback.banner)
-  const [avatarUrl, setAvatarUrl] = useState<string>(fallback.avatar)
+  /* ===== Visuels (avec MAJ immédiate) ===== */
+  const [bannerUrl, setBannerUrl] = useState<string>(providerDefaults.banner)
+  const [avatarUrl, setAvatarUrl] = useState<string>(providerDefaults.avatar)
   const bannerInputRef = useRef<HTMLInputElement | null>(null)
   const avatarInputRef = useRef<HTMLInputElement | null>(null)
   const [bannerUploading, setBannerUploading] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
-  // données modifiables
-  const [types, setTypes] = useState<string[]>(fallback.specialties)
-  const [typePickerOpen, setTypePickerOpen] = useState(false)
+  // Position verticale de la bannière (object-position-y)
+  const [bannerPosY, setBannerPosY] = useState<number>(50) // %
+  const [tweakOpen, setTweakOpen] = useState(false) // popover réglage
 
-  const [location, setLocation] = useState<string>(fallback.location)
-  const [country, setCountry] = useState<string>(fallback.country)
-  const [radiusKm, setRadiusKm] = useState<string>('')
+  // Prestations (badges)
+  const [roles, setRoles] = useState<RoleTag[]>(providerDefaults.roles)
+  const allRoleOptions = useMemo(
+    () => ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur', 'Barman', 'Location sono'],
+    []
+  )
+  const [rolePickerOpen, setRolePickerOpen] = useState(false)
 
-  const [description, setDescription] = useState<string>(fallback.description)
+  // Zone d’intervention (éditable via petit popover)
+  const [locDraft, setLocDraft] = useState(providerDefaults.location)
+  const [countryDraft, setCountryDraft] = useState(providerDefaults.country)
+  const [radiusDraft, setRadiusDraft] = useState<string>(String(providerDefaults.radiusKm))
+  const [geoOpen, setGeoOpen] = useState(false)
+
+  // Description
+  const [description, setDescription] = useState(providerDefaults.description)
   const [editingDesc, setEditingDesc] = useState(false)
-  const [descDraft, setDescDraft] = useState<string>(fallback.description)
+  const [descDraft, setDescDraft] = useState(description)
 
-  // planning
-  const [events, setEvents] = useState<EventInput[]>([])
+  // Publications (portfolio => like/comment)
+  const [publications, setPublications] = useState<Publication[]>([
+    { id: 1, title: 'Cocktail dînatoire', image: '/media/prov1.jpg', caption: 'Buffet 120 pers — merci !', time: 'Il y a 4h', likes: 12, comments: 3 },
+    { id: 2, title: 'Photobooth soirée', image: '/media/prov2.jpg', likes: 8, comments: 1 },
+    { id: 3, title: 'Feu d’artifice', image: '/media/prov3.jpg', likes: 21, comments: 7 },
+    { id: 4, title: 'Décor mariage', image: '/media/prov4.jpg', likes: 5, comments: 2 },
+  ])
+  const [showAllPubs, setShowAllPubs] = useState(false)
 
-  /* ===== Charger le profil backend ===== */
+  // Avis & Tarifs (colonne droite)
+  const [reviews] = useState<Review[]>([
+    { id: 1, author: 'Wedding Planning', authorAvatar: '/avatars/pro1.png', rating: 5, text: 'Service impeccable, réactif et flexible. Reco ++' },
+    { id: 2, author: 'Event Corp', authorAvatar: '/avatars/pro2.png', rating: 4, text: 'Très pro, bon matériel, installation rapide.' },
+  ])
+  const [prices, setPrices] = useState<PriceLine[]>([
+    { id: 1, label: 'Cocktail dînatoire (50 pers)', price: 'Dès 800€' },
+    { id: 2, label: 'Photobooth (soirée)', price: 'Dès 350€' },
+  ])
+  const [newPriceLabel, setNewPriceLabel] = useState('')
+  const [newPriceValue, setNewPriceValue] = useState('')
+
+  /* ===== Charger profil depuis l’API ===== */
   useEffect(() => {
     const loadProfile = async () => {
       if (!API_BASE || !userId) return
@@ -155,29 +180,34 @@ export default function ProviderProfilePage() {
         if (!r.ok) return
         const data = (await r.json()) as { profile?: ApiProfile }
         const p = data?.profile
-        if (!p) return
+        if (p) {
+          setProfile(p)
+          if (p.banner) setBannerUrl(p.banner)
+          if (p.avatar) setAvatarUrl(p.avatar)
+          if (typeof p.bannerPositionY === 'number') setBannerPosY(p.bannerPositionY)
+          if (!profileId && p.id) setProfileId(p.id)
 
-        setProfile(p)
-        if (p.banner) setBannerUrl(p.banner)
-        if (p.avatar) setAvatarUrl(p.avatar)
-        if (p.description) {
-          setDescription(p.description)
-          setDescDraft(p.description)
+          // hydrate “header”
+          if (p.location) setLocDraft(p.location)
+          if (p.country) setCountryDraft(p.country)
+          if (typeof p.radiusKm === 'number') setRadiusDraft(String(p.radiusKm))
+          if (p.bio) {
+            setDescription(p.bio)
+            setDescDraft(p.bio)
+          }
+          if (p.specialties?.length) {
+            setRoles(p.specialties.map(s => ({ label: s })))
+          }
         }
-        setTypes(p.specialties ?? [])
-        setLocation(p.location ?? '')
-        setCountry(p.country ?? '')
-        setRadiusKm(p.radiusKm ? String(p.radiusKm) : '')
-        if (!profileId && p.id) setProfileId(p.id)
       } catch {
-        // ignore
+        /* ignore */
       }
     }
     loadProfile()
   }, [API_BASE, userId, profileId])
 
-  /* ===== Persistance profil ===== */
-  async function saveProfile(fields: Record<string, unknown>) {
+  /* =============== Actions persistance =============== */
+  const saveProfile = async (fields: Record<string, unknown>) => {
     if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
     if (!token) throw new Error('TOKEN_ABSENT')
     if (!profileId) throw new Error('PROFILE_ID_ABSENT')
@@ -196,7 +226,6 @@ export default function ProviderProfilePage() {
     }
   }
 
-  /* ===== Upload bannière / avatar ===== */
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -208,7 +237,7 @@ export default function ProviderProfilePage() {
       alert('Bannière mise à jour ✅')
     } catch (err) {
       console.error(err)
-      alert('Échec de mise à jour de la bannière.')
+      alert("Échec de la mise à jour de la bannière.")
     } finally {
       setBannerUploading(false)
       e.target.value = ''
@@ -226,187 +255,214 @@ export default function ProviderProfilePage() {
       alert('Photo de profil mise à jour ✅')
     } catch (err) {
       console.error(err)
-      alert("Échec de mise à jour de l'avatar.")
+      alert("Échec de la mise à jour de l'avatar.")
     } finally {
       setAvatarUploading(false)
       e.target.value = ''
     }
   }
 
-  /* ===== Interactions ===== */
-  const toggleType = (label: string) => {
-    setTypes(prev =>
-      prev.includes(label) ? prev.filter(t => t !== label) : [...prev, label]
+  // Ajustement vertical de la bannière (stocké en %)
+  const persistBannerPos = async (val: number) => {
+    setBannerPosY(val)
+    try {
+      await saveProfile({ bannerPositionY: val })
+    } catch {
+      /* optionnel: silencieux si backend pas prêt */
+    }
+  }
+
+  const toggleRole = (label: string) => {
+    setRoles(prev =>
+      prev.some(r => r.label === label) ? prev.filter(r => r.label !== label) : [...prev, { label }]
     )
   }
 
-  const saveTypes = async () => {
+  const saveSpecialties = async () => {
     try {
-      await saveProfile({ specialties: types })
-      alert('Types de prestations enregistrés ✅')
-    } catch (err) {
-      console.error(err)
+      await saveProfile({ specialties: roles.map(r => r.label) })
+      alert('Prestations mises à jour ✅')
+    } catch {
       alert('Impossible de sauvegarder les prestations.')
     }
   }
 
-  const saveZone = async () => {
+  const saveGeo = async () => {
     try {
-      await saveProfile({
-        location: location.trim(),
-        country: country.trim(),
-        radiusKm: radiusKm ? parseInt(radiusKm, 10) : null,
-      })
-      alert('Zone d’intervention enregistrée ✅')
-    } catch (err) {
-      console.error(err)
-      alert('Impossible de sauvegarder la zone.')
+      const radiusNum = parseInt(radiusDraft || '0', 10) || 0
+      setGeoOpen(false)
+      await saveProfile({ location: locDraft, country: countryDraft, radiusKm: radiusNum })
+      alert('Zone d’intervention mise à jour ✅')
+    } catch {
+      alert('Échec de sauvegarde de la zone.')
     }
   }
 
-  const saveDescription = async () => {
-    try {
-      await saveProfile({ description: descDraft })
-      setDescription(descDraft)
-      setEditingDesc(false)
-      alert('Description enregistrée ✅')
-    } catch (err) {
-      console.error(err)
-      alert('Impossible de sauvegarder la description.')
-    }
+  const addPublication = () => {
+    const title = window.prompt('Titre de la publication ?')
+    if (!title) return
+    const image = window.prompt("URL de l'image ?") || '/media/pub_placeholder.jpg'
+    setPublications(prev => [{ id: Date.now(), title, image, likes: 0, comments: 0 }, ...prev])
   }
 
-  const contact = () => router.push(`/messages/new?to=${userId ?? profile?.userId ?? ''}`)
-  const follow = () => alert('Vous suivez maintenant ce prestataire ✅')
+  const likePub = (id: number) =>
+    setPublications(prev => prev.map(p => (p.id === id ? { ...p, likes: (p.likes || 0) + 1 } : p)))
 
-  /* ===== Planning (FullCalendar) ===== */
-  const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const title = window.prompt('Titre de l’événement ?')
-    const calendarApi = selectInfo.view.calendar
-    calendarApi.unselect()
-    if (title) {
-      const newEvent: EventInput = {
-        id: String(Date.now()),
-        title,
-        start: selectInfo.startStr,
-        end: selectInfo.endStr,
-        allDay: selectInfo.allDay,
-      }
-      setEvents(prev => [...prev, newEvent])
-    }
-  }
+  const commentPub = (id: number) =>
+    setPublications(prev => prev.map(p => (p.id === id ? { ...p, comments: (p.comments || 0) + 1 } : p)))
 
-  const handleEventClick = (clickInfo: EventClickArg) => {
-    if (window.confirm(`Supprimer l’événement "${clickInfo.event.title}" ?`)) {
-      setEvents(prev => prev.filter(e => e.id !== clickInfo.event.id))
-    }
+  const addPrice = () => {
+    const lbl = newPriceLabel.trim()
+    const val = newPriceValue.trim()
+    if (!lbl || !val) return
+    setPrices(prev => [...prev, { id: Date.now(), label: lbl, price: val }])
+    setNewPriceLabel('')
+    setNewPriceValue('')
   }
+  const removePrice = (id: number) => setPrices(prev => prev.filter(p => p.id !== id))
 
   /* =========================== UI =========================== */
+
+  // publications: 1 “hero” + 3 vignettes
+  const sorted = [...publications].sort((a, b) => b.id - a.id)
+  const heroPub = sorted[0]
+  const restPubs = sorted.slice(1, 4)
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* ===== Bannière ===== */}
       <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
-        <Image src={bannerUrl} alt="Bannière" fill priority className="object-cover opacity-90" />
-        <button
-          onClick={() => router.push('/settings/profile')}
-          className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 backdrop-blur"
-        >
-          <Settings2 size={18} />
-          Réglages
-        </button>
-
-        {/* Changer la bannière */}
-        <button
-          onClick={() => bannerInputRef.current?.click()}
-          className="absolute bottom-3 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-lg text-sm"
-          disabled={bannerUploading}
-          title={!token || !profileId ? 'Connecte-toi pour sauvegarder' : 'Changer la bannière'}
-        >
-          {bannerUploading ? 'Envoi…' : 'Changer la bannière'}
-        </button>
-        <input
-          ref={bannerInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={onSelectBanner}
+        <Image
+          src={bannerUrl}
+          alt="Bannière"
+          fill
+          priority
+          className="object-cover opacity-90"
+          style={{ objectPosition: `50% ${bannerPosY}%` }}
         />
+
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <button
+            onClick={() => router.push('/settings/profile')}
+            className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 backdrop-blur"
+          >
+            <Settings2 size={18} />
+            Réglages
+          </button>
+
+          <button
+            onClick={() => bannerInputRef.current?.click()}
+            className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl"
+            disabled={bannerUploading}
+            title="Changer la bannière"
+          >
+            {bannerUploading ? 'Envoi…' : 'Changer'}
+          </button>
+
+          {/* Popover: Ajuster centrage */}
+          <div className="relative">
+            <button
+              onClick={() => setTweakOpen(v => !v)}
+              className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2"
+              title="Ajuster le centrage"
+            >
+              <SlidersHorizontal size={18} />
+              Centrer
+            </button>
+            {tweakOpen && (
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-neutral-900 border border-white/10 p-3">
+                <p className="text-xs mb-2">Position verticale</p>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={bannerPosY}
+                  onChange={e => persistBannerPos(parseInt(e.target.value, 10))}
+                  className="w-full"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={onSelectBanner} />
       </div>
 
-      {/* ===== En-tête sous bannière ===== */}
+      {/* ===== Header infos ===== */}
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
+          {/* Avatar + édit */}
           <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
             <Image src={avatarUrl} alt="Avatar" fill className="object-cover" />
             <button
               onClick={() => avatarInputRef.current?.click()}
               className="absolute bottom-1 right-1 bg-black/60 hover:bg-black/80 text-xs px-2 py-0.5 rounded"
               disabled={avatarUploading}
-              title={!token || !profileId ? 'Connecte-toi pour sauvegarder' : 'Changer la photo'}
+              title="Changer la photo"
             >
               {avatarUploading ? '...' : '✎'}
             </button>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onSelectAvatar}
-            />
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={onSelectAvatar} />
           </div>
+
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">
-              {profile?.user?.name ?? currentUser?.name ?? 'Prestataire'}
+              {currentUser?.name ?? profile?.user?.name ?? providerDefaults.name}
             </h1>
-            <p className="text-sm text-neutral-300">
-              {location || 'Localisation à définir'}
-              {country ? `, ${country}` : ''}
-              {radiusKm ? ` · Rayon ${radiusKm}km` : ''}
+
+            {/* Ligne: localisation compacte */}
+            <p className="text-sm text-neutral-300 flex items-center gap-2 mt-1">
+              <MapPin size={16} className="text-violet-400" />
+              <span>
+                {(profile?.location ?? locDraft) || '—'}, {(profile?.country ?? countryDraft) || '—'} • Rayon{' '}
+                {(profile?.radiusKm ?? parseInt(radiusDraft || '0', 10))} km
+              </span>
+              <button
+                onClick={() => setGeoOpen(v => !v)}
+                className="text-xs px-2 py-1 rounded-full bg-white/10 hover:bg-white/20"
+                title="Régler la zone"
+              >
+                Régler
+              </button>
             </p>
 
-            {/* Types de prestations (chips) */}
+            {/* Prestations (badges) + gérer */}
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              {types.map(t => (
-                <span key={t} className="text-xs px-2 py-1 rounded-full bg-indigo-600/25 border border-indigo-500/50">
-                  {t}
+              {roles.map(r => (
+                <span key={r.label} className="text-xs px-2 py-1 rounded-full bg-violet-600/20 border border-violet-600/40">
+                  {r.label}
                 </span>
               ))}
-
-              {/* Sélecteur de types */}
               <div className="relative">
                 <button
-                  onClick={() => setTypePickerOpen(v => !v)}
+                  onClick={() => setRolePickerOpen(v => !v)}
                   className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/20 flex items-center gap-1"
                 >
-                  Gérer
-                  <ChevronDown size={14} />
+                  Gérer <ChevronDown size={14} />
                 </button>
-                {typePickerOpen && (
-                  <div className="absolute z-20 mt-2 w-56 rounded-xl bg-neutral-900 border border-white/10 p-2">
-                    <div className="max-h-56 overflow-auto pr-1">
-                      {PROVIDER_OPTIONS.map(opt => {
-                        const active = types.includes(opt)
-                        return (
-                          <button
-                            key={opt}
-                            onClick={() => toggleType(opt)}
-                            className={`w-full text-left text-sm px-2 py-1 rounded hover:bg-white/10 ${
-                              active ? 'text-indigo-400' : 'text-white'
-                            }`}
-                          >
-                            {active ? '— ' : '+ '} {opt}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <div className="mt-2 flex justify-end">
+                {rolePickerOpen && (
+                  <div className="absolute z-20 mt-2 w-56 rounded-2xl bg-neutral-900 border border-white/10 p-2">
+                    {allRoleOptions.map(opt => {
+                      const active = roles.some(r => r.label === opt)
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => toggleRole(opt)}
+                          className={`w-full text-left text-sm px-2 py-1 rounded hover:bg-white/10 ${
+                            active ? 'text-violet-400' : 'text-white'
+                          }`}
+                        >
+                          {active ? '— ' : '+ '} {opt}
+                        </button>
+                      )
+                    })}
+                    <div className="pt-2 mt-2 border-t border-white/10">
                       <button
                         onClick={() => {
-                          setTypePickerOpen(false)
-                          void saveTypes()
+                          setRolePickerOpen(false)
+                          saveSpecialties()
                         }}
-                        className="text-xs px-3 py-1 rounded-full bg-indigo-600 hover:bg-indigo-500"
+                        className="w-full text-center text-sm px-2 py-1 rounded bg-violet-600 hover:bg-violet-500"
                       >
                         Enregistrer
                       </button>
@@ -415,21 +471,49 @@ export default function ProviderProfilePage() {
                 )}
               </div>
             </div>
+
+            {/* Popover zone d’intervention */}
+            {geoOpen && (
+              <div className="mt-3 rounded-2xl bg-neutral-900 border border-white/10 p-3 w-full max-w-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                    placeholder="Ville"
+                    value={locDraft}
+                    onChange={e => setLocDraft(e.target.value)}
+                  />
+                  <input
+                    className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                    placeholder="Pays"
+                    value={countryDraft}
+                    onChange={e => setCountryDraft(e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                    placeholder="Rayon (km)"
+                    value={radiusDraft}
+                    onChange={e => setRadiusDraft(e.target.value)}
+                  />
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button onClick={saveGeo} className="text-sm px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-500">
+                    Enregistrer
+                  </button>
+                  <button onClick={() => setGeoOpen(false)} className="text-sm px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20">
+                    Fermer
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={contact}
-            className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200"
-          >
+          <button className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200">
             <MessageCircle size={18} /> Contacter
           </button>
-          <button
-            onClick={follow}
-            className="bg-indigo-600 rounded-full px-5 py-2 flex items-center gap-2 hover:bg-indigo-500"
-          >
+          <button className="bg-violet-600 rounded-full px-5 py-2 flex items-center gap-2 hover:bg-violet-500">
             <UserPlus size={18} /> Suivre
           </button>
         </div>
@@ -439,27 +523,7 @@ export default function ProviderProfilePage() {
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
         {/* Colonne gauche */}
         <div className="space-y-6">
-          {/* Portfolio (placeholders, à relier plus tard) */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Portfolio</h2>
-              <button
-                onClick={() => alert('Ouverture du module de portfolio')}
-                className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
-              >
-                Gérer
-              </button>
-            </div>
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="relative w-full h-28 rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                  <Image src={`/media/placeholder_${(i % 5) + 1}.jpg`} alt="media" fill className="object-cover" />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Description (persistée) */}
+          {/* Description (au-dessus) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Description</h2>
@@ -476,8 +540,14 @@ export default function ProviderProfilePage() {
               ) : (
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={saveDescription}
-                    className="text-sm px-3 py-1 rounded-full bg-indigo-600 hover:bg-indigo-500"
+                    onClick={async () => {
+                      setDescription(descDraft)
+                      setEditingDesc(false)
+                      try {
+                        await saveProfile({ bio: descDraft })
+                      } catch {/* ignore */}
+                    }}
+                    className="text-sm px-3 py-1 rounded-full bg-violet-600 hover:bg-violet-500"
                   >
                     Enregistrer
                   </button>
@@ -492,7 +562,7 @@ export default function ProviderProfilePage() {
             </div>
 
             {!editingDesc ? (
-              <p className="text-neutral-200 mt-3 leading-relaxed whitespace-pre-wrap">{description}</p>
+              <p className="text-neutral-200 mt-3 leading-relaxed">{description}</p>
             ) : (
               <textarea
                 className="mt-3 w-full rounded-lg bg-black/30 border border-white/10 p-3 text-sm"
@@ -503,90 +573,193 @@ export default function ProviderProfilePage() {
             )}
           </section>
 
-          {/* Planning (FullCalendar en thème sombre) */}
+          {/* Publications (ex-portfolio) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold mb-3">Mon planning</h2>
-            <div className="rounded-xl border border-white/10 overflow-hidden">
-              <div className="bg-black text-white p-2 text-sm">Calendrier</div>
-              <div className="bg-neutral-950 p-2">
-                <FullCalendar
-                  plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                  headerToolbar={{
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay',
-                  }}
-                  initialView="dayGridMonth"
-                  selectable
-                  editable
-                  select={handleDateSelect}
-                  eventClick={handleEventClick}
-                  events={events}
-                  height="auto"
-                />
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Publications</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAllPubs(true)}
+                  className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
+                >
+                  Voir tout
+                </button>
+                <button
+                  onClick={addPublication}
+                  className="text-sm px-3 py-1 rounded-full bg-violet-600 hover:bg-violet-500 flex items-center gap-1"
+                >
+                  <Plus size={16} /> Ajouter
+                </button>
               </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {heroPub && (
+                <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                  <div className="relative w-full h-64">
+                    <Image src={heroPub.image} alt={heroPub.title} fill className="object-cover" />
+                  </div>
+                  <div className="p-3">
+                    <p className="font-medium">{heroPub.title}</p>
+                    {heroPub.caption && <p className="text-sm text-neutral-300 mt-1">{heroPub.caption}</p>}
+                    <div className="flex items-center gap-4 text-sm text-neutral-300 mt-2">
+                      <button onClick={() => likePub(heroPub.id)} className="hover:text-white">❤️ {heroPub.likes ?? 0}</button>
+                      <button onClick={() => commentPub(heroPub.id)} className="hover:text-white">💬 {heroPub.comments ?? 0}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
+                {restPubs.map(p => (
+                  <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                    <div className="relative w-full h-28">
+                      <Image src={p.image} alt={p.title} fill className="object-cover" />
+                    </div>
+                    <div className="p-3">
+                      <p className="text-sm font-medium truncate">{p.title}</p>
+                      <div className="flex items-center gap-4 text-xs text-neutral-300 mt-1">
+                        <button onClick={() => likePub(p.id)} className="hover:text-white">❤️ {p.likes ?? 0}</button>
+                        <button onClick={() => commentPub(p.id)} className="hover:text-white">💬 {p.comments ?? 0}</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Planning (inchangé / placeholder) */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <h2 className="text-lg font-semibold">Planning</h2>
+            <div className="mt-3 h-48 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center">
+              <span className="text-neutral-500 text-sm">Calendrier prestataire (composant existant)</span>
             </div>
           </section>
         </div>
 
         {/* Colonne droite */}
         <aside className="space-y-6">
-          {/* Zone d’intervention */}
+          {/* Avis */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold">Zone d’intervention</h2>
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              <input
-                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Ville"
-                value={location}
-                onChange={e => setLocation(e.target.value)}
-              />
-              <input
-                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Pays"
-                value={country}
-                onChange={e => setCountry(e.target.value)}
-              />
-              <input
-                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Rayon (km)"
-                value={radiusKm}
-                onChange={e => setRadiusKm(e.target.value)}
-              />
-              <button
-                onClick={saveZone}
-                className="text-sm px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500"
-              >
-                Enregistrer
-              </button>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Avis</h2>
+              <button className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">Voir tout</button>
+            </div>
+            <div className="mt-3 space-y-3">
+              {reviews.map(r => (
+                <div key={r.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-9 w-9 rounded-full overflow-hidden">
+                      <Image src={r.authorAvatar} alt={r.author} fill className="object-cover" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{r.author}</p>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            size={14}
+                            className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-neutral-600'}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-neutral-200 mt-2 leading-relaxed">{r.text}</p>
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* Raccourcis prestations */}
+          {/* Tarifs */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Prestations</h2>
-              <button
-                onClick={() => setTypePickerOpen(v => !v)}
-                className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 flex items-center gap-1"
-              >
-                Gérer <Plus size={14} />
-              </button>
+              <h2 className="text-lg font-semibold">Tarifs</h2>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {types.length ? (
-                types.map(t => (
-                  <span key={t} className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/15">
-                    {t}
-                  </span>
-                ))
-              ) : (
-                <p className="text-sm text-neutral-400">Aucun type sélectionné.</p>
-              )}
+
+            <ul className="mt-3 space-y-2">
+              {prices.map(p => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{p.label}</p>
+                    <p className="text-xs text-neutral-300">{p.price}</p>
+                  </div>
+                  <button
+                    onClick={() => removePrice(p.id)}
+                    className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20"
+                  >
+                    Supprimer
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Intitulé"
+                value={newPriceLabel}
+                onChange={e => setNewPriceLabel(e.target.value)}
+              />
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Tarif"
+                value={newPriceValue}
+                onChange={e => setNewPriceValue(e.target.value)}
+              />
+              <button
+                onClick={addPrice}
+                className="text-sm px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-500"
+              >
+                Ajouter un tarif
+              </button>
             </div>
           </section>
         </aside>
       </div>
+
+      {/* ===== Modal Publications ===== */}
+      {showAllPubs && (
+        <div
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowAllPubs(false)}
+        >
+          <div
+            className="max-w-5xl w-full bg-neutral-950 border border-white/10 rounded-2xl p-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Toutes les publications</h3>
+              <button
+                onClick={() => setShowAllPubs(false)}
+                className="text-sm px-3 py-1 rounded bg-white/10 hover:bg-white/20"
+              >
+                Fermer
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {publications.map(p => (
+                <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                  <div className="relative w-full h-40">
+                    <Image src={p.image} alt={p.title} fill className="object-cover" />
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-medium">{p.title}</p>
+                    {p.caption && <p className="text-xs text-neutral-400 mt-1">{p.caption}</p>}
+                    <div className="flex items-center gap-4 text-xs text-neutral-300 mt-2">
+                      ❤️ {p.likes ?? 0} • 💬 {p.comments ?? 0}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
