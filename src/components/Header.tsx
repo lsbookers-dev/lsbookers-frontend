@@ -93,7 +93,7 @@ export default function Header() {
             <div className="leading-tight">
               <div className="text-white font-semibold text-lg md:text-xl">LSBookers</div>
               <div className="text-[10px] md:text-xs text-white/60 tracking-wide">
-                CONNECT • BOOK • PERFORM
+                CONNECT • BOOK • ENJOY
               </div>
             </div>
           </div>

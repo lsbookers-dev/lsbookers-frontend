@@ -102,9 +102,9 @@ export default function RegisterPage() {
           onChange={e => setRole(e.target.value as UserRole)}
           className="w-full px-4 py-2 mb-6 text-black rounded"
         >
-          <option value="ARTIST">Artiste</option>
-          <option value="ORGANIZER">Organisateur</option>
-          <option value="PROVIDER">Prestataire</option>
+          <option value="ARTIST">Artistes</option>
+          <option value="ORGANIZER">Organisateurs/Etablissements</option>
+          <option value="PROVIDER">Prestataires</option>
         </select>
 
         <button
