@@ -78,7 +78,7 @@ export default function OrganizerProfilePage() {
   const [profileId, setProfileId] = useState<number | null>(null)
 
   // ——— profil (données réelles si présentes)
-  const [profile, setProfile] = useState<ApiProfile | null>(null)
+  const [_profile, setProfile] = useState<ApiProfile | null>(null)
 
   // ——— visuels (bannière / avatar)
   const [bannerUrl, setBannerUrl] = useState<string>('/banners/organizer_default.jpg')
