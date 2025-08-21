@@ -67,7 +67,7 @@ async function uploadToCloudinary(
 
   const res = await fetch(`${base}/api/upload`, { method: 'POST', body: fd })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({} as any))
+    const err = (await res.json().catch(() => ({}))) as { error?: string }
     throw new Error((err as { details?: string })?.details || 'UPLOAD_FAILED')
   }
   return res.json() as Promise<{ url: string; public_id: string }>
