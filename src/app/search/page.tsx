@@ -18,10 +18,11 @@ interface User {
   }
 }
 
-const SPECIALTIES = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
-const PROVIDER_TYPES = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
+const SPECIALTIES_ARTIST = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
+const SPECIALTIES_PROVIDER = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
 const ESTABLISHMENT_TYPES = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
 const COUNTRIES = ['France', 'Belgium', 'Canada', 'United States', 'United Kingdom', 'Spain', 'Germany', 'Italy', 'Portugal', 'Switzerland']
+const RADIUS_CHOICES = ['50', '100', '200', '500', '1000'] as const
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -30,12 +31,12 @@ export default function SearchPage() {
   const { token } = useAuth()
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [specialtyFilter, setSpecialtyFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''>('')
+  const [artistSpecs, setArtistSpecs] = useState<string[]>([])
+  const [providerSpecs, setProviderSpecs] = useState<string[]>([])
   const [establishmentTypeFilter, setEstablishmentTypeFilter] = useState('')
-  const [typeProviderFilter, setTypeProviderFilter] = useState('')
-  const [zone, setZone] = useState('')
   const [country, setCountry] = useState('')
+  const [zone, setZone] = useState('')
   const [radiusKm, setRadiusKm] = useState('')
   const [users, setUsers] = useState<User[]>([])
 
@@ -45,11 +46,19 @@ export default function SearchPage() {
     const params = new URLSearchParams()
     if (searchTerm) params.append('name', searchTerm)
     if (roleFilter) params.append('role', roleFilter)
-    if (specialtyFilter) params.append('specialty', specialtyFilter)
-    if (typeProviderFilter) params.append('specialty', typeProviderFilter)
-    if (establishmentTypeFilter) params.append('typeEtablissement', establishmentTypeFilter)
-    if (zone) params.append('zone', zone)
+
+    // spécialités multi-sélection (ARTIST & PROVIDER -> même clé 'specialty' côté API)
+    const specsToSend =
+      roleFilter === 'ARTIST' ? artistSpecs
+      : roleFilter === 'PROVIDER' ? providerSpecs
+      : []
+    specsToSend.forEach(s => params.append('specialty', s))
+
+    if (roleFilter === 'ORGANIZER' && establishmentTypeFilter) {
+      params.append('typeEtablissement', establishmentTypeFilter)
+    }
     if (country) params.append('country', country)
+    if (zone) params.append('zone', zone)
     if (radiusKm) params.append('radius', radiusKm)
 
     fetch(`${API_BASE}/api/search?${params.toString()}`, {
@@ -70,12 +79,20 @@ export default function SearchPage() {
         console.error('Erreur recherche :', err)
         setUsers([])
       })
-  }, [token, searchTerm, roleFilter, specialtyFilter, establishmentTypeFilter, typeProviderFilter, zone, country, radiusKm])
+  }, [token, searchTerm, roleFilter, artistSpecs, providerSpecs, establishmentTypeFilter, country, zone, radiusKm])
 
   useEffect(() => {
     if (!token) return
     handleSearch()
   }, [token, handleSearch])
+
+  // reset des champs dépendants du rôle
+  const onRoleChange = (val: '' | 'ARTIST' | 'ORGANIZER' | 'PROVIDER') => {
+    setRoleFilter(val)
+    setArtistSpecs([])
+    setProviderSpecs([])
+    setEstablishmentTypeFilter('')
+  }
 
   const goToProfile = (user: User) => {
     const route =
@@ -98,7 +115,7 @@ export default function SearchPage() {
         </p>
       </header>
 
-      {/* ===== Bloc filtres (VISUEL UNIQUEMENT) ===== */}
+      {/* ===== Bloc filtres (visuel + ordre demandé) ===== */}
       <section className="max-w-6xl mx-auto mt-6">
         <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -120,12 +137,7 @@ export default function SearchPage() {
               <select
                 className="w-full h-11 appearance-none rounded-lg bg-neutral-900/80 border border-white/10 px-3 pr-10 text-sm outline-none focus:border-white/30"
                 value={roleFilter}
-                onChange={e => {
-                  setRoleFilter(e.target.value)
-                  setSpecialtyFilter('')
-                  setEstablishmentTypeFilter('')
-                  setTypeProviderFilter('')
-                }}
+                onChange={e => onRoleChange(e.target.value as any)}
               >
                 <option value="">Tous les rôles</option>
                 <option value="ARTIST">Artistes</option>
@@ -135,19 +147,7 @@ export default function SearchPage() {
               <span className="pointer-events-none absolute right-3 top-8 text-white/50">▾</span>
             </div>
 
-            {/* Zone géographique */}
-            <div>
-              <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">Ville / zone</label>
-              <input
-                type="text"
-                value={zone}
-                onChange={e => setZone(e.target.value)}
-                className="w-full h-11 rounded-lg bg-neutral-900/80 border border-white/10 px-3 text-sm placeholder-white/40 outline-none focus:border-white/30"
-                placeholder="Ex. Marseille"
-              />
-            </div>
-
-            {/* Pays */}
+            {/* PAYS (avant ville) */}
             <div className="relative">
               <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">Pays</label>
               <select
@@ -163,28 +163,72 @@ export default function SearchPage() {
               <span className="pointer-events-none absolute right-3 top-8 text-white/50">▾</span>
             </div>
 
-            {/* Spécialité ARTIST */}
+            {/* Ville / zone */}
+            <div>
+              <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">Ville / zone</label>
+              <input
+                type="text"
+                value={zone}
+                onChange={e => setZone(e.target.value)}
+                className="w-full h-11 rounded-lg bg-neutral-900/80 border border-white/10 px-3 text-sm placeholder-white/40 outline-none focus:border-white/30"
+                placeholder="Ex. Marseille"
+              />
+            </div>
+
+            {/* === Spécialités (sous Rôle) === */}
             {roleFilter === 'ARTIST' && (
-              <div className="relative">
-                <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">Spécialité (artiste)</label>
+              <div className="sm:col-span-2 lg:col-span-2">
+                <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">
+                  Spécialités (artiste) — sélection multiple
+                </label>
                 <select
-                  className="w-full h-11 appearance-none rounded-lg bg-neutral-900/80 border border-white/10 px-3 pr-10 text-sm outline-none focus:border-white/30"
-                  value={specialtyFilter}
-                  onChange={e => setSpecialtyFilter(e.target.value)}
+                  multiple
+                  className="w-full min-h-11 rounded-lg bg-neutral-900/80 border border-white/10 px-3 py-2 text-sm outline-none focus:border-white/30"
+                  value={artistSpecs}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions).map(o => o.value)
+                    setArtistSpecs(values)
+                  }}
                 >
-                  <option value="">Toutes les spécialités</option>
-                  {SPECIALTIES.map(s => (
+                  {SPECIALTIES_ARTIST.map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
-                <span className="pointer-events-none absolute right-3 top-8 text-white/50">▾</span>
+                <p className="mt-1 text-xs text-white/40">
+                  Astuce : Cmd/Ctrl + clic pour multi‑sélectionner.
+                </p>
               </div>
             )}
 
-            {/* Type ORGANIZER */}
+            {roleFilter === 'PROVIDER' && (
+              <div className="sm:col-span-2 lg:col-span-2">
+                <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">
+                  Spécialités (prestataire) — sélection multiple
+                </label>
+                <select
+                  multiple
+                  className="w-full min-h-11 rounded-lg bg-neutral-900/80 border border-white/10 px-3 py-2 text-sm outline-none focus:border-white/30"
+                  value={providerSpecs}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions).map(o => o.value)
+                    setProviderSpecs(values)
+                  }}
+                >
+                  {SPECIALTIES_PROVIDER.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-white/40">
+                  Astuce : Cmd/Ctrl + clic pour multi‑sélectionner.
+                </p>
+              </div>
+            )}
+
             {roleFilter === 'ORGANIZER' && (
-              <div className="relative">
-                <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">Type d’établissement</label>
+              <div className="sm:col-span-2 lg:col-span-2 relative">
+                <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">
+                  Type d’établissement
+                </label>
                 <select
                   className="w-full h-11 appearance-none rounded-lg bg-neutral-900/80 border border-white/10 px-3 pr-10 text-sm outline-none focus:border-white/30"
                   value={establishmentTypeFilter}
@@ -199,35 +243,19 @@ export default function SearchPage() {
               </div>
             )}
 
-            {/* Type PROVIDER */}
-            {roleFilter === 'PROVIDER' && (
-              <div className="relative">
-                <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">Type de prestataire</label>
-                <select
-                  className="w-full h-11 appearance-none rounded-lg bg-neutral-900/80 border border-white/10 px-3 pr-10 text-sm outline-none focus:border-white/30"
-                  value={typeProviderFilter}
-                  onChange={e => setTypeProviderFilter(e.target.value)}
-                >
-                  <option value="">Tous les types</option>
-                  {PROVIDER_TYPES.map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-3 top-8 text-white/50">▾</span>
-              </div>
-            )}
-
-            {/* Rayon */}
+            {/* Rayon (menu déroulant fixe) */}
             <div>
               <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">Rayon (km)</label>
-              <input
-                type="number"
+              <select
+                className="w-full h-11 appearance-none rounded-lg bg-neutral-900/80 border border-white/10 px-3 pr-10 text-sm outline-none focus:border-white/30"
                 value={radiusKm}
                 onChange={e => setRadiusKm(e.target.value)}
-                className="w-full h-11 rounded-lg bg-neutral-900/80 border border-white/10 px-3 text-sm outline-none focus:border-white/30"
-                placeholder="0"
-                min={0}
-              />
+              >
+                <option value="">—</option>
+                {RADIUS_CHOICES.map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -239,12 +267,16 @@ export default function SearchPage() {
             >
               Rechercher
             </button>
-
-            {/* (visuel seulement) */}
             <button
               type="button"
               className="h-11 px-5 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
-              // NOTE: on laisse sans logique pour ne rien changer côté fonctionnalités
+              onClick={() => {
+                setSearchTerm('')
+                onRoleChange('')
+                setCountry('')
+                setZone('')
+                setRadiusKm('')
+              }}
             >
               Réinitialiser
             </button>
@@ -252,7 +284,7 @@ export default function SearchPage() {
         </div>
       </section>
 
-      {/* ===== Résultats ===== */}
+      {/* ===== Résultats (cartes remises comme avant) ===== */}
       <section className="max-w-6xl mx-auto mt-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {users.map(user => (
