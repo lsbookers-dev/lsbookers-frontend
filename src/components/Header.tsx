@@ -109,10 +109,10 @@ export default function Header() {
 
             {/* “Messagerie” texte SUPPRIMÉ — on garde l’icône à droite */}
             <button
-              onClick={() => goTo('/booking')}
+              onClick={() => goTo('/ls agency')}
               className="text-white/80 hover:text-white transition"
             >
-              Booking
+              LS Agency
             </button>
 
             <button
