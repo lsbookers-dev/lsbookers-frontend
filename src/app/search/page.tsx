@@ -137,7 +137,7 @@ export default function SearchPage() {
               <select
                 className="w-full h-11 appearance-none rounded-lg bg-neutral-900/80 border border-white/10 px-3 pr-10 text-sm outline-none focus:border-white/30"
                 value={roleFilter}
-                onChange={e => onRoleChange(e.target.value as any)}
+                onChange={e => onRoleChange(e.target.value as '' | 'ARTIST' | 'ORGANIZER' | 'PROVIDER')}
               >
                 <option value="">Tous les rôles</option>
                 <option value="ARTIST">Artistes</option>
