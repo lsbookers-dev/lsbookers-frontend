@@ -22,7 +22,6 @@ const SPECIALTIES = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
 const PROVIDER_TYPES = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
 const ESTABLISHMENT_TYPES = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
 const COUNTRIES = ['France', 'Belgium', 'Canada', 'United States', 'United Kingdom', 'Spain', 'Germany', 'Italy', 'Portugal', 'Switzerland']
-const RADIUS_OPTIONS = ['50', '100', '200', '500', '1000'] as const
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -31,17 +30,11 @@ export default function SearchPage() {
   const { token } = useAuth()
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  // ⬇️ remplace l’ancien specialtyFilter (string) par multi-sélection
-  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([])
-  // pour Provider on garde un unique type (comme avant)
-  const [typeProviderFilter, setTypeProviderFilter] = useState('')
-  const [establishmentTypeFilter, setEstablishmentTypeFilter] = useState('')
-
-  const [country, setCountry] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''>('')
+  const [typeFilters, setTypeFilters] = useState<string[]>([]) // ⬅️ multi pour tous les rôles
   const [zone, setZone] = useState('')
-  const [radiusKm, setRadiusKm] = useState('') // sera choisi parmi RADIUS_OPTIONS
-
+  const [country, setCountry] = useState('')
+  const [radiusKm, setRadiusKm] = useState('')
   const [users, setUsers] = useState<User[]>([])
 
   const handleSearch = useCallback(() => {
@@ -50,18 +43,19 @@ export default function SearchPage() {
     const params = new URLSearchParams()
     if (searchTerm) params.append('name', searchTerm)
     if (roleFilter) params.append('role', roleFilter)
-
-    // ⬇️ Envoi MULTIPLE: specialty=<a>&specialty=<b>...
-    if (selectedSpecialties.length) {
-      selectedSpecialties.forEach(s => params.append('specialty', s))
-    }
-    // Prestataire: on réutilise la même clé côté API
-    if (typeProviderFilter) params.append('specialty', typeProviderFilter)
-
-    if (establishmentTypeFilter) params.append('typeEtablissement', establishmentTypeFilter)
-    if (country) params.append('country', country)
     if (zone) params.append('zone', zone)
+    if (country) params.append('country', country)
     if (radiusKm) params.append('radius', radiusKm)
+
+    if (typeFilters.length > 0) {
+      const joined = typeFilters.join(',')
+      if (roleFilter === 'ORGANIZER') {
+        params.append('typeEtablissement', joined)
+      } else {
+        // ARTIST + PROVIDER
+        params.append('specialty', joined)
+      }
+    }
 
     fetch(`${API_BASE}/api/search?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -81,7 +75,7 @@ export default function SearchPage() {
         console.error('Erreur recherche :', err)
         setUsers([])
       })
-  }, [token, searchTerm, roleFilter, selectedSpecialties, establishmentTypeFilter, typeProviderFilter, country, zone, radiusKm])
+  }, [token, searchTerm, roleFilter, typeFilters, zone, country, radiusKm])
 
   useEffect(() => {
     if (!token) return
@@ -98,7 +92,6 @@ export default function SearchPage() {
     router.push(route)
   }
 
-  // ——— UI helpers (design only)
   const roleBadge = (r: User['role']) =>
     r === 'ARTIST'
       ? 'bg-pink-600/20 text-pink-300 border-pink-500/30'
@@ -106,15 +99,22 @@ export default function SearchPage() {
       ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
       : 'bg-blue-600/20 text-blue-300 border-blue-500/30'
 
-  const toggleSpecialty = (s: string) => {
-    setSelectedSpecialties(prev =>
-      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
-    )
-  }
+  const RADIUS_OPTIONS = ['50', '100', '200', '500', '1000']
 
-  const showArtistSpecs = roleFilter === 'ARTIST'
-  const showProviderSpecs = roleFilter === 'PROVIDER'
-  const showOrganizerType = roleFilter === 'ORGANIZER'
+  // options selon le rôle choisi
+  const currentTypeOptions: string[] =
+    roleFilter === 'ARTIST'
+      ? SPECIALTIES
+      : roleFilter === 'PROVIDER'
+      ? PROVIDER_TYPES
+      : roleFilter === 'ORGANIZER'
+      ? ESTABLISHMENT_TYPES
+      : []
+
+  const onMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const values = Array.from(e.target.selectedOptions).map(o => o.value)
+    setTypeFilters(values)
+  }
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -132,9 +132,9 @@ export default function SearchPage() {
 
       {/* Contenu */}
       <div className="px-6 pb-10 max-w-7xl mx-auto">
-        {/* FILTRES */}
+        {/* FILTRES — ordre conforme à ta maquette */}
         <section className="rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 md:p-5 mb-8">
-          {/* Ligne 1 */}
+          {/* LIGNE 1 : Pseudo | Pays | Ville/Zone | Rayon */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <input
               type="text"
@@ -144,23 +144,6 @@ export default function SearchPage() {
               onChange={e => setSearchTerm(e.target.value)}
             />
 
-            <select
-              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
-              value={roleFilter}
-              onChange={e => {
-                setRoleFilter(e.target.value)
-                setSelectedSpecialties([])
-                setTypeProviderFilter('')
-                setEstablishmentTypeFilter('')
-              }}
-            >
-              <option value="">Tous les rôles</option>
-              <option value="ARTIST">Artistes</option>
-              <option value="ORGANIZER">Organisateurs</option>
-              <option value="PROVIDER">Prestataires</option>
-            </select>
-
-            {/* ⬅️ Pays AVANT Ville/Zone */}
             <select
               className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={country}
@@ -179,106 +162,79 @@ export default function SearchPage() {
               value={zone}
               onChange={e => setZone(e.target.value)}
             />
-          </div>
 
-          {/* Ligne 2 : rayons + filtres spécifiques */}
-          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {/* Rayon (liste fixe) */}
             <select
               className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={radiusKm}
               onChange={e => setRadiusKm(e.target.value)}
             >
-              <option value="">Rayon (km)</option>
+              <option value="">Rayon</option>
               {RADIUS_OPTIONS.map(r => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>{r} km</option>
               ))}
             </select>
-
-            {/* Type établissement (organizer) */}
-            {showOrganizerType && (
-              <select
-                className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
-                value={establishmentTypeFilter}
-                onChange={e => setEstablishmentTypeFilter(e.target.value)}
-              >
-                <option value="">Tous les types d’établissement</option>
-                {ESTABLISHMENT_TYPES.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            )}
-
-            {/* Type prestataire (provider) */}
-            {showProviderSpecs && (
-              <select
-                className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
-                value={typeProviderFilter}
-                onChange={e => setTypeProviderFilter(e.target.value)}
-              >
-                <option value="">Tous les types de prestataire</option>
-                {PROVIDER_TYPES.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            )}
           </div>
 
-          {/* Spécialités multi (sous le rôle) */}
-          {(showArtistSpecs || showProviderSpecs) && (
-            <div className="mt-3">
-              <p className="text-xs uppercase tracking-wide text-white/60 mb-2">
-                {showArtistSpecs ? 'Spécialités (Artiste)' : 'Spécialités (Prestataire)'}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(showArtistSpecs ? SPECIALTIES : PROVIDER_TYPES).map(s => {
-                  const active = selectedSpecialties.includes(s)
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => toggleSpecialty(s)}
-                      className={`text-xs px-3 py-1 rounded-full border transition ${
-                        active
-                          ? 'bg-gradient-to-r from-pink-600 to-violet-600 text-white border-transparent'
-                          : 'bg-black/30 text-white/80 border-white/15 hover:border-white/30'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              onClick={handleSearch}
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-pink-600 to-violet-600 text-white font-semibold hover:opacity-90 transition"
-            >
-              Rechercher
-            </button>
-            <button
-              onClick={() => {
-                setSearchTerm('')
-                setRoleFilter('')
-                setSelectedSpecialties([])
-                setTypeProviderFilter('')
-                setEstablishmentTypeFilter('')
-                setCountry('')
-                setZone('')
-                setRadiusKm('')
+          {/* LIGNE 2 : Rôle | Types (multi) | Boutons */}
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto] gap-3 md:gap-4">
+            <select
+              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
+              value={roleFilter}
+              onChange={e => {
+                const v = e.target.value as 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''
+                setRoleFilter(v)
+                setTypeFilters([]) // reset types au changement de rôle
               }}
-              className="px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 transition"
             >
-              Réinitialiser
-            </button>
+              <option value="">Tous les rôles</option>
+              <option value="ARTIST">Artistes</option>
+              <option value="PROVIDER">Prestataires</option>
+              <option value="ORGANIZER">Organisateurs</option>
+            </select>
+
+            {roleFilter ? (
+              <select
+                multiple
+                className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30 h-[52px]"
+                value={typeFilters}
+                onChange={onMultiSelectChange}
+                title="Types / Spécialités (multi)"
+              >
+                {currentTypeOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="px-4 py-3 rounded-lg bg-black/30 border border-white/10 text-white/40 flex items-center">
+                Sélectionne d’abord un rôle
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 lg:justify-end">
+              <button
+                onClick={handleSearch}
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-pink-600 to-violet-600 text-white font-semibold hover:opacity-90 transition"
+              >
+                Rechercher
+              </button>
+              <button
+                onClick={() => {
+                  setSearchTerm('')
+                  setRoleFilter('')
+                  setTypeFilters([])
+                  setZone('')
+                  setCountry('')
+                  setRadiusKm('')
+                }}
+                className="px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 transition"
+              >
+                Réinitialiser
+              </button>
+            </div>
           </div>
         </section>
 
-        {/* RÉSULTATS — CARTES INCHANGÉES */}
+        {/* RÉSULTATS — inchangé */}
         {users.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {users.map(user => (
@@ -288,7 +244,6 @@ export default function SearchPage() {
                 onClick={() => goToProfile(user)}
               >
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-70" />
-
                 <div className="p-4 flex items-start gap-4">
                   <div className="relative w-12 h-12 shrink-0">
                     <Image
@@ -299,7 +254,6 @@ export default function SearchPage() {
                       unoptimized
                     />
                   </div>
-
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <h2 className="text-base font-semibold truncate">{user.name}</h2>
@@ -309,7 +263,6 @@ export default function SearchPage() {
                           : 'Organisateur'}
                       </span>
                     </div>
-
                     <p className="text-sm text-white/70 mt-0.5 truncate">
                       {user.role === 'ARTIST'
                         ? user.profile?.specialties?.join(', ') || 'Artiste'
@@ -317,7 +270,6 @@ export default function SearchPage() {
                         ? user.profile?.specialties?.join(', ') || 'Prestataire'
                         : user.profile?.typeEtablissement || 'Organisateur'}
                     </p>
-
                     {(user.profile?.location || user.profile?.country) && (
                       <p className="text-xs text-white/50 mt-1 truncate">
                         📍 {user.profile?.location}
@@ -326,7 +278,6 @@ export default function SearchPage() {
                     )}
                   </div>
                 </div>
-
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-gradient-to-br from-white/0 via-white/0 to-white/5" />
               </div>
             ))}
