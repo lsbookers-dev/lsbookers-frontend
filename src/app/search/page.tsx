@@ -29,24 +29,24 @@ export default function SearchPage() {
   const router = useRouter()
   const { token } = useAuth()
 
-  // ---- filtres
+  // Filtres de base
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''>('')
-  const [zone, setZone] = useState('')
   const [country, setCountry] = useState('')
-  const [radiusKm, setRadiusKm] = useState('')
+  const [zone, setZone] = useState('')
+  const [radiusKm, setRadiusKm] = useState('') // menu déroulant (50/100/200/500/1000)
 
-  // états “hérités” (on les garde pour compat, mais on s’appuie surtout sur selectedSpecs)
-  const [specialtyFilter, setSpecialtyFilter] = useState('')           // ARTIST (ancienne version)
-  const [establishmentTypeFilter, setEstablishmentTypeFilter] = useState('') // ORGANIZER (ancienne)
-  const [typeProviderFilter, setTypeProviderFilter] = useState('')      // PROVIDER (ancienne)
-
-  // ---- multi-select
+  // Rôle & types/spécialités
+  const [roleFilter, setRoleFilter] = useState<'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''>('')
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>([])
   const [specsOpen, setSpecsOpen] = useState(false)
   const specsRef = useRef<HTMLDivElement | null>(null)
 
-  // options dynamiques selon le rôle
+  // Compat (non utilisés dans l’UI, seulement si le backend les attend encore)
+  const [specialtyFilter, setSpecialtyFilter] = useState('')
+  const [establishmentTypeFilter, setEstablishmentTypeFilter] = useState('')
+  const [typeProviderFilter, setTypeProviderFilter] = useState('')
+
+  // Options de “Types / Spécialités” selon le rôle
   const specOptions = useMemo<string[]>(() => {
     if (roleFilter === 'ARTIST') return SPECIALTIES
     if (roleFilter === 'PROVIDER') return PROVIDER_TYPES
@@ -54,7 +54,6 @@ export default function SearchPage() {
     return []
   }, [roleFilter])
 
-  // fermer le panneau en cliquant dehors
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (specsRef.current && !specsRef.current.contains(e.target as Node)) {
@@ -65,40 +64,36 @@ export default function SearchPage() {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [specsOpen])
 
-  // résultats
   const [users, setUsers] = useState<User[]>([])
 
   const handleSearch = useCallback(() => {
     if (!token || !API_BASE) return
 
     const params = new URLSearchParams()
-
     if (searchTerm) params.append('name', searchTerm)
+    if (country) params.append('country', country)
+    if (zone) params.append('zone', zone)
+    if (radiusKm) params.append('radius', radiusKm)
+
     if (roleFilter) params.append('role', roleFilter)
 
-    // ---- Multi-spécialités en OU
+    // Multi-spécialités en OU (plusieurs clés + CSV + hint)
     const specs: string[] =
       selectedSpecs.length
         ? selectedSpecs
         : roleFilter === 'ARTIST' && specialtyFilter
-          ? [specialtyFilter]
-          : roleFilter === 'PROVIDER' && typeProviderFilter
-            ? [typeProviderFilter]
-            : roleFilter === 'ORGANIZER' && establishmentTypeFilter
-              ? [establishmentTypeFilter]
-              : []
+        ? [specialtyFilter]
+        : roleFilter === 'PROVIDER' && typeProviderFilter
+        ? [typeProviderFilter]
+        : roleFilter === 'ORGANIZER' && establishmentTypeFilter
+        ? [establishmentTypeFilter]
+        : []
 
-    // format multi-clés ?specialty=A&specialty=B
     specs.forEach(s => params.append('specialty', s))
-    // fallback CSV si le backend préfère
-    if (specs.length) params.append('specialties', specs.join(','))
-    // petit hint toléré/ignoré côté API
-    if (specs.length > 1) params.append('match', 'any')
-    // ---------------------------------
-
-    if (zone) params.append('zone', zone)
-    if (country) params.append('country', country)
-    if (radiusKm) params.append('radius', radiusKm)
+    if (specs.length) {
+      params.append('specialties', specs.join(','))
+      if (specs.length > 1) params.append('match', 'any')
+    }
 
     fetch(`${API_BASE}/api/search?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -119,9 +114,8 @@ export default function SearchPage() {
         setUsers([])
       })
   }, [
-    token, searchTerm, roleFilter,
-    specialtyFilter, establishmentTypeFilter, typeProviderFilter,
-    selectedSpecs, zone, country, radiusKm
+    token, searchTerm, country, zone, radiusKm,
+    roleFilter, selectedSpecs, specialtyFilter, establishmentTypeFilter, typeProviderFilter
   ])
 
   useEffect(() => {
@@ -139,7 +133,6 @@ export default function SearchPage() {
     router.push(route)
   }
 
-  // ——— UI helpers (design only)
   const roleBadge = (r: User['role']) =>
     r === 'ARTIST'
       ? 'bg-pink-600/20 text-pink-300 border-pink-500/30'
@@ -147,14 +140,11 @@ export default function SearchPage() {
       ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
       : 'bg-blue-600/20 text-blue-300 border-blue-500/30'
 
-  // Label court pour le champ multi-select
-  const specsLabel = selectedSpecs.length
-    ? selectedSpecs.join(', ')
-    : 'Types / Spécialités'
+  const specsLabel = selectedSpecs.length ? selectedSpecs.join(', ') : 'Types / Spécialités'
 
   return (
     <main className="min-h-screen bg-black text-white">
-      {/* Bandeau titre */}
+      {/* Bandeau titre (identique) */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-violet-600/10 to-blue-600/10 blur-3xl" />
         <div className="relative px-6 pt-10 pb-6">
@@ -166,22 +156,21 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* Contenu */}
       <div className="px-6 pb-10 max-w-7xl mx-auto">
-        {/* FILTRES */}
+        {/* FILTRES — même style, ordre corrigé + z-index pour le menu */}
         <section className="rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 md:p-5 mb-8 overflow-visible">
           {/* Ligne 1 : Pseudo | Pays | Ville/Zone | Rayon */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <input
               type="text"
               placeholder="Rechercher par pseudo..."
-              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
+              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
 
             <select
-              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
+              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={country}
               onChange={e => setCountry(e.target.value)}
             >
@@ -194,34 +183,40 @@ export default function SearchPage() {
             <input
               type="text"
               placeholder="Ville ou zone géographique"
-              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
+              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
               value={zone}
               onChange={e => setZone(e.target.value)}
             />
 
-            <input
-              type="number"
-              placeholder="Rayon en km"
-              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
+            {/* Rayon : menu déroulant (50/100/200/500/1000) */}
+            <select
+              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={radiusKm}
               onChange={e => setRadiusKm(e.target.value)}
-            />
+            >
+              <option value="">Rayon</option>
+              <option value="50">50 km</option>
+              <option value="100">100 km</option>
+              <option value="200">200 km</option>
+              <option value="500">500 km</option>
+              <option value="1000">1000 km</option>
+            </select>
           </div>
 
           {/* Ligne 2 : Rôle | Types/Spécialités | Actions */}
           <div className="mt-3 md:mt-4 grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto_auto] gap-3 md:gap-4 items-start">
-            {/* Rôle */}
+            {/* Rôle — largeur normale, aucune réduction */}
             <select
-              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
+              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={roleFilter}
               onChange={e => {
                 const v = e.target.value as 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''
                 setRoleFilter(v)
-                // reset anciens champs + nouvelle sélection
+                setSelectedSpecs([])
+                // reset compat
                 setSpecialtyFilter('')
                 setEstablishmentTypeFilter('')
                 setTypeProviderFilter('')
-                setSelectedSpecs([])
               }}
             >
               <option value="">Tous les rôles</option>
@@ -230,12 +225,12 @@ export default function SearchPage() {
               <option value="PROVIDER">Prestataires</option>
             </select>
 
-            {/* Types / Spécialités — multi-select */}
-            <div className="relative" ref={specsRef}>
+            {/* Types / Spécialités — multi-select, même look */}
+            <div className="relative w-full" ref={specsRef}>
               <button
                 type="button"
                 onClick={() => setSpecsOpen(o => !o)}
-                className="w-full text-left px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
+                className="w-full text-left px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30 disabled:opacity-50"
                 disabled={!roleFilter}
                 title={!roleFilter ? 'Choisis un rôle pour voir les types' : 'Types / Spécialités'}
               >
@@ -289,7 +284,6 @@ export default function SearchPage() {
               )}
             </div>
 
-            {/* Actions */}
             <button
               onClick={handleSearch}
               className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-pink-600 to-violet-600 text-white font-semibold hover:opacity-90 transition"
@@ -299,14 +293,15 @@ export default function SearchPage() {
             <button
               onClick={() => {
                 setSearchTerm('')
+                setCountry('')
+                setZone('')
+                setRadiusKm('')
                 setRoleFilter('')
+                setSelectedSpecs([])
+                // reset compat
                 setSpecialtyFilter('')
                 setEstablishmentTypeFilter('')
                 setTypeProviderFilter('')
-                setSelectedSpecs([])
-                setZone('')
-                setCountry('')
-                setRadiusKm('')
               }}
               className="px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 transition"
             >
@@ -315,7 +310,7 @@ export default function SearchPage() {
           </div>
         </section>
 
-        {/* RÉSULTATS (inchangé) */}
+        {/* CARTES — inchangées */}
         {users.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {users.map(user => (
@@ -335,7 +330,6 @@ export default function SearchPage() {
                       unoptimized
                     />
                   </div>
-
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <h2 className="text-base font-semibold truncate">{user.name}</h2>
@@ -345,7 +339,6 @@ export default function SearchPage() {
                           : 'Organisateur'}
                       </span>
                     </div>
-
                     <p className="text-sm text-white/70 mt-0.5 truncate">
                       {user.role === 'ARTIST'
                         ? user.profile?.specialties?.join(', ') || 'Artiste'
@@ -353,7 +346,6 @@ export default function SearchPage() {
                         ? user.profile?.specialties?.join(', ') || 'Prestataire'
                         : user.profile?.typeEtablissement || 'Organisateur'}
                     </p>
-
                     {(user.profile?.location || user.profile?.country) && (
                       <p className="text-xs text-white/50 mt-1 truncate">
                         📍 {user.profile?.location}
