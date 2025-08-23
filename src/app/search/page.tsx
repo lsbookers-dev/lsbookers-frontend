@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
@@ -22,48 +22,116 @@ const SPECIALTIES = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
 const PROVIDER_TYPES = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
 const ESTABLISHMENT_TYPES = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
 const COUNTRIES = ['France', 'Belgium', 'Canada', 'United States', 'United Kingdom', 'Spain', 'Germany', 'Italy', 'Portugal', 'Switzerland']
+const RADIUS_OPTIONS = ['50', '100', '200', '500', '1000']
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
+/* -------- Menu déroulant multi-sélection (Types) -------- */
+function MultiSelectDropdown({
+  options,
+  values,
+  placeholder,
+  onChange,
+}: {
+  options: string[]
+  values: string[]
+  placeholder: string
+  onChange: (vals: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!ref.current) return
+      if (!ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const toggle = (opt: string) => {
+    if (values.includes(opt)) onChange(values.filter(v => v !== opt))
+    else onChange([...values, opt])
+  }
+
+  const selectAll = () => onChange([...options])
+  const clearAll = () => onChange([])
+
+  const summary =
+    values.length === 0
+      ? placeholder
+      : values.length <= 2
+      ? values.join(', ')
+      : `${values.length} sélectionnées`
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-left text-white focus:outline-none focus:border-white/30"
+      >
+        {summary}
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-2 w-full rounded-lg border border-white/10 bg-neutral-900/95 backdrop-blur p-2 max-h-60 overflow-y-auto shadow-xl">
+          <div className="flex items-center justify-between gap-2 p-1">
+            <button
+              className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20"
+              onClick={selectAll}
+              type="button"
+            >
+              Tout sélectionner
+            </button>
+            <button
+              className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20"
+              onClick={clearAll}
+              type="button"
+            >
+              Effacer
+            </button>
+          </div>
+
+          <ul role="listbox" className="mt-1 space-y-1">
+            {options.map(opt => {
+              const checked = values.includes(opt)
+              return (
+                <li key={opt}>
+                  <label className="flex items-center gap-3 px-2 py-2 rounded hover:bg-white/5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(opt)}
+                      className="h-4 w-4 accent-violet-600"
+                    />
+                    <span className="text-sm text-white">{opt}</span>
+                  </label>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------- */
 
 export default function SearchPage() {
   const router = useRouter()
   const { token } = useAuth()
 
-  // Filtres de base
   const [searchTerm, setSearchTerm] = useState('')
-  const [country, setCountry] = useState('')
-  const [zone, setZone] = useState('')
-  const [radiusKm, setRadiusKm] = useState('') // menu déroulant (50/100/200/500/1000)
-
-  // Rôle & types/spécialités
   const [roleFilter, setRoleFilter] = useState<'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''>('')
-  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([])
-  const [specsOpen, setSpecsOpen] = useState(false)
-  const specsRef = useRef<HTMLDivElement | null>(null)
-
-  // Compat (non utilisés dans l’UI, seulement si le backend les attend encore)
-  const [specialtyFilter, setSpecialtyFilter] = useState('')
-  const [establishmentTypeFilter, setEstablishmentTypeFilter] = useState('')
-  const [typeProviderFilter, setTypeProviderFilter] = useState('')
-
-  // Options de “Types / Spécialités” selon le rôle
-  const specOptions = useMemo<string[]>(() => {
-    if (roleFilter === 'ARTIST') return SPECIALTIES
-    if (roleFilter === 'PROVIDER') return PROVIDER_TYPES
-    if (roleFilter === 'ORGANIZER') return ESTABLISHMENT_TYPES
-    return []
-  }, [roleFilter])
-
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (specsRef.current && !specsRef.current.contains(e.target as Node)) {
-        setSpecsOpen(false)
-      }
-    }
-    if (specsOpen) document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
-  }, [specsOpen])
-
+  const [typeFilters, setTypeFilters] = useState<string[]>([]) // multi pour tous les rôles
+  const [zone, setZone] = useState('')
+  const [country, setCountry] = useState('')
+  const [radiusKm, setRadiusKm] = useState('')
   const [users, setUsers] = useState<User[]>([])
 
   const handleSearch = useCallback(() => {
@@ -71,28 +139,14 @@ export default function SearchPage() {
 
     const params = new URLSearchParams()
     if (searchTerm) params.append('name', searchTerm)
-    if (country) params.append('country', country)
-    if (zone) params.append('zone', zone)
-    if (radiusKm) params.append('radius', radiusKm)
-
     if (roleFilter) params.append('role', roleFilter)
-
-    // Multi-spécialités en OU (plusieurs clés + CSV + hint)
-    const specs: string[] =
-      selectedSpecs.length
-        ? selectedSpecs
-        : roleFilter === 'ARTIST' && specialtyFilter
-        ? [specialtyFilter]
-        : roleFilter === 'PROVIDER' && typeProviderFilter
-        ? [typeProviderFilter]
-        : roleFilter === 'ORGANIZER' && establishmentTypeFilter
-        ? [establishmentTypeFilter]
-        : []
-
-    specs.forEach(s => params.append('specialty', s))
-    if (specs.length) {
-      params.append('specialties', specs.join(','))
-      if (specs.length > 1) params.append('match', 'any')
+    if (zone) params.append('zone', zone)
+    if (country) params.append('country', country)
+    if (radiusKm) params.append('radius', radiusKm)
+    if (typeFilters.length > 0) {
+      const joined = typeFilters.join(',')
+      if (roleFilter === 'ORGANIZER') params.append('typeEtablissement', joined)
+      else params.append('specialty', joined) // ARTIST + PROVIDER
     }
 
     fetch(`${API_BASE}/api/search?${params.toString()}`, {
@@ -113,10 +167,7 @@ export default function SearchPage() {
         console.error('Erreur recherche :', err)
         setUsers([])
       })
-  }, [
-    token, searchTerm, country, zone, radiusKm,
-    roleFilter, selectedSpecs, specialtyFilter, establishmentTypeFilter, typeProviderFilter
-  ])
+  }, [token, searchTerm, roleFilter, typeFilters, zone, country, radiusKm])
 
   useEffect(() => {
     if (!token) return
@@ -140,11 +191,19 @@ export default function SearchPage() {
       ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
       : 'bg-blue-600/20 text-blue-300 border-blue-500/30'
 
-  const specsLabel = selectedSpecs.length ? selectedSpecs.join(', ') : 'Types / Spécialités'
+  // options selon le rôle
+  const currentTypeOptions: string[] =
+    roleFilter === 'ARTIST'
+      ? SPECIALTIES
+      : roleFilter === 'PROVIDER'
+      ? PROVIDER_TYPES
+      : roleFilter === 'ORGANIZER'
+      ? ESTABLISHMENT_TYPES
+      : []
 
   return (
     <main className="min-h-screen bg-black text-white">
-      {/* Bandeau titre (identique) */}
+      {/* Bandeau titre */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-violet-600/10 to-blue-600/10 blur-3xl" />
         <div className="relative px-6 pt-10 pb-6">
@@ -156,21 +215,22 @@ export default function SearchPage() {
         </div>
       </div>
 
+      {/* Contenu */}
       <div className="px-6 pb-10 max-w-7xl mx-auto">
-        {/* FILTRES — même style, ordre corrigé + z-index pour le menu */}
-        <section className="rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 md:p-5 mb-8 overflow-visible">
+        {/* FILTRES (ordre selon ta maquette) */}
+        <section className="rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 md:p-5 mb-8">
           {/* Ligne 1 : Pseudo | Pays | Ville/Zone | Rayon */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <input
               type="text"
               placeholder="Rechercher par pseudo..."
-              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
+              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
 
             <select
-              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
+              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={country}
               onChange={e => setCountry(e.target.value)}
             >
@@ -183,134 +243,78 @@ export default function SearchPage() {
             <input
               type="text"
               placeholder="Ville ou zone géographique"
-              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
+              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-white/30"
               value={zone}
               onChange={e => setZone(e.target.value)}
             />
 
-            {/* Rayon : menu déroulant (50/100/200/500/1000) */}
             <select
-              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
+              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={radiusKm}
               onChange={e => setRadiusKm(e.target.value)}
             >
               <option value="">Rayon</option>
-              <option value="50">50 km</option>
-              <option value="100">100 km</option>
-              <option value="200">200 km</option>
-              <option value="500">500 km</option>
-              <option value="1000">1000 km</option>
+              {RADIUS_OPTIONS.map(r => (
+                <option key={r} value={r}>{r} km</option>
+              ))}
             </select>
           </div>
 
-          {/* Ligne 2 : Rôle | Types/Spécialités | Actions */}
-          <div className="mt-3 md:mt-4 grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto_auto] gap-3 md:gap-4 items-start">
-            {/* Rôle — largeur normale, aucune réduction */}
+          {/* Ligne 2 : Rôle | Types (multi) | Boutons */}
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto] gap-3 md:gap-4">
             <select
-              className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
+              className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={roleFilter}
               onChange={e => {
                 const v = e.target.value as 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''
                 setRoleFilter(v)
-                setSelectedSpecs([])
-                // reset compat
-                setSpecialtyFilter('')
-                setEstablishmentTypeFilter('')
-                setTypeProviderFilter('')
+                setTypeFilters([]) // reset au changement de rôle
               }}
             >
               <option value="">Tous les rôles</option>
               <option value="ARTIST">Artistes</option>
-              <option value="ORGANIZER">Organisateurs</option>
               <option value="PROVIDER">Prestataires</option>
+              <option value="ORGANIZER">Organisateurs</option>
             </select>
 
-            {/* Types / Spécialités — multi-select, même look */}
-            <div className="relative w-full" ref={specsRef}>
+            {roleFilter ? (
+              <MultiSelectDropdown
+                options={currentTypeOptions}
+                values={typeFilters}
+                onChange={setTypeFilters}
+                placeholder="Types / Spécialités"
+              />
+            ) : (
+              <div className="px-4 py-3 rounded-lg bg-black/30 border border-white/10 text-white/40 flex items-center">
+                Sélectionne d’abord un rôle
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 lg:justify-end">
               <button
-                type="button"
-                onClick={() => setSpecsOpen(o => !o)}
-                className="w-full text-left px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30 disabled:opacity-50"
-                disabled={!roleFilter}
-                title={!roleFilter ? 'Choisis un rôle pour voir les types' : 'Types / Spécialités'}
+                onClick={handleSearch}
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-pink-600 to-violet-600 text-white font-semibold hover:opacity-90 transition"
               >
-                {specsLabel}
+                Rechercher
               </button>
-
-              {specsOpen && roleFilter && (
-                <div
-                  className="absolute z-50 top-full mt-2 w-[min(560px,90vw)]
-                             rounded-xl border border-white/10 bg-neutral-900/95 backdrop-blur p-3 shadow-xl"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <button
-                      className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20"
-                      onClick={() => setSelectedSpecs(specOptions)}
-                    >
-                      Tout sélectionner
-                    </button>
-                    <button
-                      className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20"
-                      onClick={() => setSelectedSpecs([])}
-                    >
-                      Effacer
-                    </button>
-                  </div>
-
-                  <ul className="max-h-64 overflow-auto pr-1 space-y-1">
-                    {specOptions.map(opt => {
-                      const checked = selectedSpecs.includes(opt)
-                      return (
-                        <li key={opt}>
-                          <label className="flex items-center gap-3 px-2 py-2 rounded hover:bg-white/5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="accent-pink-600"
-                              checked={checked}
-                              onChange={(e) => {
-                                const on = e.target.checked
-                                setSelectedSpecs(prev =>
-                                  on ? [...prev, opt] : prev.filter(x => x !== opt)
-                                )
-                              }}
-                            />
-                            <span className="text-sm">{opt}</span>
-                          </label>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              )}
+              <button
+                onClick={() => {
+                  setSearchTerm('')
+                  setRoleFilter('')
+                  setTypeFilters([])
+                  setZone('')
+                  setCountry('')
+                  setRadiusKm('')
+                }}
+                className="px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 transition"
+              >
+                Réinitialiser
+              </button>
             </div>
-
-            <button
-              onClick={handleSearch}
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-pink-600 to-violet-600 text-white font-semibold hover:opacity-90 transition"
-            >
-              Rechercher
-            </button>
-            <button
-              onClick={() => {
-                setSearchTerm('')
-                setCountry('')
-                setZone('')
-                setRadiusKm('')
-                setRoleFilter('')
-                setSelectedSpecs([])
-                // reset compat
-                setSpecialtyFilter('')
-                setEstablishmentTypeFilter('')
-                setTypeProviderFilter('')
-              }}
-              className="px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 transition"
-            >
-              Réinitialiser
-            </button>
           </div>
         </section>
 
-        {/* CARTES — inchangées */}
+        {/* RÉSULTATS (inchangé) */}
         {users.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {users.map(user => (
@@ -333,7 +337,13 @@ export default function SearchPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <h2 className="text-base font-semibold truncate">{user.name}</h2>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${roleBadge(user.role)}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                        user.role === 'ARTIST'
+                          ? 'bg-pink-600/20 text-pink-300 border-pink-500/30'
+                          : user.role === 'PROVIDER'
+                          ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
+                          : 'bg-blue-600/20 text-blue-300 border-blue-500/30'
+                      }`}>
                         {user.role === 'ARTIST' ? 'Artiste'
                           : user.role === 'PROVIDER' ? 'Prestataire'
                           : 'Organisateur'}
