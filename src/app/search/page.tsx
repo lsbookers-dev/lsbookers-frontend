@@ -184,12 +184,7 @@ export default function SearchPage() {
     router.push(route)
   }
 
-  const roleBadge = (r: User['role']) =>
-    r === 'ARTIST'
-      ? 'bg-pink-600/20 text-pink-300 border-pink-500/30'
-      : r === 'PROVIDER'
-      ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
-      : 'bg-blue-600/20 text-blue-300 border-blue-500/30'
+ 
 
   // options selon le rôle
   const currentTypeOptions: string[] =
