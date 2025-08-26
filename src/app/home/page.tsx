@@ -44,7 +44,6 @@ type AdCard = {
 
 /* -------------------------------------------------------
    Données de test (à remplacer par l’API plus tard)
-   ➜ Mets tes images dans /public/...
 ------------------------------------------------------- */
 const featuredSeed: Featured[] = [
   { id: 1, name: 'Mike', city: 'Marseille', country: 'France', image: '/carousel/mike.jpg' },
@@ -152,7 +151,6 @@ function FeaturedCarousel({ items }: { items: Featured[] }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [index, setIndex] = useState(0)
 
-  // On groupe par 2 éléments par "slide"
   const slides = useMemo(() => {
     const chunked: Featured[][] = []
     for (let i = 0; i < items.length; i += 2) {
@@ -161,7 +159,6 @@ function FeaturedCarousel({ items }: { items: Featured[] }) {
     return chunked
   }, [items])
 
-  // Auto défilement
   useEffect(() => {
     const id = setInterval(() => {
       setIndex((prev) => (prev + 1) % slides.length)
@@ -169,7 +166,6 @@ function FeaturedCarousel({ items }: { items: Featured[] }) {
     return () => clearInterval(id)
   }, [slides.length])
 
-  // Scroll vers la slide active
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -197,7 +193,6 @@ function FeaturedCarousel({ items }: { items: Featured[] }) {
                   className="object-cover opacity-90"
                   priority={sIdx === 0}
                 />
-                {/* Overlay infos */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between">
                   <div>
@@ -211,7 +206,6 @@ function FeaturedCarousel({ items }: { items: Featured[] }) {
         ))}
       </div>
 
-      {/* Flèches */}
       <button
         aria-label="Précédent"
         onClick={() => setIndex((prev) => (prev - 1 + slides.length) % slides.length)}
@@ -308,7 +302,6 @@ function Ad({ ad }: { ad: AdCard }) {
    Page
 ------------------------------------------------------- */
 export default function HomePage() {
-  // (Si tu as un thème global, cette page s’y adapte déjà)
   const [featured] = useState<Featured[]>(featuredSeed)
   const [posts] = useState<Post[]>(postsSeed)
   const [ads] = useState<AdCard[]>(adsSeed)
@@ -322,7 +315,7 @@ export default function HomePage() {
 
       {/* Publications + Side classements */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Colonne publications (prend la hauteur naturelle → plus de “trou”) */}
+        {/* Colonne publications */}
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-xl font-bold">Publications</h2>
 
@@ -351,8 +344,8 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Colonne classements (alignée en haut) */}
-        <aside className="space-y-6 self-start">
+        {/* Colonne classements (alignée avec le haut de la 1re publication) */}
+        <aside className="space-y-6 self-start lg:mt-[52px]">
           <TopList title="TOP ARTISTES" items={topArtistsSeed} viewAllHref="/classements/artistes" />
           <TopList title="TOP PRESTATAIRES" items={topVendorsSeed} viewAllHref="/classements/prestataires" />
         </aside>
