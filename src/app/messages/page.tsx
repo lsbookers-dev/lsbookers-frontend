@@ -20,7 +20,7 @@ interface Conversation {
   participants: User[]
   lastMessage: string
   updatedAt: string
-  // unread?: boolean // côté backend, si dispo
+  // unread?: boolean
 }
 interface MessageLite {
   id: string | number
@@ -59,7 +59,11 @@ export default function MessagesPage() {
     [token]
   )
 
-  const getAvatar = (u?: User | null) => toAbs(u?.image || u?.profile?.avatar || '')
+  // avatar: profile.avatar -> image -> default
+  const getAvatar = (u?: User | null) => {
+    const src = u?.profile?.avatar || u?.image || '/default-avatar.png'
+    return toAbs(src)
+  }
 
   /* Charge les conversations + tri plus récents en haut */
   const fetchConversations = useCallback(async () => {
@@ -90,7 +94,6 @@ export default function MessagesPage() {
       const entries = await Promise.all(
         convs.map(async (c) => {
           try {
-            // On récupère la conversation et prend le dernier message
             const r = await fetch(`${API_BASE}/api/messages/messages/${c.id}`, {
               headers: authedHeaders,
               cache: 'no-store',
@@ -221,6 +224,30 @@ export default function MessagesPage() {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
+  /* -------- Marquer lu + ouvrir -------- */
+  const markSeenBackend = useCallback(async (convId: number) => {
+    if (!token) return
+    const headers = { ...(authedHeaders || {}), 'Content-Type': 'application/json' }
+    try {
+      // 2 chemins possibles selon ton back
+      const r = await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, { method: 'POST', headers })
+      if (!r.ok) {
+        await fetch(`${API_BASE}/api/messages/seen/${convId}`, { method: 'POST', headers })
+      }
+    } catch {
+      /* best-effort */
+    }
+  }, [token, authedHeaders])
+
+  const openConversation = useCallback(async (convId: number) => {
+    // Optimiste: enlever le badge
+    setUnreadMap(prev => ({ ...prev, [convId]: false }))
+    // Notifier le backend (best effort)
+    markSeenBackend(convId)
+    // Naviguer
+    router.push(`/messages/${convId}`)
+  }, [router, markSeenBackend])
+
   return (
     <div className="flex flex-col min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto w-full">
@@ -258,14 +285,8 @@ export default function MessagesPage() {
                         onClick={() => startConversation(u.id)}
                         className="cursor-pointer rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 flex items-center gap-3 transition"
                       >
-                        {avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-white/10 grid place-items-center font-semibold">
-                            {u.name?.charAt(0) ?? '?'}
-                          </div>
-                        )}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover" />
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">{u.name}</span>
                           <span className="text-xs text-white/50">{u.role}</span>
@@ -292,47 +313,40 @@ export default function MessagesPage() {
                 {conversations.map(conv => {
                   const other = getOtherUser(conv)
                   const avatar = getAvatar(other)
-                  const unread = !!unreadMap[conv.id] // calcul front provisoire
+                  const unread = !!unreadMap[conv.id]
                   return (
                     <li
                       key={conv.id}
-                      className={`rounded-xl border p-4 transition flex items-start gap-4 relative
+                      className={`rounded-xl border p-4 transition flex items-start gap-4 relative cursor-pointer
                         ${unread
                           ? 'bg-indigo-500/10 border-indigo-500/25'
                           : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
                       `}
+                      onClick={() => openConversation(conv.id)}
                     >
                       <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
-                      <Link href={`/messages/${conv.id}`} className="flex-1 min-w-0 flex items-start gap-4">
-                        {avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={avatar} alt={other?.name ?? 'User'} className="w-12 h-12 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-white/10 grid place-items-center font-semibold">
-                            {other?.name?.charAt(0) ?? '?'}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
-                              {other?.name ?? 'Conversation'}
-                            </h3>
-                            {unread && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-600/30 border border-indigo-400/40 text-indigo-200">
-                                Non lu
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-white/60 truncate max-w-[60ch]">{conv.lastMessage || '…'}</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={avatar} alt={other?.name ?? 'User'} className="w-12 h-12 rounded-full object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
+                            {other?.name ?? 'Conversation'}
+                          </h3>
+                          {unread && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-600/30 border border-indigo-400/40 text-indigo-200">
+                              Non lu
+                            </span>
+                          )}
                         </div>
-                      </Link>
+                        <p className="text-xs text-white/60 truncate max-w-[60ch]">{conv.lastMessage || '…'}</p>
+                      </div>
 
                       <div className="flex flex-col items-end gap-2">
                         <span className="text-[11px] text-white/50 whitespace-nowrap">
                           {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
                         </span>
                         <button
-                          onClick={() => deleteConversation(conv.id)}
+                          onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id) }}
                           disabled={deletingId === conv.id}
                           title="Supprimer la conversation"
                           className="text-white/80 hover:text-red-400 text-xs border border-white/15 hover:border-red-400/70 rounded-md px-2 py-1"
@@ -348,6 +362,11 @@ export default function MessagesPage() {
 
             {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
           </section>
+        </div>
+
+        {/* Lien vers la messagerie (garde si tu veux un CTA global) */}
+        <div className="mt-6 text-center text-xs text-white/40">
+          <Link href="/messages/new" className="hover:underline">Démarrer une conversation</Link>
         </div>
       </div>
     </div>
