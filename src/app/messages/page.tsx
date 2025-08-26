@@ -20,7 +20,6 @@ interface Conversation {
   participants: User[]
   lastMessage: string
   updatedAt: string
-  // unread?: boolean
 }
 interface MessageLite {
   id: string | number
@@ -30,10 +29,10 @@ interface MessageLite {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-const ACCENT_FROM = 'from-indigo-500/40'
-const ACCENT_TO = 'to-fuchsia-500/40'
+const ACCENT_FROM = 'from-pink-600/30'
+const ACCENT_TO = 'to-violet-600/30'
 
-/* Helpers */
+/* Helpers -------------------------------------------------- */
 const toAbs = (u?: string | null) => {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
@@ -59,13 +58,10 @@ export default function MessagesPage() {
     [token]
   )
 
-  // avatar: profile.avatar -> image -> default
-  const getAvatar = (u?: User | null) => {
-    const src = u?.profile?.avatar || u?.image || '/default-avatar.png'
-    return toAbs(src)
-  }
+  const getAvatarSrc = (u?: User | null) =>
+    toAbs(u?.profile?.avatar || u?.image || '/default-avatar.png')
 
-  /* Charge les conversations + tri plus récents en haut */
+  /* fetch conversations ------------------------------------ */
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
@@ -87,7 +83,7 @@ export default function MessagesPage() {
     }
   }, [token, authedHeaders])
 
-  /* Calcule “non lu” côté front (provisoire) */
+  /* compute unread (front) --------------------------------- */
   const computeUnread = useCallback(async (convs: Conversation[]) => {
     if (!token || !user?.id) return
     try {
@@ -113,10 +109,11 @@ export default function MessagesPage() {
       entries.forEach(([id, u]) => (map[id] = u))
       setUnreadMap(map)
     } catch {
-      // silencieux
+      /* silent */
     }
   }, [token, authedHeaders, user?.id])
 
+  /* fetch users (new conv) --------------------------------- */
   const fetchUsers = useCallback(async () => {
     if (!token) return
     try {
@@ -147,12 +144,22 @@ export default function MessagesPage() {
     if (user === null) router.push('/login')
   }, [user, router])
 
-  /* Recalcule les non-lus à chaque changement de liste */
   useEffect(() => {
     if (conversations.length) computeUnread(conversations)
   }, [conversations, computeUnread])
 
-  /* Pas de doublon : ouvrir si conv existe déjà avec l’utilisateur */
+  // re-sync quand on revient sur l’onglet / page
+  useEffect(() => {
+    const onShow = () => { fetchConversations().then(() => computeUnread(conversations)) }
+    window.addEventListener('visibilitychange', onShow)
+    window.addEventListener('pageshow', onShow as any)
+    return () => {
+      window.removeEventListener('visibilitychange', onShow)
+      window.removeEventListener('pageshow', onShow as any)
+    }
+  }, [fetchConversations, computeUnread, conversations])
+
+  /* start conversation ------------------------------------- */
   const startConversation = useCallback(
     async (recipientId: number) => {
       if (!token) return
@@ -189,6 +196,7 @@ export default function MessagesPage() {
     [token, authedHeaders, conversations, router, fetchConversations, user?.id]
   )
 
+  /* delete -------------------------------------------------- */
   const deleteConversation = useCallback(
     async (convId: number) => {
       if (!token) return
@@ -224,12 +232,11 @@ export default function MessagesPage() {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
-  /* -------- Marquer lu + ouvrir -------- */
+  /* mark-seen + ouvrir ------------------------------------- */
   const markSeenBackend = useCallback(async (convId: number) => {
     if (!token) return
     const headers = { ...(authedHeaders || {}), 'Content-Type': 'application/json' }
     try {
-      // 2 chemins possibles selon ton back
       const r = await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, { method: 'POST', headers })
       if (!r.ok) {
         await fetch(`${API_BASE}/api/messages/seen/${convId}`, { method: 'POST', headers })
@@ -240,14 +247,12 @@ export default function MessagesPage() {
   }, [token, authedHeaders])
 
   const openConversation = useCallback(async (convId: number) => {
-    // Optimiste: enlever le badge
-    setUnreadMap(prev => ({ ...prev, [convId]: false }))
-    // Notifier le backend (best effort)
-    markSeenBackend(convId)
-    // Naviguer
+    setUnreadMap(prev => ({ ...prev, [convId]: false }))    // optimiste
+    await markSeenBackend(convId)                           // persistance
     router.push(`/messages/${convId}`)
   }, [router, markSeenBackend])
 
+  /* UI ------------------------------------------------------ */
   return (
     <div className="flex flex-col min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto w-full">
@@ -255,9 +260,9 @@ export default function MessagesPage() {
         <p className="text-white/70 mb-8">Retrouvez vos conversations et démarrez de nouveaux échanges.</p>
 
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
-          {/* Colonne gauche */}
-          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5">
-            <div className={`pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-10`} />
+          {/* Colonne gauche - nouvelle conv */}
+          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5">
+            <div className={`pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-15`} />
             <h2 className="text-lg font-semibold mb-1">Nouvelle conversation</h2>
             <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
 
@@ -267,9 +272,8 @@ export default function MessagesPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Rechercher un utilisateur…"
-                className="w-full rounded-xl bg-black/50 border border-white/15 focus:border-white/35 outline-none px-4 py-3"
+                className="w-full rounded-xl bg-black/40 border border-white/15 focus:border-white/35 outline-none px-4 py-3"
               />
-              <div className={`pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-10`} />
             </div>
 
             {loadingUsers && <p className="text-gray-400 text-sm mt-3">Chargement des utilisateurs…</p>}
@@ -278,7 +282,7 @@ export default function MessagesPage() {
               <ul className="space-y-2 max-h-80 overflow-y-auto pr-1 mt-3">
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map(u => {
-                    const avatar = getAvatar(u)
+                    const src = getAvatarSrc(u)
                     return (
                       <li
                         key={u.id}
@@ -286,7 +290,12 @@ export default function MessagesPage() {
                         className="cursor-pointer rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 flex items-center gap-3 transition"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover" />
+                        <img
+                          src={src}
+                          alt={u.name}
+                          className="w-10 h-10 rounded-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
+                        />
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">{u.name}</span>
                           <span className="text-xs text-white/50">{u.role}</span>
@@ -301,9 +310,9 @@ export default function MessagesPage() {
             )}
           </section>
 
-          {/* Colonne droite */}
-          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 overflow-hidden">
-            <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-transparent via-white/[0.03] to-transparent pointer-events-none" />
+          {/* Colonne droite - conversations */}
+          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
+            <div className="absolute -inset-x-px top-0 h-1 bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-75" />
             <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
 
             {conversations.length === 0 && !error ? (
@@ -312,21 +321,26 @@ export default function MessagesPage() {
               <ul className="space-y-3">
                 {conversations.map(conv => {
                   const other = getOtherUser(conv)
-                  const avatar = getAvatar(other)
+                  const src = getAvatarSrc(other)
                   const unread = !!unreadMap[conv.id]
                   return (
                     <li
                       key={conv.id}
-                      className={`rounded-xl border p-4 transition flex items-start gap-4 relative cursor-pointer
+                      onClick={() => openConversation(conv.id)}
+                      className={`rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
                         ${unread
                           ? 'bg-indigo-500/10 border-indigo-500/25'
                           : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
                       `}
-                      onClick={() => openConversation(conv.id)}
                     >
-                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
+                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={avatar} alt={other?.name ?? 'User'} className="w-12 h-12 rounded-full object-cover" />
+                      <img
+                        src={src}
+                        alt={other?.name ?? 'User'}
+                        className="w-12 h-12 rounded-full object-cover"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
+                      />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
@@ -364,7 +378,6 @@ export default function MessagesPage() {
           </section>
         </div>
 
-        {/* Lien vers la messagerie (garde si tu veux un CTA global) */}
         <div className="mt-6 text-center text-xs text-white/40">
           <Link href="/messages/new" className="hover:underline">Démarrer une conversation</Link>
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, KeyboardEvent, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import axios, { AxiosResponse } from 'axios'
@@ -34,6 +34,14 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 
+/* ✅ abs URL helper pour les avatars/fichiers */
+const toAbs = (u?: string | null) => {
+  if (!u) return ''
+  if (u.startsWith('http://') || u.startsWith('https://')) return u
+  if (u.startsWith('//')) return `https:${u}`
+  return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
+}
+
 // ✔️ formats image acceptés côté upload
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/jpeg',
@@ -54,6 +62,28 @@ export default function ConversationPage() {
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+
+  /* ✅ marque “vu” côté backend (best-effort, avec fallback) */
+  const markSeen = useCallback(async () => {
+    if (!conversationId || !API_BASE) return
+    const token = getAuthToken()
+    if (!token) return
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    try {
+      const r = await fetch(`${API_BASE}/api/messages/mark-seen/${conversationId}`, {
+        method: 'POST',
+        headers,
+      })
+      if (!r.ok) {
+        await fetch(`${API_BASE}/api/messages/seen/${conversationId}`, {
+          method: 'POST',
+          headers,
+        })
+      }
+    } catch {
+      /* silencieux */
+    }
+  }, [conversationId])
 
   const fetchMessages = async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
@@ -88,10 +118,27 @@ export default function ConversationPage() {
     }
   }
 
+  /* ✅ au changement d’id : on marque vu + on charge */
   useEffect(() => {
-    fetchMessages()
+    (async () => {
+      await markSeen()
+      await fetchMessages()
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId])
+
+  /* ✅ à chaque retour sur l’onglet ou navigation back-cache */
+  useEffect(() => {
+    const onShow = () => {
+      markSeen().then(fetchMessages)
+    }
+    window.addEventListener('visibilitychange', onShow)
+    window.addEventListener('pageshow', onShow as any)
+    return () => {
+      window.removeEventListener('visibilitychange', onShow)
+      window.removeEventListener('pageshow', onShow as any)
+    }
+  }, [markSeen])
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -174,7 +221,7 @@ export default function ConversationPage() {
   }
 
   const renderFile = (url: string) => {
-    const cleanUrl = url.trim()
+    const cleanUrl = toAbs(url.trim())
     const lower = cleanUrl.toLowerCase()
     if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
       // 🔧 unoptimized pour éviter toute restriction de domaine
@@ -202,23 +249,25 @@ export default function ConversationPage() {
 
         <div
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h-[60vh] min-h-[300px]"
+          className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h=[60vh] min-h-[300px] max-h-[60vh]"
         >
           {messages.map((msg) => {
             const parts = msg.content.split('\n')
             const text = parts[0] ?? ''
             const urlLine = parts.find((line: string) => line.includes('http'))
             const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
+            const avatar = toAbs(msg.sender?.image) || '/default-avatar.png'
 
             return (
               <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
-                {msg.sender?.image ? (
-                  <Image src={msg.sender.image} alt={msg.sender.name} width={40} height={40} className="rounded-full" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gray-700 grid place-items-center text-white font-bold">
-                    {msg.sender?.name?.charAt(0) ?? '?'}
-                  </div>
-                )}
+                <Image
+                  src={avatar}
+                  alt={msg.sender?.name || 'avatar'}
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover"
+                  unoptimized
+                />
                 <div className="flex-1">
                   <p className="text-sm text-gray-400 mb-1">
                     {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
