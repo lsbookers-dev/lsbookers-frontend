@@ -351,8 +351,8 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Colonne classements */}
-        <aside className="space-y-6">
+        {/* Colonne classements (alignée en haut) */}
+        <aside className="space-y-6 self-start">
           <TopList title="TOP ARTISTES" items={topArtistsSeed} viewAllHref="/classements/artistes" />
           <TopList title="TOP PRESTATAIRES" items={topVendorsSeed} viewAllHref="/classements/prestataires" />
         </aside>
