@@ -120,12 +120,12 @@ export default function ConversationPage() {
   }, [conversationId, markSeen, fetchMessages])
 
   useEffect(() => {
-    const onVisibility = (_e: Event) => {
+    const onVisibility = () => {
       if (document.visibilityState === 'visible') {
         markSeen().then(fetchMessages)
       }
     }
-    const onPageShow = (_e: Event) => {
+    const onPageShow = () => {
       markSeen().then(fetchMessages)
     }
 

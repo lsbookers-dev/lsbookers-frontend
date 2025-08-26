@@ -148,19 +148,16 @@ export default function MessagesPage() {
     if (conversations.length) computeUnread(conversations)
   }, [conversations, computeUnread])
 
-  // re-sync quand on revient sur l’onglet / page
-useEffect(() => {
-  const onShow = (_e: Event) => {
-    fetchConversations().then(() => computeUnread(conversations))
-  }
-  document.addEventListener('visibilitychange', onShow)
-  window.addEventListener('pageshow', onShow)
-
-  return () => {
-    document.removeEventListener('visibilitychange', onShow)
-    window.removeEventListener('pageshow', onShow)
-  }
-}, [fetchConversations, computeUnread, conversations])
+  // re-sync quand l’onglet revient au premier plan / navigation historique
+  useEffect(() => {
+    const onShow = () => { fetchConversations().then(() => computeUnread(conversations)) }
+    document.addEventListener('visibilitychange', onShow)
+    window.addEventListener('pageshow', onShow)
+    return () => {
+      document.removeEventListener('visibilitychange', onShow)
+      window.removeEventListener('pageshow', onShow)
+    }
+  }, [fetchConversations, computeUnread, conversations])
 
   /* start conversation ------------------------------------- */
   const startConversation = useCallback(
@@ -235,25 +232,18 @@ useEffect(() => {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
-  /* mark-seen + ouvrir ------------------------------------- */
-  const markSeenBackend = useCallback(async (convId: number) => {
-    if (!token) return
-    const headers = { ...(authedHeaders || {}), 'Content-Type': 'application/json' }
+  const openConversation = useCallback(async (convId: number) => {
+    setUnreadMap(prev => ({ ...prev, [convId]: false }))    // optimiste
+    // best-effort mark seen côté liste
     try {
+      const headers = { ...(authedHeaders || {}), 'Content-Type': 'application/json' }
       const r = await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, { method: 'POST', headers })
       if (!r.ok) {
         await fetch(`${API_BASE}/api/messages/seen/${convId}`, { method: 'POST', headers })
       }
-    } catch {
-      /* best-effort */
-    }
-  }, [token, authedHeaders])
-
-  const openConversation = useCallback(async (convId: number) => {
-    setUnreadMap(prev => ({ ...prev, [convId]: false }))    // optimiste
-    await markSeenBackend(convId)                           // persistance
+    } catch { /* noop */ }
     router.push(`/messages/${convId}`)
-  }, [router, markSeenBackend])
+  }, [router, authedHeaders])
 
   /* UI ------------------------------------------------------ */
   return (
