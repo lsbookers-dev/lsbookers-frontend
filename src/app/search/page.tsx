@@ -148,15 +148,8 @@ export default function SearchPage() {
     if (country) params.append('country', country)
     if (radiusKm) params.append('radius', radiusKm)
 
-    // ------ OR logique: répéter le paramètre pour chaque valeur sélectionnée ------
-    if (typeFilters.length > 0) {
-      if (roleFilter === 'ORGANIZER') {
-        typeFilters.forEach(v => params.append('typeEtablissement', v))
-      } else {
-        typeFilters.forEach(v => params.append('specialty', v)) // ARTIST + PROVIDER
-      }
-    }
-
+    // IMPORTANT : on n’envoie pas les types au backend (il faisait un ET).
+    // On filtrera côté client en logique OU.
     fetch(`${API_BASE}/api/search?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -168,7 +161,23 @@ export default function SearchPage() {
         return res.json()
       })
       .then((data) => {
-        const list = Array.isArray(data?.users) ? data.users : []
+        let list: User[] = Array.isArray(data?.users) ? data.users : []
+
+        if (typeFilters.length > 0) {
+          const selected = new Set(typeFilters.map(s => s.toLowerCase().trim()))
+          list = list.filter(u => {
+            if (u.role === 'ARTIST' || u.role === 'PROVIDER') {
+              const specs = u.profile?.specialties || []
+              return specs.some(s => selected.has(String(s).toLowerCase().trim()))
+            }
+            if (u.role === 'ORGANIZER') {
+              const t = u.profile?.typeEtablissement || ''
+              return selected.has(t.toLowerCase().trim())
+            }
+            return false
+          })
+        }
+
         setUsers(list)
       })
       .catch(err => {
@@ -218,10 +227,10 @@ export default function SearchPage() {
 
       {/* Contenu */}
       <div className="px-6 pb-10 max-w-7xl mx-auto">
-        {/* FILTRES (ordre selon ta maquette) */}
-        <section className="rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 md:p-5 mb-8 overflow-visible relative">
+        {/* FILTRES (ordre conforme à ta maquette) */}
+        <section className="relative z-50 overflow-visible rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 md:p-5 mb-8">
           {/* Ligne 1 : Pseudo | Pays | Ville/Zone | Rayon */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 overflow-visible">
             <input
               type="text"
               placeholder="Rechercher par pseudo..."
@@ -262,7 +271,7 @@ export default function SearchPage() {
           </div>
 
           {/* Ligne 2 : Rôle | Types (multi) | Boutons */}
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto] gap-3 md:gap-4">
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto] gap-3 md:gap-4 overflow-visible">
             <select
               className="px-4 py-3 rounded-lg bg-black/40 border border-white/10 text-white focus:outline-none focus:border-white/30"
               value={roleFilter}
@@ -278,18 +287,20 @@ export default function SearchPage() {
               <option value="ORGANIZER">Organisateurs</option>
             </select>
 
-            {roleFilter ? (
-              <MultiSelectDropdown
-                options={currentTypeOptions}
-                values={typeFilters}
-                onChange={setTypeFilters}
-                placeholder="Types / Spécialités"
-              />
-            ) : (
-              <div className="px-4 py-3 rounded-lg bg-black/30 border border-white/10 text-white/40 flex items-center">
-                Sélectionne d’abord un rôle
-              </div>
-            )}
+            <div className="overflow-visible">
+              {roleFilter ? (
+                <MultiSelectDropdown
+                  options={currentTypeOptions}
+                  values={typeFilters}
+                  onChange={setTypeFilters}
+                  placeholder="Types / Spécialités"
+                />
+              ) : (
+                <div className="px-4 py-3 rounded-lg bg-black/30 border border-white/10 text-white/40 flex items-center">
+                  Sélectionne d’abord un rôle
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-3 lg:justify-end">
               <button
@@ -317,7 +328,7 @@ export default function SearchPage() {
 
         {/* RÉSULTATS (inchangé) */}
         {users.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="relative z-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {users.map(user => (
               <div
                 key={user.id}
