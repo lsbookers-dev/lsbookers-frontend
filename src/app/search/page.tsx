@@ -78,7 +78,11 @@ function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-lg border border-white/10 bg-neutral-900/95 backdrop-blur p-2 max-h-60 overflow-y-auto shadow-xl">
+        <div
+          className="absolute z-[9999] top-full mt-2 w-[min(560px,90vw)]
+                     rounded-lg border border-white/10 bg-neutral-900/95 backdrop-blur p-2
+                     max-h-60 overflow-y-auto shadow-2xl"
+        >
           <div className="flex items-center justify-between gap-2 p-1">
             <button
               className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20"
@@ -143,10 +147,14 @@ export default function SearchPage() {
     if (zone) params.append('zone', zone)
     if (country) params.append('country', country)
     if (radiusKm) params.append('radius', radiusKm)
+
+    // ------ OR logique: répéter le paramètre pour chaque valeur sélectionnée ------
     if (typeFilters.length > 0) {
-      const joined = typeFilters.join(',')
-      if (roleFilter === 'ORGANIZER') params.append('typeEtablissement', joined)
-      else params.append('specialty', joined) // ARTIST + PROVIDER
+      if (roleFilter === 'ORGANIZER') {
+        typeFilters.forEach(v => params.append('typeEtablissement', v))
+      } else {
+        typeFilters.forEach(v => params.append('specialty', v)) // ARTIST + PROVIDER
+      }
     }
 
     fetch(`${API_BASE}/api/search?${params.toString()}`, {
@@ -184,8 +192,6 @@ export default function SearchPage() {
     router.push(route)
   }
 
- 
-
   // options selon le rôle
   const currentTypeOptions: string[] =
     roleFilter === 'ARTIST'
@@ -213,7 +219,7 @@ export default function SearchPage() {
       {/* Contenu */}
       <div className="px-6 pb-10 max-w-7xl mx-auto">
         {/* FILTRES (ordre selon ta maquette) */}
-        <section className="rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 md:p-5 mb-8">
+        <section className="rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 md:p-5 mb-8 overflow-visible relative">
           {/* Ligne 1 : Pseudo | Pays | Ville/Zone | Rayon */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <input
