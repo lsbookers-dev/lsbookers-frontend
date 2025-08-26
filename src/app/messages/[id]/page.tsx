@@ -6,7 +6,6 @@ import Image from 'next/image'
 import axios, { AxiosResponse } from 'axios'
 import { getAuthToken } from '@/utils/auth'
 
-/* ---------- Types ---------- */
 type Sender = {
   id: number
   name: string
@@ -24,7 +23,6 @@ type Message = {
 type ApiMessagesResponse = Message[] | { messages: Message[] }
 type SendResp = { conversationId?: string | number; message?: Message }
 
-/* ---------- Helpers ---------- */
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 function isArrayResp(x: unknown): x is Message[] {
@@ -34,7 +32,6 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 
-/* ✅ abs URL helper pour les avatars/fichiers */
 const toAbs = (u?: string | null) => {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
@@ -42,7 +39,6 @@ const toAbs = (u?: string | null) => {
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
-// ✔️ formats image acceptés côté upload
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -50,7 +46,6 @@ const ALLOWED_IMAGE_TYPES = new Set([
   'image/gif',
 ])
 
-/* ---------- Page ---------- */
 export default function ConversationPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -63,12 +58,11 @@ export default function ConversationPage() {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  /* ✅ marque “vu” côté backend (best-effort, avec fallback) */
   const markSeen = useCallback(async () => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
     if (!token) return
-    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    const headers: HeadersInit = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     try {
       const r = await fetch(`${API_BASE}/api/messages/mark-seen/${conversationId}`, {
         method: 'POST',
@@ -81,11 +75,11 @@ export default function ConversationPage() {
         })
       }
     } catch {
-      /* silencieux */
+      /* noop */
     }
   }, [conversationId])
 
-  const fetchMessages = async (): Promise<void> => {
+  const fetchMessages = useCallback(async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
     const commonHeaders = { Authorization: `Bearer ${token}` }
@@ -116,29 +110,33 @@ export default function ConversationPage() {
         }
       }
     }
-  }
+  }, [conversationId])
 
-  /* ✅ au changement d’id : on marque vu + on charge */
   useEffect(() => {
     (async () => {
       await markSeen()
       await fetchMessages()
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId])
+  }, [conversationId, markSeen, fetchMessages])
 
-  /* ✅ à chaque retour sur l’onglet ou navigation back-cache */
   useEffect(() => {
-    const onShow = () => {
+    const onVisibility = (_e: Event) => {
+      if (document.visibilityState === 'visible') {
+        markSeen().then(fetchMessages)
+      }
+    }
+    const onPageShow = (_e: Event) => {
       markSeen().then(fetchMessages)
     }
-    window.addEventListener('visibilitychange', onShow)
-    window.addEventListener('pageshow', onShow as any)
+
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pageshow', onPageShow)
+
     return () => {
-      window.removeEventListener('visibilitychange', onShow)
-      window.removeEventListener('pageshow', onShow as any)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pageshow', onPageShow)
     }
-  }, [markSeen])
+  }, [markSeen, fetchMessages])
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -153,7 +151,6 @@ export default function ConversationPage() {
     const token = getAuthToken()
 
     try {
-      // Optimistic UI si texte seul (pas de fichier)
       if (content.trim() && !file) {
         const optimistic: Message = {
           id: `temp-${Date.now()}`,
@@ -165,20 +162,16 @@ export default function ConversationPage() {
         setMessages(prev => [...prev, optimistic])
       }
 
-      // ✅ Envoi multipart (même sans fichier)
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
 
       if (file) {
-        // 👉 Bloque les formats image problématiques (ex: .heic)
         if (file.type.startsWith('image') && !ALLOWED_IMAGE_TYPES.has(file.type)) {
           alert("Format d'image non pris en charge (utilise JPG, PNG, WEBP ou GIF).")
           return
         }
         fd.append('file', file)
-
-        // 👉 Indices pour le backend (ignorés si non utilisés côté serveur)
         if (file.type.startsWith('image')) {
           fd.append('type', 'image')
           fd.append('folder', 'messages')
@@ -192,12 +185,10 @@ export default function ConversationPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      // Reset des inputs
       setContent('')
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
-      // Si l’API renvoie un nouvel id de conversation, on redirige
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
@@ -208,7 +199,6 @@ export default function ConversationPage() {
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
-      // rollback de l’optimistic si échec
       setMessages(prev => prev.filter(m => typeof m.id === 'string' && m.id.startsWith('temp-')))
     }
   }
@@ -224,7 +214,6 @@ export default function ConversationPage() {
     const cleanUrl = toAbs(url.trim())
     const lower = cleanUrl.toLowerCase()
     if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
-      // 🔧 unoptimized pour éviter toute restriction de domaine
       return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" unoptimized />
     }
     if (/\.(mp4|webm)$/.test(lower)) {
@@ -249,7 +238,7 @@ export default function ConversationPage() {
 
         <div
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] max-h=[60vh] min-h-[300px] max-h-[60vh]"
+          className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] min-h-[300px] max-h-[60vh]"
         >
           {messages.map((msg) => {
             const parts = msg.content.split('\n')
@@ -296,7 +285,6 @@ export default function ConversationPage() {
             <input
               id="fileInput"
               type="file"
-              // 🔒 on liste explicitement les formats supportés (pas de .heic)
               accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"

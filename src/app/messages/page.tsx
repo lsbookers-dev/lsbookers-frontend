@@ -149,15 +149,18 @@ export default function MessagesPage() {
   }, [conversations, computeUnread])
 
   // re-sync quand on revient sur l’onglet / page
-  useEffect(() => {
-    const onShow = () => { fetchConversations().then(() => computeUnread(conversations)) }
-    window.addEventListener('visibilitychange', onShow)
-    window.addEventListener('pageshow', onShow as any)
-    return () => {
-      window.removeEventListener('visibilitychange', onShow)
-      window.removeEventListener('pageshow', onShow as any)
-    }
-  }, [fetchConversations, computeUnread, conversations])
+useEffect(() => {
+  const onShow = (_e: Event) => {
+    fetchConversations().then(() => computeUnread(conversations))
+  }
+  document.addEventListener('visibilitychange', onShow)
+  window.addEventListener('pageshow', onShow)
+
+  return () => {
+    document.removeEventListener('visibilitychange', onShow)
+    window.removeEventListener('pageshow', onShow)
+  }
+}, [fetchConversations, computeUnread, conversations])
 
   /* start conversation ------------------------------------- */
   const startConversation = useCallback(
