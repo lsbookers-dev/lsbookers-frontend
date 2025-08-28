@@ -95,9 +95,7 @@ export default function ConversationPage() {
     }
   }, [conversationIdStr])
 
-  useEffect(() => {
-    (async () => { await markSeen(); await fetchMessages() })()
-  }, [conversationIdStr, markSeen, fetchMessages])
+  useEffect(() => { (async () => { await markSeen(); await fetchMessages() })() }, [conversationIdStr, markSeen, fetchMessages])
 
   useEffect(() => {
     const onVisibility = () => { if (document.visibilityState === 'visible') markSeen().then(fetchMessages) }
@@ -170,9 +168,7 @@ export default function ConversationPage() {
     }
   }
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === 'Enter') { e.preventDefault(); handleSend() }
-  }
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => { if (e.key === 'Enter') { e.preventDefault(); handleSend() } }
 
   const renderFile = (url: string) => {
     const cleanUrl = toAbs(url.trim())
@@ -188,11 +184,7 @@ export default function ConversationPage() {
         </video>
       )
     }
-    return (
-      <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
-        Télécharger le fichier
-      </a>
-    )
+    return <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">Télécharger le fichier</a>
   }
 
   return (
@@ -213,14 +205,7 @@ export default function ConversationPage() {
 
             return (
               <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
-                <Image
-                  src={avatar}
-                  alt={msg.sender?.name || 'avatar'}
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover"
-                  unoptimized
-                />
+                <Image src={avatar} alt={msg.sender?.name || 'avatar'} width={40} height={40} className="rounded-full object-cover" unoptimized />
                 <div className="flex-1">
                   <p className="text-sm text-gray-400 mb-1">
                     {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
@@ -253,9 +238,7 @@ export default function ConversationPage() {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"
             />
-            <label htmlFor="fileInput" className="cursor-pointer bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm">
-              Fichier
-            </label>
+            <label htmlFor="fileInput" className="cursor-pointer bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm">Fichier</label>
 
             <button
               onClick={handleSend}
@@ -275,13 +258,7 @@ export default function ConversationPage() {
               ) : (
                 <p className="text-sm text-white truncate mr-3">{file.name}</p>
               )}
-              <button
-                onClick={() => setFile(null)}
-                className="text-red-500 hover:text-red-700 text-sm font-bold"
-                title="Supprimer le fichier"
-              >
-                ✖
-              </button>
+              <button onClick={() => setFile(null)} className="text-red-500 hover:text-red-700 text-sm font-bold" title="Supprimer le fichier">✖</button>
             </div>
           )}
         </div>

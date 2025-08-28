@@ -7,12 +7,13 @@ import Link from 'next/link'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
-interface ProfileLite { avatar?: string | null }
+interface ProfileLite { avatar?: string | null; avatarUrl?: string | null; photo?: string | null; image?: string | null }
 interface User {
   id: number
   name: string
   role: Role
   image?: string | null
+  avatar?: string | null
   profile?: ProfileLite | null
 }
 interface Conversation {
@@ -30,7 +31,7 @@ interface MessageLite {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-/* Helpers */
+/* Helpers -------------------------------------------------- */
 const toAbs = (u?: string | null) => {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
@@ -38,13 +39,11 @@ const toAbs = (u?: string | null) => {
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
+// lu/non-lu local (on garde ce qui marche chez toi)
 const LS_READ_KEY = 'lsb_readConvs'
 const getLocalRead = (): Record<number, boolean> => {
   if (typeof window === 'undefined') return {}
-  try {
-    const raw = localStorage.getItem(LS_READ_KEY)
-    return raw ? (JSON.parse(raw) as Record<number, boolean>) : {}
-  } catch { return {} }
+  try { return JSON.parse(localStorage.getItem(LS_READ_KEY) || '{}') } catch { return {} }
 }
 const setLocalRead = (convId: number, val: boolean) => {
   try {
@@ -67,13 +66,52 @@ export default function MessagesPage() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
+  // cache avatar (id -> url)
+  const [avatarCache, setAvatarCache] = useState<Record<number, string>>({})
+
   const authedHeaders = useMemo(
     () => (token ? { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } : undefined),
     [token]
   )
 
-  const getAvatarSrc = (u?: User | null) =>
-    toAbs(u?.image || u?.profile?.avatar || '/default-avatar.png')
+  const extractAvatarUrl = (u?: User | null): string => {
+    if (!u) return ''
+    const maybe =
+      u.image ||
+      u.avatar ||
+      u.profile?.avatar ||
+      u.profile?.avatarUrl ||
+      u.profile?.photo ||
+      u.profile?.image ||
+      ''
+    return toAbs(maybe)
+  }
+
+  const getAvatarSrc = (u?: User | null): string => {
+    if (!u) return '/default-avatar.png'
+    const fromCache = avatarCache[u.id]
+    if (fromCache) return fromCache
+    const direct = extractAvatarUrl(u)
+    return direct || '/default-avatar.png'
+  }
+
+  // hydrate avatar (appel unique par id si besoin)
+  const ensureAvatar = useCallback(async (uid: number) => {
+    if (!token || avatarCache[uid]) return
+    try {
+      const res = await fetch(`${API_BASE}/api/users/${uid}?t=${Date.now()}`, {
+        headers: authedHeaders,
+        cache: 'no-store',
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      const got = (data?.user ?? data) as User
+      const url = extractAvatarUrl(got)
+      if (url) {
+        setAvatarCache(prev => ({ ...prev, [uid]: url }))
+      }
+    } catch {}
+  }, [token, authedHeaders, avatarCache])
 
   const fetchConversations = useCallback(async () => {
     if (!token) return
@@ -90,11 +128,18 @@ export default function MessagesPage() {
         (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
       )
       setConversations(sorted)
+
+      // hydrate avatars manquants (best-effort)
+      sorted.forEach(c => {
+        const other = c.participants.find(p => String(p.id) !== String(user?.id))
+        const url = other ? extractAvatarUrl(other) : ''
+        if (other && !url) ensureAvatar(other.id)
+      })
     } catch (err) {
       console.error('Conversations load error:', err)
       setError('Impossible de charger les conversations.')
     }
-  }, [token, authedHeaders])
+  }, [token, authedHeaders, user?.id, ensureAvatar])
 
   const computeUnread = useCallback(async (convs: Conversation[]) => {
     if (!token || !user?.id) return
@@ -135,6 +180,11 @@ export default function MessagesPage() {
       const list: User[] = Array.isArray(raw) ? raw : raw?.users ?? []
       const filtered = user?.id ? list.filter(u => Number(u.id) !== Number(user.id)) : list
       setAllUsers(filtered)
+      // pré-remplis le cache quand l’URL est dispo
+      filtered.forEach(u => {
+        const url = extractAvatarUrl(u)
+        if (url) setAvatarCache(prev => prev[u.id] ? prev : { ...prev, [u.id]: url })
+      })
     } catch (err) { console.error('Users load error:', err) }
     finally { setLoadingUsers(false) }
   }, [token, authedHeaders, user?.id])
@@ -198,36 +248,44 @@ export default function MessagesPage() {
       try {
         setDeletingId(convId)
 
-        const attempt = async (method: 'DELETE'|'POST', url: string) =>
-          fetch(url, {
-            method,
-            headers: { ...(authedHeaders || {}), 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-            cache: 'no-store',
-            body: method === 'POST' ? '{}' : undefined,
-          })
+        const common = {
+          headers: { ...(authedHeaders || {}), 'Content-Type': 'application/json', 'X-HTTP-Method-Override': 'DELETE' },
+          cache: 'no-store' as const,
+        }
 
+        const attempt = async (method: 'DELETE'|'POST', url: string, body?: unknown) => {
+          return fetch(url, { method, ...(common as any), body: body ? JSON.stringify(body) : undefined })
+        }
+
+        // Plusieurs variantes + userId
         let res = await attempt('DELETE', `${API_BASE}/api/messages/conversation/${convId}?t=${Date.now()}`)
         if (!res.ok) res = await attempt('DELETE', `${API_BASE}/api/messages/conversations/${convId}?t=${Date.now()}`)
         if (!res.ok) res = await attempt('DELETE', `${API_BASE}/messages/conversation/${convId}?t=${Date.now()}`)
-        if (!res.ok) res = await attempt('POST',   `${API_BASE}/api/messages/conversation/${convId}/delete?t=${Date.now()}`)
+        if (!res.ok) res = await attempt('POST',   `${API_BASE}/api/messages/conversation/${convId}/delete?t=${Date.now()}`, { userId: user?.id })
+        if (!res.ok) res = await attempt('POST',   `${API_BASE}/api/messages/delete?t=${Date.now()}`, { conversationId: convId, userId: user?.id })
+        if (!res.ok) res = await attempt('POST',   `${API_BASE}/messages/${convId}/delete?t=${Date.now()}`, { userId: user?.id })
+
+        console.log('Delete response:', res.status)
 
         if (!res.ok && res.status !== 404) {
-          const txt = await res.text().catch(()=>'')
+          const txt = await res.text().catch(()=> '')
           console.warn('DELETE a échoué', res.status, txt)
           alert("La suppression n'a pas été confirmée par le serveur.")
         }
 
+        // Retire côté UI quoi qu’il arrive
         setConversations(prev => prev.filter(c => c.id !== convId))
         setLocalRead(convId, false); setLocalReadState(getLocalRead())
 
-        await new Promise(r => setTimeout(r, 150)) // petit anti-cache
+        // Re-sync anti-cache
+        await new Promise(r => setTimeout(r, 150))
         await fetchConversations()
       } catch (err) {
         console.error('Erreur suppression conversation :', err)
         alert('Suppression impossible.')
       } finally { setDeletingId(null) }
     },
-    [token, authedHeaders, fetchConversations]
+    [token, authedHeaders, fetchConversations, user?.id]
   )
 
   const getOtherUser = (conv: Conversation) =>
@@ -247,6 +305,7 @@ export default function MessagesPage() {
     router.push(`/messages/${convId}`)
   }, [router, authedHeaders])
 
+  /* ---------------- UI ---------------- */
   return (
     <div className="flex flex-col min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto w-full">
@@ -256,7 +315,6 @@ export default function MessagesPage() {
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
           {/* Colonne gauche */}
           <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
-            {/* Dégradé qui épouse les angles */}
             <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-600/15 via-violet-600/15 to-blue-600/15" />
             <h2 className="text-lg font-semibold mb-1 relative z-[1]">Nouvelle conversation</h2>
             <p className="text-white/60 text-sm mb-4 relative z-[1]">Cherche un artiste, un organisateur ou un prestataire.</p>
@@ -318,6 +376,10 @@ export default function MessagesPage() {
                   const other = getOtherUser(conv)
                   const src = getAvatarSrc(other)
                   const unread = !!unreadMap[conv.id]
+
+                  // hydrate si vide
+                  if (other && !avatarCache[other.id]) ensureAvatar(other.id)
+
                   return (
                     <li
                       key={conv.id}
@@ -328,7 +390,6 @@ export default function MessagesPage() {
                           : 'bg-neutral-900/60 border-white/10 hover:bg-neutral-900'}
                       `}
                     >
-                      {/* bandeau dégradé qui suit les coins */}
                       <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-80" />
 
                       {/* eslint-disable-next-line @next/next/no-img-element */}
