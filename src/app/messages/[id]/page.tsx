@@ -6,15 +6,27 @@ import Image from 'next/image'
 import axios, { AxiosResponse } from 'axios'
 import { getAuthToken } from '@/utils/auth'
 
-type Sender = { id: number; name: string; image?: string | null }
-type Message = { id: string; content: string; createdAt: string; sender: Sender; seen: boolean }
+type Sender = {
+  id: number
+  name: string
+  image?: string | null
+}
+
+type Message = {
+  id: string
+  content: string
+  createdAt: string
+  sender: Sender
+  seen: boolean
+}
+
 type ApiMessagesResponse = Message[] | { messages: Message[] }
 type SendResp = { conversationId?: string | number; message?: Message }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 const isArrayResp = (x: unknown): x is Message[] => Array.isArray(x)
-const isObjResp = (x: unknown): x is { messages: Message[] } =>
+const isObjResp   = (x: unknown): x is { messages: Message[] } =>
   !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 
 const toAbs = (u?: string | null) => {
@@ -24,7 +36,7 @@ const toAbs = (u?: string | null) => {
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg','image/png','image/webp','image/gif'])
 
 export default function ConversationPage() {
   const router = useRouter()
@@ -38,7 +50,6 @@ export default function ConversationPage() {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  /* ---- Mark seen ---- */
   const markSeen = useCallback(async () => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -54,7 +65,6 @@ export default function ConversationPage() {
     }
   }, [conversationId])
 
-  /* ---- Fetch messages ---- */
   const fetchMessages = useCallback(async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -88,7 +98,6 @@ export default function ConversationPage() {
     }
   }, [conversationId])
 
-  /* ---- On mount + visibilité : mark seen + fetch ---- */
   useEffect(() => {
     (async () => {
       await markSeen()
@@ -115,14 +124,12 @@ export default function ConversationPage() {
     }
   }, [markSeen, fetchMessages])
 
-  /* ---- Auto-scroll ---- */
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
     }
   }, [messages])
 
-  /* ---- Send ---- */
   const handleSend = async (): Promise<void> => {
     if (!conversationId) return
     if (!content.trim() && !file) return
@@ -130,7 +137,7 @@ export default function ConversationPage() {
     const token = getAuthToken()
 
     try {
-      // Optimistic pour texte seul
+      // Optimistic UI si texte seul
       if (content.trim() && !file) {
         const optimistic: Message = {
           id: `temp-${Date.now()}`,
@@ -165,12 +172,10 @@ export default function ConversationPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      // reset inputs
       setContent('')
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
-      // redirection si nouvel ID renvoyé
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
@@ -178,11 +183,11 @@ export default function ConversationPage() {
       }
 
       await fetchMessages()
+      await markSeen() // s’assurer que le dernier reçu est marqué si on reste sur la page
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
-      // rollback optimiste (supprime uniquement les temp-)
-      setMessages(prev => prev.filter(m => !(typeof m.id === 'string' && m.id.startsWith('temp-'))))
+      setMessages(prev => prev.filter(m => typeof m.id === 'string' && m.id.startsWith('temp-')))
     }
   }
 
@@ -226,7 +231,7 @@ export default function ConversationPage() {
           {messages.map((msg) => {
             const parts = msg.content.split('\n')
             const text = parts[0] ?? ''
-            const urlLine = parts.find((line: string) => line.includes('http'))
+            const urlLine = parts.find((line) => line.includes('http'))
             const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
             const avatar = toAbs(msg.sender?.image) || '/default-avatar.png'
 
