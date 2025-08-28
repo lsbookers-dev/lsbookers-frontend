@@ -6,20 +6,8 @@ import Image from 'next/image'
 import axios, { AxiosResponse } from 'axios'
 import { getAuthToken } from '@/utils/auth'
 
-type Sender = {
-  id: number
-  name: string
-  image?: string | null
-}
-
-type Message = {
-  id: string
-  content: string
-  createdAt: string
-  sender: Sender
-  seen: boolean
-}
-
+type Sender = { id: number; name: string; image?: string | null }
+type Message = { id: string; content: string; createdAt: string; sender: Sender; seen: boolean }
 type ApiMessagesResponse = Message[] | { messages: Message[] }
 type SendResp = { conversationId?: string | number; message?: Message }
 
@@ -38,14 +26,13 @@ const toAbs = (u?: string | null) => {
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg','image/png','image/webp','image/gif'])
 const LS_READ_KEY = 'lsb_readConvs'
-
 const markLocalRead = (convId: number) => {
   try {
     const raw = localStorage.getItem(LS_READ_KEY)
     const obj = raw ? (JSON.parse(raw) as Record<number, boolean>) : {}
     obj[convId] = true
     localStorage.setItem(LS_READ_KEY, JSON.stringify(obj))
-  } catch { /* noop */ }
+  } catch {}
 }
 
 export default function ConversationPage() {
@@ -66,15 +53,13 @@ export default function ConversationPage() {
     const token = getAuthToken()
     if (!token) return
     const headers: HeadersInit = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    markLocalRead(conversationIdNum) // persistance locale immédiate
+    markLocalRead(conversationIdNum)
     try {
       const r = await fetch(`${API_BASE}/api/messages/mark-seen/${conversationIdStr}`, { method: 'POST', headers })
       if (!r.ok) {
         await fetch(`${API_BASE}/api/messages/seen/${conversationIdStr}`, { method: 'POST', headers })
       }
-    } catch {
-      /* noop */
-    }
+    } catch {}
   }, [conversationIdStr, conversationIdNum])
 
   const fetchMessages = useCallback(async (): Promise<void> => {
@@ -111,25 +96,14 @@ export default function ConversationPage() {
   }, [conversationIdStr])
 
   useEffect(() => {
-    (async () => {
-      await markSeen()
-      await fetchMessages()
-    })()
+    (async () => { await markSeen(); await fetchMessages() })()
   }, [conversationIdStr, markSeen, fetchMessages])
 
   useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        markSeen().then(fetchMessages)
-      }
-    }
-    const onPageShow = () => {
-      markSeen().then(fetchMessages)
-    }
-
+    const onVisibility = () => { if (document.visibilityState === 'visible') markSeen().then(fetchMessages) }
+    const onPageShow = () => { markSeen().then(fetchMessages) }
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pageshow', onPageShow)
-
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pageshow', onPageShow)
@@ -149,7 +123,6 @@ export default function ConversationPage() {
     const token = getAuthToken()
 
     try {
-      // Optimistic UI si texte seul
       if (content.trim() && !file) {
         const optimistic: Message = {
           id: `temp-${Date.now()}`,
@@ -171,21 +144,15 @@ export default function ConversationPage() {
           return
         }
         fd.append('file', file)
-        if (file.type.startsWith('image')) {
-          fd.append('type', 'image')
-          fd.append('folder', 'messages')
-        } else if (file.type.startsWith('video')) {
-          fd.append('type', 'video')
-          fd.append('folder', 'messages')
-        }
+        if (file.type.startsWith('image')) { fd.append('type', 'image'); fd.append('folder', 'messages') }
+        else if (file.type.startsWith('video')) { fd.append('type', 'video'); fd.append('folder', 'messages') }
       }
 
       const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      setContent('')
-      setFile(null)
+      setContent(''); setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
       const newConvId = res.data?.conversationId
@@ -195,7 +162,7 @@ export default function ConversationPage() {
       }
 
       await fetchMessages()
-      await markSeen() // reste “lu” après envoi
+      await markSeen()
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
@@ -204,10 +171,7 @@ export default function ConversationPage() {
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleSend()
-    }
+    if (e.key === 'Enter') { e.preventDefault(); handleSend() }
   }
 
   const renderFile = (url: string) => {

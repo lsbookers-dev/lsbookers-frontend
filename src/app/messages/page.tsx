@@ -29,9 +29,6 @@ interface MessageLite {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-const GRAD_FROM = 'from-pink-600'
-const GRAD_VIA  = 'via-violet-600'
-const GRAD_TO   = 'to-blue-600'
 
 /* Helpers */
 const toAbs = (u?: string | null) => {
@@ -42,24 +39,18 @@ const toAbs = (u?: string | null) => {
 }
 
 const LS_READ_KEY = 'lsb_readConvs'
-
 const getLocalRead = (): Record<number, boolean> => {
   if (typeof window === 'undefined') return {}
   try {
     const raw = localStorage.getItem(LS_READ_KEY)
     return raw ? (JSON.parse(raw) as Record<number, boolean>) : {}
-  } catch {
-    return {}
-  }
+  } catch { return {} }
 }
 const setLocalRead = (convId: number, val: boolean) => {
   try {
-    const cur = getLocalRead()
-    cur[convId] = val
+    const cur = getLocalRead(); cur[convId] = val
     localStorage.setItem(LS_READ_KEY, JSON.stringify(cur))
-  } catch {
-    /* noop */
-  }
+  } catch {}
 }
 
 export default function MessagesPage() {
@@ -77,14 +68,13 @@ export default function MessagesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const authedHeaders = useMemo(
-    () => (token ? { Authorization: `Bearer ${token}` } : undefined),
+    () => (token ? { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } : undefined),
     [token]
   )
 
   const getAvatarSrc = (u?: User | null) =>
     toAbs(u?.image || u?.profile?.avatar || '/default-avatar.png')
 
-  /* Charge les conversations + tri */
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
@@ -106,7 +96,6 @@ export default function MessagesPage() {
     }
   }, [token, authedHeaders])
 
-  /* Calcule non-lus (front) */
   const computeUnread = useCallback(async (convs: Conversation[]) => {
     if (!token || !user?.id) return
     try {
@@ -123,25 +112,16 @@ export default function MessagesPage() {
             const last = arr[arr.length - 1]
             const unread = !!last && last.sender?.id !== Number(user.id) && !last.seen
             return [c.id, unread] as const
-          } catch {
-            return [c.id, false] as const
-          }
+          } catch { return [c.id, false] as const }
         })
       )
       const map: Record<number, boolean> = {}
       entries.forEach(([id, u]) => (map[id] = u))
-      // override local (pour que ça reste "lu" quand on revient immédiatement)
-      Object.keys(localRead).forEach((k) => {
-        const id = Number(k)
-        if (localRead[id]) map[id] = false
-      })
+      Object.keys(localRead).forEach((k) => { const id = Number(k); if (localRead[id]) map[id] = false })
       setUnreadMap(map)
-    } catch {
-      /* silent */
-    }
+    } catch {}
   }, [token, authedHeaders, user?.id, localRead])
 
-  /* Recherche d’utilisateurs pour nouvelle conv */
   const fetchUsers = useCallback(async () => {
     if (!token) return
     try {
@@ -155,14 +135,10 @@ export default function MessagesPage() {
       const list: User[] = Array.isArray(raw) ? raw : raw?.users ?? []
       const filtered = user?.id ? list.filter(u => Number(u.id) !== Number(user.id)) : list
       setAllUsers(filtered)
-    } catch (err) {
-      console.error('Users load error:', err)
-    } finally {
-      setLoadingUsers(false)
-    }
+    } catch (err) { console.error('Users load error:', err) }
+    finally { setLoadingUsers(false) }
   }, [token, authedHeaders, user?.id])
 
-  /* Montée */
   useEffect(() => {
     if (!token) return
     fetchConversations().then(() => computeUnread(conversations))
@@ -170,15 +146,9 @@ export default function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  useEffect(() => {
-    if (user === null) router.push('/login')
-  }, [user, router])
+  useEffect(() => { if (user === null) router.push('/login') }, [user, router])
+  useEffect(() => { if (conversations.length) computeUnread(conversations) }, [conversations, computeUnread])
 
-  useEffect(() => {
-    if (conversations.length) computeUnread(conversations)
-  }, [conversations, computeUnread])
-
-  /* Re-sync si on revient sur l’onglet */
   useEffect(() => {
     const onShow = () => { fetchConversations().then(() => computeUnread(conversations)) }
     document.addEventListener('visibilitychange', onShow)
@@ -189,7 +159,6 @@ export default function MessagesPage() {
     }
   }, [fetchConversations, computeUnread, conversations])
 
-  /* Démarrer (ou ouvrir) une conversation sans doublon */
   const startConversation = useCallback(
     async (recipientId: number) => {
       if (!token) return
@@ -198,9 +167,7 @@ export default function MessagesPage() {
         conv.participants.some(p => Number(p.id) === Number(user?.id))
       )
       if (existing) {
-        // mémorise comme lu quand on l’ouvre
-        setLocalRead(existing.id, true)
-        setLocalReadState(getLocalRead())
+        setLocalRead(existing.id, true); setLocalReadState(getLocalRead())
         router.push(`/messages/${existing.id}`)
         return
       }
@@ -208,28 +175,21 @@ export default function MessagesPage() {
       try {
         const res = await fetch(`${API_BASE}/api/messages/send`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authedHeaders || {}),
-          },
+          headers: { 'Content-Type': 'application/json', ...(authedHeaders || {}) },
           body: JSON.stringify({ recipientId, content: 'Salut !' }),
         })
         const data = await res.json().catch(() => ({} as unknown))
         const convId =
           (data as { conversationId?: number })?.conversationId ??
           (data as { conversation?: { id?: number } })?.conversation?.id ??
-          (data as { id?: number })?.id ??
-          null
+          (data as { id?: number })?.id ?? null
         if (convId) router.push(`/messages/${convId}`)
         else await fetchConversations()
-      } catch (err) {
-        console.error('Erreur démarrage conversation :', err)
-      }
+      } catch (err) { console.error('Erreur démarrage conversation :', err) }
     },
     [token, authedHeaders, conversations, router, user?.id, fetchConversations]
   )
 
-  /* Suppression + resync (avec fallbacks) */
   const deleteConversation = useCallback(
     async (convId: number) => {
       if (!token) return
@@ -238,18 +198,18 @@ export default function MessagesPage() {
       try {
         setDeletingId(convId)
 
-        const tryDelete = async (url: string) => {
-          const res = await fetch(`${url}?t=${Date.now()}`, {
-            method: 'DELETE',
-            headers: authedHeaders,
+        const attempt = async (method: 'DELETE'|'POST', url: string) =>
+          fetch(url, {
+            method,
+            headers: { ...(authedHeaders || {}), 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
             cache: 'no-store',
+            body: method === 'POST' ? '{}' : undefined,
           })
-          return res
-        }
 
-        let res = await tryDelete(`${API_BASE}/api/messages/conversation/${convId}`)
-        if (!res.ok) res = await tryDelete(`${API_BASE}/api/messages/conversations/${convId}`)
-        if (!res.ok) res = await tryDelete(`${API_BASE}/messages/conversation/${convId}`)
+        let res = await attempt('DELETE', `${API_BASE}/api/messages/conversation/${convId}?t=${Date.now()}`)
+        if (!res.ok) res = await attempt('DELETE', `${API_BASE}/api/messages/conversations/${convId}?t=${Date.now()}`)
+        if (!res.ok) res = await attempt('DELETE', `${API_BASE}/messages/conversation/${convId}?t=${Date.now()}`)
+        if (!res.ok) res = await attempt('POST',   `${API_BASE}/api/messages/conversation/${convId}/delete?t=${Date.now()}`)
 
         if (!res.ok && res.status !== 404) {
           const txt = await res.text().catch(()=>'')
@@ -257,19 +217,15 @@ export default function MessagesPage() {
           alert("La suppression n'a pas été confirmée par le serveur.")
         }
 
-        // côté UI tout de suite
         setConversations(prev => prev.filter(c => c.id !== convId))
-        // purge l’override local
-        setLocalRead(convId, false)
-        setLocalReadState(getLocalRead())
-        // resync forcée
+        setLocalRead(convId, false); setLocalReadState(getLocalRead())
+
+        await new Promise(r => setTimeout(r, 150)) // petit anti-cache
         await fetchConversations()
       } catch (err) {
         console.error('Erreur suppression conversation :', err)
         alert('Suppression impossible.')
-      } finally {
-        setDeletingId(null)
-      }
+      } finally { setDeletingId(null) }
     },
     [token, authedHeaders, fetchConversations]
   )
@@ -281,11 +237,9 @@ export default function MessagesPage() {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
-  /* Ouvrir + marquer vu (optimiste + localStorage + API) */
   const openConversation = useCallback(async (convId: number) => {
     setUnreadMap(prev => ({ ...prev, [convId]: false }))
-    setLocalRead(convId, true)
-    setLocalReadState(getLocalRead())
+    setLocalRead(convId, true); setLocalReadState(getLocalRead())
     fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
       method: 'POST',
       headers: { ...(authedHeaders || {}), 'Content-Type': 'application/json' },
@@ -300,9 +254,10 @@ export default function MessagesPage() {
         <p className="text-white/70 mb-8">Retrouvez vos conversations et démarrez de nouveaux échanges.</p>
 
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
-          {/* Colonne gauche - nouvelle conv */}
+          {/* Colonne gauche */}
           <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-600/20 via-violet-600/20 to-blue-600/20" />
+            {/* Dégradé qui épouse les angles */}
+            <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-600/15 via-violet-600/15 to-blue-600/15" />
             <h2 className="text-lg font-semibold mb-1 relative z-[1]">Nouvelle conversation</h2>
             <p className="text-white/60 text-sm mb-4 relative z-[1]">Cherche un artiste, un organisateur ou un prestataire.</p>
 
@@ -350,7 +305,7 @@ export default function MessagesPage() {
             )}
           </section>
 
-          {/* Colonne droite - conversations */}
+          {/* Colonne droite */}
           <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/[0.03] to-transparent pointer-events-none" />
             <h2 className="text-lg font-semibold mb-5 relative z-[1]">Vos conversations</h2>
@@ -367,14 +322,14 @@ export default function MessagesPage() {
                     <li
                       key={conv.id}
                       onClick={() => openConversation(conv.id)}
-                      className={`group relative rounded-2xl border p-4 transition flex items-start gap-4 cursor-pointer
+                      className={`group relative rounded-2xl border p-4 transition flex items-start gap-4 cursor-pointer overflow-hidden
                         ${unread
                           ? 'bg-indigo-500/10 border-indigo-500/25'
                           : 'bg-neutral-900/60 border-white/10 hover:bg-neutral-900'}
                       `}
                     >
-                      {/* bandeau coloré comme sur Recherche */}
-                      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${GRAD_FROM} ${GRAD_VIA} ${GRAD_TO} opacity-80`} />
+                      {/* bandeau dégradé qui suit les coins */}
+                      <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-80" />
 
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
