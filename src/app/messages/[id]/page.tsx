@@ -37,11 +37,22 @@ const toAbs = (u?: string | null) => {
 }
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg','image/png','image/webp','image/gif'])
+const LS_READ_KEY = 'lsb_readConvs'
+
+const markLocalRead = (convId: number) => {
+  try {
+    const raw = localStorage.getItem(LS_READ_KEY)
+    const obj = raw ? (JSON.parse(raw) as Record<number, boolean>) : {}
+    obj[convId] = true
+    localStorage.setItem(LS_READ_KEY, JSON.stringify(obj))
+  } catch { /* noop */ }
+}
 
 export default function ConversationPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
-  const conversationId = params?.id ?? ''
+  const conversationIdStr = params?.id ?? ''
+  const conversationIdNum = Number(conversationIdStr)
 
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState<string>('')
@@ -51,27 +62,28 @@ export default function ConversationPage() {
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const markSeen = useCallback(async () => {
-    if (!conversationId || !API_BASE) return
+    if (!conversationIdStr || !API_BASE) return
     const token = getAuthToken()
     if (!token) return
     const headers: HeadersInit = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    markLocalRead(conversationIdNum) // persistance locale immédiate
     try {
-      const r = await fetch(`${API_BASE}/api/messages/mark-seen/${conversationId}`, { method: 'POST', headers })
+      const r = await fetch(`${API_BASE}/api/messages/mark-seen/${conversationIdStr}`, { method: 'POST', headers })
       if (!r.ok) {
-        await fetch(`${API_BASE}/api/messages/seen/${conversationId}`, { method: 'POST', headers })
+        await fetch(`${API_BASE}/api/messages/seen/${conversationIdStr}`, { method: 'POST', headers })
       }
     } catch {
       /* noop */
     }
-  }, [conversationId])
+  }, [conversationIdStr, conversationIdNum])
 
   const fetchMessages = useCallback(async (): Promise<void> => {
-    if (!conversationId || !API_BASE) return
+    if (!conversationIdStr || !API_BASE) return
     const token = getAuthToken()
     const commonHeaders = { Authorization: `Bearer ${token}` }
 
     try {
-      const url = `${API_BASE}/api/messages/messages/${conversationId}`
+      const url = `${API_BASE}/api/messages/messages/${conversationIdStr}?t=${Date.now()}`
       const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
@@ -79,14 +91,14 @@ export default function ConversationPage() {
       return
     } catch {
       try {
-        const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
+        const urlAlt = `${API_BASE}/api/messages/conversation/${conversationIdStr}?t=${Date.now()}`
         const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: commonHeaders })
         const payloadAlt = resAlt.data
         const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
         setMessages(Array.isArray(listAlt) ? listAlt : [])
       } catch {
         try {
-          const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
+          const urlLegacy = `${API_BASE}/messages/messages/${conversationIdStr}?t=${Date.now()}`
           const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: commonHeaders })
           const payloadLegacy = resLegacy.data
           const listLegacy = isArrayResp(payloadLegacy) ? payloadLegacy : isObjResp(payloadLegacy) ? payloadLegacy.messages : []
@@ -96,14 +108,14 @@ export default function ConversationPage() {
         }
       }
     }
-  }, [conversationId])
+  }, [conversationIdStr])
 
   useEffect(() => {
     (async () => {
       await markSeen()
       await fetchMessages()
     })()
-  }, [conversationId, markSeen, fetchMessages])
+  }, [conversationIdStr, markSeen, fetchMessages])
 
   useEffect(() => {
     const onVisibility = () => {
@@ -131,7 +143,7 @@ export default function ConversationPage() {
   }, [messages])
 
   const handleSend = async (): Promise<void> => {
-    if (!conversationId) return
+    if (!conversationIdStr) return
     if (!content.trim() && !file) return
 
     const token = getAuthToken()
@@ -150,7 +162,7 @@ export default function ConversationPage() {
       }
 
       const fd = new FormData()
-      fd.append('conversationId', conversationId)
+      fd.append('conversationId', conversationIdStr)
       if (content.trim()) fd.append('content', content.trim())
 
       if (file) {
@@ -177,13 +189,13 @@ export default function ConversationPage() {
       if (inputRef.current) inputRef.current.value = ''
 
       const newConvId = res.data?.conversationId
-      if (newConvId && String(newConvId) !== String(conversationId)) {
+      if (newConvId && String(newConvId) !== String(conversationIdStr)) {
         router.replace(`/messages/${newConvId}`)
         return
       }
 
       await fetchMessages()
-      await markSeen() // s’assurer que le dernier reçu est marqué si on reste sur la page
+      await markSeen() // reste “lu” après envoi
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")

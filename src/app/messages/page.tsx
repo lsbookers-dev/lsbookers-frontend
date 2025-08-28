@@ -29,8 +29,9 @@ interface MessageLite {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-const ACCENT_FROM = 'from-pink-600/30'
-const ACCENT_TO = 'to-violet-600/30'
+const GRAD_FROM = 'from-pink-600'
+const GRAD_VIA  = 'via-violet-600'
+const GRAD_TO   = 'to-blue-600'
 
 /* Helpers */
 const toAbs = (u?: string | null) => {
@@ -40,12 +41,34 @@ const toAbs = (u?: string | null) => {
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
+const LS_READ_KEY = 'lsb_readConvs'
+
+const getLocalRead = (): Record<number, boolean> => {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(LS_READ_KEY)
+    return raw ? (JSON.parse(raw) as Record<number, boolean>) : {}
+  } catch {
+    return {}
+  }
+}
+const setLocalRead = (convId: number, val: boolean) => {
+  try {
+    const cur = getLocalRead()
+    cur[convId] = val
+    localStorage.setItem(LS_READ_KEY, JSON.stringify(cur))
+  } catch {
+    /* noop */
+  }
+}
+
 export default function MessagesPage() {
   const { user, token } = useAuth()
   const router = useRouter()
 
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [unreadMap, setUnreadMap] = useState<Record<number, boolean>>({})
+  const [localRead, setLocalReadState] = useState<Record<number, boolean>>(() => getLocalRead())
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
@@ -66,7 +89,7 @@ export default function MessagesPage() {
     if (!token) return
     try {
       setError(null)
-      const res = await fetch(`${API_BASE}/api/messages/conversations`, {
+      const res = await fetch(`${API_BASE}/api/messages/conversations?t=${Date.now()}`, {
         headers: authedHeaders,
         cache: 'no-store',
       })
@@ -83,14 +106,14 @@ export default function MessagesPage() {
     }
   }, [token, authedHeaders])
 
-  /* Calcule non-lus côté front (provisoire) */
+  /* Calcule non-lus (front) */
   const computeUnread = useCallback(async (convs: Conversation[]) => {
     if (!token || !user?.id) return
     try {
       const entries = await Promise.all(
         convs.map(async (c) => {
           try {
-            const r = await fetch(`${API_BASE}/api/messages/messages/${c.id}`, {
+            const r = await fetch(`${API_BASE}/api/messages/messages/${c.id}?t=${Date.now()}`, {
               headers: authedHeaders,
               cache: 'no-store',
             })
@@ -107,18 +130,23 @@ export default function MessagesPage() {
       )
       const map: Record<number, boolean> = {}
       entries.forEach(([id, u]) => (map[id] = u))
+      // override local (pour que ça reste "lu" quand on revient immédiatement)
+      Object.keys(localRead).forEach((k) => {
+        const id = Number(k)
+        if (localRead[id]) map[id] = false
+      })
       setUnreadMap(map)
     } catch {
       /* silent */
     }
-  }, [token, authedHeaders, user?.id])
+  }, [token, authedHeaders, user?.id, localRead])
 
   /* Recherche d’utilisateurs pour nouvelle conv */
   const fetchUsers = useCallback(async () => {
     if (!token) return
     try {
       setLoadingUsers(true)
-      const res = await fetch(`${API_BASE}/api/users`, {
+      const res = await fetch(`${API_BASE}/api/users?t=${Date.now()}`, {
         headers: authedHeaders,
         cache: 'no-store',
       })
@@ -137,9 +165,10 @@ export default function MessagesPage() {
   /* Montée */
   useEffect(() => {
     if (!token) return
-    fetchConversations()
+    fetchConversations().then(() => computeUnread(conversations))
     fetchUsers()
-  }, [token, fetchConversations, fetchUsers])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
 
   useEffect(() => {
     if (user === null) router.push('/login')
@@ -169,6 +198,9 @@ export default function MessagesPage() {
         conv.participants.some(p => Number(p.id) === Number(user?.id))
       )
       if (existing) {
+        // mémorise comme lu quand on l’ouvre
+        setLocalRead(existing.id, true)
+        setLocalReadState(getLocalRead())
         router.push(`/messages/${existing.id}`)
         return
       }
@@ -194,10 +226,10 @@ export default function MessagesPage() {
         console.error('Erreur démarrage conversation :', err)
       }
     },
-    [token, authedHeaders, conversations, router, fetchConversations, user?.id]
+    [token, authedHeaders, conversations, router, user?.id, fetchConversations]
   )
 
-  /* Suppression + resync */
+  /* Suppression + resync (avec fallbacks) */
   const deleteConversation = useCallback(
     async (convId: number) => {
       if (!token) return
@@ -206,32 +238,31 @@ export default function MessagesPage() {
       try {
         setDeletingId(convId)
 
-        // endpoint singulier
-        let res = await fetch(`${API_BASE}/api/messages/conversation/${convId}`, {
-          method: 'DELETE',
-          headers: authedHeaders,
-          cache: 'no-store',
-        })
-
-        // fallback pluriel si besoin
-        if (!res.ok) {
-          res = await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
+        const tryDelete = async (url: string) => {
+          const res = await fetch(`${url}?t=${Date.now()}`, {
             method: 'DELETE',
             headers: authedHeaders,
             cache: 'no-store',
           })
+          return res
         }
 
-        if (!res.ok) {
+        let res = await tryDelete(`${API_BASE}/api/messages/conversation/${convId}`)
+        if (!res.ok) res = await tryDelete(`${API_BASE}/api/messages/conversations/${convId}`)
+        if (!res.ok) res = await tryDelete(`${API_BASE}/messages/conversation/${convId}`)
+
+        if (!res.ok && res.status !== 404) {
           const txt = await res.text().catch(()=>'')
           console.warn('DELETE a échoué', res.status, txt)
           alert("La suppression n'a pas été confirmée par le serveur.")
-          return
         }
 
-        // retire côté UI immédiatement
+        // côté UI tout de suite
         setConversations(prev => prev.filter(c => c.id !== convId))
-        // puis resync pour éviter la réapparition
+        // purge l’override local
+        setLocalRead(convId, false)
+        setLocalReadState(getLocalRead())
+        // resync forcée
         await fetchConversations()
       } catch (err) {
         console.error('Erreur suppression conversation :', err)
@@ -250,9 +281,11 @@ export default function MessagesPage() {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
-  /* Ouvrir + marquer vu (optimiste) */
+  /* Ouvrir + marquer vu (optimiste + localStorage + API) */
   const openConversation = useCallback(async (convId: number) => {
-    setUnreadMap(prev => ({ ...prev, [convId]: false })) // optimiste
+    setUnreadMap(prev => ({ ...prev, [convId]: false }))
+    setLocalRead(convId, true)
+    setLocalReadState(getLocalRead())
     fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
       method: 'POST',
       headers: { ...(authedHeaders || {}), 'Content-Type': 'application/json' },
@@ -268,12 +301,12 @@ export default function MessagesPage() {
 
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
           {/* Colonne gauche - nouvelle conv */}
-          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 overflow-hidden">
-            <div className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-15`} />
-            <h2 className="text-lg font-semibold mb-1">Nouvelle conversation</h2>
-            <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
+          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-600/20 via-violet-600/20 to-blue-600/20" />
+            <h2 className="text-lg font-semibold mb-1 relative z-[1]">Nouvelle conversation</h2>
+            <p className="text-white/60 text-sm mb-4 relative z-[1]">Cherche un artiste, un organisateur ou un prestataire.</p>
 
-            <div className="relative">
+            <div className="relative z-[1]">
               <input
                 type="text"
                 value={search}
@@ -283,10 +316,10 @@ export default function MessagesPage() {
               />
             </div>
 
-            {loadingUsers && <p className="text-gray-400 text-sm mt-3">Chargement des utilisateurs…</p>}
+            {loadingUsers && <p className="text-gray-400 text-sm mt-3 relative z-[1]">Chargement des utilisateurs…</p>}
 
             {search && (
-              <ul className="space-y-2 max-h-80 overflow-y-auto pr-1 mt-3">
+              <ul className="space-y-2 max-h-80 overflow-y-auto pr-1 mt-3 relative z-[1]">
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map(u => {
                     const src = getAvatarSrc(u)
@@ -318,14 +351,14 @@ export default function MessagesPage() {
           </section>
 
           {/* Colonne droite - conversations */}
-          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 overflow-hidden">
+          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/[0.03] to-transparent pointer-events-none" />
-            <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
+            <h2 className="text-lg font-semibold mb-5 relative z-[1]">Vos conversations</h2>
 
             {conversations.length === 0 && !error ? (
-              <p className="text-gray-400 text-sm">Aucune conversation pour le moment.</p>
+              <p className="text-gray-400 text-sm relative z-[1]">Aucune conversation pour le moment.</p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-4 relative z-[1]">
                 {conversations.map(conv => {
                   const other = getOtherUser(conv)
                   const src = getAvatarSrc(other)
@@ -334,20 +367,23 @@ export default function MessagesPage() {
                     <li
                       key={conv.id}
                       onClick={() => openConversation(conv.id)}
-                      className={`rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
+                      className={`group relative rounded-2xl border p-4 transition flex items-start gap-4 cursor-pointer
                         ${unread
                           ? 'bg-indigo-500/10 border-indigo-500/25'
-                          : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
+                          : 'bg-neutral-900/60 border-white/10 hover:bg-neutral-900'}
                       `}
                     >
-                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
+                      {/* bandeau coloré comme sur Recherche */}
+                      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${GRAD_FROM} ${GRAD_VIA} ${GRAD_TO} opacity-80`} />
+
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
                         alt={other?.name ?? 'User'}
-                        className="w-12 h-12 rounded-full object-cover"
+                        className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
                         onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
                       />
+
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
@@ -381,7 +417,7 @@ export default function MessagesPage() {
               </ul>
             )}
 
-            {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
+            {error && <p className="text-red-500 text-sm mt-4 relative z-[1]">{error}</p>}
           </section>
         </div>
 
