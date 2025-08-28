@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -29,16 +29,16 @@ interface MessageLite {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-const ACCENT_FROM = 'from-pink-600/30'
-const ACCENT_TO = 'to-violet-600/30'
 
-/* Helpers -------------------------------------------------- */
+/* Helpers */
 const toAbs = (u?: string | null) => {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
   if (u.startsWith('//')) return `https:${u}`
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
+const getAvatarSrc = (u?: User | null) =>
+  toAbs(u?.profile?.avatar || u?.image || '/default-avatar.png')
 
 export default function MessagesPage() {
   const { user, token } = useAuth()
@@ -52,16 +52,14 @@ export default function MessagesPage() {
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const creatingRef = useRef(false) // anti double-création
 
   const authedHeaders = useMemo(
     () => (token ? { Authorization: `Bearer ${token}` } : undefined),
     [token]
   )
 
-  const getAvatarSrc = (u?: User | null) =>
-    toAbs(u?.profile?.avatar || u?.image || '/default-avatar.png')
-
-  /* fetch conversations ------------------------------------ */
+  /* Chargement + tri (plus récents en haut) */
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
@@ -83,7 +81,7 @@ export default function MessagesPage() {
     }
   }, [token, authedHeaders])
 
-  /* compute unread (front) --------------------------------- */
+  /* Calcul “non lu” (dernier message non vu et pas de moi) */
   const computeUnread = useCallback(async (convs: Conversation[]) => {
     if (!token || !user?.id) return
     try {
@@ -109,11 +107,10 @@ export default function MessagesPage() {
       entries.forEach(([id, u]) => (map[id] = u))
       setUnreadMap(map)
     } catch {
-      /* silent */
+      /* noop */
     }
   }, [token, authedHeaders, user?.id])
 
-  /* fetch users (new conv) --------------------------------- */
   const fetchUsers = useCallback(async () => {
     if (!token) return
     try {
@@ -148,82 +145,113 @@ export default function MessagesPage() {
     if (conversations.length) computeUnread(conversations)
   }, [conversations, computeUnread])
 
-  // re-sync quand l’onglet revient au premier plan / navigation historique
-  useEffect(() => {
-    const onShow = () => { fetchConversations().then(() => computeUnread(conversations)) }
-    document.addEventListener('visibilitychange', onShow)
-    window.addEventListener('pageshow', onShow)
-    return () => {
-      document.removeEventListener('visibilitychange', onShow)
-      window.removeEventListener('pageshow', onShow)
+  /* Marquer vu (serveur) */
+  const markSeenBackend = useCallback(async (convId: number) => {
+    if (!token) return
+    const headers = { ...(authedHeaders || {}), 'Content-Type': 'application/json' }
+    try {
+      const r = await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, { method: 'POST', headers })
+      if (!r.ok) {
+        await fetch(`${API_BASE}/api/messages/seen/${convId}`, { method: 'POST', headers })
+      }
+    } catch {
+      /* best-effort */
     }
-  }, [fetchConversations, computeUnread, conversations])
+  }, [token, authedHeaders])
 
-  /* start conversation ------------------------------------- */
-  const startConversation = useCallback(
-    async (recipientId: number) => {
-      if (!token) return
-      const existing = conversations.find(conv =>
-        conv.participants.some(p => Number(p.id) === Number(recipientId)) &&
-        conv.participants.some(p => Number(p.id) === Number(user?.id))
+  /* Ouvrir une conversation (optimiste + persister) */
+  const openConversation = useCallback(async (convId: number) => {
+    setUnreadMap(prev => ({ ...prev, [convId]: false })) // visuel immédiat
+    await markSeenBackend(convId)
+    router.push(`/messages/${convId}`)
+  }, [router, markSeenBackend])
+
+  /* Démarrer (ou ouvrir si déjà existante) */
+  const startConversation = useCallback(async (recipientId: number) => {
+    if (!token || creatingRef.current) return
+    creatingRef.current = true
+    try {
+      // 1) On re-fetch la liste pour être sûr d’avoir l’état à jour (évite les doublons)
+      await fetchConversations()
+      const existing = (curr: Conversation[]) =>
+        curr.find(conv =>
+          conv.participants.some(p => Number(p.id) === Number(recipientId)) &&
+          conv.participants.some(p => Number(p.id) === Number(user?.id))
+        )
+
+      const current = existing(conversations) || existing(
+        // on relit depuis state après fetch (petit délai)
+        (await (async () => {
+          const res = await fetch(`${API_BASE}/api/messages/conversations`, { headers: authedHeaders, cache: 'no-store' })
+          const raw = await res.json().catch(() => ({}))
+          return (raw?.conversations ?? raw ?? []) as Conversation[]
+        })())
       )
-      if (existing) {
-        router.push(`/messages/${existing.id}`)
+
+      if (current) {
+        await openConversation(current.id)
         return
       }
 
-      try {
-        const res = await fetch(`${API_BASE}/api/messages/send`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authedHeaders || {}),
-          },
-          body: JSON.stringify({ recipientId, content: 'Salut !' }),
-        })
-        const data = await res.json().catch(() => ({} as unknown))
-        const convId =
-          (data as { conversationId?: number })?.conversationId ??
-          (data as { conversation?: { id?: number } })?.conversation?.id ??
-          (data as { id?: number })?.id ??
-          null
-        if (convId) router.push(`/messages/${convId}`)
-        else await fetchConversations()
-      } catch (err) {
-        console.error('Erreur démarrage conversation :', err)
-      }
-    },
-    [token, authedHeaders, conversations, router, fetchConversations, user?.id]
-  )
+      // 2) Créer seulement si aucune conversation trouvée
+      const res = await fetch(`${API_BASE}/api/messages/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authedHeaders || {}),
+        },
+        body: JSON.stringify({ recipientId, content: 'Salut !' }),
+      })
+      const data = await res.json().catch(() => ({} as Record<string, unknown>))
+      const convId =
+        (data as { conversationId?: number })?.conversationId ??
+        (data as { conversation?: { id?: number } })?.conversation?.id ??
+        (data as { id?: number })?.id ??
+        null
 
-  /* delete -------------------------------------------------- */
-  const deleteConversation = useCallback(
-    async (convId: number) => {
-      if (!token) return
-      const ok = confirm('Supprimer cette conversation ?')
-      if (!ok) return
-      try {
-        setDeletingId(convId)
-        const res = await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
+      if (convId) await openConversation(Number(convId))
+      else await fetchConversations()
+    } catch (err) {
+      console.error('Erreur démarrage conversation :', err)
+    } finally {
+      creatingRef.current = false
+    }
+  }, [token, authedHeaders, conversations, user?.id, openConversation, fetchConversations])
+
+  /* Suppression + re-sync */
+  const deleteConversation = useCallback(async (convId: number) => {
+    if (!token) return
+    const ok = confirm('Supprimer cette conversation ?')
+    if (!ok) return
+    try {
+      setDeletingId(convId)
+      let ok1 = false
+      const res = await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
+        method: 'DELETE',
+        headers: authedHeaders,
+      })
+      ok1 = res.ok
+      if (!ok1) {
+        const res2 = await fetch(`${API_BASE}/api/messages/conversation/${convId}`, {
           method: 'DELETE',
           headers: authedHeaders,
         })
-        if (!res.ok) {
-          await fetch(`${API_BASE}/api/messages/conversation/${convId}`, {
-            method: 'DELETE',
-            headers: authedHeaders,
-          })
-        }
-        setConversations(prev => prev.filter(c => c.id !== convId))
-      } catch (err) {
-        console.error('Erreur suppression conversation :', err)
-        alert('Suppression impossible.')
-      } finally {
-        setDeletingId(null)
+        ok1 = res2.ok
       }
-    },
-    [token, authedHeaders]
-  )
+      if (!ok1) throw new Error('DELETE_FAILED')
+
+      // Optimiste local
+      setConversations(prev => prev.filter(c => c.id !== convId))
+
+      // Re-sync serveur pour s’assurer que ça ne réapparait pas
+      await fetchConversations()
+    } catch (err) {
+      console.error('Erreur suppression conversation :', err)
+      alert('Suppression impossible.')
+    } finally {
+      setDeletingId(null)
+    }
+  }, [token, authedHeaders, fetchConversations])
 
   const getOtherUser = (conv: Conversation) =>
     conv.participants.find(p => String(p.id) !== String(user?.id))
@@ -232,20 +260,7 @@ export default function MessagesPage() {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
-  const openConversation = useCallback(async (convId: number) => {
-    setUnreadMap(prev => ({ ...prev, [convId]: false }))    // optimiste
-    // best-effort mark seen côté liste
-    try {
-      const headers = { ...(authedHeaders || {}), 'Content-Type': 'application/json' }
-      const r = await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, { method: 'POST', headers })
-      if (!r.ok) {
-        await fetch(`${API_BASE}/api/messages/seen/${convId}`, { method: 'POST', headers })
-      }
-    } catch { /* noop */ }
-    router.push(`/messages/${convId}`)
-  }, [router, authedHeaders])
-
-  /* UI ------------------------------------------------------ */
+  /* UI */
   return (
     <div className="flex flex-col min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto w-full">
@@ -253,9 +268,9 @@ export default function MessagesPage() {
         <p className="text-white/70 mb-8">Retrouvez vos conversations et démarrez de nouveaux échanges.</p>
 
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
-          {/* Colonne gauche - nouvelle conv */}
+          {/* Colonne gauche */}
           <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5">
-            <div className={`pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-15`} />
+            <div className="absolute -inset-x-px top-0 h-1 bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-75" />
             <h2 className="text-lg font-semibold mb-1">Nouvelle conversation</h2>
             <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
 
@@ -280,19 +295,20 @@ export default function MessagesPage() {
                       <li
                         key={u.id}
                         onClick={() => startConversation(u.id)}
-                        className="cursor-pointer rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 flex items-center gap-3 transition"
+                        className="group cursor-pointer rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] p-3 flex items-center gap-3 transition"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={src}
                           alt={u.name}
-                          className="w-10 h-10 rounded-full object-cover"
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
                           onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
                         />
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium">{u.name}</span>
-                          <span className="text-xs text-white/50">{u.role}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{u.name}</p>
+                          <p className="text-[11px] text-white/50 truncate">{u.role}</p>
                         </div>
+                        <span className="opacity-0 group-hover:opacity-100 text-xs text-white/60">Ouvrir</span>
                       </li>
                     )
                   })
@@ -303,7 +319,7 @@ export default function MessagesPage() {
             )}
           </section>
 
-          {/* Colonne droite - conversations */}
+          {/* Colonne droite */}
           <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
             <div className="absolute -inset-x-px top-0 h-1 bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-75" />
             <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
@@ -320,23 +336,26 @@ export default function MessagesPage() {
                     <li
                       key={conv.id}
                       onClick={() => openConversation(conv.id)}
-                      className={`rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
+                      className={`group rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
                         ${unread
                           ? 'bg-indigo-500/10 border-indigo-500/25'
                           : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
                       `}
                     >
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-60" />
                       <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
+
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
                         alt={other?.name ?? 'User'}
-                        className="w-12 h-12 rounded-full object-cover"
+                        className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
                         onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
                       />
+
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
+                          <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'} truncate`}>
                             {other?.name ?? 'Conversation'}
                           </h3>
                           {unread && (
