@@ -13,9 +13,10 @@ type SendResp = { conversationId?: string | number; message?: Message }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-const isArrayResp = (x: unknown): x is Message[] => Array.isArray(x)
-const isObjResp   = (x: unknown): x is { messages: Message[] } =>
-  !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
+function isArrayResp(x: unknown): x is Message[] { return Array.isArray(x) }
+function isObjResp(x: unknown): x is { messages: Message[] } {
+  return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
+}
 
 const toAbs = (u?: string | null) => {
   if (!u) return ''
@@ -25,21 +26,11 @@ const toAbs = (u?: string | null) => {
 }
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg','image/png','image/webp','image/gif'])
-const LS_READ_KEY = 'lsb_readConvs'
-const markLocalRead = (convId: number) => {
-  try {
-    const raw = localStorage.getItem(LS_READ_KEY)
-    const obj = raw ? (JSON.parse(raw) as Record<number, boolean>) : {}
-    obj[convId] = true
-    localStorage.setItem(LS_READ_KEY, JSON.stringify(obj))
-  } catch {}
-}
 
 export default function ConversationPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
-  const conversationIdStr = params?.id ?? ''
-  const conversationIdNum = Number(conversationIdStr)
+  const conversationId = params?.id ?? ''
 
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState<string>('')
@@ -49,26 +40,24 @@ export default function ConversationPage() {
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const markSeen = useCallback(async () => {
-    if (!conversationIdStr || !API_BASE) return
+    if (!conversationId || !API_BASE) return
     const token = getAuthToken()
     if (!token) return
     const headers: HeadersInit = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    markLocalRead(conversationIdNum)
     try {
-      const r = await fetch(`${API_BASE}/api/messages/mark-seen/${conversationIdStr}`, { method: 'POST', headers })
-      if (!r.ok) {
-        await fetch(`${API_BASE}/api/messages/seen/${conversationIdStr}`, { method: 'POST', headers })
-      }
-    } catch {}
-  }, [conversationIdStr, conversationIdNum])
+      await fetch(`${API_BASE}/api/messages/mark-seen/${conversationId}`, { method: 'POST', headers })
+    } catch {
+      /* noop */
+    }
+  }, [conversationId])
 
   const fetchMessages = useCallback(async (): Promise<void> => {
-    if (!conversationIdStr || !API_BASE) return
+    if (!conversationId || !API_BASE) return
     const token = getAuthToken()
     const commonHeaders = { Authorization: `Bearer ${token}` }
 
     try {
-      const url = `${API_BASE}/api/messages/messages/${conversationIdStr}?t=${Date.now()}`
+      const url = `${API_BASE}/api/messages/messages/${conversationId}`
       const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
@@ -76,14 +65,14 @@ export default function ConversationPage() {
       return
     } catch {
       try {
-        const urlAlt = `${API_BASE}/api/messages/conversation/${conversationIdStr}?t=${Date.now()}`
+        const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
         const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: commonHeaders })
         const payloadAlt = resAlt.data
         const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
         setMessages(Array.isArray(listAlt) ? listAlt : [])
       } catch {
         try {
-          const urlLegacy = `${API_BASE}/messages/messages/${conversationIdStr}?t=${Date.now()}`
+          const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
           const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: commonHeaders })
           const payloadLegacy = resLegacy.data
           const listLegacy = isArrayResp(payloadLegacy) ? payloadLegacy : isObjResp(payloadLegacy) ? payloadLegacy.messages : []
@@ -93,13 +82,24 @@ export default function ConversationPage() {
         }
       }
     }
-  }, [conversationIdStr])
-
-  useEffect(() => { (async () => { await markSeen(); await fetchMessages() })() }, [conversationIdStr, markSeen, fetchMessages])
+  }, [conversationId])
 
   useEffect(() => {
-    const onVisibility = () => { if (document.visibilityState === 'visible') markSeen().then(fetchMessages) }
-    const onPageShow = () => { markSeen().then(fetchMessages) }
+    (async () => {
+      await markSeen()
+      await fetchMessages()
+    })()
+  }, [conversationId, markSeen, fetchMessages])
+
+  useEffect(() => {
+    const onVisibility = (_e: Event) => {
+      if (document.visibilityState === 'visible') {
+        markSeen().then(fetchMessages)
+      }
+    }
+    const onPageShow = (_e: Event) => {
+      markSeen().then(fetchMessages)
+    }
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pageshow', onPageShow)
     return () => {
@@ -115,7 +115,7 @@ export default function ConversationPage() {
   }, [messages])
 
   const handleSend = async (): Promise<void> => {
-    if (!conversationIdStr) return
+    if (!conversationId) return
     if (!content.trim() && !file) return
 
     const token = getAuthToken()
@@ -133,7 +133,7 @@ export default function ConversationPage() {
       }
 
       const fd = new FormData()
-      fd.append('conversationId', conversationIdStr)
+      fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
 
       if (file) {
@@ -142,25 +142,31 @@ export default function ConversationPage() {
           return
         }
         fd.append('file', file)
-        if (file.type.startsWith('image')) { fd.append('type', 'image'); fd.append('folder', 'messages') }
-        else if (file.type.startsWith('video')) { fd.append('type', 'video'); fd.append('folder', 'messages') }
+        if (file.type.startsWith('image')) {
+          fd.append('type', 'image')
+          fd.append('folder', 'messages')
+        } else if (file.type.startsWith('video')) {
+          fd.append('type', 'video')
+          fd.append('folder', 'messages')
+        }
       }
 
       const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      setContent(''); setFile(null)
+      setContent('')
+      setFile(null)
       if (inputRef.current) inputRef.current.value = ''
 
       const newConvId = res.data?.conversationId
-      if (newConvId && String(newConvId) !== String(conversationIdStr)) {
+      if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`)
         return
       }
 
       await fetchMessages()
-      await markSeen()
+      await markSeen() // si on a reçu des réponses entre-temps
     } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
@@ -168,7 +174,12 @@ export default function ConversationPage() {
     }
   }
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => { if (e.key === 'Enter') { e.preventDefault(); handleSend() } }
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSend()
+    }
+  }
 
   const renderFile = (url: string) => {
     const cleanUrl = toAbs(url.trim())
@@ -184,7 +195,11 @@ export default function ConversationPage() {
         </video>
       )
     }
-    return <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">Télécharger le fichier</a>
+    return (
+      <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
+        Télécharger le fichier
+      </a>
+    )
   }
 
   return (
@@ -199,13 +214,20 @@ export default function ConversationPage() {
           {messages.map((msg) => {
             const parts = msg.content.split('\n')
             const text = parts[0] ?? ''
-            const urlLine = parts.find((line) => line.includes('http'))
+            const urlLine = parts.find((line: string) => line.includes('http'))
             const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
             const avatar = toAbs(msg.sender?.image) || '/default-avatar.png'
 
             return (
               <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
-                <Image src={avatar} alt={msg.sender?.name || 'avatar'} width={40} height={40} className="rounded-full object-cover" unoptimized />
+                <Image
+                  src={avatar}
+                  alt={msg.sender?.name || 'avatar'}
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover"
+                  unoptimized
+                />
                 <div className="flex-1">
                   <p className="text-sm text-gray-400 mb-1">
                     {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
@@ -238,7 +260,9 @@ export default function ConversationPage() {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"
             />
-            <label htmlFor="fileInput" className="cursor-pointer bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm">Fichier</label>
+            <label htmlFor="fileInput" className="cursor-pointer bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm">
+              Fichier
+            </label>
 
             <button
               onClick={handleSend}
@@ -258,7 +282,13 @@ export default function ConversationPage() {
               ) : (
                 <p className="text-sm text-white truncate mr-3">{file.name}</p>
               )}
-              <button onClick={() => setFile(null)} className="text-red-500 hover:text-red-700 text-sm font-bold" title="Supprimer le fichier">✖</button>
+              <button
+                onClick={() => setFile(null)}
+                className="text-red-500 hover:text-red-700 text-sm font-bold"
+                title="Supprimer le fichier"
+              >
+                ✖
+              </button>
             </div>
           )}
         </div>

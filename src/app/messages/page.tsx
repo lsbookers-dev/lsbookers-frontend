@@ -7,13 +7,12 @@ import Link from 'next/link'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
-interface ProfileLite { avatar?: string | null; avatarUrl?: string | null; photo?: string | null; image?: string | null }
+interface ProfileLite { avatar?: string | null }
 interface User {
   id: number
   name: string
   role: Role
   image?: string | null
-  avatar?: string | null
   profile?: ProfileLite | null
 }
 interface Conversation {
@@ -31,22 +30,14 @@ interface MessageLite {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-/* Helpers -------------------------------------------------- */
+const ACCENT_FROM = 'from-indigo-500/40'
+const ACCENT_TO = 'to-fuchsia-500/40'
+
 const toAbs = (u?: string | null) => {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
   if (u.startsWith('//')) return `https:${u}`
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
-}
-
-// lu/non-lu local
-const LS_READ_KEY = 'lsb_readConvs'
-const getLocalRead = (): Record<number, boolean> => {
-  if (typeof window === 'undefined') return {}
-  try { return JSON.parse(localStorage.getItem(LS_READ_KEY) || '{}') } catch { return {} }
-}
-const setLocalRead = (convId: number, val: boolean) => {
-  try { const cur = getLocalRead(); cur[convId] = val; localStorage.setItem(LS_READ_KEY, JSON.stringify(cur)) } catch {}
 }
 
 export default function MessagesPage() {
@@ -55,7 +46,6 @@ export default function MessagesPage() {
 
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [unreadMap, setUnreadMap] = useState<Record<number, boolean>>({})
-  const [localRead, setLocalReadState] = useState<Record<number, boolean>>(() => getLocalRead())
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
@@ -63,51 +53,15 @@ export default function MessagesPage() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  // cache avatar (id -> url)
-  const [avatarCache, setAvatarCache] = useState<Record<number, string>>({})
-
   const authedHeaders = useMemo(
-    () => (token ? { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } : undefined),
+    () => (token ? { Authorization: `Bearer ${token}` } : undefined),
     [token]
   )
 
-  const extractAvatarUrl = (u?: User | null): string => {
-    if (!u) return ''
-    const maybe =
-      u.image ||
-      u.avatar ||
-      u.profile?.avatar ||
-      u.profile?.avatarUrl ||
-      u.profile?.photo ||
-      u.profile?.image ||
-      ''
-    return toAbs(maybe)
-  }
+  const getAvatarSrc = (u?: User | null) =>
+    toAbs(u?.profile?.avatar || u?.image || '/default-avatar.png')
 
-  const getAvatarSrc = (u?: User | null): string => {
-    if (!u) return '/default-avatar.png'
-    const fromCache = avatarCache[u.id]
-    if (fromCache) return fromCache
-    const direct = extractAvatarUrl(u)
-    return direct || '/default-avatar.png'
-  }
-
-  // hydrate avatar (appel unique par id si besoin)
-  const ensureAvatar = useCallback(async (uid: number) => {
-    if (!token || avatarCache[uid]) return
-    try {
-      const res = await fetch(`${API_BASE}/api/users/${uid}?t=${Date.now()}`, {
-        headers: authedHeaders,
-        cache: 'no-store',
-      })
-      if (!res.ok) return
-      const data = await res.json()
-      const got = (data?.user ?? data) as User
-      const url = extractAvatarUrl(got)
-      if (url) setAvatarCache(prev => ({ ...prev, [uid]: url }))
-    } catch {}
-  }, [token, authedHeaders, avatarCache])
-
+  /* Charger conversations */
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
@@ -123,17 +77,13 @@ export default function MessagesPage() {
         (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
       )
       setConversations(sorted)
-      sorted.forEach(c => {
-        const other = c.participants.find(p => String(p.id) !== String(user?.id))
-        const url = other ? extractAvatarUrl(other) : ''
-        if (other && !url) ensureAvatar(other.id)
-      })
     } catch (err) {
       console.error('Conversations load error:', err)
       setError('Impossible de charger les conversations.')
     }
-  }, [token, authedHeaders, user?.id, ensureAvatar])
+  }, [token, authedHeaders])
 
+  /* Calculer non-lus en front (en attendant un flag backend) */
   const computeUnread = useCallback(async (convs: Conversation[]) => {
     if (!token || !user?.id) return
     try {
@@ -150,16 +100,20 @@ export default function MessagesPage() {
             const last = arr[arr.length - 1]
             const unread = !!last && last.sender?.id !== Number(user.id) && !last.seen
             return [c.id, unread] as const
-          } catch { return [c.id, false] as const }
+          } catch {
+            return [c.id, false] as const
+          }
         })
       )
       const map: Record<number, boolean> = {}
       entries.forEach(([id, u]) => (map[id] = u))
-      Object.keys(localRead).forEach((k) => { const id = Number(k); if (localRead[id]) map[id] = false })
       setUnreadMap(map)
-    } catch {}
-  }, [token, authedHeaders, user?.id, localRead])
+    } catch {
+      // silencieux
+    }
+  }, [token, authedHeaders, user?.id])
 
+  /* Chercher des utilisateurs (nouvelle conv) */
   const fetchUsers = useCallback(async () => {
     if (!token) return
     try {
@@ -173,34 +127,39 @@ export default function MessagesPage() {
       const list: User[] = Array.isArray(raw) ? raw : raw?.users ?? []
       const filtered = user?.id ? list.filter(u => Number(u.id) !== Number(user.id)) : list
       setAllUsers(filtered)
-      filtered.forEach(u => {
-        const url = extractAvatarUrl(u)
-        if (url) setAvatarCache(prev => prev[u.id] ? prev : { ...prev, [u.id]: url })
-      })
-    } catch (err) { console.error('Users load error:', err) }
-    finally { setLoadingUsers(false) }
+    } catch (err) {
+      console.error('Users load error:', err)
+    } finally {
+      setLoadingUsers(false)
+    }
   }, [token, authedHeaders, user?.id])
 
   useEffect(() => {
     if (!token) return
-    fetchConversations().then(() => computeUnread(conversations))
+    fetchConversations()
     fetchUsers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
-
-  useEffect(() => { if (user === null) router.push('/login') }, [user, router])
-  useEffect(() => { if (conversations.length) computeUnread(conversations) }, [conversations, computeUnread])
+  }, [token, fetchConversations, fetchUsers])
 
   useEffect(() => {
+    if (user === null) router.push('/login')
+  }, [user, router])
+
+  useEffect(() => {
+    if (conversations.length) computeUnread(conversations)
+  }, [conversations, computeUnread])
+
+  // re-sync lors du retour onglet/page
+  useEffect(() => {
     const onShow = () => { fetchConversations().then(() => computeUnread(conversations)) }
-    document.addEventListener('visibilitychange', onShow)
+    window.addEventListener('visibilitychange', onShow)
     window.addEventListener('pageshow', onShow as unknown as EventListener)
     return () => {
-      document.removeEventListener('visibilitychange', onShow)
+      window.removeEventListener('visibilitychange', onShow)
       window.removeEventListener('pageshow', onShow as unknown as EventListener)
     }
   }, [fetchConversations, computeUnread, conversations])
 
+  /* Démarrer (ou rouvrir) une conversation */
   const startConversation = useCallback(
     async (recipientId: number) => {
       if (!token) return
@@ -209,29 +168,34 @@ export default function MessagesPage() {
         conv.participants.some(p => Number(p.id) === Number(user?.id))
       )
       if (existing) {
-        setLocalRead(existing.id, true); setLocalReadState(getLocalRead())
         router.push(`/messages/${existing.id}`)
         return
       }
-
       try {
         const res = await fetch(`${API_BASE}/api/messages/send`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(authedHeaders || {}) },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authedHeaders || {}),
+          },
           body: JSON.stringify({ recipientId, content: 'Salut !' }),
         })
         const data = await res.json().catch(() => ({} as unknown))
         const convId =
           (data as { conversationId?: number })?.conversationId ??
           (data as { conversation?: { id?: number } })?.conversation?.id ??
-          (data as { id?: number })?.id ?? null
+          (data as { id?: number })?.id ??
+          null
         if (convId) router.push(`/messages/${convId}`)
         else await fetchConversations()
-      } catch (err) { console.error('Erreur démarrage conversation :', err) }
+      } catch (err) {
+        console.error('Erreur démarrage conversation :', err)
+      }
     },
-    [token, authedHeaders, conversations, router, user?.id, fetchConversations]
+    [token, authedHeaders, conversations, router, fetchConversations, user?.id]
   )
 
+  /* SUPPRIMER conversation — IMPORTANT: endpoint au pluriel, SANS X-HTTP-Method-Override */
   const deleteConversation = useCallback(
     async (convId: number) => {
       if (!token) return
@@ -239,48 +203,45 @@ export default function MessagesPage() {
       if (!ok) return
       try {
         setDeletingId(convId)
-
-        const common: RequestInit = {
-          headers: { ...(authedHeaders || {}), 'Content-Type': 'application/json', 'X-HTTP-Method-Override': 'DELETE' },
-          cache: 'no-store',
-        }
-
-        const attempt = async (method: 'DELETE' | 'POST', url: string, body?: unknown): Promise<Response> => {
-          const init: RequestInit = { ...common, method }
-          if (body !== undefined) init.body = JSON.stringify(body)
-          return fetch(url, init)
-        }
-
-        // Plusieurs variantes + userId
-        let res = await attempt('DELETE', `${API_BASE}/api/messages/conversation/${convId}?t=${Date.now()}`)
-        if (!res.ok) res = await attempt('DELETE', `${API_BASE}/api/messages/conversations/${convId}?t=${Date.now()}`)
-        if (!res.ok) res = await attempt('DELETE', `${API_BASE}/messages/conversation/${convId}?t=${Date.now()}`)
-        if (!res.ok) res = await attempt('POST',   `${API_BASE}/api/messages/conversation/${convId}/delete?t=${Date.now()}`, { userId: user?.id })
-        if (!res.ok) res = await attempt('POST',   `${API_BASE}/api/messages/delete?t=${Date.now()}`, { conversationId: convId, userId: user?.id })
-        if (!res.ok) res = await attempt('POST',   `${API_BASE}/messages/${convId}/delete?t=${Date.now()}`, { userId: user?.id })
-
-        console.log('Delete response:', res.status)
-
-        if (!res.ok && res.status !== 404) {
-          const txt = await res.text().catch(()=> '')
-          console.warn('DELETE a échoué', res.status, txt)
-          alert("La suppression n'a pas été confirmée par le serveur.")
-        }
-
-        // Retire côté UI quoi qu’il arrive
+        const res = await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
+          method: 'DELETE',
+          headers: authedHeaders,
+        })
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+        // MAJ locale
         setConversations(prev => prev.filter(c => c.id !== convId))
-        setLocalRead(convId, false); setLocalReadState(getLocalRead())
-
-        // Re-sync anti-cache
-        await new Promise(r => setTimeout(r, 150))
-        await fetchConversations()
+        setUnreadMap(prev => {
+          const copy = { ...prev }
+          delete copy[convId]
+          return copy
+        })
       } catch (err) {
         console.error('Erreur suppression conversation :', err)
         alert('Suppression impossible.')
-      } finally { setDeletingId(null) }
+      } finally {
+        setDeletingId(null)
+      }
     },
-    [token, authedHeaders, fetchConversations, user?.id]
+    [token, authedHeaders]
   )
+
+  /* Marquer comme lu (backend) + ouvrir */
+  const markSeenBackend = useCallback(async (convId: number) => {
+    if (!token) return
+    const headers: HeadersInit = { ...(authedHeaders || {}), 'Content-Type': 'application/json' }
+    try {
+      const r = await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, { method: 'POST', headers })
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+    } catch {
+      /* best-effort */
+    }
+  }, [token, authedHeaders])
+
+  const openConversation = useCallback(async (convId: number) => {
+    setUnreadMap(prev => ({ ...prev, [convId]: false })) // optimiste
+    await markSeenBackend(convId)
+    router.push(`/messages/${convId}`)
+  }, [router, markSeenBackend])
 
   const getOtherUser = (conv: Conversation) =>
     conv.participants.find(p => String(p.id) !== String(user?.id))
@@ -289,17 +250,6 @@ export default function MessagesPage() {
     ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
     : []
 
-  const openConversation = useCallback(async (convId: number) => {
-    setUnreadMap(prev => ({ ...prev, [convId]: false }))
-    setLocalRead(convId, true); setLocalReadState(getLocalRead())
-    fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
-      method: 'POST',
-      headers: { ...(authedHeaders || {}), 'Content-Type': 'application/json' },
-    }).catch(() => {})
-    router.push(`/messages/${convId}`)
-  }, [router, authedHeaders])
-
-  /* ---------------- UI ---------------- */
   return (
     <div className="flex flex-col min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto w-full">
@@ -308,25 +258,26 @@ export default function MessagesPage() {
 
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
           {/* Colonne gauche */}
-          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-600/15 via-violet-600/15 to-blue-600/15" />
-            <h2 className="text-lg font-semibold mb-1 relative z-[1]">Nouvelle conversation</h2>
-            <p className="text-white/60 text-sm mb-4 relative z-[1]">Cherche un artiste, un organisateur ou un prestataire.</p>
+          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5">
+            <div className={`pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-10`} />
+            <h2 className="text-lg font-semibold mb-1">Nouvelle conversation</h2>
+            <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
 
-            <div className="relative z-[1]">
+            <div className="relative">
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Rechercher un utilisateur…"
-                className="w-full rounded-xl bg-black/40 border border-white/15 focus:border-white/35 outline-none px-4 py-3"
+                className="w-full rounded-xl bg-black/50 border border-white/15 focus:border-white/35 outline-none px-4 py-3"
               />
+              <div className={`pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-10`} />
             </div>
 
-            {loadingUsers && <p className="text-gray-400 text-sm mt-3 relative z-[1]">Chargement des utilisateurs…</p>}
+            {loadingUsers && <p className="text-gray-400 text-sm mt-3">Chargement des utilisateurs…</p>}
 
             {search && (
-              <ul className="space-y-2 max-h-80 overflow-y-auto pr-1 mt-3 relative z-[1]">
+              <ul className="space-y-2 max-h-80 overflow-y-auto pr-1 mt-3">
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map(u => {
                     const src = getAvatarSrc(u)
@@ -358,40 +309,36 @@ export default function MessagesPage() {
           </section>
 
           {/* Colonne droite */}
-          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/[0.03] to-transparent pointer-events-none" />
-            <h2 className="text-lg font-semibold mb-5 relative z-[1]">Vos conversations</h2>
+          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 overflow-hidden">
+            <div className="absolute -inset-x-px top-0 h-1 bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-75" />
+            <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
 
             {conversations.length === 0 && !error ? (
-              <p className="text-gray-400 text-sm relative z-[1]">Aucune conversation pour le moment.</p>
+              <p className="text-gray-400 text-sm">Aucune conversation pour le moment.</p>
             ) : (
-              <ul className="space-y-4 relative z-[1]">
+              <ul className="space-y-3">
                 {conversations.map(conv => {
                   const other = getOtherUser(conv)
                   const src = getAvatarSrc(other)
                   const unread = !!unreadMap[conv.id]
-                  if (other && !avatarCache[other.id]) ensureAvatar(other.id)
-
                   return (
                     <li
                       key={conv.id}
                       onClick={() => openConversation(conv.id)}
-                      className={`group relative rounded-2xl border p-4 transition flex items-start gap-4 cursor-pointer overflow-hidden
+                      className={`rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
                         ${unread
                           ? 'bg-indigo-500/10 border-indigo-500/25'
-                          : 'bg-neutral-900/60 border-white/10 hover:bg-neutral-900'}
+                          : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
                       `}
                     >
-                      <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-80" />
-
+                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
                         alt={other?.name ?? 'User'}
-                        className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
+                        className="w-12 h-12 rounded-full object-cover"
                         onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
                       />
-
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
@@ -425,7 +372,7 @@ export default function MessagesPage() {
               </ul>
             )}
 
-            {error && <p className="text-red-500 text-sm mt-4 relative z-[1]">{error}</p>}
+            {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
           </section>
         </div>
 
