@@ -39,17 +39,14 @@ const toAbs = (u?: string | null) => {
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
-// lu/non-lu local (on garde ce qui marche chez toi)
+// lu/non-lu local
 const LS_READ_KEY = 'lsb_readConvs'
 const getLocalRead = (): Record<number, boolean> => {
   if (typeof window === 'undefined') return {}
   try { return JSON.parse(localStorage.getItem(LS_READ_KEY) || '{}') } catch { return {} }
 }
 const setLocalRead = (convId: number, val: boolean) => {
-  try {
-    const cur = getLocalRead(); cur[convId] = val
-    localStorage.setItem(LS_READ_KEY, JSON.stringify(cur))
-  } catch {}
+  try { const cur = getLocalRead(); cur[convId] = val; localStorage.setItem(LS_READ_KEY, JSON.stringify(cur)) } catch {}
 }
 
 export default function MessagesPage() {
@@ -107,9 +104,7 @@ export default function MessagesPage() {
       const data = await res.json()
       const got = (data?.user ?? data) as User
       const url = extractAvatarUrl(got)
-      if (url) {
-        setAvatarCache(prev => ({ ...prev, [uid]: url }))
-      }
+      if (url) setAvatarCache(prev => ({ ...prev, [uid]: url }))
     } catch {}
   }, [token, authedHeaders, avatarCache])
 
@@ -128,8 +123,6 @@ export default function MessagesPage() {
         (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
       )
       setConversations(sorted)
-
-      // hydrate avatars manquants (best-effort)
       sorted.forEach(c => {
         const other = c.participants.find(p => String(p.id) !== String(user?.id))
         const url = other ? extractAvatarUrl(other) : ''
@@ -180,7 +173,6 @@ export default function MessagesPage() {
       const list: User[] = Array.isArray(raw) ? raw : raw?.users ?? []
       const filtered = user?.id ? list.filter(u => Number(u.id) !== Number(user.id)) : list
       setAllUsers(filtered)
-      // pré-remplis le cache quand l’URL est dispo
       filtered.forEach(u => {
         const url = extractAvatarUrl(u)
         if (url) setAvatarCache(prev => prev[u.id] ? prev : { ...prev, [u.id]: url })
@@ -248,13 +240,15 @@ export default function MessagesPage() {
       try {
         setDeletingId(convId)
 
-        const common = {
+        const common: RequestInit = {
           headers: { ...(authedHeaders || {}), 'Content-Type': 'application/json', 'X-HTTP-Method-Override': 'DELETE' },
-          cache: 'no-store' as const,
+          cache: 'no-store',
         }
 
-        const attempt = async (method: 'DELETE'|'POST', url: string, body?: unknown) => {
-          return fetch(url, { method, ...(common as any), body: body ? JSON.stringify(body) : undefined })
+        const attempt = async (method: 'DELETE' | 'POST', url: string, body?: unknown): Promise<Response> => {
+          const init: RequestInit = { ...common, method }
+          if (body !== undefined) init.body = JSON.stringify(body)
+          return fetch(url, init)
         }
 
         // Plusieurs variantes + userId
@@ -376,8 +370,6 @@ export default function MessagesPage() {
                   const other = getOtherUser(conv)
                   const src = getAvatarSrc(other)
                   const unread = !!unreadMap[conv.id]
-
-                  // hydrate si vide
                   if (other && !avatarCache[other.id]) ensureAvatar(other.id)
 
                   return (
