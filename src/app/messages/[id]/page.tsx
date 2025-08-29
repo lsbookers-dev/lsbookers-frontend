@@ -13,7 +13,6 @@ type SendResp = { conversationId?: string | number; message?: Message }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-// helpers
 function isArrayResp(x: unknown): x is Message[] { return Array.isArray(x) }
 function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
@@ -34,11 +33,25 @@ export default function ConversationPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState<string>('')
   const [file, setFile] = useState<File | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  /* -------- Mark as seen (identique) -------- */
+  // Récupère ton id (comme l’AuthContext le stocke déjà en localStorage)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('user')
+      if (raw) {
+        const u = JSON.parse(raw)
+        setCurrentUserId(Number(u?.id) || null)
+      }
+    } catch {
+      setCurrentUserId(null)
+    }
+  }, [])
+
+  /* -------- mark as seen -------- */
   const markSeen = useCallback(async () => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -51,7 +64,7 @@ export default function ConversationPage() {
     }
   }, [conversationId])
 
-  /* -------- Fetch messages (identique) -------- */
+  /* -------- fetch messages -------- */
   const fetchMessages = useCallback(async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -92,7 +105,7 @@ export default function ConversationPage() {
     })()
   }, [conversationId, markSeen, fetchMessages])
 
-  // re-sync quand on revient / redevient visible
+  // Re-sync quand on revient sur la page/onglet
   useEffect(() => {
     const onVisibility = () => { if (document.visibilityState === 'visible') markSeen().then(fetchMessages) }
     const onPageShow = () => { markSeen().then(fetchMessages) }
@@ -104,26 +117,27 @@ export default function ConversationPage() {
     }
   }, [markSeen, fetchMessages])
 
-  // auto-scroll bas
+  // Scroll en bas à chaque MAJ
   useEffect(() => {
     const el = messagesContainerRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
-  /* -------- Envoi (identique) -------- */
+  /* -------- envoi message (inchangé) -------- */
   const handleSend = async (): Promise<void> => {
     if (!conversationId) return
     if (!content.trim() && !file) return
+
     const token = getAuthToken()
 
     try {
-      // optimistic pour texte seul
+      // Optimistic si texte seul
       if (content.trim() && !file) {
         const optimistic: Message = {
           id: `temp-${Date.now()}`,
           content,
           createdAt: new Date().toISOString(),
-          sender: { id: 0, name: 'Vous' },
+          sender: { id: currentUserId ?? 0, name: 'Vous' },
           seen: false,
         }
         setMessages(prev => [...prev, optimistic])
@@ -169,7 +183,6 @@ export default function ConversationPage() {
     if (e.key === 'Enter') { e.preventDefault(); handleSend() }
   }
 
-  /* -------- Rendu fichier (identique) -------- */
   const renderFile = (url: string) => {
     const cleanUrl = toAbs(url.trim())
     const lower = cleanUrl.toLowerCase()
@@ -195,7 +208,7 @@ export default function ConversationPage() {
   return (
     <main className="flex min-h-screen bg-black text-white">
       <div className="flex-1 mx-auto w-full max-w-4xl">
-        {/* Header avec dégradé et bouton retour */}
+        {/* Header */}
         <header className="relative overflow-hidden rounded-b-2xl">
           <div className="absolute inset-0 bg-gradient-to-r from-pink-600/15 via-violet-600/15 to-blue-600/15 blur-3xl" />
           <div className="relative px-4 sm:px-6 pt-6 pb-5 flex items-center justify-between">
@@ -207,17 +220,17 @@ export default function ConversationPage() {
               ← Retour
             </button>
             <h1 className="text-xl sm:text-2xl font-semibold">Conversation</h1>
-            <div className="w-[76px]" aria-hidden /> {/* spacer */}
+            <div className="w-[76px]" aria-hidden />
           </div>
           <div className="h-[2px] w-full bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-80" />
         </header>
 
-        {/* Carte messages */}
-        <section className="mt-6 rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 sm:p-5 flex flex-col min-h-[60vh]">
-          {/* Liste des messages */}
+        {/* Carte + fenêtre scrollable fixe */}
+        <section className="mt-6 rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 sm:p-5 flex flex-col">
+          {/* Fenêtre à hauteur fixe avec scroll (≈ iPhone) */}
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto space-y-4 pr-1"
+            className="h-[60vh] overflow-y-auto pr-1 space-y-3"
           >
             {messages.map((msg) => {
               const parts = msg.content.split('\n')
@@ -225,43 +238,53 @@ export default function ConversationPage() {
               const urlLine = parts.find((line: string) => line.includes('http'))
               const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
               const avatar = toAbs(msg.sender?.image) || '/default-avatar.png'
+              const isMe = currentUserId !== null && Number(msg.sender?.id) === currentUserId
 
               return (
-                <div key={msg.id} className="flex items-start gap-3">
-                  <div className="shrink-0">
-                    <Image
-                      src={avatar}
-                      alt={msg.sender?.name || 'avatar'}
-                      width={40}
-                      height={40}
-                      className="rounded-full object-cover ring-1 ring-white/10"
-                      unoptimized
-                    />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{msg.sender?.name ?? '—'}</span>
-                      <span className="text-[11px] text-white/50">
-                        {new Date(msg.createdAt).toLocaleString()}
-                      </span>
-                      <span className="ml-auto text-[11px] text-white/50">
-                        {msg.seen ? '✓ Vu' : 'Non lu'}
-                      </span>
+                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  {/* Gauche (autre) : avatar + bulle grise */}
+                  {!isMe && (
+                    <div className="flex items-end gap-2 max-w-[80%]">
+                      <Image
+                        src={avatar}
+                        alt={msg.sender?.name || 'avatar'}
+                        width={36}
+                        height={36}
+                        className="rounded-full object-cover ring-1 ring-white/10"
+                        unoptimized
+                      />
+                      <div>
+                        <div className="inline-block rounded-2xl rounded-tl-md border border-white/10 bg-white/[0.05] px-3 py-2">
+                          {text && <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>}
+                          {url && <div className="mt-2">{renderFile(url)}</div>}
+                        </div>
+                        <div className="mt-1 ml-1 text-[11px] text-white/50">
+                          {msg.sender?.name ?? '—'} • {new Date(msg.createdAt).toLocaleString()}
+                        </div>
+                      </div>
                     </div>
+                  )}
 
-                    {/* bulle */}
-                    <div className="mt-1 inline-block max-w-[85%] rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
-                      {text && <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>}
-                      {url && <div className="mt-2">{renderFile(url)}</div>}
+                  {/* Droite (moi) : bulle dégradée */}
+                  {isMe && (
+                    <div className="flex items-end gap-2 max-w-[80%]">
+                      <div>
+                        <div className="inline-block rounded-2xl rounded-tr-md border border-white/10 bg-gradient-to-br from-pink-600/30 to-violet-600/30 px-3 py-2">
+                          {text && <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>}
+                          {url && <div className="mt-2">{renderFile(url)}</div>}
+                        </div>
+                        <div className="mt-1 text-right text-[11px] text-white/50">
+                          {new Date(msg.createdAt).toLocaleString()} • {msg.seen ? '✓ Vu' : 'Non lu'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )
             })}
           </div>
 
-          {/* Barre d’envoi */}
+          {/* Barre d’envoi (collée en bas de la carte) */}
           <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-3">
             <div className="flex items-center gap-3">
               <input
@@ -317,11 +340,6 @@ export default function ConversationPage() {
             )}
           </div>
         </section>
-
-        {/* Lien bas de page (inchangé côté logique) */}
-        <div className="my-6 text-center text-xs text-white/40">
-          {/* on garde le lien si tu en as l’utilité */}
-        </div>
       </div>
     </main>
   )
