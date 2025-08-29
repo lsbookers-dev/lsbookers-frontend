@@ -13,18 +13,17 @@ type SendResp = { conversationId?: string | number; message?: Message }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
+// helpers
 function isArrayResp(x: unknown): x is Message[] { return Array.isArray(x) }
 function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
-
 const toAbs = (u?: string | null) => {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
   if (u.startsWith('//')) return `https:${u}`
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
-
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg','image/png','image/webp','image/gif'])
 
 export default function ConversationPage() {
@@ -39,6 +38,7 @@ export default function ConversationPage() {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
+  /* -------- Mark as seen (identique) -------- */
   const markSeen = useCallback(async () => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -51,6 +51,7 @@ export default function ConversationPage() {
     }
   }, [conversationId])
 
+  /* -------- Fetch messages (identique) -------- */
   const fetchMessages = useCallback(async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -91,38 +92,32 @@ export default function ConversationPage() {
     })()
   }, [conversationId, markSeen, fetchMessages])
 
+  // re-sync quand on revient / redevient visible
   useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        markSeen().then(fetchMessages)
-      }
-    }
-    const onPageShow = () => {
-      markSeen().then(fetchMessages)
-    }
-
+    const onVisibility = () => { if (document.visibilityState === 'visible') markSeen().then(fetchMessages) }
+    const onPageShow = () => { markSeen().then(fetchMessages) }
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pageshow', onPageShow)
-
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pageshow', onPageShow)
     }
   }, [markSeen, fetchMessages])
 
+  // auto-scroll bas
   useEffect(() => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
-    }
+    const el = messagesContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
+  /* -------- Envoi (identique) -------- */
   const handleSend = async (): Promise<void> => {
     if (!conversationId) return
     if (!content.trim() && !file) return
-
     const token = getAuthToken()
 
     try {
+      // optimistic pour texte seul
       if (content.trim() && !file) {
         const optimistic: Message = {
           id: `temp-${Date.now()}`,
@@ -145,11 +140,9 @@ export default function ConversationPage() {
         }
         fd.append('file', file)
         if (file.type.startsWith('image')) {
-          fd.append('type', 'image')
-          fd.append('folder', 'messages')
+          fd.append('type', 'image'); fd.append('folder', 'messages')
         } else if (file.type.startsWith('video')) {
-          fd.append('type', 'video')
-          fd.append('folder', 'messages')
+          fd.append('type', 'video'); fd.append('folder', 'messages')
         }
       }
 
@@ -157,14 +150,10 @@ export default function ConversationPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      setContent('')
-      setFile(null)
-      if (inputRef.current) inputRef.current.value = ''
-
+      setContent(''); setFile(null); if (inputRef.current) inputRef.current.value = ''
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
-        router.replace(`/messages/${newConvId}`)
-        return
+        router.replace(`/messages/${newConvId}`); return
       }
 
       await fetchMessages()
@@ -177,21 +166,19 @@ export default function ConversationPage() {
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleSend()
-    }
+    if (e.key === 'Enter') { e.preventDefault(); handleSend() }
   }
 
+  /* -------- Rendu fichier (identique) -------- */
   const renderFile = (url: string) => {
     const cleanUrl = toAbs(url.trim())
     const lower = cleanUrl.toLowerCase()
     if (/\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
-      return <Image src={cleanUrl} alt="media" width={200} height={200} className="rounded" unoptimized />
+      return <Image src={cleanUrl} alt="media" width={240} height={240} className="rounded-xl" unoptimized />
     }
     if (/\.(mp4|webm)$/.test(lower)) {
       return (
-        <video controls className="w-64 rounded">
+        <video controls className="w-64 rounded-xl">
           <source src={cleanUrl} />
           Votre navigateur ne supporte pas la vidéo.
         </video>
@@ -204,95 +191,136 @@ export default function ConversationPage() {
     )
   }
 
+  /* ======================== UI ======================== */
   return (
-    <main className="flex flex-col h-screen bg-[#121212] text-white font-sans">
-      <div className="max-w-3xl w-full mx-auto flex flex-col flex-grow px-4 py-6">
-        <h2 className="text-2xl font-semibold mb-4">Conversation</h2>
-
-        <div
-          ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto space-y-4 border border-gray-700 p-4 rounded bg-[#1f1f1f] min-h-[300px] max-h-[60vh]"
-        >
-          {messages.map((msg) => {
-            const parts = msg.content.split('\n')
-            const text = parts[0] ?? ''
-            const urlLine = parts.find((line: string) => line.includes('http'))
-            const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
-            const avatar = toAbs(msg.sender?.image) || '/default-avatar.png'
-
-            return (
-              <div key={msg.id} className="flex items-start gap-4 bg-[#2a2a2a] p-3 rounded-lg">
-                <Image
-                  src={avatar}
-                  alt={msg.sender?.name || 'avatar'}
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover"
-                  unoptimized
-                />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-400 mb-1">
-                    {msg.sender?.name} • {new Date(msg.createdAt).toLocaleString()}
-                  </p>
-                  {text && <p className="mb-1 text-base leading-relaxed">{text}</p>}
-                  {url && renderFile(url)}
-                  <p className="text-xs text-right text-gray-500 mt-1">{msg.seen ? '✓ Vu' : 'Non lu'}</p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="mt-4 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <input
-              ref={inputRef}
-              type="text"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Écris ton message..."
-              className="border border-gray-600 bg-[#1c1c1c] text-white p-3 rounded flex-grow placeholder-gray-400"
-            />
-
-            <input
-              id="fileInput"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="hidden"
-            />
-            <label htmlFor="fileInput" className="cursor-pointer bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm">
-              Fichier
-            </label>
-
+    <main className="flex min-h-screen bg-black text-white">
+      <div className="flex-1 mx-auto w-full max-w-4xl">
+        {/* Header avec dégradé et bouton retour */}
+        <header className="relative overflow-hidden rounded-b-2xl">
+          <div className="absolute inset-0 bg-gradient-to-r from-pink-600/15 via-violet-600/15 to-blue-600/15 blur-3xl" />
+          <div className="relative px-4 sm:px-6 pt-6 pb-5 flex items-center justify-between">
             <button
-              onClick={handleSend}
-              disabled={!content.trim() && !file}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 px-6 py-2 rounded text-white font-semibold"
+              onClick={() => router.push('/messages')}
+              className="text-sm px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+              aria-label="Retour"
             >
-              Envoyer
+              ← Retour
             </button>
+            <h1 className="text-xl sm:text-2xl font-semibold">Conversation</h1>
+            <div className="w-[76px]" aria-hidden /> {/* spacer */}
+          </div>
+          <div className="h-[2px] w-full bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-80" />
+        </header>
+
+        {/* Carte messages */}
+        <section className="mt-6 rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 sm:p-5 flex flex-col min-h-[60vh]">
+          {/* Liste des messages */}
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto space-y-4 pr-1"
+          >
+            {messages.map((msg) => {
+              const parts = msg.content.split('\n')
+              const text = parts[0] ?? ''
+              const urlLine = parts.find((line: string) => line.includes('http'))
+              const url = urlLine ? urlLine.replace(/^Lien\s*:\s*/i, '').trim() : ''
+              const avatar = toAbs(msg.sender?.image) || '/default-avatar.png'
+
+              return (
+                <div key={msg.id} className="flex items-start gap-3">
+                  <div className="shrink-0">
+                    <Image
+                      src={avatar}
+                      alt={msg.sender?.name || 'avatar'}
+                      width={40}
+                      height={40}
+                      className="rounded-full object-cover ring-1 ring-white/10"
+                      unoptimized
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{msg.sender?.name ?? '—'}</span>
+                      <span className="text-[11px] text-white/50">
+                        {new Date(msg.createdAt).toLocaleString()}
+                      </span>
+                      <span className="ml-auto text-[11px] text-white/50">
+                        {msg.seen ? '✓ Vu' : 'Non lu'}
+                      </span>
+                    </div>
+
+                    {/* bulle */}
+                    <div className="mt-1 inline-block max-w-[85%] rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                      {text && <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>}
+                      {url && <div className="mt-2">{renderFile(url)}</div>}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
-          {file && (
-            <div className="flex items-center justify-between bg-gray-800 p-3 rounded">
-              {file.type.startsWith('image') ? (
-                <Image src={URL.createObjectURL(file)} alt="aperçu" width={50} height={50} className="rounded mr-3" unoptimized />
-              ) : file.type.startsWith('video') ? (
-                <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
-              ) : (
-                <p className="text-sm text-white truncate mr-3">{file.name}</p>
-              )}
-              <button
-                onClick={() => setFile(null)}
-                className="text-red-500 hover:text-red-700 text-sm font-bold"
-                title="Supprimer le fichier"
+          {/* Barre d’envoi */}
+          <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-3">
+            <div className="flex items-center gap-3">
+              <input
+                ref={inputRef}
+                type="text"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Écris ton message…"
+                className="flex-grow rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm placeholder-white/40 focus:outline-none focus:border-white/30"
+              />
+
+              <input
+                id="fileInput"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="hidden"
+              />
+              <label
+                htmlFor="fileInput"
+                className="cursor-pointer whitespace-nowrap rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm hover:bg-white/15"
               >
-                ✖
+                Fichier
+              </label>
+
+              <button
+                onClick={handleSend}
+                disabled={!content.trim() && !file}
+                className="whitespace-nowrap rounded-lg bg-gradient-to-r from-pink-600 to-violet-600 px-4 py-2 text-sm font-semibold disabled:opacity-60 hover:opacity-90"
+              >
+                Envoyer
               </button>
             </div>
-          )}
+
+            {file && (
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                {file.type.startsWith('image') ? (
+                  <Image src={URL.createObjectURL(file)} alt="aperçu" width={48} height={48} className="rounded mr-3" unoptimized />
+                ) : file.type.startsWith('video') ? (
+                  <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
+                ) : (
+                  <p className="text-sm text-white truncate mr-3">{file.name}</p>
+                )}
+                <button
+                  onClick={() => setFile(null)}
+                  className="text-red-400 hover:text-red-300 text-sm font-semibold"
+                  title="Supprimer le fichier"
+                >
+                  ✖
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Lien bas de page (inchangé côté logique) */}
+        <div className="my-6 text-center text-xs text-white/40">
+          {/* on garde le lien si tu en as l’utilité */}
         </div>
       </div>
     </main>

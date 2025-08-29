@@ -30,9 +30,12 @@ interface MessageLite {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-const ACCENT_FROM = 'from-indigo-500/40'
-const ACCENT_TO = 'to-fuchsia-500/40'
+// mêmes teintes que la recherche
+const ACCENT_FROM = 'from-pink-600'
+const ACCENT_CENTER = 'via-violet-600'
+const ACCENT_TO = 'to-blue-600'
 
+// URL absolue (avatars)
 const toAbs = (u?: string | null) => {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
@@ -83,7 +86,7 @@ export default function MessagesPage() {
     }
   }, [token, authedHeaders])
 
-  /* Calculer non-lus en front (en attendant un flag backend) */
+  /* Calculer non-lus en front (temporaire) */
   const computeUnread = useCallback(async (convs: Conversation[]) => {
     if (!token || !user?.id) return
     try {
@@ -109,7 +112,7 @@ export default function MessagesPage() {
       entries.forEach(([id, u]) => (map[id] = u))
       setUnreadMap(map)
     } catch {
-      // silencieux
+      /* silent */
     }
   }, [token, authedHeaders, user?.id])
 
@@ -195,7 +198,7 @@ export default function MessagesPage() {
     [token, authedHeaders, conversations, router, fetchConversations, user?.id]
   )
 
-  /* SUPPRIMER conversation — IMPORTANT: endpoint au pluriel, SANS X-HTTP-Method-Override */
+  /* Supprimer une conversation */
   const deleteConversation = useCallback(
     async (convId: number) => {
       if (!token) return
@@ -208,7 +211,6 @@ export default function MessagesPage() {
           headers: authedHeaders,
         })
         if (!res.ok) throw new Error('HTTP ' + res.status)
-        // MAJ locale
         setConversations(prev => prev.filter(c => c.id !== convId))
         setUnreadMap(prev => {
           const copy = { ...prev }
@@ -225,7 +227,7 @@ export default function MessagesPage() {
     [token, authedHeaders]
   )
 
-  /* Marquer comme lu (backend) + ouvrir */
+  /* Marquer comme lu côté backend + ouvrir */
   const markSeenBackend = useCallback(async (convId: number) => {
     if (!token) return
     const headers: HeadersInit = { ...(authedHeaders || {}), 'Content-Type': 'application/json' }
@@ -251,27 +253,38 @@ export default function MessagesPage() {
     : []
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white p-6">
-      <div className="max-w-6xl mx-auto w-full">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-2">Messagerie</h1>
-        <p className="text-white/70 mb-8">Retrouvez vos conversations et démarrez de nouveaux échanges.</p>
+    <div className="flex flex-col min-h-screen bg-black text-white">
+      {/* Bandeau titre avec dégradé doux */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-violet-600/10 to-blue-600/10 blur-3xl" />
+        <div className="relative px-6 pt-10 pb-6 max-w-6xl mx-auto">
+          <h1 className="text-3xl md:text-4xl font-bold">💬 Messagerie</h1>
+          <p className="text-white/70 mt-2">
+            Retrouve tes conversations et démarre de nouveaux échanges.
+          </p>
+        </div>
+      </div>
 
+      <div className="px-6 pb-10 max-w-6xl mx-auto w-full">
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
           {/* Colonne gauche */}
-          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5">
-            <div className={`pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-10`} />
+          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
+            {/* Liseré en haut qui suit parfaitement les angles */}
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_CENTER} ${ACCENT_TO} opacity-80`} />
+
             <h2 className="text-lg font-semibold mb-1">Nouvelle conversation</h2>
             <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
 
-            <div className="relative">
+            <div className="relative rounded-xl overflow-hidden">
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Rechercher un utilisateur…"
-                className="w-full rounded-xl bg-black/50 border border-white/15 focus:border-white/35 outline-none px-4 py-3"
+                className="w-full rounded-xl bg-black/40 border border-white/10 focus:border-white/30 outline-none px-4 py-3"
               />
-              <div className={`pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_TO} opacity-10`} />
+              {/* halo subtil qui respecte le radius */}
+              <div className={`pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_CENTER} ${ACCENT_TO} opacity-10`} />
             </div>
 
             {loadingUsers && <p className="text-gray-400 text-sm mt-3">Chargement des utilisateurs…</p>}
@@ -285,19 +298,20 @@ export default function MessagesPage() {
                       <li
                         key={u.id}
                         onClick={() => startConversation(u.id)}
-                        className="cursor-pointer rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 flex items-center gap-3 transition"
+                        className="cursor-pointer rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 flex items-center gap-3 transition"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={src}
                           alt={u.name}
-                          className="w-10 h-10 rounded-full object-cover"
+                          className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
                           onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
                         />
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium">{u.name}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium truncate">{u.name}</span>
                           <span className="text-xs text-white/50">{u.role}</span>
                         </div>
+                        <span className="ml-auto text-xs text-white/40">▶</span>
                       </li>
                     )
                   })
@@ -309,8 +323,9 @@ export default function MessagesPage() {
           </section>
 
           {/* Colonne droite */}
-          <section className="relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 overflow-hidden">
-            <div className="absolute -inset-x-px top-0 h-1 bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-75" />
+          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5 overflow-hidden">
+            {/* Liseré en haut (aligné aux bords arrondis) */}
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${ACCENT_FROM} ${ACCENT_CENTER} ${ACCENT_TO} opacity-80`} />
             <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
 
             {conversations.length === 0 && !error ? (
@@ -325,23 +340,28 @@ export default function MessagesPage() {
                     <li
                       key={conv.id}
                       onClick={() => openConversation(conv.id)}
-                      className={`rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
+                      className={`group rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
                         ${unread
                           ? 'bg-indigo-500/10 border-indigo-500/25'
                           : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
                       `}
                     >
+                      {/* filet latéral = état non lu */}
                       <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
+
+                      {/* Avatar */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
                         alt={other?.name ?? 'User'}
-                        className="w-12 h-12 rounded-full object-cover"
+                        className="w-12 h-12 rounded-full object-cover ring-1 ring-white/10"
                         onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png' }}
                       />
+
+                      {/* Infos */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className={`text-base ${unread ? 'font-semibold' : 'font-medium'}`}>
+                          <h3 className={`text-base truncate ${unread ? 'font-semibold' : 'font-medium'}`}>
                             {other?.name ?? 'Conversation'}
                           </h3>
                           {unread && (
@@ -353,6 +373,7 @@ export default function MessagesPage() {
                         <p className="text-xs text-white/60 truncate max-w-[60ch]">{conv.lastMessage || '…'}</p>
                       </div>
 
+                      {/* Meta / actions */}
                       <div className="flex flex-col items-end gap-2">
                         <span className="text-[11px] text-white/50 whitespace-nowrap">
                           {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
@@ -366,6 +387,9 @@ export default function MessagesPage() {
                           {deletingId === conv.id ? '…' : 'Supprimer'}
                         </button>
                       </div>
+
+                      {/* lueur au survol */}
+                      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-white/0 via-white/0 to-white/5 rounded-2xl" />
                     </li>
                   )
                 })}
