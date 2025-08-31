@@ -183,6 +183,11 @@ export default function ArtistProfilePage() {
           if (p.banner) setBannerUrl(p.banner)
           if (p.avatar) setAvatarUrl(p.avatar)
           if (!profileId && p.id) setProfileId(p.id)
+
+          // ✅ Hydrater les spécialités depuis l'API (si présentes)
+          if (p.specialties && Array.isArray(p.specialties) && p.specialties.length > 0) {
+            setRoles(p.specialties.map((s) => ({ label: s })))
+          }
         }
       } catch {
         // ignore
@@ -193,10 +198,43 @@ export default function ArtistProfilePage() {
 
   /* ========================= Actions ========================= */
 
-  const toggleRole = (label: string) => {
-    setRoles(prev =>
-      prev.some(r => r.label === label) ? prev.filter(r => r.label !== label) : [...prev, { label }]
-    )
+  // ✅ Persistance profil (avec token + vrai profileId)
+  const saveProfile = async (fields: Record<string, unknown>) => {
+    if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
+    if (!token) throw new Error('TOKEN_ABSENT')
+    if (!profileId) throw new Error('PROFILE_ID_ABSENT')
+
+    const res = await fetch(`${API_BASE}/api/profile/${profileId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(fields),
+    })
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(err?.error || 'PROFILE_SAVE_FAILED')
+    }
+  }
+
+  // ✅ Toggle spécialités + sauvegarde immédiate (rollback si échec)
+  const toggleRole = async (label: string) => {
+    const next = roles.some(r => r.label === label)
+      ? roles.filter(r => r.label !== label)
+      : [...roles, { label }]
+
+    // UI optimiste
+    const previous = roles
+    setRoles(next)
+
+    try {
+      await saveProfile({ specialties: next.map(r => r.label) })
+    } catch (err) {
+      console.error('Erreur de sauvegarde des spécialités:', err)
+      setRoles(previous) // rollback
+      alert("Impossible d'enregistrer les spécialités (vérifie que tu es connecté).")
+    }
   }
 
   const addPublication = () => {
@@ -232,26 +270,6 @@ export default function ArtistProfilePage() {
   const sorted = [...publications].sort((a, b) => b.id - a.id)
   const heroPub = sorted[0]
   const restPubs = sorted.slice(1, 4)
-
-  // Persistance profil (avec token + vrai profileId)
-  const saveProfile = async (fields: Record<string, unknown>) => {
-    if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
-    if (!token) throw new Error('TOKEN_ABSENT')
-    if (!profileId) throw new Error('PROFILE_ID_ABSENT')
-
-    const res = await fetch(`${API_BASE}/api/profile/${profileId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(fields),
-    })
-    if (!res.ok) {
-      const err = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(err?.error || 'PROFILE_SAVE_FAILED')
-    }
-  }
 
   // Upload handlers (+ persistance) — utilise les bons champs: banner / avatar
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
