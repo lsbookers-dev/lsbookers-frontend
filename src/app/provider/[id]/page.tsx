@@ -51,14 +51,16 @@ export default function ProviderPublicProfilePage() {
         const data = await res.json()
         const p: PublicProfile | undefined = data?.profile
         if (alive) setProfile(p ?? null)
-      } catch (e) {
-        if (alive) setError("Impossible de charger le profil.")
+      } catch {
+        if (alive) setError('Impossible de charger le profil.')
       } finally {
         if (alive) setLoading(false)
       }
     }
     run()
-    return () => { alive = false }
+    return () => {
+      alive = false
+    }
   }, [id])
 
   if (loading) {
