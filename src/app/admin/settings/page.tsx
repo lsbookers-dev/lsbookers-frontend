@@ -1,193 +1,260 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react';
 
 type SiteSettings = {
-  mainColor: string
-  secondaryColor: string
-  welcomeText: string
-  bannerUrl: string            // legacy / héros (landing)
-  loginBgUrl?: string
-  registerBgUrl?: string
-  landingBgUrl?: string
-  headerLogoUrl?: string
-}
+  mainColor: string;
+  secondaryColor: string;
+  welcomeText: string;
+  bannerUrl: string;
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+  landingBgUrl: string;
+  loginBgUrl: string;
+  registerBgUrl: string;
+  headerLogoUrl: string;
+};
 
-async function uploadImage(file: File) {
-  const fd = new FormData()
-  fd.append('file', file)
-  fd.append('folder', 'admin')
-  fd.append('type', 'image')
-  const r = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: fd })
-  if (!r.ok) throw new Error('UPLOAD_FAILED')
-  return r.json() as Promise<{ url: string }>
-}
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
 export default function AdminSettingsPage() {
-  const [form, setForm] = useState<SiteSettings>({
-    mainColor: '#ff2f87',
-    secondaryColor: '#7c3aed',
+  const [formData, setFormData] = useState<SiteSettings>({
+    mainColor: '#111111',
+    secondaryColor: '#ffffff',
     welcomeText: '',
     bannerUrl: '',
+
+    landingBgUrl: '',
     loginBgUrl: '',
     registerBgUrl: '',
-    landingBgUrl: '',
     headerLogoUrl: '',
-  })
-  const [loading, setLoading] = useState(true)
-  const [msg, setMsg] = useState<string>('')
+  });
 
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<string>('');
+  const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('token') : null), []);
+
+  // ---- Load settings (admin) ----
   useEffect(() => {
-    const token = localStorage.getItem('token') || ''
-    const run = async () => {
-      setLoading(true)
+    let alive = true;
+    async function run() {
       try {
-        const r = await fetch(`${API_BASE}/api/admin/settings`, {
-          headers: { Authorization: `Bearer ${token}` },
+        setLoading(true);
+        const res = await fetch(`${API_BASE}/api/admin/settings`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           cache: 'no-store',
-        })
-        if (!r.ok) throw new Error('HTTP ' + r.status)
-        const data = await r.json()
-        setForm((prev) => ({ ...prev, ...data }))
-      } catch {
-        // fallback silent
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = (await res.json()) as Partial<SiteSettings>;
+        if (alive) {
+          setFormData((prev) => ({ ...prev, ...data }));
+        }
+      } catch (e) {
+        console.error(e);
       } finally {
-        setLoading(false)
+        if (alive) setLoading(false);
       }
     }
-    run()
-  }, [])
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [token]);
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setForm((f) => ({ ...f, [name]: value }))
-  }
+  // ---- Helpers ----
+  const setField = (name: keyof SiteSettings, value: string) =>
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
-  const onUpload = async (name: keyof SiteSettings, file?: File | null) => {
-    if (!file) return
+  const save = async () => {
     try {
-      const { url } = await uploadImage(file)
-      setForm((f) => ({ ...f, [name]: url }))
-    } catch {
-      alert('Échec upload.')
-    }
-  }
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setMsg('')
-    const token = localStorage.getItem('token') || ''
-    try {
-      const r = await fetch(`${API_BASE}/api/admin/settings`, {
+      setMsg('');
+      const res = await fetch(`${API_BASE}/api/admin/settings`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      })
-      if (!r.ok) throw new Error('HTTP ' + r.status)
-      setMsg('✅ Modifications enregistrées')
-    } catch {
-      setMsg('❌ Erreur lors de la mise à jour')
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      setMsg('✅ Modifications enregistrées');
+    } catch (e) {
+      console.error(e);
+      setMsg('❌ Erreur lors de la mise à jour');
     }
-  }
+  };
 
-  if (loading) return <p>Chargement…</p>
+  const doUpload = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'site');
+    fd.append('type', 'image');
+    const res = await fetch(`${API_BASE}/api/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || 'UPLOAD_FAILED');
+    }
+    const data = await res.json();
+    return (data?.url as string) || '';
+  };
+
+  const handleFilePick =
+    (field: keyof SiteSettings) => async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        setMsg('⏫ Upload en cours…');
+        const url = await doUpload(file);
+        setField(field, url);
+        setMsg('✅ Image importée, pensez à enregistrer.');
+      } catch (er) {
+        console.error(er);
+        setMsg('❌ Impossible de téléverser ce fichier');
+      } finally {
+        e.target.value = '';
+      }
+    };
+
+  if (loading) return <div className="p-8 text-white">Chargement…</div>;
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Paramètres du site</h1>
+    <div className="p-8 max-w-3xl mx-auto text-white">
+      <h1 className="text-2xl font-bold mb-6">Paramètres du site</h1>
 
-      <form onSubmit={onSubmit} className="space-y-6">
+      <div className="space-y-6">
         {/* Couleurs */}
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
           <div>
-            <label className="block text-sm mb-1">Couleur principale</label>
-            <input type="color" name="mainColor" value={form.mainColor} onChange={onChange} className="w-16 h-10" />
+            <label className="block text-sm text-white/70 mb-1">Couleur principale</label>
+            <input
+              type="color"
+              value={formData.mainColor}
+              onChange={(e) => setField('mainColor', e.target.value)}
+              className="w-16 h-10"
+            />
           </div>
           <div>
-            <label className="block text-sm mb-1">Couleur secondaire</label>
-            <input type="color" name="secondaryColor" value={form.secondaryColor} onChange={onChange} className="w-16 h-10" />
+            <label className="block text-sm text-white/70 mb-1">Couleur secondaire</label>
+            <input
+              type="color"
+              value={formData.secondaryColor}
+              onChange={(e) => setField('secondaryColor', e.target.value)}
+              className="w-16 h-10"
+            />
           </div>
         </div>
 
-        {/* Textes */}
-        <div>
-          <label className="block text-sm mb-1">Texte d’accueil (landing)</label>
-          <textarea name="welcomeText" value={form.welcomeText} onChange={onChange} className="w-full p-2 rounded bg-neutral-900 border border-white/10" />
+        {/* Texte d’accueil + bannière générique */}
+        <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 space-y-4">
+          <div>
+            <label className="block text-sm text-white/70 mb-1">Texte d’accueil</label>
+            <textarea
+              value={formData.welcomeText}
+              onChange={(e) => setField('welcomeText', e.target.value)}
+              className="w-full p-3 rounded bg-black/30 border border-white/10"
+              rows={3}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center">
+            <div>
+              <label className="block text-sm text-white/70 mb-1">Bannière (URL)</label>
+              <input
+                value={formData.bannerUrl}
+                onChange={(e) => setField('bannerUrl', e.target.value)}
+                placeholder="https://…"
+                className="w-full p-2 rounded bg-black/30 border border-white/10"
+              />
+            </div>
+            <label className="inline-flex items-center px-3 py-2 rounded bg-white/10 hover:bg-white/20 cursor-pointer">
+              Importer
+              <input type="file" accept="image/*" className="hidden" onChange={handleFilePick('bannerUrl')} />
+            </label>
+          </div>
         </div>
 
-        {/* Images */}
-        <div className="grid sm:grid-cols-2 gap-6">
-          <Uploader
-            label="Logo du header"
-            url={form.headerLogoUrl || ''}
-            onFile={(f) => onUpload('headerLogoUrl', f)}
-            placeholder="/logo.svg"
-          />
-          <Uploader
-            label="Fond landing"
-            url={form.landingBgUrl || form.bannerUrl || ''}
-            onFile={(f) => onUpload('landingBgUrl', f)}
-            placeholder="/bg-landing.jpg"
-          />
-          <Uploader
-            label="Fond login"
-            url={form.loginBgUrl || ''}
-            onFile={(f) => onUpload('loginBgUrl', f)}
-            placeholder="/bg-login.jpg"
-          />
-          <Uploader
-            label="Fond register"
-            url={form.registerBgUrl || ''}
-            onFile={(f) => onUpload('registerBgUrl', f)}
-            placeholder="/bg-register.jpg"
-          />
+        {/* ✅ Nouveaux: images de fond + logo header */}
+        <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 space-y-5">
+          <h2 className="text-lg font-semibold">Images de fond & logo</h2>
+
+          {/* Landing */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center">
+            <div>
+              <label className="block text-sm text-white/70 mb-1">Background landing (URL)</label>
+              <input
+                value={formData.landingBgUrl}
+                onChange={(e) => setField('landingBgUrl', e.target.value)}
+                placeholder="https://…"
+                className="w-full p-2 rounded bg-black/30 border border-white/10"
+              />
+            </div>
+            <label className="inline-flex items-center px-3 py-2 rounded bg-white/10 hover:bg-white/20 cursor-pointer">
+              Importer
+              <input type="file" accept="image/*" className="hidden" onChange={handleFilePick('landingBgUrl')} />
+            </label>
+          </div>
+
+          {/* Login */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center">
+            <div>
+              <label className="block text-sm text-white/70 mb-1">Background login (URL)</label>
+              <input
+                value={formData.loginBgUrl}
+                onChange={(e) => setField('loginBgUrl', e.target.value)}
+                placeholder="https://…"
+                className="w-full p-2 rounded bg-black/30 border border-white/10"
+              />
+            </div>
+            <label className="inline-flex items-center px-3 py-2 rounded bg-white/10 hover:bg-white/20 cursor-pointer">
+              Importer
+              <input type="file" accept="image/*" className="hidden" onChange={handleFilePick('loginBgUrl')} />
+            </label>
+          </div>
+
+          {/* Register */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center">
+            <div>
+              <label className="block text-sm text-white/70 mb-1">Background register (URL)</label>
+              <input
+                value={formData.registerBgUrl}
+                onChange={(e) => setField('registerBgUrl', e.target.value)}
+                placeholder="https://…"
+                className="w-full p-2 rounded bg-black/30 border border-white/10"
+              />
+            </div>
+            <label className="inline-flex items-center px-3 py-2 rounded bg-white/10 hover:bg-white/20 cursor-pointer">
+              Importer
+              <input type="file" accept="image/*" className="hidden" onChange={handleFilePick('registerBgUrl')} />
+            </label>
+          </div>
+
+          {/* Logo header */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center">
+            <div>
+              <label className="block text-sm text-white/70 mb-1">Logo header (URL)</label>
+              <input
+                value={formData.headerLogoUrl}
+                onChange={(e) => setField('headerLogoUrl', e.target.value)}
+                placeholder="https://…"
+                className="w-full p-2 rounded bg-black/30 border border-white/10"
+              />
+            </div>
+            <label className="inline-flex items-center px-3 py-2 rounded bg-white/10 hover:bg-white/20 cursor-pointer">
+              Importer
+              <input type="file" accept="image/*" className="hidden" onChange={handleFilePick('headerLogoUrl')} />
+            </label>
+          </div>
         </div>
 
-        <div className="pt-2">
-          <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded">
+        <div className="flex gap-3">
+          <button onClick={save} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded">
             Enregistrer
           </button>
+          {msg && <p className="self-center text-sm text-white/80">{msg}</p>}
         </div>
-      </form>
-
-      {msg && <p className="mt-4">{msg}</p>}
-    </div>
-  )
-}
-
-/* --- petit composant uploader --- */
-function Uploader({
-  label,
-  url,
-  onFile,
-  placeholder,
-}: {
-  label: string
-  url: string
-  onFile: (file?: File | null) => void
-  placeholder?: string
-}) {
-  return (
-    <div>
-      <label className="block text-sm mb-2">{label}</label>
-      <div className="rounded-lg border border-white/10 bg-neutral-900 p-3">
-        {url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={label} className="w-full h-28 object-cover rounded mb-2" />
-        ) : (
-          <div className="w-full h-28 rounded bg-black/30 border border-white/10 grid place-items-center text-xs text-white/40 mb-2">
-            {placeholder || 'Aperçu'}
-          </div>
-        )}
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => onFile(e.target.files?.[0] || null)}
-          className="block text-sm"
-        />
       </div>
     </div>
-  )
+  );
 }
