@@ -1,92 +1,91 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import * as React from 'react'
 
-type Metrics = {
+type Summary = {
   usersTotal: number
   artists: number
   organizers: number
   providers: number
+  payingUsers: number
   conversations: number
   messages: number
-  payingUsers?: number
-  mrr?: number
+  mrrCents: number
+  revenueMonthCents: number
+  revenueOffersCents: number
+  loginsToday: number
+  signupsToday: number
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+const money = (cents: number) =>
+  (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
 export default function AdminDashboard() {
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
-  const [m, setM] = useState<Metrics | null>(null)
+  const [summary, setSummary] = React.useState<Summary | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
 
-  useEffect(() => {
-    const token = localStorage.getItem('token') || ''
-    const run = async () => {
-      setLoading(true)
-      setErr(null)
-      try {
-        const r = await fetch(`${API_BASE}/api/admin/metrics?t=${Date.now()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: 'no-store',
-        })
-        if (!r.ok) throw new Error('HTTP ' + r.status)
-        const data = await r.json()
-        setM(data?.metrics ?? data ?? null)
-      } catch (e) {
-        setErr("Impossible de charger les métriques.")
-      } finally {
-        setLoading(false)
-      }
-    }
-    run()
+  const tokenRef = React.useRef<string | null>(null)
+  React.useEffect(() => {
+    tokenRef.current = localStorage.getItem('token')
   }, [])
 
-  const cards = [
-    { label: 'Utilisateurs', value: m?.usersTotal ?? '—' },
-    { label: 'Artistes', value: m?.artists ?? '—' },
-    { label: 'Organisateurs', value: m?.organizers ?? '—' },
-    { label: 'Prestataires', value: m?.providers ?? '—' },
-    { label: 'Conversations', value: m?.conversations ?? '—' },
-    { label: 'Messages', value: m?.messages ?? '—' },
-    { label: 'Clients payants', value: m?.payingUsers ?? '—' },
-    { label: 'MRR (€)', value: m?.mrr ?? '—' },
-  ]
+  const authed = React.useCallback((init?: RequestInit) => ({
+    ...(init || {}),
+    headers: {
+      Authorization: `Bearer ${tokenRef.current}`,
+      ...(init?.headers || {}),
+    },
+    cache: 'no-store' as const,
+  }), [])
+
+  React.useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const r = await fetch(`${API_BASE}/api/admin/stats/summary`, authed())
+        if (!r.ok) throw new Error('HTTP ' + r.status)
+        const json = await r.json() as { summary?: Summary } | Summary
+        const sum: Summary = ('summary' in json && json.summary) ? json.summary as Summary : json as Summary
+        if (alive) setSummary(sum)
+      } catch (err) {
+        console.error(err)
+        if (alive) setError('Impossible de charger les indicateurs.')
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [authed])
+
+  if (loading) return <div className="p-8 text-white">Chargement…</div>
+  if (error || !summary) return <div className="p-8 text-red-400">{error ?? 'Données indisponibles'}</div>
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Tableau de bord</h1>
+    <div className="p-6 text-white max-w-7xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">Tableau de bord admin</h1>
 
-      {loading && <p className="text-white/70">Chargement…</p>}
-      {err && <p className="text-red-400">{err}</p>}
+      <div className="grid gap-4 md:grid-cols-3">
+        <KPI title="Utilisateurs" value={summary.usersTotal.toLocaleString()} sub={`${summary.artists} artistes • ${summary.organizers} orga • ${summary.providers} presta`} />
+        <KPI title="Utilisateurs payants" value={summary.payingUsers.toLocaleString()} sub={`MRR ${money(summary.mrrCents)}`} />
+        <KPI title="Conversations / Messages" value={`${summary.conversations.toLocaleString()} / ${summary.messages.toLocaleString()}`} />
+        <KPI title="CA abonnements (mois)" value={money(summary.revenueMonthCents)} />
+        <KPI title="CA formules" value={money(summary.revenueOffersCents)} />
+        <KPI title="Aujourd’hui" value={`${summary.loginsToday} connexions`} sub={`${summary.signupsToday} inscriptions`} />
+      </div>
+    </div>
+  )
+}
 
-      {!loading && !err && (
-        <>
-          <div className="grid md:grid-cols-4 gap-4">
-            {cards.map((c) => (
-              <div key={c.label} className="rounded-xl border border-white/10 bg-neutral-900/60 p-4">
-                <p className="text-xs text-white/50">{c.label}</p>
-                <p className="text-2xl font-semibold mt-1">{c.value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 grid md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-white/10 bg-neutral-900/60 p-4">
-              <h2 className="text-lg font-semibold mb-2">Activité récente</h2>
-              <p className="text-white/60 text-sm">Courbes et logs récents (à venir).</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-neutral-900/60 p-4">
-              <h2 className="text-lg font-semibold mb-2">Tâches d’administration</h2>
-              <ul className="list-disc list-inside text-sm text-white/80 space-y-1">
-                <li>Vérifier les nouveaux profils</li>
-                <li>Suivre les conversations signalées</li>
-                <li>Mettre à jour les encarts marketing</li>
-              </ul>
-            </div>
-          </div>
-        </>
-      )}
+function KPI({ title, value, sub }: { title: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#0f0f0f] p-5">
+      <p className="text-sm text-white/60">{title}</p>
+      <p className="text-2xl font-extrabold mt-1">{value}</p>
+      {sub && <p className="text-xs text-white/50 mt-1">{sub}</p>}
     </div>
   )
 }

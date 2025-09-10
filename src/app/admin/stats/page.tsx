@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 
+/** ===== Types ===== */
 type Summary = {
   usersTotal: number
   artists: number
@@ -17,10 +18,17 @@ type Summary = {
   signupsToday: number
 }
 
-type Point = { date: string; users: number; revenueCents: number; logins: number }
+type Point = {
+  date: string            // ISO date
+  users: number           // nouveaux utilisateurs du jour
+  revenueCents: number    // revenus (en centimes) du jour
+  logins: number          // connexions du jour
+}
 
+/** ===== Helpers ===== */
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-const money = (cents: number) => (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
+const money = (cents: number) =>
+  (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
 export default function AdminStatsPage() {
   const [loading, setLoading] = React.useState(true)
@@ -29,7 +37,9 @@ export default function AdminStatsPage() {
   const [series, setSeries] = React.useState<Point[]>([])
 
   const tokenRef = React.useRef<string | null>(null)
-  React.useEffect(() => { tokenRef.current = localStorage.getItem('token') || null }, [])
+  React.useEffect(() => {
+    tokenRef.current = localStorage.getItem('token') || null
+  }, [])
 
   const authed = React.useCallback((init?: RequestInit) => ({
     ...(init || {}),
@@ -44,23 +54,26 @@ export default function AdminStatsPage() {
     let alive = true
     ;(async () => {
       try {
-        setLoading(true); setError(null)
+        setLoading(true)
+        setError(null)
 
+        // Summary
         const r1 = await fetch(`${API_BASE}/api/admin/stats/summary`, authed())
         if (!r1.ok) throw new Error('HTTP ' + r1.status)
-        const s = await r1.json() as { summary: Summary } | Summary
-        const sum = ('summary' in (s as any)) ? (s as any).summary as Summary : s as Summary
+        const js1 = await r1.json() as { summary?: Summary } | Summary
+        const sum: Summary = ('summary' in js1 && js1.summary) ? js1.summary as Summary : js1 as Summary
         if (!alive) return
         setSummary(sum)
 
+        // Series
         const r2 = await fetch(`${API_BASE}/api/admin/stats/series?days=30`, authed())
         if (!r2.ok) throw new Error('HTTP ' + r2.status)
-        const ser = await r2.json() as { series: Point[] } | Point[]
-        const arr = Array.isArray(ser) ? ser : (ser.series || [])
+        const js2 = await r2.json() as { series?: Point[] } | Point[]
+        const arr: Point[] = Array.isArray(js2) ? js2 : (js2.series || [])
         if (!alive) return
         setSeries(arr)
-      } catch (e) {
-        console.error(e)
+      } catch (err) {
+        console.error(err)
         if (alive) setError('Impossible de charger les statistiques.')
       } finally {
         if (alive) setLoading(false)
@@ -96,7 +109,7 @@ export default function AdminStatsPage() {
         </Card>
       </div>
 
-      {/* ===== Table logs (optionnel) ===== */}
+      {/* ===== Détail table ===== */}
       <div className="mt-8 rounded-2xl border border-white/10 bg-[#0f0f0f] p-5">
         <h2 className="text-xl font-semibold mb-3">Détail (30 derniers jours)</h2>
         <div className="overflow-x-auto">
@@ -149,25 +162,25 @@ function Card({ title, children }: React.PropsWithChildren<{ title: string }>) {
   )
 }
 
-/** Barres minimalistes en CSS (pas de lib) */
+/** Barres minimalistes (typage strict) */
 function MiniBars({
   data,
   yKey,
   formatY,
 }: {
-  data: Array<Record<string, any>>
-  yKey: string
+  data: Point[]
+  yKey: 'users' | 'revenueCents'
   formatY?: (v: number) => string
 }) {
-  const vals = data.map(d => Number(d[yKey] || 0))
+  const vals = data.map(d => d[yKey])
   const max = Math.max(1, ...vals)
   return (
     <div className="h-40 flex items-end gap-1">
-      {data.map((d, i) => {
-        const v = Number(d[yKey] || 0)
+      {data.map((d) => {
+        const v = d[yKey]
         const h = Math.round((v / max) * 100)
         return (
-          <div key={i} className="flex-1 bg-white/10 relative group" style={{ height: `${h}%` }}>
+          <div key={d.date} className="flex-1 bg-white/10 relative group" style={{ height: `${h}%` }}>
             <div className="hidden group-hover:block absolute -top-8 left-1/2 -translate-x-1/2 text-[11px] bg-black/80 px-2 py-1 rounded border border-white/10">
               {new Date(d.date).toLocaleDateString()} — {formatY ? formatY(v) : v}
             </div>
