@@ -1,36 +1,37 @@
+// src/components/AdminHeader.tsx
 'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-export default function AdminHeader() {
+const NavLink = ({ href, label }: { href: string; label: string }) => {
   const pathname = usePathname()
-
-  const navItems = [
-    { label: 'Dashboard', path: '/admin/dashboard' }, 
-    { label: 'Paramètres du site', path: '/admin/settings' },
-    { label: 'Utilisateurs', path: '/admin/users' },
-    { label: 'Abonnements', path: '/admin/subscriptions' },
-    { label: 'Statistiques', path: '/admin/stats' },
-    { label: 'Déconnexion', path: '/login' },
-  ]
-
+  const active = pathname === href
   return (
-    <header className="bg-gray-900 text-white p-4 shadow flex items-center justify-between">
-      <div className="text-xl font-bold">LSBookers Admin</div>
-      <nav className="space-x-4">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            href={item.path}
-            className={`hover:underline ${
-              pathname === item.path ? 'text-yellow-400 font-semibold' : ''
-            }`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+    <Link
+      href={href}
+      className={`block px-4 py-2 rounded border ${
+        active ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'
+      }`}
+    >
+      {label}
+    </Link>
+  )
+}
+
+export default function AdminHeader() {
+  return (
+    <header className="border-b border-white/10 bg-black/60 backdrop-blur">
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        <h1 className="text-xl font-semibold mb-3">LSBookers — Admin</h1>
+        <nav className="flex gap-2 text-sm">
+          <NavLink href="/admin/dashboard" label="Dashboard" />
+          <NavLink href="/admin/users" label="Utilisateurs" />
+          <NavLink href="/admin/subscriptions" label="Abonnements" />
+          <NavLink href="/admin/stats" label="Statistiques" />
+          <NavLink href="/admin/settings" label="Paramètres" />
+        </nav>
+      </div>
     </header>
   )
 }

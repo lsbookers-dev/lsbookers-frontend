@@ -1,170 +1,118 @@
+// src/app/admin/users/page.tsx
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import * as React from 'react'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
-type User = {
+type UserRow = {
   id: number
   name: string
-  email?: string
+  email?: string | null
   role: Role
+  hasSubscription?: boolean
   isSuspended?: boolean
-  subscription?: { planName: string; status: string } | null
+  profileId?: number | null
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 export default function AdminUsersPage() {
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
-  const [users, setUsers] = useState<User[]>([])
-  const [q, setQ] = useState('')
-  const [page, setPage] = useState(1)
-  const pageSize = 20
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [rows, setRows] = React.useState<UserRow[]>([])
+  const [q, setQ] = React.useState('')
 
-  const token = useMemo(() => localStorage.getItem('token') || '', [])
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
-  const fetchUsers = async () => {
+  const load = React.useCallback(async () => {
+    if (!token) {
+      setError('Non authentifié')
+      setLoading(false)
+      return
+    }
     setLoading(true)
-    setErr(null)
+    setError(null)
     try {
-      const r = await fetch(
-        `${API_BASE}/api/admin/users?search=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}&t=${Date.now()}`,
-        { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
-      )
-      if (!r.ok) throw new Error('HTTP ' + r.status)
-      const data = await r.json()
-      setUsers(Array.isArray(data?.users) ? data.users : data)
-    } catch {
-      setErr('Impossible de charger les utilisateurs.')
+      const res = await fetch(`${API_BASE}/api/admin/users?hideAdmin=1`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      // attendu: { users: [...] }
+      setRows(Array.isArray(data?.users) ? data.users : [])
+    } catch (e) {
+      console.error(e)
+      setError("Impossible de charger les utilisateurs.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
 
-  useEffect(() => {
-    fetchUsers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page])
+  React.useEffect(() => {
+    load()
+  }, [load])
 
-  const suspend = async (id: number) => {
-    if (!confirm('Suspendre cet utilisateur ?')) return
-    try {
-      const r = await fetch(`${API_BASE}/api/admin/users/${id}/suspend`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!r.ok) throw new Error()
-      await fetchUsers()
-    } catch {
-      alert('Échec suspension.')
-    }
-  }
-
-  const unsuspend = async (id: number) => {
-    if (!confirm('Réactiver cet utilisateur ?')) return
-    try {
-      const r = await fetch(`${API_BASE}/api/admin/users/${id}/unsuspend`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!r.ok) throw new Error()
-      await fetchUsers()
-    } catch {
-      alert('Échec réactivation.')
-    }
-  }
-
-  const removeUser = async (id: number) => {
-    if (!confirm('Supprimer définitivement cet utilisateur ?')) return
-    try {
-      const r = await fetch(`${API_BASE}/api/admin/users/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!r.ok) throw new Error()
-      await fetchUsers()
-    } catch {
-      alert('Échec suppression.')
-    }
-  }
+  const filtered = q
+    ? rows.filter(u =>
+        (u.name || '').toLowerCase().includes(q.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(q.toLowerCase())
+      )
+    : rows
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Gestion des utilisateurs</h1>
+    <div className="max-w-6xl mx-auto text-white">
+      <h2 className="text-2xl font-bold mb-4">Gestion des utilisateurs</h2>
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex gap-2 items-center mb-4">
         <input
-          className="px-3 py-2 rounded bg-neutral-900 border border-white/10 flex-1"
-          placeholder="Rechercher par nom, email…"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Rechercher par nom, email…"
+          className="flex-1 bg-black/40 border border-white/10 rounded px-3 py-2"
         />
-        <button onClick={() => { setPage(1); fetchUsers() }} className="px-3 py-2 rounded bg-white/10 hover:bg-white/20">
-          Rechercher
+        <button onClick={load} className="px-3 py-2 bg-white/10 border border-white/15 rounded hover:bg-white/20">
+          Recharger
         </button>
       </div>
 
-      {loading && <p className="text-white/70">Chargement…</p>}
-      {err && <p className="text-red-400">{err}</p>}
+      {loading && <p className="text-white/60">Chargement…</p>}
+      {error && <p className="text-red-400">{error}</p>}
 
-      {!loading && !err && (
-        <>
-          <div className="rounded-xl border border-white/10 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-white/5 text-white/60">
-                <tr>
-                  <th className="text-left px-3 py-2">ID</th>
-                  <th className="text-left px-3 py-2">Nom</th>
-                  <th className="text-left px-3 py-2">Email</th>
-                  <th className="text-left px-3 py-2">Rôle</th>
-                  <th className="text-left px-3 py-2">Abonnement</th>
-                  <th className="text-right px-3 py-2">Actions</th>
+      {!loading && !error && (
+        <div className="overflow-x-auto border border-white/10 rounded-xl">
+          <table className="min-w-full text-sm">
+            <thead className="bg-white/5">
+              <tr>
+                <th className="text-left p-3 border-b border-white/10">ID</th>
+                <th className="text-left p-3 border-b border-white/10">Nom</th>
+                <th className="text-left p-3 border-b border-white/10">Email</th>
+                <th className="text-left p-3 border-b border-white/10">Rôle</th>
+                <th className="text-left p-3 border-b border-white/10">Abonnement</th>
+                <th className="text-left p-3 border-b border-white/10">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(u => (
+                <tr key={u.id} className="odd:bg-white/0 even:bg-white/[0.03]">
+                  <td className="p-3">{u.id}</td>
+                  <td className="p-3">{u.name}</td>
+                  <td className="p-3">{u.email ?? '—'}</td>
+                  <td className="p-3">{u.role}</td>
+                  <td className="p-3">{u.hasSubscription ? '✅' : '—'}</td>
+                  <td className="p-3">{u.isSuspended ? '⛔️ Suspendu' : 'Actif'}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u.id} className="border-t border-white/10">
-                    <td className="px-3 py-2">{u.id}</td>
-                    <td className="px-3 py-2">{u.name}</td>
-                    <td className="px-3 py-2">{u.email ?? '—'}</td>
-                    <td className="px-3 py-2">{u.role}</td>
-                    <td className="px-3 py-2">
-                      {u.subscription ? `${u.subscription.planName} (${u.subscription.status})` : '—'}
-                    </td>
-                    <td className="px-3 py-2 text-right space-x-2">
-                      {!u.isSuspended ? (
-                        <button onClick={() => suspend(u.id)} className="px-2 py-1 rounded bg-white/10 hover:bg-white/20">Suspendre</button>
-                      ) : (
-                        <button onClick={() => unsuspend(u.id)} className="px-2 py-1 rounded bg-white/10 hover:bg-white/20">Réactiver</button>
-                      )}
-                      <button onClick={() => removeUser(u.id)} className="px-2 py-1 rounded bg-red-600/80 hover:bg-red-600">Supprimer</button>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-white/50">Aucun résultat</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1 rounded bg-white/10 hover:bg-white/20"
-            >
-              Précédent
-            </button>
-            <span className="text-sm text-white/60">Page {page}</span>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1 rounded bg-white/10 hover:bg-white/20"
-            >
-              Suivant
-            </button>
-          </div>
-        </>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-4 text-center text-white/60">
+                    Aucun utilisateur.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
