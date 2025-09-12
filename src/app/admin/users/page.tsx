@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 type ListedUser = {
   id: number
@@ -26,11 +26,6 @@ export default function AdminUsersPage() {
   const token =
     typeof window !== 'undefined' ? window.localStorage.getItem('token') : null
 
-  const headers = useMemo(
-    () => (token ? { Authorization: `Bearer ${token}` } : {}),
-    [token]
-  )
-
   async function load() {
     if (!API_BASE || !token) return
     setLoading(true)
@@ -42,7 +37,7 @@ export default function AdminUsersPage() {
       params.set('offset', String(page * limit))
 
       const res = await fetch(`${API_BASE}/api/admin/users?${params.toString()}`, {
-        headers,
+        headers: token ? ({ Authorization: `Bearer ${token}` } as HeadersInit) : undefined,
         cache: 'no-store',
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -60,7 +55,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]) // on recharge à chaque changement de page
+  }, [page])
 
   const onSearch = async () => {
     setPage(0)
@@ -133,7 +128,6 @@ export default function AdminUsersPage() {
         ))}
       </ul>
 
-      {/* Pagination */}
       <div className="mt-4 flex items-center gap-2">
         <button
           onClick={() => setPage((p) => Math.max(0, p - 1))}

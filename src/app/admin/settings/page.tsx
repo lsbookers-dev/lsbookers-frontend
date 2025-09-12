@@ -1,7 +1,8 @@
+// src/app/admin/settings/page.tsx
 'use client'
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 type AdminSettings = {
   welcomeText: string
@@ -29,11 +30,6 @@ export default function AdminSettingsPage() {
   const token =
     typeof window !== 'undefined' ? window.localStorage.getItem('token') : null
 
-  const headers = useMemo(
-    () => (token ? { Authorization: `Bearer ${token}` } : {}),
-    [token]
-  )
-
   const show = (msg: string) => {
     setNotice(msg)
     setTimeout(() => setNotice(''), 2000)
@@ -47,7 +43,7 @@ export default function AdminSettingsPage() {
     setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/admin/settings`, {
-        headers,
+        headers: token ? ({ Authorization: `Bearer ${token}` } as HeadersInit) : undefined,
         cache: 'no-store',
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -65,7 +61,7 @@ export default function AdminSettingsPage() {
     } finally {
       setLoading(false)
     }
-  }, [headers, token])
+  }, [token])
 
   useEffect(() => {
     void load()
@@ -79,7 +75,10 @@ export default function AdminSettingsPage() {
       try {
         const res = await fetch(`${API_BASE}/api/admin/settings`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', ...headers },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify(body),
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -89,7 +88,7 @@ export default function AdminSettingsPage() {
         show('❌ Erreur de sauvegarde.')
       }
     },
-    [headers, settings, token]
+    [settings, token]
   )
 
   const uploadAndSet = useCallback(
@@ -102,7 +101,7 @@ export default function AdminSettingsPage() {
       try {
         const res = await fetch(`${API_BASE}/api/upload`, {
           method: 'POST',
-          headers, // surtout pas de Content-Type ici
+          headers: token ? ({ Authorization: `Bearer ${token}` } as HeadersInit) : undefined,
           body: fd,
         })
         if (!res.ok) throw new Error(`UPLOAD ${res.status}`)
@@ -114,7 +113,7 @@ export default function AdminSettingsPage() {
         show("❌ Échec de l'upload.")
       }
     },
-    [headers, saveAll, token]
+    [token, saveAll]
   )
 
   if (!token) {
@@ -187,7 +186,6 @@ export default function AdminSettingsPage() {
   )
 }
 
-/* ---------- Composant image picker ---------- */
 function ImagePicker({
   label,
   url,
