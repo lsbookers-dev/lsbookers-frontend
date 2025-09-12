@@ -386,10 +386,7 @@ export default function ArtistProfilePage() {
   const contact = () => router.push(`/messages/new?to=${userId ?? artist.id}`)
   const follow = () => alert('Vous suivez maintenant cet artiste ✅')
 
-  // Publications : afficher au MAX 4 sur la page (1 hero + 3 vignettes)
-  const sorted = [...publications].sort((a, b) => b.id - a.id)
-  const heroPub = sorted[0]
-  const restPubs = sorted.slice(1, 4)
+  
 
   // Upload handlers (+ persistance) — utilise les bons champs: banner / avatar
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
