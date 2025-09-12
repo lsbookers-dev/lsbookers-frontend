@@ -2,7 +2,7 @@
 'use client'
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -27,14 +27,9 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState<string>('')
 
-  // Récupération token
+  // Token une fois (pas de re-render infini)
   const token =
     typeof window !== 'undefined' ? window.localStorage.getItem('token') : null
-
-  // ✅ Ici on simplifie : pas besoin de useMemo
-  const authHeaders: Record<string, string> = token
-    ? { Authorization: `Bearer ${token}` }
-    : {}
 
   const show = (msg: string) => {
     setNotice(msg)
@@ -50,7 +45,7 @@ export default function AdminSettingsPage() {
     setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/admin/settings`, {
-        headers: authHeaders,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         cache: 'no-store',
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -69,7 +64,7 @@ export default function AdminSettingsPage() {
     } finally {
       setLoading(false)
     }
-  }, [authHeaders, token])
+  }, [token])
 
   useEffect(() => {
     void load()
@@ -87,7 +82,7 @@ export default function AdminSettingsPage() {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            ...authHeaders,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(body),
         })
@@ -98,7 +93,7 @@ export default function AdminSettingsPage() {
         show('❌ Erreur lors de la sauvegarde')
       }
     },
-    [authHeaders, settings, token]
+    [settings, token]
   )
 
   /* -------- Upload image -> Cloudinary (via /api/upload) -------- */
@@ -113,7 +108,7 @@ export default function AdminSettingsPage() {
       try {
         const res = await fetch(`${API_BASE}/api/upload`, {
           method: 'POST',
-          headers: authHeaders, // ⚠️ pas de Content-Type ici
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined, // pas de Content-Type avec FormData
           body: fd,
         })
         if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
@@ -125,7 +120,7 @@ export default function AdminSettingsPage() {
         show('❌ Erreur lors de l’upload')
       }
     },
-    [authHeaders, saveAll, token]
+    [token, saveAll]
   )
 
   if (!token) {
@@ -149,7 +144,7 @@ export default function AdminSettingsPage() {
     <div className="max-w-3xl mx-auto p-6 text-white">
       <h2 className="text-2xl font-bold mb-6">Paramètres du site</h2>
 
-      {/* Welcome text */}
+      {/* Texte d’accueil */}
       <section className="mb-8 rounded-2xl border border-white/10 p-4 bg-black/30">
         <h3 className="text-lg font-semibold mb-2">Texte d’accueil (landing)</h3>
         <textarea
