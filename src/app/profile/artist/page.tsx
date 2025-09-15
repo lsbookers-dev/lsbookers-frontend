@@ -10,14 +10,14 @@ import {
   MessageCircle,
   UserPlus,
   Star,
+  Trash2,
 } from 'lucide-react'
 
 type RoleTag = { label: string }
-type Publication = { id: number; title: string; image: string; caption?: string; time?: string }
+type Publication = { id: number; title: string; media: string; mediaType: 'image' | 'video'; caption?: string; time?: string }
 type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
 type PriceLine = { id: number; label: string; price: string }
 
-// ---- Types pour éviter les "any" ----
 type StoredUser = {
   id: number | string
   name?: string
@@ -50,7 +50,6 @@ type ApiProfile = {
   user?: ApiUser
 }
 
-/* ================= Helpers ================= */
 async function uploadToCloudinary(
   file: File,
   folder: 'avatars' | 'banners' | 'media',
@@ -73,13 +72,10 @@ async function uploadToCloudinary(
   return res.json() as Promise<{ url: string; public_id: string }>
 }
 
-/* ============================================================ */
-
 export default function ArtistProfilePage() {
   const router = useRouter()
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-  // --------- mock artiste (visuel uniquement) ----------
   const artist = useMemo(
     () => ({
       id: 1,
@@ -98,16 +94,47 @@ export default function ArtistProfilePage() {
     []
   )
 
-  /* ===== Auth + Profile ID réels (pour persister) ===== */
   const [token, setToken] = useState<string | null>(null)
   const [userId, setUserId] = useState<number | null>(null)
   const [profileId, setProfileId] = useState<number | null>(null)
-
-  // Nouveaux états pour afficher les vraies infos
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null)
   const [profile, setProfile] = useState<ApiProfile | null>(null)
+  const [bannerUrl, setBannerUrl] = useState<string>(artist.banner)
+  const [avatarUrl, setAvatarUrl] = useState<string>(artist.avatar)
+  const bannerInputRef = useRef<HTMLInputElement | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement | null>(null)
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [roles, setRoles] = useState<RoleTag[]>(artist.roles)
+  const allRoleOptions = useMemo(
+    () => ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste', 'Violoniste', 'Photographe'],
+    []
+  )
+  const [rolePickerOpen, setRolePickerOpen] = useState(false)
+  const [publications, setPublications] = useState<Publication[]>([])
+  const [showAllPubs, setShowAllPubs] = useState(false)
+  const [showAddPubModal, setShowAddPubModal] = useState(false)
+  const [newPubTitle, setNewPubTitle] = useState('')
+  const [newPubCaption, setNewPubCaption] = useState('')
+  const [newPubFile, setNewPubFile] = useState<File | null>(null)
+  const [pubUploading, setPubUploading] = useState(false)
+  const pubInputRef = useRef<HTMLInputElement | null>(null)
+  const [reviews] = useState<Review[]>([
+    { id: 1, author: 'Studio 88', authorAvatar: '/avatars/pro1.png', rating: 5, text: 'Merci pour cette prestation, ravis — je recommande !' },
+    { id: 2, author: 'Wedding Planning', authorAvatar: '/avatars/pro2.png', rating: 4, text: 'Très bonne prestation et très professionnel.' },
+  ])
+  const [styles, setStyles] = useState<string[]>(['R&B', 'Latino', 'Rap US', 'Rap FR', 'Deep/House', 'Electro'])
+  const [newStyle, setNewStyle] = useState('')
+  const [prices, setPrices] = useState<PriceLine[]>([
+    { id: 1, label: 'Mix de 2h · Région PACA', price: 'À partir de 400€' },
+    { id: 2, label: 'Mix de 4h · Région PACA', price: 'À partir de 700€' },
+  ])
+  const [newPriceLabel, setNewPriceLabel] = useState('')
+  const [newPriceValue, setNewPriceValue] = useState('')
+  const [description, setDescription] = useState(artist.description)
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [descDraft, setDescDraft] = useState(description)
 
-  // 1) Lire token / user dans le localStorage
   useEffect(() => {
     try {
       const t = localStorage.getItem('token')
@@ -115,7 +142,7 @@ export default function ArtistProfilePage() {
       if (t) setToken(t)
       if (uStr) {
         const u: StoredUser = JSON.parse(uStr)
-        setCurrentUser(u) // <= pour afficher le vrai nom
+        setCurrentUser(u)
         const uid = typeof u?.id === 'string' ? parseInt(u.id, 10) : u?.id
         setUserId(uid || null)
         if (u?.profile?.id) setProfileId(u.profile.id)
@@ -125,51 +152,6 @@ export default function ArtistProfilePage() {
     }
   }, [])
 
-  // états visuels pour banner/avatar (MAJ immédiate après upload)
-  const [bannerUrl, setBannerUrl] = useState<string>(artist.banner)
-  const [avatarUrl, setAvatarUrl] = useState<string>(artist.avatar)
-  const bannerInputRef = useRef<HTMLInputElement | null>(null)
-  const avatarInputRef = useRef<HTMLInputElement | null>(null)
-  const [bannerUploading, setBannerUploading] = useState(false)
-  const [avatarUploading, setAvatarUploading] = useState(false)
-
-  const [roles, setRoles] = useState<RoleTag[]>(artist.roles)
-  const allRoleOptions = useMemo(
-    () => ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste', 'Violoniste', 'Photographe'],
-    []
-  )
-  const [rolePickerOpen, setRolePickerOpen] = useState(false)
-
-  const [publications, setPublications] = useState<Publication[]>([
-    { id: 1, title: 'Live au Studio 88', image: '/media/pub1.jpg', caption: 'Mix hier soir à Marseille 🎧🔥', time: 'Il y a 6h' },
-    { id: 2, title: 'Merci Marseille !', image: '/media/pub2.jpg' },
-    { id: 3, title: 'Backstage 🎧', image: '/media/pub3.jpg' },
-    { id: 4, title: 'Répètes', image: '/media/pub4.jpg' },
-    { id: 5, title: 'Aftermovie', image: '/media/pub5.jpg' },
-  ])
-  const [showAllPubs, setShowAllPubs] = useState(false)
-
-  const [reviews] = useState<Review[]>([
-    { id: 1, author: 'Studio 88', authorAvatar: '/avatars/pro1.png', rating: 5, text: 'Merci pour cette prestation, ravis — je recommande !' },
-    { id: 2, author: 'Wedding Planning', authorAvatar: '/avatars/pro2.png', rating: 4, text: 'Très bonne prestation et très professionnel.' },
-  ])
-
-  const [styles, setStyles] = useState<string[]>(['R&B', 'Latino', 'Rap US', 'Rap FR', 'Deep/House', 'Electro'])
-  const [newStyle, setNewStyle] = useState('')
-
-  const [prices, setPrices] = useState<PriceLine[]>([
-    { id: 1, label: 'Mix de 2h · Région PACA', price: 'À partir de 400€' },
-    { id: 2, label: 'Mix de 4h · Région PACA', price: 'À partir de 700€' },
-  ])
-  const [newPriceLabel, setNewPriceLabel] = useState('')
-  const [newPriceValue, setNewPriceValue] = useState('')
-
-  // Description éditable (pas encore persistée)
-  const [description, setDescription] = useState(artist.description)
-  const [editingDesc, setEditingDesc] = useState(false)
-  const [descDraft, setDescDraft] = useState(description)
-
-  /* ===== Charger les données du profil pour hydrater TOUT (avatar/banner/nom/lieu) ===== */
   useEffect(() => {
     const loadProfile = async () => {
       if (!API_BASE || !userId) return
@@ -179,12 +161,10 @@ export default function ArtistProfilePage() {
         const data = (await r.json()) as { profile?: ApiProfile }
         const p = data?.profile
         if (p) {
-          setProfile(p) // <= pour location/country/etc.
+          setProfile(p)
           if (p.banner) setBannerUrl(p.banner)
           if (p.avatar) setAvatarUrl(p.avatar)
           if (!profileId && p.id) setProfileId(p.id)
-
-          // ✅ Hydrater les spécialités depuis l'API (si présentes)
           if (p.specialties && Array.isArray(p.specialties) && p.specialties.length > 0) {
             setRoles(p.specialties.map((s) => ({ label: s })))
           }
@@ -196,9 +176,22 @@ export default function ArtistProfilePage() {
     loadProfile()
   }, [API_BASE, userId, profileId])
 
-  /* ========================= Actions ========================= */
+  // Charger les publications depuis l'API
+  useEffect(() => {
+    const loadPublications = async () => {
+      if (!API_BASE || !profileId) return
+      try {
+        const res = await fetch(`${API_BASE}/api/publications/profile/${profileId}`)
+        if (!res.ok) throw new Error('Failed to load publications')
+        const data = await res.json()
+        setPublications(data.publications || [])
+      } catch (err) {
+        console.error('Erreur de chargement des publications:', err)
+      }
+    }
+    loadPublications()
+  }, [API_BASE, profileId])
 
-  // ✅ Persistance profil (avec token + vrai profileId)
   const saveProfile = async (fields: Record<string, unknown>) => {
     if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
     if (!token) throw new Error('TOKEN_ABSENT')
@@ -218,13 +211,11 @@ export default function ArtistProfilePage() {
     }
   }
 
-  // ✅ Toggle spécialités + sauvegarde immédiate (rollback si échec)
   const toggleRole = async (label: string) => {
     const next = roles.some(r => r.label === label)
       ? roles.filter(r => r.label !== label)
       : [...roles, { label }]
 
-    // UI optimiste
     const previous = roles
     setRoles(next)
 
@@ -232,16 +223,66 @@ export default function ArtistProfilePage() {
       await saveProfile({ specialties: next.map(r => r.label) })
     } catch (err) {
       console.error('Erreur de sauvegarde des spécialités:', err)
-      setRoles(previous) // rollback
+      setRoles(previous)
       alert("Impossible d'enregistrer les spécialités (vérifie que tu es connecté).")
     }
   }
 
-  const addPublication = () => {
-    const title = window.prompt('Titre de la publication ?')
-    if (!title) return
-    const image = window.prompt("URL de l'image ?") || '/media/pub_placeholder.jpg'
-    setPublications(prev => [{ id: Date.now(), title, image }, ...prev])
+  const addPublication = async () => {
+    if (!newPubTitle.trim() || !newPubFile) return
+    try {
+      setPubUploading(true)
+      const mediaType = newPubFile.type.startsWith('video/') ? 'video' : 'image'
+      const { url } = await uploadToCloudinary(newPubFile, 'media', mediaType)
+      const newPub = {
+        title: newPubTitle,
+        media: url,
+        mediaType,
+        caption: newPubCaption.trim() || undefined,
+        profileId,
+      }
+
+      const res = await fetch(`${API_BASE}/api/publications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(newPub),
+      })
+      if (!res.ok) throw new Error('Failed to save publication')
+      const savedPub = await res.json()
+      setPublications(prev => [savedPub, ...prev])
+      setNewPubTitle('')
+      setNewPubCaption('')
+      setNewPubFile(null)
+      setShowAddPubModal(false)
+      alert('Publication ajoutée ✅')
+    } catch (err) {
+      console.error('Erreur lors de l’ajout de la publication:', err)
+      alert('Échec de l’ajout de la publication')
+    } finally {
+      setPubUploading(false)
+      if (pubInputRef.current) pubInputRef.current.value = ''
+    }
+  }
+
+  const deletePublication = async (id: number) => {
+    if (!confirm('Supprimer cette publication ?')) return
+    try {
+      const res = await fetch(`${API_BASE}/api/publications/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      if (!res.ok) throw new Error('Failed to delete publication')
+      setPublications(prev => prev.filter(p => p.id !== id))
+      alert('Publication supprimée ✅')
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err)
+      alert('Échec de la suppression')
+    }
   }
 
   const addStyle = () => {
@@ -262,24 +303,21 @@ export default function ArtistProfilePage() {
   }
   const removePrice = (id: number) => setPrices(prev => prev.filter(p => p.id !== id))
 
-  // Ouvrir une nouvelle conversation avec l'artiste
   const contact = () => router.push(`/messages/new?to=${userId ?? artist.id}`)
   const follow = () => alert('Vous suivez maintenant cet artiste ✅')
 
-  // Publications : afficher au MAX 4 sur la page (1 hero + 3 vignettes)
   const sorted = [...publications].sort((a, b) => b.id - a.id)
   const heroPub = sorted[0]
   const restPubs = sorted.slice(1, 4)
 
-  // Upload handlers (+ persistance) — utilise les bons champs: banner / avatar
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     try {
       setBannerUploading(true)
       const { url } = await uploadToCloudinary(file, 'banners', 'image')
-      setBannerUrl(url) // maj visuelle immédiate
-      await saveProfile({ banner: url }) // ✅ clé correcte
+      setBannerUrl(url)
+      await saveProfile({ banner: url })
       alert('Bannière mise à jour ✅')
     } catch (err) {
       console.error(err)
@@ -297,7 +335,7 @@ export default function ArtistProfilePage() {
       setAvatarUploading(true)
       const { url } = await uploadToCloudinary(file, 'avatars', 'image')
       setAvatarUrl(url)
-      await saveProfile({ avatar: url }) // ✅ clé correcte
+      await saveProfile({ avatar: url })
       alert('Photo de profil mise à jour ✅')
     } catch (err) {
       console.error(err)
@@ -308,11 +346,8 @@ export default function ArtistProfilePage() {
     }
   }
 
-  /* =========================== UI =========================== */
-
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* ===== Bannière ===== */}
       <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
         <Image src={bannerUrl} alt="Bannière" fill priority className="object-cover opacity-90" />
         <button
@@ -322,8 +357,6 @@ export default function ArtistProfilePage() {
           <Settings2 size={18} />
           Réglages
         </button>
-
-        {/* Changer la bannière */}
         <button
           onClick={() => bannerInputRef.current?.click()}
           className="absolute bottom-3 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-lg text-sm"
@@ -341,7 +374,6 @@ export default function ArtistProfilePage() {
         />
       </div>
 
-      {/* ===== Bloc infos sous la bannière ===== */}
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
@@ -422,11 +454,8 @@ export default function ArtistProfilePage() {
         </div>
       </div>
 
-      {/* ===== Corps ===== */}
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
-        {/* Colonne gauche */}
         <div className="space-y-6">
-          {/* Publications */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Publications</h2>
@@ -438,7 +467,7 @@ export default function ArtistProfilePage() {
                   Voir tout
                 </button>
                 <button
-                  onClick={addPublication}
+                  onClick={() => setShowAddPubModal(true)}
                   className="text-sm px-3 py-1 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1"
                 >
                   <Plus size={16} /> Ajouter
@@ -450,7 +479,18 @@ export default function ArtistProfilePage() {
               {heroPub && (
                 <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
                   <div className="relative w-full h-64">
-                    <Image src={heroPub.image} alt={heroPub.title} fill className="object-cover" />
+                    {heroPub.mediaType === 'image' ? (
+                      <Image src={heroPub.media} alt={heroPub.title} fill className="object-cover" />
+                    ) : (
+                      <video src={heroPub.media} controls className="w-full h-full object-cover" />
+                    )}
+                    <button
+                      onClick={() => deletePublication(heroPub.id)}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                      title="Supprimer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                   <div className="p-3">
                     <p className="font-medium">{heroPub.title}</p>
@@ -464,7 +504,18 @@ export default function ArtistProfilePage() {
                 {restPubs.map(p => (
                   <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
                     <div className="relative w-full h-28">
-                      <Image src={p.image} alt={p.title} fill className="object-cover" />
+                      {p.mediaType === 'image' ? (
+                        <Image src={p.media} alt={p.title} fill className="object-cover" />
+                      ) : (
+                        <video src={p.media} controls className="w-full h-full object-cover" />
+                      )}
+                      <button
+                        onClick={() => deletePublication(p.id)}
+                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                     <div className="p-3">
                       <p className="text-sm font-medium truncate">{p.title}</p>
@@ -475,7 +526,6 @@ export default function ArtistProfilePage() {
             </div>
           </section>
 
-          {/* Description (éditable, non persistée pour l’instant) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Description</h2>
@@ -509,7 +559,6 @@ export default function ArtistProfilePage() {
                 </div>
               )}
             </div>
-
             {!editingDesc ? (
               <p className="text-neutral-200 mt-3 leading-relaxed">{description}</p>
             ) : (
@@ -522,7 +571,6 @@ export default function ArtistProfilePage() {
             )}
           </section>
 
-          {/* Agenda (placeholder) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Mon agenda</h2>
             <p className="text-neutral-300 mt-2">
@@ -534,9 +582,7 @@ export default function ArtistProfilePage() {
           </section>
         </div>
 
-        {/* Colonne droite (ordre demandé) */}
         <aside className="space-y-6">
-          {/* 1) SoundCloud (optionnel) */}
           {artist.showSoundcloud && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3">
               <div className="rounded-lg overflow-hidden">
@@ -553,7 +599,6 @@ export default function ArtistProfilePage() {
             </section>
           )}
 
-          {/* 2) Styles */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Styles</h2>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -584,7 +629,6 @@ export default function ArtistProfilePage() {
             </div>
           </section>
 
-          {/* 3) Avis */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Avis</h2>
@@ -595,7 +639,6 @@ export default function ArtistProfilePage() {
                 Voir tout
               </button>
             </div>
-
             <div className="mt-3 space-y-3">
               {reviews.map(r => (
                 <div key={r.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
@@ -622,12 +665,10 @@ export default function ArtistProfilePage() {
             </div>
           </section>
 
-          {/* 4) Tarifs (tout en bas) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Tarifs</h2>
             </div>
-
             <ul className="mt-3 space-y-2">
               {prices.map(p => (
                 <li
@@ -647,7 +688,6 @@ export default function ArtistProfilePage() {
                 </li>
               ))}
             </ul>
-
             <div className="mt-3 grid grid-cols-1 gap-2">
               <input
                 className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
@@ -672,7 +712,6 @@ export default function ArtistProfilePage() {
         </aside>
       </div>
 
-      {/* ===== Modal "Voir tout" publications ===== */}
       {showAllPubs && (
         <div
           className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
@@ -695,7 +734,18 @@ export default function ArtistProfilePage() {
               {publications.map(p => (
                 <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
                   <div className="relative w-full h-40">
-                    <Image src={p.image} alt={p.title} fill className="object-cover" />
+                    {p.mediaType === 'image' ? (
+                      <Image src={p.media} alt={p.title} fill className="object-cover" />
+                    ) : (
+                      <video src={p.media} controls className="w-full h-full object-cover" />
+                    )}
+                    <button
+                      onClick={() => deletePublication(p.id)}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                      title="Supprimer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                   <div className="p-3">
                     <p className="text-sm font-medium">{p.title}</p>
@@ -703,6 +753,57 @@ export default function ArtistProfilePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddPubModal && (
+        <div
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowAddPubModal(false)}
+        >
+          <div
+            className="max-w-md w-full bg-neutral-950 border border-white/10 rounded-2xl p-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Nouvelle publication</h3>
+              <button
+                onClick={() => setShowAddPubModal(false)}
+                className="text-sm px-3 py-1 rounded bg-white/10 hover:bg-white/20"
+              >
+                Fermer
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <input
+                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Titre de la publication"
+                value={newPubTitle}
+                onChange={e => setNewPubTitle(e.target.value)}
+              />
+              <textarea
+                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Légende (optionnel)"
+                rows={3}
+                value={newPubCaption}
+                onChange={e => setNewPubCaption(e.target.value)}
+              />
+              <input
+                ref={pubInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                onChange={e => setNewPubFile(e.target.files?.[0] || null)}
+              />
+              <button
+                onClick={addPublication}
+                className="w-full text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 disabled:opacity-50"
+                disabled={pubUploading || !newPubTitle || !newPubFile}
+              >
+                {pubUploading ? 'Envoi…' : 'Publier'}
+              </button>
             </div>
           </div>
         </div>
