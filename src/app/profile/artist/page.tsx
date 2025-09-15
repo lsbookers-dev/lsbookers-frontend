@@ -130,11 +130,11 @@ export default function ArtistProfilePage() {
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
   const [location, setLocation] = useState(artist.location)
-  const [editingLoc, setEditingLoc] = useState(false)
-  const [locDraft, setLocDraft] = useState(location)
-  const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudEmbedUrl)
-  const [showSoundcloud, setShowSoundcloud] = useState(artist.showSoundcloud)
-  const [following, setFollowing] = useState(false)
+  const [editingLoc, setEditingLoc] = useState(false) // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [locDraft, setLocDraft] = useState(location) // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudEmbedUrl) // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [showSoundcloud, setShowSoundcloud] = useState(artist.showSoundcloud) // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [following, setFollowing] = useState(false) // eslint-disable-line @typescript-eslint/no-unused-vars
 
   useEffect(() => {
     try {
@@ -288,7 +288,7 @@ export default function ArtistProfilePage() {
     }
   }
 
-  const toggleFollow = () => alert('Vous suivez maintenant cet artiste ✅') // Simplifié pour tester
+  const toggleFollow = () => alert('Vous suivez maintenant cet artiste ✅') // Simplifié
 
   const addStyle = () => {
     const s = newStyle.trim()
