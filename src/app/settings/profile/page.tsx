@@ -35,7 +35,7 @@ export default function ProfileSettings() {
       }
     }
     loadProfile()
-  }, [])
+  }, [token, userId])
 
   const saveSettings = async () => {
     if (!token || !profileId) {

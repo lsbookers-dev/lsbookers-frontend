@@ -44,9 +44,9 @@ type ApiProfile = {
   avatar?: string | null
   banner?: string | null
   user?: ApiUser
-  soundcloudUrl?: string | null // Nouvelle propriété optionnelle
-  showSoundcloud?: boolean | null // Nouvelle propriété optionnelle
-  following?: boolean | null // Déjà présente dans le code corrigé
+  soundcloudUrl?: string | null
+  showSoundcloud?: boolean | null
+  following?: boolean | null
 }
 
 async function uploadToCloudinary(
@@ -137,69 +137,54 @@ export default function ArtistProfilePage() {
   const [following, setFollowing] = useState(false)
 
   useEffect(() => {
-    try {
-      const t = localStorage.getItem('token')
-      const uStr = localStorage.getItem('user')
-      if (t) setToken(t)
-      if (uStr) {
-        const u: StoredUser = JSON.parse(uStr)
-        setCurrentUser(u)
-        const uid = typeof u?.id === 'string' ? parseInt(u.id, 10) : u?.id
-        setUserId(uid || null)
-        if (u?.profile?.id) setProfileId(u.profile.id)
-      }
-    } catch {
-      // ignore
-    }
-  }, [])
-
-  useEffect(() => {
     const loadProfile = async () => {
-      if (!API_BASE || !userId) return
+      if (!API_BASE || !userId || !token) return;
       try {
-        const r = await fetch(`${API_BASE}/api/profile/user/${userId}`)
-        if (!r.ok) return
-        const data = (await r.json()) as { profile?: ApiProfile }
-        const p = data?.profile
+        const r = await fetch(`${API_BASE}/api/profile/user/${userId}`);
+        if (!r.ok) return;
+        const data = (await r.json()) as { profile?: ApiProfile };
+        const p = data?.profile;
         if (p) {
-          setProfile(p)
-          if (p.banner) setBannerUrl(p.banner)
-          if (p.avatar) setAvatarUrl(p.avatar)
-          if (!profileId && p.id) setProfileId(p.id)
+          setProfile(p);
+          if (p.banner) setBannerUrl(p.banner);
+          if (p.avatar) setAvatarUrl(p.avatar);
+          if (!profileId && p.id) setProfileId(p.id);
           if (p.specialties && Array.isArray(p.specialties) && p.specialties.length > 0) {
-            setRoles(p.specialties.map((s) => ({ label: s })))
+            setRoles(p.specialties.map((s) => ({ label: s })));
+          } else {
+            setRoles([]);
           }
-          if (p.location) setLocation(p.location)
-          if (p.soundcloudUrl) setSoundcloudUrl(p.soundcloudUrl)
-          if (p.showSoundcloud !== undefined) setShowSoundcloud(p.showSoundcloud)
-          if (p.following !== undefined) setFollowing(p.following)
+          setLocation(p.location || '');
+          setSoundcloudUrl(p.soundcloudUrl || '');
+          setShowSoundcloud(p.showSoundcloud !== null && p.showSoundcloud !== undefined ? p.showSoundcloud : false);
+          setFollowing(p.following !== null && p.following !== undefined ? p.following : false);
         }
       } catch {
         // ignore
       }
-    }
-    loadProfile()
-  }, [API_BASE, userId, profileId])
+    };
+    loadProfile();
+  }, [API_BASE, userId, profileId, token]);
 
   useEffect(() => {
     const loadPublications = async () => {
-      if (!API_BASE || !profileId) return
+      if (!API_BASE || !profileId) return;
       try {
-        const res = await fetch(`${API_BASE}/api/publications/profile/${profileId}`)
-        if (!res.ok) throw new Error('Failed to load publications')
-        const data = await res.json()
-        setPublications(data.publications || [])
+        const res = await fetch(`${API_BASE}/api/publications/profile/${profileId}`);
+        if (!res.ok) throw new Error('Failed to load publications');
+        const data = await res.json();
+        setPublications(data.publications || []);
       } catch (err) {
-        console.error('Erreur de chargement des publications:', err)
+        console.error('Erreur de chargement des publications:', err);
       }
-    }
-    loadPublications()
-  }, [API_BASE, profileId])
+    };
+    loadPublications();
+  }, [API_BASE, profileId]);
 
   const saveProfile = async (fields: Record<string, unknown>) => {
-    if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
-    if (!token) throw new Error('TOKEN_ABSENT')
-    if (!profileId) throw new Error('PROFILE_ID_ABSENT')
+    if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant');
+    if (!token) throw new Error('TOKEN_ABSENT');
+    if (!profileId) throw new Error('PROFILE_ID_ABSENT');
     const res = await fetch(`${API_BASE}/api/profile/${profileId}`, {
       method: 'PUT',
       headers: {
@@ -207,36 +192,34 @@ export default function ArtistProfilePage() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(fields),
-    })
+    });
     if (!res.ok) {
-      const err = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(err?.error || 'PROFILE_SAVE_FAILED')
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err?.error || 'PROFILE_SAVE_FAILED');
     }
-    const updatedProfile = await res.json()
-    setProfile(prev => ({ ...prev, ...updatedProfile }))
-  }
+  };
 
   const toggleRole = async (label: string) => {
     const next = roles.some(r => r.label === label)
       ? roles.filter(r => r.label !== label)
-      : [...roles, { label }]
-    const previous = roles
-    setRoles(next)
+      : [...roles, { label }];
+    const previous = roles;
+    setRoles(next);
     try {
-      await saveProfile({ specialties: next.map(r => r.label) })
+      await saveProfile({ specialties: next.map(r => r.label) });
     } catch (err) {
-      console.error('Erreur de sauvegarde des spécialités:', err)
-      setRoles(previous)
-      alert("Impossible d'enregistrer les spécialités (vérifie que tu es connecté).")
+      console.error('Erreur de sauvegarde des spécialités:', err);
+      setRoles(previous);
+      alert("Impossible d'enregistrer les spécialités (vérifie que tu es connecté).");
     }
-  }
+  };
 
   const addPublication = async () => {
-    if (!newPubTitle.trim() || !newPubFile) return
+    if (!newPubTitle.trim() || !newPubFile) return;
     try {
-      setPubUploading(true)
-      const mediaType = newPubFile.type.startsWith('video/') ? 'video' : 'image'
-      const { url } = await uploadToCloudinary(newPubFile, 'media', mediaType)
+      setPubUploading(true);
+      const mediaType = newPubFile.type.startsWith('video/') ? 'video' : 'image';
+      const { url } = await uploadToCloudinary(newPubFile, 'media', mediaType);
       const newPub = {
         title: newPubTitle,
         media: url,
@@ -245,7 +228,7 @@ export default function ArtistProfilePage() {
         profileId,
         likes: 0,
         comments: [],
-      }
+      };
       const res = await fetch(`${API_BASE}/api/publications`, {
         method: 'POST',
         headers: {
@@ -253,51 +236,51 @@ export default function ArtistProfilePage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(newPub),
-      })
-      if (!res.ok) throw new Error('Failed to save publication')
-      const savedPub = await res.json()
-      setPublications(prev => [savedPub, ...prev])
-      setNewPubTitle('')
-      setNewPubCaption('')
-      setNewPubFile(null)
-      setShowAddPubModal(false)
-      alert('Publication ajoutée ✅')
+      });
+      if (!res.ok) throw new Error('Failed to save publication');
+      const savedPub = await res.json();
+      setPublications(prev => [savedPub, ...prev]);
+      setNewPubTitle('');
+      setNewPubCaption('');
+      setNewPubFile(null);
+      setShowAddPubModal(false);
+      alert('Publication ajoutée ✅');
     } catch (err) {
-      console.error('Erreur lors de l’ajout de la publication:', err)
-      alert('Échec de l’ajout de la publication')
+      console.error('Erreur lors de l’ajout de la publication:', err);
+      alert('Échec de l’ajout de la publication');
     } finally {
-      setPubUploading(false)
-      if (pubInputRef.current) pubInputRef.current.value = ''
+      setPubUploading(false);
+      if (pubInputRef.current) pubInputRef.current.value = '';
     }
-  }
+  };
 
   const deletePublication = async (id: number) => {
-    if (!confirm('Supprimer cette publication ?')) return
+    if (!confirm('Supprimer cette publication ?')) return;
     try {
       const res = await fetch(`${API_BASE}/api/publications/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
-      if (!res.ok) throw new Error('Failed to delete publication')
-      setPublications(prev => prev.filter(p => p.id !== id))
-      alert('Publication supprimée ✅')
+      });
+      if (!res.ok) throw new Error('Failed to delete publication');
+      setPublications(prev => prev.filter(p => p.id !== id));
+      alert('Publication supprimée ✅');
     } catch (err) {
-      console.error('Erreur lors de la suppression:', err)
-      alert('Échec de la suppression')
+      console.error('Erreur lors de la suppression:', err);
+      alert('Échec de la suppression');
     }
-  }
+  };
 
   const toggleLike = async (pubId: number) => {
     if (!token || !userId) {
-      alert('Connecte-toi pour liker.')
-      return
+      alert('Connecte-toi pour liker.');
+      return;
     }
-    const pub = publications.find(p => p.id === pubId)
-    if (!pub) return
-    const newLikes = pub.likes ? pub.likes + 1 : 1
-    setPublications(prev => prev.map(p => p.id === pubId ? { ...p, likes: newLikes } : p))
+    const pub = publications.find(p => p.id === pubId);
+    if (!pub) return;
+    const newLikes = pub.likes ? pub.likes + 1 : 1;
+    setPublications(prev => prev.map(p => p.id === pubId ? { ...p, likes: newLikes } : p));
     try {
       await fetch(`${API_BASE}/api/publications/${pubId}/like`, {
         method: 'POST',
@@ -306,20 +289,20 @@ export default function ArtistProfilePage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ userId }),
-      })
+      });
     } catch (err) {
-      console.error('Erreur lors du like:', err)
-      setPublications(prev => prev.map(p => p.id === pubId ? { ...p, likes: pub.likes } : p))
-      alert('Échec du like')
+      console.error('Erreur lors du like:', err);
+      setPublications(prev => prev.map(p => p.id === pubId ? { ...p, likes: pub.likes } : p));
+      alert('Échec du like');
     }
-  }
+  };
 
   const addComment = async (pubId: number, comment: string) => {
-    if (!token || !userId || !comment.trim()) return
-    const pub = publications.find(p => p.id === pubId)
-    if (!pub) return
-    const newComments = [...(pub.comments || []), `${currentUser?.name || 'Anonyme'}: ${comment}`]
-    setPublications(prev => prev.map(p => p.id === pubId ? { ...p, comments: newComments } : p))
+    if (!token || !userId || !comment.trim()) return;
+    const pub = publications.find(p => p.id === pubId);
+    if (!pub) return;
+    const newComments = [...(pub.comments || []), `${currentUser?.name || 'Anonyme'}: ${comment}`];
+    setPublications(prev => prev.map(p => p.id === pubId ? { ...p, comments: newComments } : p));
     try {
       await fetch(`${API_BASE}/api/publications/${pubId}/comment`, {
         method: 'POST',
@@ -328,21 +311,21 @@ export default function ArtistProfilePage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ userId, comment }),
-      })
+      });
     } catch (err) {
-      console.error('Erreur lors du commentaire:', err)
-      setPublications(prev => prev.map(p => p.id === pubId ? { ...p, comments: pub.comments } : p))
-      alert('Échec du commentaire')
+      console.error('Erreur lors du commentaire:', err);
+      setPublications(prev => prev.map(p => p.id === pubId ? { ...p, comments: pub.comments } : p));
+      alert('Échec du commentaire');
     }
-  }
+  };
 
   const toggleFollow = async () => {
     if (!token || !userId || !profileId) {
-      alert('Connecte-toi pour suivre.')
-      return
+      alert('Connecte-toi pour suivre.');
+      return;
     }
-    const newFollowing = !following
-    setFollowing(newFollowing)
+    const newFollowing = !following;
+    setFollowing(newFollowing);
     try {
       await fetch(`${API_BASE}/api/follow/${profileId}`, {
         method: newFollowing ? 'POST' : 'DELETE',
@@ -351,130 +334,130 @@ export default function ArtistProfilePage() {
           Authorization: `Bearer ${token}`,
         },
         body: newFollowing ? JSON.stringify({ followerId: userId }) : undefined,
-      })
-      alert(`Vous ${newFollowing ? 'suivez' : 'ne suivez plus'} cet artiste ✅`)
+      });
+      alert(`Vous ${newFollowing ? 'suivez' : 'ne suivez plus'} cet artiste ✅`);
     } catch (err) {
-      console.error('Erreur lors du follow:', err)
-      setFollowing(!newFollowing)
-      alert('Échec du follow')
+      console.error('Erreur lors du follow:', err);
+      setFollowing(!newFollowing);
+      alert('Échec du follow');
     }
-  }
+  };
 
   const saveDescription = async () => {
     try {
-      await saveProfile({ bio: descDraft })
-      setDescription(descDraft)
-      setEditingDesc(false)
-      alert('Description mise à jour ✅')
+      await saveProfile({ bio: descDraft });
+      setDescription(descDraft);
+      setEditingDesc(false);
+      alert('Description mise à jour ✅');
     } catch (err) {
-      console.error('Erreur lors de la sauvegarde de la description:', err)
-      setDescDraft(description)
-      alert('Échec de la sauvegarde')
+      console.error('Erreur lors de la sauvegarde de la description:', err);
+      setDescDraft(description);
+      alert('Échec de la sauvegarde');
     }
-  }
+  };
 
   const saveLocation = async () => {
     try {
-      await saveProfile({ location: locDraft })
-      setLocation(locDraft)
-      setEditingLoc(false)
-      alert('Localisation mise à jour ✅')
+      await saveProfile({ location: locDraft });
+      setLocation(locDraft);
+      setEditingLoc(false);
+      alert('Localisation mise à jour ✅');
     } catch (err) {
-      console.error('Erreur lors de la sauvegarde de la localisation:', err)
-      setLocDraft(location)
-      alert('Échec de la sauvegarde')
+      console.error('Erreur lors de la sauvegarde de la localisation:', err);
+      setLocDraft(location);
+      alert('Échec de la sauvegarde');
     }
-  }
+  };
 
   const saveStyles = async () => {
     try {
-      await saveProfile({ styles })
-      alert('Styles mis à jour ✅')
+      await saveProfile({ styles });
+      alert('Styles mis à jour ✅');
     } catch (err) {
-      console.error('Erreur lors de la sauvegarde des styles:', err)
-      setStyles(styles)
-      alert('Échec de la sauvegarde')
+      console.error('Erreur lors de la sauvegarde des styles:', err);
+      setStyles(styles);
+      alert('Échec de la sauvegarde');
     }
-  }
+  };
 
   const savePrices = async () => {
     try {
-      await saveProfile({ prices })
-      alert('Tarifs mis à jour ✅')
+      await saveProfile({ prices });
+      alert('Tarifs mis à jour ✅');
     } catch (err) {
-      console.error('Erreur lors de la sauvegarde des tarifs:', err)
-      setPrices(prices)
-      alert('Échec de la sauvegarde')
+      console.error('Erreur lors de la sauvegarde des tarifs:', err);
+      setPrices(prices);
+      alert('Échec de la sauvegarde');
     }
-  }
+  };
 
   const addStyle = () => {
-    const s = newStyle.trim()
-    if (!s || styles.includes(s)) return
-    const next = [...styles, s]
-    setStyles(next)
-    setNewStyle('')
-    saveStyles()
-  }
+    const s = newStyle.trim();
+    if (!s || styles.includes(s)) return;
+    const next = [...styles, s];
+    setStyles(next);
+    setNewStyle('');
+    saveStyles();
+  };
 
   const removeStyle = (s: string) => {
-    const next = styles.filter(x => x !== s)
-    setStyles(next)
-    saveStyles()
-  }
+    const next = styles.filter(x => x !== s);
+    setStyles(next);
+    saveStyles();
+  };
 
   const addPrice = () => {
-    const lbl = newPriceLabel.trim()
-    const val = newPriceValue.trim()
-    if (!lbl || !val) return
-    const next = [...prices, { id: Date.now(), label: lbl, price: val }]
-    setPrices(next)
-    setNewPriceLabel('')
-    setNewPriceValue('')
-    savePrices()
-  }
+    const lbl = newPriceLabel.trim();
+    const val = newPriceValue.trim();
+    if (!lbl || !val) return;
+    const next = [...prices, { id: Date.now(), label: lbl, price: val }];
+    setPrices(next);
+    setNewPriceLabel('');
+    setNewPriceValue('');
+    savePrices();
+  };
 
   const removePrice = (id: number) => {
-    const next = prices.filter(p => p.id !== id)
-    setPrices(next)
-    savePrices()
-  }
+    const next = prices.filter(p => p.id !== id);
+    setPrices(next);
+    savePrices();
+  };
 
-  const contact = () => router.push(`/messages/new?to=${userId ?? artist.id}`)
+  const contact = () => router.push(`/messages/new?to=${userId ?? artist.id}`);
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
     try {
-      setBannerUploading(true)
-      const { url } = await uploadToCloudinary(file, 'banners', 'image')
-      setBannerUrl(url)
-      await saveProfile({ banner: url })
-      alert('Bannière mise à jour ✅')
+      setBannerUploading(true);
+      const { url } = await uploadToCloudinary(file, 'banners', 'image');
+      setBannerUrl(url);
+      await saveProfile({ banner: url });
+      alert('Bannière mise à jour ✅');
     } catch (err) {
-      console.error(err)
-      alert("Échec de sauvegarde de la bannière (auth ou profil ?)")
+      console.error(err);
+      alert("Échec de sauvegarde de la bannière (auth ou profil ?)");
     } finally {
-      setBannerUploading(false)
-      e.target.value = ''
+      setBannerUploading(false);
+      e.target.value = '';
     }
-  }
+  };
   const onSelectAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
     try {
-      setAvatarUploading(true)
-      const { url } = await uploadToCloudinary(file, 'avatars', 'image')
-      setAvatarUrl(url)
-      await saveProfile({ avatar: url })
-      alert('Photo de profil mise à jour ✅')
+      setAvatarUploading(true);
+      const { url } = await uploadToCloudinary(file, 'avatars', 'image');
+      setAvatarUrl(url);
+      await saveProfile({ avatar: url });
+      alert('Photo de profil mise à jour ✅');
     } catch (err) {
-      console.error(err)
-      alert("Échec de sauvegarde de l'avatar (auth ou profil ?)")
+      console.error(err);
+      alert("Échec de sauvegarde de l'avatar (auth ou profil ?)");
     } finally {
-      setAvatarUploading(false)
-      e.target.value = ''
+      setAvatarUploading(false);
+      e.target.value = '';
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -569,7 +552,7 @@ export default function ArtistProfilePage() {
                 {rolePickerOpen && (
                   <div className="absolute z-20 mt-2 w-48 rounded-xl bg-neutral-900 border border-white/10 p-2">
                     {allRoleOptions.map(opt => {
-                      const active = roles.some(r => r.label === opt)
+                      const active = roles.some(r => r.label === opt);
                       return (
                         <button
                           key={opt}
@@ -578,7 +561,7 @@ export default function ArtistProfilePage() {
                         >
                           {active ? '— ' : '+ '} {opt}
                         </button>
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -640,6 +623,7 @@ export default function ArtistProfilePage() {
                     <button
                       onClick={() => toggleLike(publications[0].id)}
                       className="absolute top-2 left-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                      disabled={!token || !userId}
                     >
                       👍 {publications[0].likes || 0}
                     </button>
@@ -691,8 +675,8 @@ export default function ArtistProfilePage() {
               {!editingDesc ? (
                 <button
                   onClick={() => {
-                    setDescDraft(description)
-                    setEditingDesc(true)
+                    setDescDraft(description);
+                    setEditingDesc(true);
                   }}
                   className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
                 >
@@ -702,7 +686,7 @@ export default function ArtistProfilePage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      saveDescription()
+                      saveDescription();
                     }}
                     className="text-sm px-3 py-1 rounded-full bg-pink-600 hover:bg-pink-500"
                   >
@@ -734,7 +718,7 @@ export default function ArtistProfilePage() {
           </section>
         </div>
         <aside className="space-y-6">
-          {showSoundcloud && (
+          {(showSoundcloud && soundcloudUrl) && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3">
               <div className="rounded-lg overflow-hidden">
                 <iframe
