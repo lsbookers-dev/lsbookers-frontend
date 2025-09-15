@@ -1,5 +1,4 @@
 'use client'
-
 import { useMemo, useRef, useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -14,10 +13,9 @@ import {
 } from 'lucide-react'
 
 type RoleTag = { label: string }
-type Publication = { id: number; title: string; media: string; mediaType: 'image' | 'video'; caption?: string; time?: string }
+type Publication = { id: number; title: string; media: string; mediaType: 'image' | 'video'; caption?: string; time?: string; likes?: number; comments?: string[] }
 type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
 type PriceLine = { id: number; label: string; price: string }
-
 type StoredUser = {
   id: number | string
   name?: string
@@ -25,14 +23,12 @@ type StoredUser = {
   role?: string
   profile?: { id: number }
 }
-
 type ApiUser = {
   id: number
   name: string
   email?: string
   role?: string
 }
-
 type ApiProfile = {
   id: number
   userId: number
@@ -48,6 +44,9 @@ type ApiProfile = {
   avatar?: string | null
   banner?: string | null
   user?: ApiUser
+  soundcloudUrl?: string | null // Nouvelle propriété optionnelle
+  showSoundcloud?: boolean | null // Nouvelle propriété optionnelle
+  following?: boolean | null // Déjà présente dans le code corrigé
 }
 
 async function uploadToCloudinary(
@@ -58,12 +57,10 @@ async function uploadToCloudinary(
   const API = process.env.NEXT_PUBLIC_API_URL
   if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant dans le frontend')
   const base = API.replace(/\/$/, '')
-
   const fd = new FormData()
   fd.append('file', file)
   fd.append('folder', folder)
   fd.append('type', type)
-
   const res = await fetch(`${base}/api/upload`, { method: 'POST', body: fd })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -75,7 +72,6 @@ async function uploadToCloudinary(
 export default function ArtistProfilePage() {
   const router = useRouter()
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
   const artist = useMemo(
     () => ({
       id: 1,
@@ -93,7 +89,6 @@ export default function ArtistProfilePage() {
     }),
     []
   )
-
   const [token, setToken] = useState<string | null>(null)
   const [userId, setUserId] = useState<number | null>(null)
   const [profileId, setProfileId] = useState<number | null>(null)
@@ -134,6 +129,12 @@ export default function ArtistProfilePage() {
   const [description, setDescription] = useState(artist.description)
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
+  const [location, setLocation] = useState(artist.location)
+  const [editingLoc, setEditingLoc] = useState(false)
+  const [locDraft, setLocDraft] = useState(location)
+  const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudEmbedUrl)
+  const [showSoundcloud, setShowSoundcloud] = useState(artist.showSoundcloud)
+  const [following, setFollowing] = useState(false)
 
   useEffect(() => {
     try {
@@ -168,6 +169,10 @@ export default function ArtistProfilePage() {
           if (p.specialties && Array.isArray(p.specialties) && p.specialties.length > 0) {
             setRoles(p.specialties.map((s) => ({ label: s })))
           }
+          if (p.location) setLocation(p.location)
+          if (p.soundcloudUrl) setSoundcloudUrl(p.soundcloudUrl)
+          if (p.showSoundcloud !== undefined) setShowSoundcloud(p.showSoundcloud)
+          if (p.following !== undefined) setFollowing(p.following)
         }
       } catch {
         // ignore
@@ -176,7 +181,6 @@ export default function ArtistProfilePage() {
     loadProfile()
   }, [API_BASE, userId, profileId])
 
-  // Charger les publications depuis l'API
   useEffect(() => {
     const loadPublications = async () => {
       if (!API_BASE || !profileId) return
@@ -196,7 +200,6 @@ export default function ArtistProfilePage() {
     if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
     if (!token) throw new Error('TOKEN_ABSENT')
     if (!profileId) throw new Error('PROFILE_ID_ABSENT')
-
     const res = await fetch(`${API_BASE}/api/profile/${profileId}`, {
       method: 'PUT',
       headers: {
@@ -209,16 +212,16 @@ export default function ArtistProfilePage() {
       const err = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(err?.error || 'PROFILE_SAVE_FAILED')
     }
+    const updatedProfile = await res.json()
+    setProfile(prev => ({ ...prev, ...updatedProfile }))
   }
 
   const toggleRole = async (label: string) => {
     const next = roles.some(r => r.label === label)
       ? roles.filter(r => r.label !== label)
       : [...roles, { label }]
-
     const previous = roles
     setRoles(next)
-
     try {
       await saveProfile({ specialties: next.map(r => r.label) })
     } catch (err) {
@@ -240,8 +243,9 @@ export default function ArtistProfilePage() {
         mediaType,
         caption: newPubCaption.trim() || undefined,
         profileId,
+        likes: 0,
+        comments: [],
       }
-
       const res = await fetch(`${API_BASE}/api/publications`, {
         method: 'POST',
         headers: {
@@ -285,31 +289,158 @@ export default function ArtistProfilePage() {
     }
   }
 
+  const toggleLike = async (pubId: number) => {
+    if (!token || !userId) {
+      alert('Connecte-toi pour liker.')
+      return
+    }
+    const pub = publications.find(p => p.id === pubId)
+    if (!pub) return
+    const newLikes = pub.likes ? pub.likes + 1 : 1
+    setPublications(prev => prev.map(p => p.id === pubId ? { ...p, likes: newLikes } : p))
+    try {
+      await fetch(`${API_BASE}/api/publications/${pubId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      })
+    } catch (err) {
+      console.error('Erreur lors du like:', err)
+      setPublications(prev => prev.map(p => p.id === pubId ? { ...p, likes: pub.likes } : p))
+      alert('Échec du like')
+    }
+  }
+
+  const addComment = async (pubId: number, comment: string) => {
+    if (!token || !userId || !comment.trim()) return
+    const pub = publications.find(p => p.id === pubId)
+    if (!pub) return
+    const newComments = [...(pub.comments || []), `${currentUser?.name || 'Anonyme'}: ${comment}`]
+    setPublications(prev => prev.map(p => p.id === pubId ? { ...p, comments: newComments } : p))
+    try {
+      await fetch(`${API_BASE}/api/publications/${pubId}/comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, comment }),
+      })
+    } catch (err) {
+      console.error('Erreur lors du commentaire:', err)
+      setPublications(prev => prev.map(p => p.id === pubId ? { ...p, comments: pub.comments } : p))
+      alert('Échec du commentaire')
+    }
+  }
+
+  const toggleFollow = async () => {
+    if (!token || !userId || !profileId) {
+      alert('Connecte-toi pour suivre.')
+      return
+    }
+    const newFollowing = !following
+    setFollowing(newFollowing)
+    try {
+      await fetch(`${API_BASE}/api/follow/${profileId}`, {
+        method: newFollowing ? 'POST' : 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: newFollowing ? JSON.stringify({ followerId: userId }) : undefined,
+      })
+      alert(`Vous ${newFollowing ? 'suivez' : 'ne suivez plus'} cet artiste ✅`)
+    } catch (err) {
+      console.error('Erreur lors du follow:', err)
+      setFollowing(!newFollowing)
+      alert('Échec du follow')
+    }
+  }
+
+  const saveDescription = async () => {
+    try {
+      await saveProfile({ bio: descDraft })
+      setDescription(descDraft)
+      setEditingDesc(false)
+      alert('Description mise à jour ✅')
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde de la description:', err)
+      setDescDraft(description)
+      alert('Échec de la sauvegarde')
+    }
+  }
+
+  const saveLocation = async () => {
+    try {
+      await saveProfile({ location: locDraft })
+      setLocation(locDraft)
+      setEditingLoc(false)
+      alert('Localisation mise à jour ✅')
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde de la localisation:', err)
+      setLocDraft(location)
+      alert('Échec de la sauvegarde')
+    }
+  }
+
+  const saveStyles = async () => {
+    try {
+      await saveProfile({ styles })
+      alert('Styles mis à jour ✅')
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde des styles:', err)
+      setStyles(styles)
+      alert('Échec de la sauvegarde')
+    }
+  }
+
+  const savePrices = async () => {
+    try {
+      await saveProfile({ prices })
+      alert('Tarifs mis à jour ✅')
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde des tarifs:', err)
+      setPrices(prices)
+      alert('Échec de la sauvegarde')
+    }
+  }
+
   const addStyle = () => {
     const s = newStyle.trim()
     if (!s || styles.includes(s)) return
-    setStyles(prev => [...prev, s])
+    const next = [...styles, s]
+    setStyles(next)
     setNewStyle('')
+    saveStyles()
   }
-  const removeStyle = (s: string) => setStyles(prev => prev.filter(x => x !== s))
+
+  const removeStyle = (s: string) => {
+    const next = styles.filter(x => x !== s)
+    setStyles(next)
+    saveStyles()
+  }
 
   const addPrice = () => {
     const lbl = newPriceLabel.trim()
     const val = newPriceValue.trim()
     if (!lbl || !val) return
-    setPrices(prev => [...prev, { id: Date.now(), label: lbl, price: val }])
+    const next = [...prices, { id: Date.now(), label: lbl, price: val }]
+    setPrices(next)
     setNewPriceLabel('')
     setNewPriceValue('')
+    savePrices()
   }
-  const removePrice = (id: number) => setPrices(prev => prev.filter(p => p.id !== id))
+
+  const removePrice = (id: number) => {
+    const next = prices.filter(p => p.id !== id)
+    setPrices(next)
+    savePrices()
+  }
 
   const contact = () => router.push(`/messages/new?to=${userId ?? artist.id}`)
-  const follow = () => alert('Vous suivez maintenant cet artiste ✅')
-
-  const sorted = [...publications].sort((a, b) => b.id - a.id)
-  const heroPub = sorted[0]
-  const restPubs = sorted.slice(1, 4)
-
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -327,7 +458,6 @@ export default function ArtistProfilePage() {
       e.target.value = ''
     }
   }
-
   const onSelectAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -373,7 +503,6 @@ export default function ArtistProfilePage() {
           onChange={onSelectBanner}
         />
       </div>
-
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
@@ -398,9 +527,31 @@ export default function ArtistProfilePage() {
             <h1 className="text-2xl md:text-3xl font-bold">
               {currentUser?.name ?? profile?.user?.name ?? artist.name}
             </h1>
-            <p className="text-sm text-neutral-300">
-              {(profile?.location ?? artist.location)}, {profile?.country ?? artist.country}
-            </p>
+            {!editingLoc ? (
+              <p className="text-sm text-neutral-300">
+                {location}, {profile?.country ?? artist.country}
+              </p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  className="bg-black/30 border border-white/10 rounded px-3 py-1 text-sm"
+                  value={locDraft}
+                  onChange={(e) => setLocDraft(e.target.value)}
+                />
+                <button
+                  onClick={saveLocation}
+                  className="text-sm px-2 py-1 rounded bg-pink-600 hover:bg-pink-500"
+                >
+                  Enregistrer
+                </button>
+                <button
+                  onClick={() => setEditingLoc(false)}
+                  className="text-sm px-2 py-1 rounded bg-white/10 hover:bg-white/20"
+                >
+                  Annuler
+                </button>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {roles.map(r => (
                 <span key={r.label} className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40">
@@ -423,9 +574,7 @@ export default function ArtistProfilePage() {
                         <button
                           key={opt}
                           onClick={() => toggleRole(opt)}
-                          className={`w-full text-left text-sm px-2 py-1 rounded hover:bg-white/10 ${
-                            active ? 'text-pink-400' : 'text-white'
-                          }`}
+                          className={`w-full text-left text-sm px-2 py-1 rounded hover:bg-white/10 ${active ? 'text-pink-400' : 'text-white'}`}
                         >
                           {active ? '— ' : '+ '} {opt}
                         </button>
@@ -437,7 +586,6 @@ export default function ArtistProfilePage() {
             </div>
           </div>
         </div>
-
         <div className="flex items-center gap-3">
           <button
             onClick={contact}
@@ -446,14 +594,13 @@ export default function ArtistProfilePage() {
             <MessageCircle size={18} /> Contacter
           </button>
           <button
-            onClick={follow}
+            onClick={toggleFollow}
             className="bg-pink-600 rounded-full px-5 py-2 flex items-center gap-2 hover:bg-pink-500"
           >
-            <UserPlus size={18} /> Suivre
+            <UserPlus size={18} /> {following ? 'Suivi' : 'Suivre'}
           </button>
         </div>
       </div>
-
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
         <div className="space-y-6">
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
@@ -474,34 +621,47 @@ export default function ArtistProfilePage() {
                 </button>
               </div>
             </div>
-
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              {heroPub && (
+              {publications.length > 0 && publications[0] && (
                 <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
                   <div className="relative w-full h-64">
-                    {heroPub.mediaType === 'image' ? (
-                      <Image src={heroPub.media} alt={heroPub.title} fill className="object-cover" />
+                    {publications[0].mediaType === 'image' ? (
+                      <Image src={publications[0].media} alt={publications[0].title} fill className="object-cover" />
                     ) : (
-                      <video src={heroPub.media} controls className="w-full h-full object-cover" />
+                      <video src={publications[0].media} controls className="w-full h-full object-cover" />
                     )}
                     <button
-                      onClick={() => deletePublication(heroPub.id)}
+                      onClick={() => deletePublication(publications[0].id)}
                       className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
                       title="Supprimer"
                     >
                       <Trash2 size={16} />
                     </button>
+                    <button
+                      onClick={() => toggleLike(publications[0].id)}
+                      className="absolute top-2 left-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                    >
+                      👍 {publications[0].likes || 0}
+                    </button>
                   </div>
                   <div className="p-3">
-                    <p className="font-medium">{heroPub.title}</p>
-                    {heroPub.caption && <p className="text-sm text-neutral-300 mt-1">{heroPub.caption}</p>}
-                    {heroPub.time && <p className="text-xs text-neutral-400 mt-1">{heroPub.time}</p>}
+                    <p className="font-medium">{publications[0].title}</p>
+                    {publications[0].caption && <p className="text-sm text-neutral-300 mt-1">{publications[0].caption}</p>}
+                    {publications[0].comments && publications[0].comments.length > 0 && (
+                      <div className="mt-2">
+                        <button
+                          onClick={() => addComment(publications[0].id, prompt('Ajouter un commentaire') || '')}
+                          className="text-xs text-blue-400 hover:underline"
+                        >
+                          Commenter ({publications[0].comments.length})
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
-
               <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
-                {restPubs.map(p => (
+                {publications.slice(1, 4).map(p => (
                   <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
                     <div className="relative w-full h-28">
                       {p.mediaType === 'image' ? (
@@ -525,7 +685,6 @@ export default function ArtistProfilePage() {
               </div>
             </div>
           </section>
-
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Description</h2>
@@ -543,8 +702,7 @@ export default function ArtistProfilePage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      setDescription(descDraft)
-                      setEditingDesc(false)
+                      saveDescription()
                     }}
                     className="text-sm px-3 py-1 rounded-full bg-pink-600 hover:bg-pink-500"
                   >
@@ -570,20 +728,13 @@ export default function ArtistProfilePage() {
               />
             )}
           </section>
-
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Mon agenda</h2>
-            <p className="text-neutral-300 mt-2">
-              (On détaillera ici la gestion avancée des disponibilités et bookings.)
-            </p>
-            <div className="mt-3 h-48 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center">
-              <span className="text-neutral-500 text-sm">Calendrier à venir</span>
-            </div>
+            <div id="calendar" className="mt-3 h-96 rounded-xl bg-black/30 border border-white/10"></div>
           </section>
         </div>
-
         <aside className="space-y-6">
-          {artist.showSoundcloud && (
+          {showSoundcloud && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3">
               <div className="rounded-lg overflow-hidden">
                 <iframe
@@ -593,14 +744,15 @@ export default function ArtistProfilePage() {
                   scrolling="no"
                   frameBorder="no"
                   allow="autoplay"
-                  src={artist.soundcloudEmbedUrl}
+                  src={soundcloudUrl}
                 />
               </div>
             </section>
           )}
-
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold">Styles</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Styles</h2>
+            </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {styles.map(s => (
                 <button
@@ -628,7 +780,6 @@ export default function ArtistProfilePage() {
               </button>
             </div>
           </section>
-
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Avis</h2>
@@ -664,7 +815,6 @@ export default function ArtistProfilePage() {
               ))}
             </div>
           </section>
-
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Tarifs</h2>
@@ -711,7 +861,6 @@ export default function ArtistProfilePage() {
           </section>
         </aside>
       </div>
-
       {showAllPubs && (
         <div
           className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
@@ -757,7 +906,6 @@ export default function ArtistProfilePage() {
           </div>
         </div>
       )}
-
       {showAddPubModal && (
         <div
           className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
