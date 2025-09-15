@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 
 type RoleTag = { label: string }
-type Publication = { id: number; title: string; image: string; caption?: string; time?: string; createdAt?: string }
+type Publication = { id: number; title: string; image: string; caption?: string; time?: string }
 type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
 type PriceLine = { id: number; label: string; price: string }
 
@@ -140,69 +140,15 @@ export default function ArtistProfilePage() {
   )
   const [rolePickerOpen, setRolePickerOpen] = useState(false)
 
-  // ====== PUBLICATIONS (réelles) ======
-  const [publications, setPublications] = useState<Publication[]>([])
+  const [publications, setPublications] = useState<Publication[]>([
+    { id: 1, title: 'Live au Studio 88', image: '/media/pub1.jpg', caption: 'Mix hier soir à Marseille 🎧🔥', time: 'Il y a 6h' },
+    { id: 2, title: 'Merci Marseille !', image: '/media/pub2.jpg' },
+    { id: 3, title: 'Backstage 🎧', image: '/media/pub3.jpg' },
+    { id: 4, title: 'Répètes', image: '/media/pub4.jpg' },
+    { id: 5, title: 'Aftermovie', image: '/media/pub5.jpg' },
+  ])
   const [showAllPubs, setShowAllPubs] = useState(false)
-  const pubFileRef = useRef<HTMLInputElement | null>(null)
-  const [newPubTitle, setNewPubTitle] = useState('')
 
-  // Charger publications réelles
-  useEffect(() => {
-    const run = async () => {
-      if (!API_BASE || !userId) return
-      try {
-        const r = await fetch(`${API_BASE}/api/media/user/${userId}`, { cache: 'no-store' })
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        const data = await r.json()
-        const pubs: Publication[] = Array.isArray(data?.publications) ? data.publications : []
-        setPublications(pubs)
-      } catch (e) {
-        console.error('Erreur chargement publications:', e)
-      }
-    }
-    run()
-  }, [API_BASE, userId])
-
-  // Ajout d’une publication : file -> /api/upload -> POST /api/media
-  const onPickPublication = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.currentTarget.value = ''
-    if (!file) return
-    if (!token) return alert('Connecte-toi pour publier.')
-    if (!newPubTitle.trim()) return alert('Indique un titre pour la publication.')
-
-    try {
-      const { url } = await uploadToCloudinary(file, 'media', 'image')
-      const res = await fetch(`${API_BASE}/api/media`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title: newPubTitle.trim(), url }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      const created: Publication | undefined = data?.publication
-      if (created) {
-        setPublications((prev) => [created, ...prev])
-        setNewPubTitle('')
-        alert('Publication ajoutée ✅')
-      }
-    } catch (err) {
-      console.error(err)
-      alert('Échec de la publication.')
-    }
-  }
-
-  const askAddPublication = () => {
-    const title = window.prompt('Titre de la publication ?')
-    if (!title) return
-    setNewPubTitle(title)
-    pubFileRef.current?.click()
-  }
-
-  // ====== Reviews / Styles / Prices (mock locaux inchangés) ======
   const [reviews] = useState<Review[]>([
     { id: 1, author: 'Studio 88', authorAvatar: '/avatars/pro1.png', rating: 5, text: 'Merci pour cette prestation, ravis — je recommande !' },
     { id: 2, author: 'Wedding Planning', authorAvatar: '/avatars/pro2.png', rating: 4, text: 'Très bonne prestation et très professionnel.' },
@@ -291,6 +237,13 @@ export default function ArtistProfilePage() {
     }
   }
 
+  const addPublication = () => {
+    const title = window.prompt('Titre de la publication ?')
+    if (!title) return
+    const image = window.prompt("URL de l'image ?") || '/media/pub_placeholder.jpg'
+    setPublications(prev => [{ id: Date.now(), title, image }, ...prev])
+  }
+
   const addStyle = () => {
     const s = newStyle.trim()
     if (!s || styles.includes(s)) return
@@ -312,6 +265,48 @@ export default function ArtistProfilePage() {
   // Ouvrir une nouvelle conversation avec l'artiste
   const contact = () => router.push(`/messages/new?to=${userId ?? artist.id}`)
   const follow = () => alert('Vous suivez maintenant cet artiste ✅')
+
+  // Publications : afficher au MAX 4 sur la page (1 hero + 3 vignettes)
+  const sorted = [...publications].sort((a, b) => b.id - a.id)
+  const heroPub = sorted[0]
+  const restPubs = sorted.slice(1, 4)
+
+  // Upload handlers (+ persistance) — utilise les bons champs: banner / avatar
+  const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      setBannerUploading(true)
+      const { url } = await uploadToCloudinary(file, 'banners', 'image')
+      setBannerUrl(url) // maj visuelle immédiate
+      await saveProfile({ banner: url }) // ✅ clé correcte
+      alert('Bannière mise à jour ✅')
+    } catch (err) {
+      console.error(err)
+      alert("Échec de sauvegarde de la bannière (auth ou profil ?)")
+    } finally {
+      setBannerUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const onSelectAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      setAvatarUploading(true)
+      const { url } = await uploadToCloudinary(file, 'avatars', 'image')
+      setAvatarUrl(url)
+      await saveProfile({ avatar: url }) // ✅ clé correcte
+      alert('Photo de profil mise à jour ✅')
+    } catch (err) {
+      console.error(err)
+      alert("Échec de sauvegarde de l'avatar (auth ou profil ?)")
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
+  }
 
   /* =========================== UI =========================== */
 
@@ -431,7 +426,7 @@ export default function ArtistProfilePage() {
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
         {/* Colonne gauche */}
         <div className="space-y-6">
-          {/* Publications (réelles) */}
+          {/* Publications */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Publications</h2>
@@ -443,36 +438,30 @@ export default function ArtistProfilePage() {
                   Voir tout
                 </button>
                 <button
-                  onClick={askAddPublication}
+                  onClick={addPublication}
                   className="text-sm px-3 py-1 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1"
                 >
                   <Plus size={16} /> Ajouter
                 </button>
-                <input
-                  ref={pubFileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={onPickPublication}
-                />
               </div>
             </div>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              {publications[0] && (
+              {heroPub && (
                 <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
                   <div className="relative w-full h-64">
-                    <Image src={publications[0].image} alt={publications[0].title} fill className="object-cover" />
+                    <Image src={heroPub.image} alt={heroPub.title} fill className="object-cover" />
                   </div>
                   <div className="p-3">
-                    <p className="font-medium">{publications[0].title}</p>
-                    {publications[0].caption && <p className="text-sm text-neutral-300 mt-1">{publications[0].caption}</p>}
+                    <p className="font-medium">{heroPub.title}</p>
+                    {heroPub.caption && <p className="text-sm text-neutral-300 mt-1">{heroPub.caption}</p>}
+                    {heroPub.time && <p className="text-xs text-neutral-400 mt-1">{heroPub.time}</p>}
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
-                {publications.slice(1, 4).map(p => (
+                {restPubs.map(p => (
                   <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
                     <div className="relative w-full h-28">
                       <Image src={p.image} alt={p.title} fill className="object-cover" />
