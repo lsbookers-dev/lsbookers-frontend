@@ -89,10 +89,10 @@ export default function ArtistProfilePage() {
     }),
     []
   )
-  const [token, setToken] = useState<string | null>(null)
-  const [userId, setUserId] = useState<number | null>(null)
+  const [token, setToken] = useState<string | null>(null) // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [userId, setUserId] = useState<number | null>(null) // eslint-disable-line @typescript-eslint/no-unused-vars
   const [profileId, setProfileId] = useState<number | null>(null)
-  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null)
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null) // eslint-disable-line @typescript-eslint/no-unused-vars
   const [profile, setProfile] = useState<ApiProfile | null>(null)
   const [bannerUrl, setBannerUrl] = useState<string>(artist.banner)
   const [avatarUrl, setAvatarUrl] = useState<string>(artist.avatar)
