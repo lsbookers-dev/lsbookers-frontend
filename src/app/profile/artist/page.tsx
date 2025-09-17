@@ -44,9 +44,6 @@ type ApiProfile = {
   avatar?: string | null
   banner?: string | null
   user?: ApiUser
-  soundcloudUrl?: string | null
-  showSoundcloud?: boolean | null
-  following?: boolean | null
 }
 
 async function uploadToCloudinary(
@@ -85,11 +82,10 @@ export default function ArtistProfilePage() {
         "L’artiste écris ici sa description, en expliquant sa carrière, son parcours etc...",
       soundcloudEmbedUrl:
         'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/martingarrix&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true',
-      showSoundcloud: true,
     }),
     []
   )
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token') || null) // Initialisé directement
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token') || null)
   const [userId, setUserId] = useState<number | null>(null)
   const [profileId, setProfileId] = useState<number | null>(null)
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null)
@@ -129,17 +125,11 @@ export default function ArtistProfilePage() {
   const [description, setDescription] = useState(artist.description)
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
-  const [location, setLocation] = useState(artist.location)
-  const [editingLoc, setEditingLoc] = useState(false) // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [locDraft, setLocDraft] = useState(location) // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudEmbedUrl) // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [showSoundcloud, setShowSoundcloud] = useState(artist.showSoundcloud) // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [following, setFollowing] = useState(false) // eslint-disable-line @typescript-eslint/no-unused-vars
 
   useEffect(() => {
     try {
       const t = localStorage.getItem('token')
-      if (t && !token) setToken(t) // Mise à jour uniquement si token absent
+      if (t && !token) setToken(t)
       const uStr = localStorage.getItem('user')
       if (uStr) {
         const u: StoredUser = JSON.parse(uStr)
@@ -170,17 +160,14 @@ export default function ArtistProfilePage() {
           } else {
             setRoles([])
           }
-          setLocation(p.location || '')
-          setSoundcloudUrl(p.soundcloudUrl || '')
-          setShowSoundcloud(p.showSoundcloud !== null && p.showSoundcloud !== undefined ? p.showSoundcloud : false)
-          setFollowing(p.following !== null && p.following !== undefined ? p.following : false)
+          setDescription(p.bio || artist.description)
         }
       } catch {
         // ignore
       }
     }
     loadProfile()
-  }, [API_BASE, userId, profileId, token])
+  }, [API_BASE, userId, profileId, token, artist.description])
 
   useEffect(() => {
     const loadPublications = async () => {
@@ -288,7 +275,7 @@ export default function ArtistProfilePage() {
     }
   }
 
-  const toggleFollow = () => alert('Vous suivez maintenant cet artiste ✅') // Simplifié
+  const toggleFollow = () => alert('Vous suivez maintenant cet artiste ✅')
 
   const addStyle = () => {
     const s = newStyle.trim()
@@ -410,7 +397,7 @@ export default function ArtistProfilePage() {
               {currentUser?.name ?? profile?.user?.name ?? artist.name}
             </h1>
             <p className="text-sm text-neutral-300">
-              {location}, {profile?.country ?? artist.country}
+              {artist.location}, {profile?.country ?? artist.country}
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {roles.map(r => (
@@ -481,13 +468,13 @@ export default function ArtistProfilePage() {
                 </button>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
+            <div className="mt-4">
               {publications.length > 0 && (
                 <>
                   {/* Dernière publication en grand */}
                   {publications[0] && (
                     <div className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                      <div className="relative w-full h-64">
+                      <div className="relative w-full h-96">
                         {publications[0].mediaType === 'image' ? (
                           <Image src={publications[0].media} alt={publications[0].title} fill className="object-cover" />
                         ) : (
@@ -501,18 +488,18 @@ export default function ArtistProfilePage() {
                           <Trash2 size={16} />
                         </button>
                       </div>
-                      <div className="p-3">
-                        <p className="font-medium">{publications[0].title}</p>
-                        {publications[0].caption && <p className="text-sm text-neutral-300 mt-1">{publications[0].caption}</p>}
-                        {publications[0].time && <p className="text-xs text-neutral-400 mt-1">{publications[0].time}</p>}
+                      <div className="p-4">
+                        <p className="font-medium text-lg">{publications[0].title}</p>
+                        {publications[0].caption && <p className="text-sm text-neutral-300 mt-2">{publications[0].caption}</p>}
+                        {publications[0].time && <p className="text-xs text-neutral-400 mt-2">{publications[0].time}</p>}
                       </div>
                     </div>
                   )}
                   {/* Trois miniatures des publications précédentes */}
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="mt-4 grid grid-cols-3 gap-4">
                     {publications.slice(1, 4).map(p => (
-                      <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30 h-28">
-                        <div className="relative w-full h-full">
+                      <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                        <div className="relative w-full h-32">
                           {p.mediaType === 'image' ? (
                             <Image src={p.media} alt={p.title} fill className="object-cover" />
                           ) : (
@@ -586,21 +573,6 @@ export default function ArtistProfilePage() {
           </section>
         </div>
         <aside className="space-y-6">
-          {artist.showSoundcloud && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3">
-              <div className="rounded-lg overflow-hidden">
-                <iframe
-                  title="Soundcloud"
-                  width="100%"
-                  height="180"
-                  scrolling="no"
-                  frameBorder="no"
-                  allow="autoplay"
-                  src={artist.soundcloudEmbedUrl}
-                />
-              </div>
-            </section>
-          )}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Styles</h2>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -809,4 +781,3 @@ export default function ArtistProfilePage() {
     </div>
   )
 }
-
