@@ -44,9 +44,6 @@ type ApiProfile = {
   avatar?: string | null
   banner?: string | null
   user?: ApiUser
-  soundcloudUrl?: string | null
-  showSoundcloud?: boolean | null
-  following?: boolean | null
 }
 
 async function uploadToCloudinary(
@@ -85,7 +82,6 @@ export default function ArtistProfilePage() {
         "L’artiste écris ici sa description, en expliquant sa carrière, son parcours etc...",
       soundcloudEmbedUrl:
         'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/martingarrix&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true',
-      showSoundcloud: true,
     }),
     []
   )
@@ -129,12 +125,6 @@ export default function ArtistProfilePage() {
   const [description, setDescription] = useState(artist.description)
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
-  const [location, setLocation] = useState(artist.location)
-  const [editingLoc, setEditingLoc] = useState(false)
-  const [locDraft, setLocDraft] = useState(location)
-  const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudEmbedUrl)
-  const [showSoundcloud, setShowSoundcloud] = useState(artist.showSoundcloud)
-  const [following, setFollowing] = useState(false)
 
   useEffect(() => {
     try {
@@ -170,17 +160,14 @@ export default function ArtistProfilePage() {
           } else {
             setRoles([])
           }
-          setLocation(p.location || '')
-          setSoundcloudUrl(p.soundcloudUrl || '')
-          setShowSoundcloud(p.showSoundcloud !== null && p.showSoundcloud !== undefined ? p.showSoundcloud : false)
-          setFollowing(p.following !== null && p.following !== undefined ? p.following : false)
+          setDescription(p.bio || artist.description)
         }
       } catch {
         // ignore
       }
     }
     loadProfile()
-  }, [API_BASE, userId, profileId, token])
+  }, [API_BASE, userId, profileId, token, artist.description])
 
   useEffect(() => {
     const loadPublications = async () => {
@@ -410,7 +397,7 @@ export default function ArtistProfilePage() {
               {currentUser?.name ?? profile?.user?.name ?? artist.name}
             </h1>
             <p className="text-sm text-neutral-300">
-              {location}, {profile?.country ?? artist.country}
+              {artist.location}, {profile?.country ?? artist.country}
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {roles.map(r => (
@@ -586,21 +573,6 @@ export default function ArtistProfilePage() {
           </section>
         </div>
         <aside className="space-y-6">
-          {artist.showSoundcloud && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3">
-              <div className="rounded-lg overflow-hidden">
-                <iframe
-                  title="Soundcloud"
-                  width="100%"
-                  height="180"
-                  scrolling="no"
-                  frameBorder="no"
-                  allow="autoplay"
-                  src={artist.soundcloudEmbedUrl}
-                />
-              </div>
-            </section>
-          )}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Styles</h2>
             <div className="mt-3 flex flex-wrap gap-2">
