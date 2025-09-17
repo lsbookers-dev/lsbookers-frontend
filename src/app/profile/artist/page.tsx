@@ -89,7 +89,7 @@ export default function ArtistProfilePage() {
     }),
     []
   )
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token') || null) // Initialisé directement
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token') || null)
   const [userId, setUserId] = useState<number | null>(null)
   const [profileId, setProfileId] = useState<number | null>(null)
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null)
@@ -130,16 +130,16 @@ export default function ArtistProfilePage() {
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
   const [location, setLocation] = useState(artist.location)
-  const [editingLoc, setEditingLoc] = useState(false) // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [locDraft, setLocDraft] = useState(location) // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudEmbedUrl) // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [showSoundcloud, setShowSoundcloud] = useState(artist.showSoundcloud) // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [following, setFollowing] = useState(false) // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [editingLoc, setEditingLoc] = useState(false)
+  const [locDraft, setLocDraft] = useState(location)
+  const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudEmbedUrl)
+  const [showSoundcloud, setShowSoundcloud] = useState(artist.showSoundcloud)
+  const [following, setFollowing] = useState(false)
 
   useEffect(() => {
     try {
       const t = localStorage.getItem('token')
-      if (t && !token) setToken(t) // Mise à jour uniquement si token absent
+      if (t && !token) setToken(t)
       const uStr = localStorage.getItem('user')
       if (uStr) {
         const u: StoredUser = JSON.parse(uStr)
@@ -288,7 +288,7 @@ export default function ArtistProfilePage() {
     }
   }
 
-  const toggleFollow = () => alert('Vous suivez maintenant cet artiste ✅') // Simplifié
+  const toggleFollow = () => alert('Vous suivez maintenant cet artiste ✅')
 
   const addStyle = () => {
     const s = newStyle.trim()
@@ -481,13 +481,13 @@ export default function ArtistProfilePage() {
                 </button>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
+            <div className="mt-4">
               {publications.length > 0 && (
                 <>
-                  {/* Dernière publication en grand avec aspect-ratio */}
+                  {/* Dernière publication en grand */}
                   {publications[0] && (
                     <div className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                      <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+                      <div className="relative w-full h-96">
                         {publications[0].mediaType === 'image' ? (
                           <Image src={publications[0].media} alt={publications[0].title} fill className="object-cover" />
                         ) : (
@@ -501,18 +501,18 @@ export default function ArtistProfilePage() {
                           <Trash2 size={16} />
                         </button>
                       </div>
-                      <div className="p-3">
-                        <p className="font-medium">{publications[0].title}</p>
-                        {publications[0].caption && <p className="text-sm text-neutral-300 mt-1">{publications[0].caption}</p>}
-                        {publications[0].time && <p className="text-xs text-neutral-400 mt-1">{publications[0].time}</p>}
+                      <div className="p-4">
+                        <p className="font-medium text-lg">{publications[0].title}</p>
+                        {publications[0].caption && <p className="text-sm text-neutral-300 mt-2">{publications[0].caption}</p>}
+                        {publications[0].time && <p className="text-xs text-neutral-400 mt-2">{publications[0].time}</p>}
                       </div>
                     </div>
                   )}
                   {/* Trois miniatures des publications précédentes */}
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="mt-4 grid grid-cols-3 gap-4">
                     {publications.slice(1, 4).map(p => (
-                      <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30" style={{ aspectRatio: '4/3' }}>
-                        <div className="relative w-full h-full">
+                      <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                        <div className="relative w-full h-32">
                           {p.mediaType === 'image' ? (
                             <Image src={p.media} alt={p.title} fill className="object-cover" />
                           ) : (
