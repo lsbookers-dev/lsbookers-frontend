@@ -484,10 +484,10 @@ export default function ArtistProfilePage() {
             <div className="mt-4 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
               {publications.length > 0 && (
                 <>
-                  {/* Dernière publication en grand */}
+                  {/* Dernière publication en grand avec aspect-ratio */}
                   {publications[0] && (
                     <div className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                      <div className="relative w-full h-64">
+                      <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
                         {publications[0].mediaType === 'image' ? (
                           <Image src={publications[0].media} alt={publications[0].title} fill className="object-cover" />
                         ) : (
@@ -511,7 +511,7 @@ export default function ArtistProfilePage() {
                   {/* Trois miniatures des publications précédentes */}
                   <div className="grid grid-cols-1 gap-4">
                     {publications.slice(1, 4).map(p => (
-                      <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30 h-28">
+                      <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30" style={{ aspectRatio: '4/3' }}>
                         <div className="relative w-full h-full">
                           {p.mediaType === 'image' ? (
                             <Image src={p.media} alt={p.title} fill className="object-cover" />
