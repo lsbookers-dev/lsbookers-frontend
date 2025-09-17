@@ -481,53 +481,59 @@ export default function ArtistProfilePage() {
                 </button>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              {publications.length > 0 && publications[0] && (
-                <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                  <div className="relative w-full h-64">
-                    {publications[0].mediaType === 'image' ? (
-                      <Image src={publications[0].media} alt={publications[0].title} fill className="object-cover" />
-                    ) : (
-                      <video src={publications[0].media} controls className="w-full h-full object-cover" />
-                    )}
-                    <button
-                      onClick={() => deletePublication(publications[0].id)}
-                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
-                      title="Supprimer"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
+              {publications.length > 0 && (
+                <>
+                  {/* Dernière publication en grand */}
+                  {publications[0] && (
+                    <div className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                      <div className="relative w-full h-64">
+                        {publications[0].mediaType === 'image' ? (
+                          <Image src={publications[0].media} alt={publications[0].title} fill className="object-cover" />
+                        ) : (
+                          <video src={publications[0].media} controls className="w-full h-full object-cover" />
+                        )}
+                        <button
+                          onClick={() => deletePublication(publications[0].id)}
+                          className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="p-3">
+                        <p className="font-medium">{publications[0].title}</p>
+                        {publications[0].caption && <p className="text-sm text-neutral-300 mt-1">{publications[0].caption}</p>}
+                        {publications[0].time && <p className="text-xs text-neutral-400 mt-1">{publications[0].time}</p>}
+                      </div>
+                    </div>
+                  )}
+                  {/* Trois miniatures des publications précédentes */}
+                  <div className="grid grid-cols-1 gap-4">
+                    {publications.slice(1, 4).map(p => (
+                      <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30 h-28">
+                        <div className="relative w-full h-full">
+                          {p.mediaType === 'image' ? (
+                            <Image src={p.media} alt={p.title} fill className="object-cover" />
+                          ) : (
+                            <video src={p.media} controls className="w-full h-full object-cover" />
+                          )}
+                          <button
+                            onClick={() => deletePublication(p.id)}
+                            className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                            title="Supprimer"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <div className="p-2">
+                          <p className="text-sm font-medium truncate">{p.title}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-3">
-                    <p className="font-medium">{publications[0].title}</p>
-                    {publications[0].caption && <p className="text-sm text-neutral-300 mt-1">{publications[0].caption}</p>}
-                    {publications[0].time && <p className="text-xs text-neutral-400 mt-1">{publications[0].time}</p>}
-                  </div>
-                </div>
+                </>
               )}
-              <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
-                {publications.slice(1, 4).map(p => (
-                  <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                    <div className="relative w-full h-28">
-                      {p.mediaType === 'image' ? (
-                        <Image src={p.media} alt={p.title} fill className="object-cover" />
-                      ) : (
-                        <video src={p.media} controls className="w-full h-full object-cover" />
-                      )}
-                      <button
-                        onClick={() => deletePublication(p.id)}
-                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm font-medium truncate">{p.title}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </section>
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
