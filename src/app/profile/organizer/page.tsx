@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -17,7 +16,6 @@ type StoredUser = {
   role?: string
   profile?: { id: number }
 }
-
 type ApiUser = { id: number; name: string; role?: string }
 type ApiProfile = {
   id: number
@@ -42,6 +40,18 @@ type ApiProfile = {
   } | null
   user?: ApiUser
 }
+type Job = {
+  id: number
+  title: string
+  description: string
+  type: 'ARTIST' | 'PROVIDER' | 'ALL'
+  specialty?: string
+  location: string
+  country: string
+  date: string
+  budget?: string
+  createdAt?: string
+}
 
 /* ============== Helpers (upload + save) ============== */
 async function uploadToCloudinary(
@@ -52,12 +62,10 @@ async function uploadToCloudinary(
   const API = process.env.NEXT_PUBLIC_API_URL
   if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant')
   const base = API.replace(/\/$/, '')
-
   const fd = new FormData()
   fd.append('file', file)
   fd.append('folder', folder)
   fd.append('type', type)
-
   const res = await fetch(`${base}/api/upload`, { method: 'POST', body: fd })
   if (!res.ok) {
     const err = await res.json().catch(() => ({} as { details?: string }))
@@ -101,7 +109,7 @@ export default function OrganizerProfilePage() {
   const [location, setLocation] = useState<string>('')
   const [radiusKm, setRadiusKm] = useState<string>('')
   const [country, setCountry] = useState<string>('')
-  const [lat, setLat] = useState<string>('') // string pour inputs
+  const [lat, setLat] = useState<string>('')
   const [lng, setLng] = useState<string>('')
 
   // ——— description
@@ -125,12 +133,20 @@ export default function OrganizerProfilePage() {
   ])
   const [showAllPubs, setShowAllPubs] = useState(false)
 
-  // ——— offres d’emploi (annonces)
-  type Job = { id: number; title: string; date: string; budget?: string; details?: string }
-  const [jobs, setJobs] = useState<Job[]>([
-    { id: 1, title: 'DJ vendredi 23h–3h', date: '2025-09-05', budget: '250€–350€', details: 'Style House/EDM' },
-  ])
-  const [newJob, setNewJob] = useState<Job>({ id: 0, title: '', date: '', budget: '', details: '' })
+  // ——— offres d’emploi (connectées au backend)
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [newJob, setNewJob] = useState<Job>({
+    id: 0,
+    title: '',
+    description: '',
+    type: 'ALL',
+    specialty: '',
+    location: '',
+    country: '',
+    date: '',
+    budget: ''
+  })
+  const [loadingJobs, setLoadingJobs] = useState(false)
 
   // ——— planning (FullCalendar)
   const [events, setEvents] = useState<EventInput[]>([])
@@ -176,19 +192,15 @@ export default function OrganizerProfilePage() {
           setOrgName(p.name || userLite?.name || 'Mon Établissement')
           if (p.avatar) setAvatarUrl(p.avatar)
           if (p.banner) setBannerUrl(p.banner)
-
           setDescription(p.description || '')
-
           setLocation(p.location || '')
           setCountry(p.country || '')
           setRadiusKm(p.radiusKm ? String(p.radiusKm) : '')
           setLat(p.latitude != null ? String(p.latitude) : '')
           setLng(p.longitude != null ? String(p.longitude) : '')
-
           if (Array.isArray(p.specialties) && p.specialties.length) {
             setSpecialties(p.specialties)
           }
-
           if (p.socials) setSocials(p.socials)
           if (!profileId && p.id) setProfileId(p.id)
         }
@@ -197,15 +209,45 @@ export default function OrganizerProfilePage() {
       }
     }
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_BASE, userId])
+
+  /* ====== Chargement des offres ====== */
+  useEffect(() => {
+    const loadJobs = async () => {
+      if (!API_BASE || !profileId) return
+      setLoadingJobs(true)
+      try {
+        const res = await fetch(`${API_BASE}/api/offers?organizerId=${profileId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setJobs(data.map((offer: any) => ({
+            id: offer.id,
+            title: offer.title,
+            description: offer.description,
+            type: offer.type,
+            specialty: offer.specialty || '',
+            location: offer.location,
+            country: offer.country,
+            date: offer.date.split('T')[0],
+            budget: offer.budget || '',
+            createdAt: offer.createdAt
+          })))
+        }
+      } catch (err) {
+        console.error('Erreur chargement offres:', err)
+      }
+      setLoadingJobs(false)
+    }
+    loadJobs()
+  }, [API_BASE, profileId, token])
 
   /* ====== Save helpers ====== */
   async function saveProfile(fields: Record<string, unknown>) {
     if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
     if (!token) throw new Error('TOKEN_ABSENT')
     if (!profileId) throw new Error('PROFILE_ID_ABSENT')
-
     const res = await fetch(`${API_BASE}/api/profile/${profileId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -254,13 +296,12 @@ export default function OrganizerProfilePage() {
 
   /* ====== Map helpers (OSM + geocoding Nominatim) ====== */
   const mapSrc = useMemo(() => {
-    // iframe OSM embed avec marker si lat/lng valides (fallback: centré France)
     const latNum = Number(lat)
     const lngNum = Number(lng)
     const hasCoords = !Number.isNaN(latNum) && !Number.isNaN(lngNum)
     const bbox = hasCoords
       ? `${lngNum - 0.02},${latNum - 0.02},${lngNum + 0.02},${latNum + 0.02}`
-      : `-1.7,46.7,8.3,49.7` // bbox approx France
+      : `-1.7,46.7,8.3,49.7`
     const marker = hasCoords ? `&marker=${latNum},${lngNum}` : ''
     return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik${marker}`
   }, [lat, lng])
@@ -277,9 +318,8 @@ export default function OrganizerProfilePage() {
       }
       setLat(list[0].lat)
       setLng(list[0].lon)
-      // Sauvegarde côté profil
       const radius = radiusKm ? parseInt(radiusKm, 10) : null
-      const countryGuess = country || '' // on peut aussi parser display_name
+      const countryGuess = country || ''
       await saveProfile({
         location,
         country: countryGuess,
@@ -295,12 +335,82 @@ export default function OrganizerProfilePage() {
     }
   }
 
+  /* ====== Offres d’emploi handlers ====== */
+  const addJob = async () => {
+    const { title, description, type, specialty, location, country, date, budget } = newJob
+    if (!title.trim() || !description.trim() || !type || !location.trim() || !country.trim() || !date.trim()) {
+      alert('Veuillez remplir tous les champs obligatoires.')
+      return
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/offers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          type,
+          specialty,
+          location,
+          country,
+          date,
+          budget
+        })
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(err.error || 'Erreur lors de la création de l’offre.')
+        return
+      }
+      const newOffer = await res.json()
+      setJobs(prev => [{
+        id: newOffer.id,
+        title: newOffer.title,
+        description: newOffer.description,
+        type: newOffer.type,
+        specialty: newOffer.specialty || '',
+        location: newOffer.location,
+        country: newOffer.country,
+        date: newOffer.date.split('T')[0],
+        budget: newOffer.budget || '',
+        createdAt: newOffer.createdAt
+      }, ...prev])
+      setNewJob({ id: 0, title: '', description: '', type: 'ALL', specialty: '', location: '', country: '', date: '', budget: '' })
+      alert('Offre publiée ✅')
+    } catch (err) {
+      console.error('Erreur création offre:', err)
+      alert('Erreur lors de la création de l’offre.')
+    }
+  }
+
+  const removeJob = async (id: number) => {
+    if (!window.confirm('Supprimer cette offre ?')) return
+    try {
+      const res = await fetch(`${API_BASE}/api/offers/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(err.error || 'Erreur lors de la suppression.')
+        return
+      }
+      setJobs(prev => prev.filter(j => j.id !== id))
+      alert('Offre supprimée ✅')
+    } catch (err) {
+      console.error('Erreur suppression offre:', err)
+      alert('Erreur lors de la suppression.')
+    }
+  }
+
   /* ====== UI actions ====== */
   const toggleSpec = (s: string) => {
     setSpecialties(prev => {
       const exists = prev.includes(s)
       const next = exists ? prev.filter(x => x !== s) : [...prev, s]
-      // best-effort save
       if (profileId && token) saveProfile({ specialties: next }).catch(() => {})
       return next
     })
@@ -315,14 +425,6 @@ export default function OrganizerProfilePage() {
 
   const likePub = (id: number) =>
     setPublications(prev => prev.map(p => (p.id === id ? { ...p, likes: (p.likes || 0) + 1 } : p)))
-
-  const addJob = () => {
-    const { title, date } = newJob
-    if (!title.trim() || !date.trim()) return
-    setJobs(prev => [{ ...newJob, id: Date.now() }, ...prev])
-    setNewJob({ id: 0, title: '', date: '', budget: '', details: '' })
-  }
-  const removeJob = (id: number) => setJobs(prev => prev.filter(j => j.id !== id))
 
   const saveSocials = async () => {
     try {
@@ -352,7 +454,6 @@ export default function OrganizerProfilePage() {
           <Settings2 size={18} />
           Réglages
         </button>
-
         <button
           onClick={() => bannerInputRef.current?.click()}
           className="absolute bottom-3 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-lg text-sm"
@@ -363,7 +464,6 @@ export default function OrganizerProfilePage() {
         </button>
         <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={onSelectBanner} />
       </div>
-
       {/* ===== Entête sous bannière ===== */}
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -379,11 +479,8 @@ export default function OrganizerProfilePage() {
             </button>
             <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={onSelectAvatar} />
           </div>
-
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">{orgName}</h1>
-
-            {/* Zone compacte: localisation + rayon (avec mini éditeur) */}
             <div className="mt-1 text-sm text-neutral-300 flex flex-wrap items-center gap-2">
               <MapPin size={14} className="text-pink-500" />
               <span>
@@ -397,8 +494,6 @@ export default function OrganizerProfilePage() {
                 Régler
               </button>
             </div>
-
-            {/* Tags d’établissement */}
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {specialties.map(s => (
                 <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40">
@@ -431,8 +526,6 @@ export default function OrganizerProfilePage() {
             </div>
           </div>
         </div>
-
-        {/* Boutons rapides */}
         <div className="flex items-center gap-3">
           <button className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200">
             <MessageCircle size={18} /> Contacter
@@ -440,7 +533,6 @@ export default function OrganizerProfilePage() {
           <button className="bg-pink-600 rounded-full px-5 py-2 hover:bg-pink-500">Suivre</button>
         </div>
       </div>
-
       {/* Mini panneau d’édition de zone (compact) */}
       {editingGeo && (
         <div className="max-w-6xl mx-auto px-4 pb-2">
@@ -486,14 +578,12 @@ export default function OrganizerProfilePage() {
           </div>
         </div>
       )}
-
       {/* ===== Corps en 2 colonnes ===== */}
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
         {/* ==== Colonne gauche ==== */}
         <div className="space-y-6">
           {/* Carte + Planning (côte à côte en large) */}
           <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {/* Map réactive (iframe OSM) */}
             <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/30">
               <div className="flex items-center justify-between p-3">
                 <h2 className="text-lg font-semibold">Localisation</h2>
@@ -511,8 +601,6 @@ export default function OrganizerProfilePage() {
                 {lat && lng ? `Lat ${lat} · Lng ${lng}` : 'Clique “Régler” pour définir la zone'}
               </div>
             </div>
-
-            {/* Planning (FullCalendar) */}
             <div className="rounded-2xl overflow-hidden border border-white/10 bg-neutral-900/60 p-3">
               <h2 className="text-lg font-semibold mb-2">Planning</h2>
               <div className="bg-white text-black rounded-lg p-2">
@@ -549,8 +637,6 @@ export default function OrganizerProfilePage() {
               </div>
             </div>
           </section>
-
-          {/* Description (au-dessus du portfolio) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Description</h2>
@@ -576,8 +662,6 @@ export default function OrganizerProfilePage() {
               onChange={e => setDescription(e.target.value)}
             />
           </section>
-
-          {/* Publications (comme artiste) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Publications</h2>
@@ -590,7 +674,6 @@ export default function OrganizerProfilePage() {
                 </button>
               </div>
             </div>
-
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
               {heroPub && (
                 <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
@@ -611,7 +694,6 @@ export default function OrganizerProfilePage() {
                   </div>
                 </div>
               )}
-
               <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
                 {restPubs.map(p => (
                   <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
@@ -632,8 +714,6 @@ export default function OrganizerProfilePage() {
               </div>
             </div>
           </section>
-
-          {/* Réseaux & contacts */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Réseaux & contacts</h2>
             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -650,7 +730,7 @@ export default function OrganizerProfilePage() {
                 onChange={e => setSocials(prev => ({ ...(prev || {}), facebook: e.target.value }))}
               />
               <input
-                className="bg_black/30 bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
                 placeholder="TikTok (https://tiktok.com/@...)"
                 value={socials?.tiktok || ''}
                 onChange={e => setSocials(prev => ({ ...(prev || {}), tiktok: e.target.value }))}
@@ -681,67 +761,8 @@ export default function OrganizerProfilePage() {
             </div>
           </section>
         </div>
-
         {/* ==== Colonne droite ==== */}
         <aside className="space-y-6">
-          {/* Offres d’emploi / annonces */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Offres d’emploi</h2>
-            </div>
-
-            {/* Formulaire rapide */}
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              <input
-                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Intitulé (ex: DJ vendredi 23h–3h)"
-                value={newJob.title}
-                onChange={e => setNewJob(j => ({ ...j, title: e.target.value }))}
-              />
-              <input
-                type="date"
-                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                value={newJob.date}
-                onChange={e => setNewJob(j => ({ ...j, date: e.target.value }))}
-              />
-              <input
-                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Budget (ex: 250€–350€)"
-                value={newJob.budget || ''}
-                onChange={e => setNewJob(j => ({ ...j, budget: e.target.value }))}
-              />
-              <textarea
-                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Détails (style, matos, horaires...)"
-                rows={3}
-                value={newJob.details || ''}
-                onChange={e => setNewJob(j => ({ ...j, details: e.target.value }))}
-              />
-              <button onClick={addJob} className="text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500">
-                Publier l’offre
-              </button>
-            </div>
-
-            {/* Liste d’offres */}
-            <ul className="mt-4 space-y-3">
-              {jobs.map(j => (
-                <li key={j.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">{j.title}</p>
-                      <p className="text-xs text-neutral-400 mt-0.5">{j.date} {j.budget ? `· ${j.budget}` : ''}</p>
-                      {j.details && <p className="text-sm text-neutral-200 mt-1">{j.details}</p>}
-                    </div>
-                    <button onClick={() => removeJob(j.id)} className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20">
-                      Supprimer
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* Avis – (placeholder, même style que artiste) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Avis</h2>
@@ -771,17 +792,97 @@ export default function OrganizerProfilePage() {
               ))}
             </div>
           </section>
-
-          {/* Tarifs – identique à artiste/presta */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Tarifs</h2>
+              <h2 className="text-lg font-semibold">Offres d’emploi</h2>
             </div>
-            <TarifsBlock onSave={fields => saveProfile(fields)} />
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Titre de l’offre"
+                value={newJob.title}
+                onChange={e => setNewJob(j => ({ ...j, title: e.target.value }))}
+              />
+              <textarea
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Description"
+                rows={3}
+                value={newJob.description}
+                onChange={e => setNewJob(j => ({ ...j, description: e.target.value }))}
+              />
+              <select
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                value={newJob.type}
+                onChange={e => setNewJob(j => ({ ...j, type: e.target.value as 'ARTIST' | 'PROVIDER' | 'ALL' }))}
+              >
+                <option value="ALL">Tous</option>
+                <option value="ARTIST">Artiste</option>
+                <option value="PROVIDER">Prestataire</option>
+              </select>
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Spécialité (optionnel)"
+                value={newJob.specialty}
+                onChange={e => setNewJob(j => ({ ...j, specialty: e.target.value }))}
+              />
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Ville"
+                value={newJob.location}
+                onChange={e => setNewJob(j => ({ ...j, location: e.target.value }))}
+              />
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Pays"
+                value={newJob.country}
+                onChange={e => setNewJob(j => ({ ...j, country: e.target.value }))}
+              />
+              <input
+                type="date"
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                value={newJob.date}
+                onChange={e => setNewJob(j => ({ ...j, date: e.target.value }))}
+              />
+              <input
+                className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Budget (optionnel, ex: 250€–350€)"
+                value={newJob.budget}
+                onChange={e => setNewJob(j => ({ ...j, budget: e.target.value }))}
+              />
+              <button onClick={addJob} className="text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500">
+                Publier l’offre
+              </button>
+            </div>
+            <ul className="mt-4 space-y-3">
+              {loadingJobs ? (
+                <p className="text-sm text-neutral-400">Chargement...</p>
+              ) : jobs.length === 0 ? (
+                <p className="text-sm text-neutral-400">Aucune offre en ligne.</p>
+              ) : (
+                jobs.map(j => (
+                  <li key={j.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">{j.title}</p>
+                        <p className="text-xs text-neutral-400 mt-0.5">
+                          {j.date} · {j.location}, {j.country} {j.budget ? ` · ${j.budget}` : ''}
+                        </p>
+                        <p className="text-sm text-neutral-200 mt-1">{j.description}</p>
+                        <p className="text-xs text-neutral-400 mt-1">
+                          Type: {j.type} {j.specialty ? ` · Spécialité: ${j.specialty}` : ''}
+                        </p>
+                      </div>
+                      <button onClick={() => removeJob(j.id)} className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20">
+                        Supprimer
+                      </button>
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
           </section>
         </aside>
       </div>
-
       {/* ===== Modal publications ===== */}
       {showAllPubs && (
         <div
@@ -817,73 +918,6 @@ export default function OrganizerProfilePage() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-/* ===== Petit composant Tarifs ===== */
-function TarifsBlock({ onSave }: { onSave: (fields: Record<string, unknown>) => Promise<void> }) {
-  type PriceLine = { id: number; label: string; price: string }
-  const [prices, setPrices] = useState<PriceLine[]>([
-    { id: 1, label: 'Privatisation salle — semaine', price: 'Sur devis' },
-    { id: 2, label: 'Privatisation salle — week-end', price: 'Sur devis' },
-  ])
-  const [label, setLabel] = useState('')
-  const [price, setPrice] = useState('')
-
-  const add = () => {
-    const l = label.trim()
-    const p = price.trim()
-    if (!l || !p) return
-    setPrices(prev => [...prev, { id: Date.now(), label: l, price: p }])
-    setLabel('')
-    setPrice('')
-  }
-  const remove = (id: number) => setPrices(prev => prev.filter(x => x.id !== id))
-
-  const save = async () => {
-    await onSave({ prices })
-    alert('Tarifs sauvegardés ✅')
-  }
-
-  return (
-    <div>
-      <ul className="mt-3 space-y-2">
-        {prices.map(p => (
-          <li key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
-            <div>
-              <p className="text-sm font-medium">{p.label}</p>
-              <p className="text-xs text-neutral-300">{p.price}</p>
-            </div>
-            <button onClick={() => remove(p.id)} className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20">
-              Supprimer
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-3 grid grid-cols-1 gap-2">
-        <input
-          className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-          placeholder="Intitulé"
-          value={label}
-          onChange={e => setLabel(e.target.value)}
-        />
-        <input
-          className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-          placeholder="Tarif"
-          value={price}
-          onChange={e => setPrice(e.target.value)}
-        />
-        <div className="flex items-center gap-2">
-          <button onClick={add} className="text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500">
-            Ajouter un tarif
-          </button>
-          <button onClick={save} className="text-sm px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20">
-            Enregistrer
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

@@ -351,10 +351,10 @@ export default function HomePage() {
         </aside>
       </section>
 
-      {/* Annonces */}
+      {/* Section Offres à la une */}
       <section className="mt-10">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Annonces</h2>
+          <h2 className="text-xl font-bold">Offres</h2>
           <Link
             href="/annonces"
             className="text-xs font-medium bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg px-3 py-2"
