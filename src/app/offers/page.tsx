@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CalendarDays, MapPin, User, Briefcase } from 'lucide-react'
+import { CalendarDays, MapPin, User } from 'lucide-react'
 
 type Offer = {
   id: number
@@ -70,7 +70,9 @@ export default function OffersPage() {
         <select
           className="bg-neutral-900 border border-white/10 rounded px-3 py-2 text-sm"
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as any)}
+          onChange={(e) =>
+            setTypeFilter(e.target.value as 'ALL' | 'ARTIST' | 'PROVIDER' | '')
+          }
         >
           <option value="">Tous les types</option>
           <option value="ARTIST">Offres pour artistes</option>
