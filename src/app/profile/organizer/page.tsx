@@ -209,7 +209,7 @@ export default function OrganizerProfilePage() {
       }
     }
     load()
-  }, [API_BASE, userId])
+  }, [API_BASE, userId, profileId, userLite])
 
   /* ====== Chargement des offres ====== */
   useEffect(() => {
@@ -221,8 +221,8 @@ export default function OrganizerProfilePage() {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (res.ok) {
-          const data = await res.json()
-          setJobs(data.map((offer: any) => ({
+          const data: Job[] = await res.json()
+          setJobs(data.map((offer) => ({
             id: offer.id,
             title: offer.title,
             description: offer.description,
@@ -582,7 +582,6 @@ export default function OrganizerProfilePage() {
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
         {/* ==== Colonne gauche ==== */}
         <div className="space-y-6">
-          {/* Carte + Planning (côte à côte en large) */}
           <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/30">
               <div className="flex items-center justify-between p-3">
