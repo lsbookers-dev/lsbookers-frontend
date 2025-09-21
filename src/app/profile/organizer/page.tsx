@@ -353,11 +353,11 @@ export default function OrganizerProfilePage() {
           title,
           description,
           type,
-          specialty,
+          specialty: specialty?.trim() || null, // Envoie null si vide
           location,
           country,
           date,
-          budget
+          budget: budget?.trim() || null // Envoie null si vide
         })
       })
       if (!res.ok) {
@@ -395,14 +395,14 @@ export default function OrganizerProfilePage() {
       })
       if (!res.ok) {
         const err = await res.json()
-        alert(err.error || 'Erreur lors de la suppression.')
+        alert(err.error || 'Erreur lors de la suppression de l’offre.')
         return
       }
       setJobs(prev => prev.filter(j => j.id !== id))
       alert('Offre supprimée ✅')
     } catch (err) {
       console.error('Erreur suppression offre:', err)
-      alert('Erreur lors de la suppression.')
+      alert('Erreur lors de la suppression de l’offre.')
     }
   }
 
