@@ -1,139 +1,161 @@
 'use client'
-
 import { useEffect, useState } from 'react'
-import { CalendarDays, MapPin, User } from 'lucide-react'
+import Image from 'next/image'
 
-type Offer = {
+/* ================= Types ================= */
+type Job = {
   id: number
   title: string
   description: string
   type: 'ARTIST' | 'PROVIDER' | 'ALL'
+  specialty?: string
   location: string
+  country: string
   date: string
-  organizerName: string
+  budget?: string
+  createdAt: string
+  organizer: { user: { name: string } }
 }
 
-const mockOffers: Offer[] = [
-  {
-    id: 1,
-    title: 'DJ pour mariage privé',
-    description: 'Recherche DJ expérimenté pour animer un mariage à Lyon.',
-    type: 'ARTIST',
-    location: 'Lyon',
-    date: '2025-09-28',
-    organizerName: 'Events Lyon',
-  },
-  {
-    id: 2,
-    title: 'Photographe soirée entreprise',
-    description: 'Besoin d’un prestataire photo pour une soirée corporate à Paris.',
-    type: 'PROVIDER',
-    location: 'Paris',
-    date: '2025-10-02',
-    organizerName: 'StartUp Night',
-  },
-  {
-    id: 3,
-    title: 'DJ + Photobooth pour mariage',
-    description: 'Cherche deux prestataires pour mariage à Marseille.',
-    type: 'ALL',
-    location: 'Marseille',
-    date: '2025-10-15',
-    organizerName: 'Mariage Provence',
-  },
-]
-
+/* ============== Page ============== */
 export default function OffersPage() {
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'ARTIST' | 'PROVIDER' | ''>('')
-  const [locationFilter, setLocationFilter] = useState('')
-  const [filteredOffers, setFilteredOffers] = useState<Offer[]>(mockOffers)
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
+  // États pour les offres et les filtres
+  const [offers, setOffers] = useState<Job[]>([])
+  const [loading, setLoading] = useState(false)
+  const [filters, setFilters] = useState({
+    type: 'ALL',
+    specialty: '',
+    location: '',
+    country: '',
+    date: ''
+  })
+
+  // Charger les offres avec filtres
   useEffect(() => {
-    let offers = [...mockOffers]
-    if (typeFilter && typeFilter !== 'ALL') {
-      offers = offers.filter(o => o.type === typeFilter || o.type === 'ALL')
+    const loadOffers = async () => {
+      setLoading(true)
+      try {
+        const query = new URLSearchParams({
+          type: filters.type,
+          specialty: filters.specialty,
+          location: filters.location,
+          country: filters.country,
+          date: filters.date
+        }).toString()
+        const res = await fetch(`${API_BASE}/api/offers?${query}`)
+        if (res.ok) {
+          const data: Job[] = await res.json()
+          setOffers(data)
+        } else {
+          alert('Erreur lors du chargement des offres.')
+        }
+      } catch (err) {
+        console.error('Erreur chargement offres:', err)
+        alert('Erreur lors du chargement des offres.')
+      }
+      setLoading(false)
     }
-    if (locationFilter.trim() !== '') {
-      offers = offers.filter(o =>
-        o.location.toLowerCase().includes(locationFilter.toLowerCase())
-      )
-    }
-    setFilteredOffers(offers)
-  }, [typeFilter, locationFilter])
+    loadOffers()
+  }, [API_BASE, filters])
 
+  // Gérer les changements de filtres
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
+  /* ================= Render ================= */
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Offres disponibles</h1>
+    <div className="min-h-screen bg-black text-white">
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* ===== Entête ===== */}
+        <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
+          <Image
+            src="/banners/offers_banner.jpg"
+            alt="Bannière Offres"
+            fill
+            priority
+            className="object-cover opacity-90"
+          />
+          <h1 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-3xl md:text-4xl font-bold">
+            Offres d’emploi
+          </h1>
+        </div>
 
-      {/* Filtres */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <select
-          className="bg-neutral-900 border border-white/10 rounded px-3 py-2 text-sm"
-          value={typeFilter}
-          onChange={(e) =>
-            setTypeFilter(e.target.value as 'ALL' | 'ARTIST' | 'PROVIDER' | '')
-          }
-        >
-          <option value="">Tous les types</option>
-          <option value="ARTIST">Offres pour artistes</option>
-          <option value="PROVIDER">Offres pour prestataires</option>
-        </select>
-        <input
-          className="bg-neutral-900 border border-white/10 rounded px-3 py-2 text-sm"
-          placeholder="Filtrer par ville"
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
-        />
-      </div>
-
-      {/* Liste d’offres */}
-      <div className="space-y-4">
-        {filteredOffers.map((offer) => (
-          <div
-            key={offer.id}
-            className="bg-neutral-900 border border-white/10 rounded-xl p-4"
-          >
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">{offer.title}</h2>
-              <span className="text-sm px-2 py-1 rounded-full bg-pink-600/20 text-pink-400 border border-pink-600/40">
-                {offer.type === 'ARTIST'
-                  ? 'Artiste'
-                  : offer.type === 'PROVIDER'
-                  ? 'Prestataire'
-                  : 'Tous'}
-              </span>
-            </div>
-            <p className="text-sm text-neutral-300 mt-2">{offer.description}</p>
-            <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-neutral-400">
-              <div className="flex items-center gap-1">
-                <MapPin size={14} />
-                {offer.location}
-              </div>
-              <div className="flex items-center gap-1">
-                <CalendarDays size={14} />
-                {new Date(offer.date).toLocaleDateString()}
-              </div>
-              <div className="flex items-center gap-1">
-                <User size={14} />
-                {offer.organizerName}
-              </div>
-            </div>
-            <div className="mt-4">
-              <button
-                className="bg-pink-600 hover:bg-pink-500 text-white text-sm px-4 py-2 rounded-lg"
-                onClick={() => alert(`Contacter ${offer.organizerName}`)}
-              >
-                Postuler
-              </button>
-            </div>
+        {/* ===== Filtres ===== */}
+        <section className="mt-6 bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+          <h2 className="text-lg font-semibold mb-3">Filtres</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <select
+              name="type"
+              value={filters.type}
+              onChange={handleFilterChange}
+              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+            >
+              <option value="ALL">Tous</option>
+              <option value="ARTIST">Artiste</option>
+              <option value="PROVIDER">Prestataire</option>
+            </select>
+            <input
+              name="specialty"
+              value={filters.specialty}
+              onChange={handleFilterChange}
+              placeholder="Spécialité (ex: DJ, Lumière)"
+              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+            />
+            <input
+              name="location"
+              value={filters.location}
+              onChange={handleFilterChange}
+              placeholder="Ville"
+              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+            />
+            <input
+              name="country"
+              value={filters.country}
+              onChange={handleFilterChange}
+              placeholder="Pays"
+              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+            />
+            <input
+              type="date"
+              name="date"
+              value={filters.date}
+              onChange={handleFilterChange}
+              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+            />
           </div>
-        ))}
+        </section>
 
-        {filteredOffers.length === 0 && (
-          <p className="text-center text-sm text-neutral-500 mt-6">
-            Aucune offre ne correspond à vos critères.
-          </p>
-        )}
+        {/* ===== Liste des offres ===== */}
+        <section className="mt-6">
+          {loading ? (
+            <p className="text-sm text-neutral-400">Chargement...</p>
+          ) : offers.length === 0 ? (
+            <p className="text-sm text-neutral-400">Aucune offre disponible.</p>
+          ) : (
+            <ul className="space-y-3">
+              {offers.map(offer => (
+                <li key={offer.id} className="rounded-xl border border-white/10 bg-black/30 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">{offer.title}</p>
+                      <p className="text-xs text-neutral-400 mt-0.5">
+                        Par {offer.organizer.user.name} · {offer.date} · {offer.location}, {offer.country}
+                        {offer.budget ? ` · ${offer.budget}` : ''}
+                      </p>
+                      <p className="text-sm text-neutral-200 mt-1">{offer.description}</p>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        Type: {offer.type} {offer.specialty ? ` · Spécialité: ${offer.specialty}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </div>
   )
