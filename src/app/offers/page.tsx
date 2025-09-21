@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 
 /* ================= Types ================= */
 type Job = {
@@ -25,7 +24,7 @@ export default function OffersPage() {
   const [offers, setOffers] = useState<Job[]>([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({
-    type: 'ALL',
+    type: '', // Vide par défaut pour montrer toutes les offres
     specialty: '',
     location: '',
     country: '',
@@ -37,14 +36,16 @@ export default function OffersPage() {
     const loadOffers = async () => {
       setLoading(true)
       try {
-        const query = new URLSearchParams({
-          type: filters.type,
-          specialty: filters.specialty,
-          location: filters.location,
-          country: filters.country,
-          date: filters.date
-        }).toString()
-        const res = await fetch(`${API_BASE}/api/offers?${query}`)
+        // Construire les paramètres de requête, sans inclure "type" si vide
+        const params: Record<string, string> = {}
+        if (filters.type) params.type = filters.type
+        if (filters.specialty) params.specialty = filters.specialty
+        if (filters.location) params.location = filters.location
+        if (filters.country) params.country = filters.country
+        if (filters.date) params.date = filters.date
+
+        const query = new URLSearchParams(params).toString()
+        const res = await fetch(`${API_BASE}/api/offers${query ? `?${query}` : ''}`)
         if (res.ok) {
           const data: Job[] = await res.json()
           setOffers(data)
@@ -70,21 +71,10 @@ export default function OffersPage() {
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* ===== Entête ===== */}
-        <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
-          <Image
-            src="/banners/offers_banner.jpg"
-            alt="Bannière Offres"
-            fill
-            priority
-            className="object-cover opacity-90"
-          />
-          <h1 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-3xl md:text-4xl font-bold">
-            Offres d’emploi
-          </h1>
-        </div>
+        <h1 className="text-3xl md:text-4xl font-bold mb-6">Offres d’emploi</h1>
 
         {/* ===== Filtres ===== */}
-        <section className="mt-6 bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+        <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
           <h2 className="text-lg font-semibold mb-3">Filtres</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <select
@@ -93,7 +83,7 @@ export default function OffersPage() {
               onChange={handleFilterChange}
               className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
             >
-              <option value="ALL">Tous</option>
+              <option value="">Tous</option>
               <option value="ARTIST">Artiste</option>
               <option value="PROVIDER">Prestataire</option>
             </select>
