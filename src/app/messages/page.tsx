@@ -1,11 +1,9 @@
 'use client'
-
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
-
 interface ProfileLite { avatar?: string | null }
 interface User {
   id: number
@@ -28,7 +26,6 @@ interface MessageLite {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
 // URL absolue (avatars)
 const toAbs = (u?: string | null) => {
   if (!u) return '/default-avatar.png'
@@ -40,11 +37,9 @@ const toAbs = (u?: string | null) => {
 export default function MessagesPage() {
   const { user, token } = useAuth()
   const router = useRouter()
-
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [unreadMap, setUnreadMap] = useState<Record<number, boolean>>({})
   const [error, setError] = useState<string | null>(null)
-
   const [search, setSearch] = useState('')
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
@@ -145,7 +140,7 @@ export default function MessagesPage() {
     if (conversations.length) computeUnread(conversations)
   }, [conversations, computeUnread])
 
-  // re-sync lors du retour onglet/page
+  // Re-sync lors du retour onglet/page
   useEffect(() => {
     const onShow = () => { fetchConversations().then(() => computeUnread(conversations)) }
     window.addEventListener('visibilitychange', onShow)
@@ -222,11 +217,30 @@ export default function MessagesPage() {
     [token, authedHeaders]
   )
 
-  /* Marquer comme lu côté backend + ouvrir */
+  /* Ouvrir une conversation et marquer comme lu */
   const openConversation = useCallback(async (convId: number) => {
-    setUnreadMap(prev => ({ ...prev, [convId]: false }))
-    router.push(`/messages/${convId}`)
-  }, [router])
+    if (!token) {
+      setUnreadMap(prev => ({ ...prev, [convId]: false }))
+      router.push(`/messages/${convId}`)
+      return
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
+        method: 'POST',
+        headers: authedHeaders,
+      })
+      if (res.ok) {
+        setUnreadMap(prev => ({ ...prev, [convId]: false }))
+        router.push(`/messages/${convId}`)
+      } else {
+        console.error('Erreur marquage lu:', await res.text())
+        router.push(`/messages/${convId}`) // Fallback si échec
+      }
+    } catch (err) {
+      console.error('Erreur marquage lu:', err)
+      router.push(`/messages/${convId}`) // Fallback si échec
+    }
+  }, [token, authedHeaders, router])
 
   const getOtherUser = (conv: Conversation) =>
     conv.participants.find(p => String(p.id) !== String(user?.id))
@@ -247,14 +261,12 @@ export default function MessagesPage() {
           </p>
         </div>
       </div>
-
       <div className="px-6 pb-10 max-w-6xl mx-auto w-full">
         <div className="grid gap-6 md:grid-cols-[360px,1fr]">
           {/* Colonne gauche : recherche */}
           <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5">
             <h2 className="text-lg font-semibold mb-1">Nouvelle conversation</h2>
             <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
-
             <input
               type="text"
               value={search}
@@ -262,9 +274,7 @@ export default function MessagesPage() {
               placeholder="Rechercher un utilisateur…"
               className="w-full rounded-xl bg-black/40 border border-white/10 focus:border-white/30 outline-none px-4 py-3"
             />
-
             {loadingUsers && <p className="text-gray-400 text-sm mt-3">Chargement des utilisateurs…</p>}
-
             {search && (
               <ul className="space-y-2 max-h-80 overflow-y-auto pr-1 mt-3">
                 {filteredUsers.length > 0 ? (
@@ -276,7 +286,6 @@ export default function MessagesPage() {
                         onClick={() => startConversation(u.id)}
                         className="cursor-pointer rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 flex items-center gap-3 transition"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={src}
                           alt={u.name}
@@ -296,11 +305,9 @@ export default function MessagesPage() {
               </ul>
             )}
           </section>
-
           {/* Colonne droite : conversations */}
           <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5">
             <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
-
             {conversations.length === 0 && !error ? (
               <p className="text-gray-400 text-sm">Aucune conversation pour le moment.</p>
             ) : (
@@ -316,11 +323,10 @@ export default function MessagesPage() {
                       className={`group rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
                         ${unread
                           ? 'bg-indigo-500/10 border-indigo-500/25'
-                          : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'}
-                      `}
+                          : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'
+                        }`}
                     >
                       <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
                         alt={other?.name ?? 'User'}
@@ -357,7 +363,6 @@ export default function MessagesPage() {
                 })}
               </ul>
             )}
-
             {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
           </section>
         </div>

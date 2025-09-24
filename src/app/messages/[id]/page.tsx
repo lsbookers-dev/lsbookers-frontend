@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useRef, useState, KeyboardEvent, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -17,24 +16,24 @@ function isArrayResp(x: unknown): x is Message[] { return Array.isArray(x) }
 function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
+
 const toAbs = (u?: string | null) => {
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
   if (u.startsWith('//')) return `https:${u}`
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg','image/png','image/webp','image/gif'])
+
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
 export default function ConversationPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const conversationId = params?.id ?? ''
-
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState<string>('')
   const [file, setFile] = useState<File | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
-
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -55,12 +54,17 @@ export default function ConversationPage() {
   const markSeen = useCallback(async () => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
-    if (!token) return
+    if (!token) {
+      console.warn('Aucun token disponible pour markSeen')
+      return
+    }
     const headers: HeadersInit = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     try {
-      await fetch(`${API_BASE}/api/messages/mark-seen/${conversationId}`, { method: 'POST', headers })
-    } catch {
-      /* noop */
+      const res = await fetch(`${API_BASE}/api/messages/mark-seen/${conversationId}`, { method: 'POST', headers })
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+      console.log('Messages marqués comme lus avec succès')
+    } catch (err) {
+      console.error('Erreur marquage lu:', err)
     }
   }, [conversationId])
 
@@ -69,14 +73,12 @@ export default function ConversationPage() {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
     const commonHeaders = { Authorization: `Bearer ${token}` }
-
     try {
       const url = `${API_BASE}/api/messages/messages/${conversationId}`
       const res: AxiosResponse<ApiMessagesResponse> = await axios.get(url, { headers: commonHeaders })
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
       setMessages(Array.isArray(list) ? list : [])
-      return
     } catch {
       try {
         const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
@@ -127,9 +129,7 @@ export default function ConversationPage() {
   const handleSend = async (): Promise<void> => {
     if (!conversationId) return
     if (!content.trim() && !file) return
-
     const token = getAuthToken()
-
     try {
       // Optimistic si texte seul
       if (content.trim() && !file) {
@@ -142,11 +142,9 @@ export default function ConversationPage() {
         }
         setMessages(prev => [...prev, optimistic])
       }
-
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
-
       if (file) {
         if (file.type.startsWith('image') && !ALLOWED_IMAGE_TYPES.has(file.type)) {
           alert("Format d'image non pris en charge (utilise JPG, PNG, WEBP ou GIF).")
@@ -159,17 +157,14 @@ export default function ConversationPage() {
           fd.append('type', 'video'); fd.append('folder', 'messages')
         }
       }
-
       const res = await axios.post<SendResp>(`${API_BASE}/api/messages/send-file`, fd, {
         headers: { Authorization: `Bearer ${token}` },
       })
-
       setContent(''); setFile(null); if (inputRef.current) inputRef.current.value = ''
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
         router.replace(`/messages/${newConvId}`); return
       }
-
       await fetchMessages()
       await markSeen()
     } catch (err: unknown) {
@@ -225,7 +220,6 @@ export default function ConversationPage() {
           </div>
           <div className="h-[2px] w-full bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-80" />
         </header>
-
         {/* Carte + fenêtre scrollable fixe */}
         <section className="mt-6 rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 sm:p-5 flex flex-col">
           <div
@@ -235,10 +229,8 @@ export default function ConversationPage() {
             {messages.map((msg) => {
               const avatar = toAbs(msg.sender?.image) || '/default-avatar.png'
               const isMe = currentUserId !== null && Number(msg.sender?.id) === currentUserId
-
               return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                  {/* Gauche (autre) */}
                   {!isMe && (
                     <div className="flex items-end gap-2 max-w-[80%]">
                       <Image
@@ -266,8 +258,6 @@ export default function ConversationPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Droite (moi) */}
                   {isMe && (
                     <div className="flex items-end gap-2 max-w-[80%]">
                       <div>
@@ -291,7 +281,6 @@ export default function ConversationPage() {
               )
             })}
           </div>
-
           {/* Barre d’envoi */}
           <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-3">
             <div className="flex items-center gap-3">
@@ -304,7 +293,6 @@ export default function ConversationPage() {
                 placeholder="Écris ton message…"
                 className="flex-grow rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm placeholder-white/40 focus:outline-none focus:border-white/30"
               />
-
               <input
                 id="fileInput"
                 type="file"
@@ -318,7 +306,6 @@ export default function ConversationPage() {
               >
                 Fichier
               </label>
-
               <button
                 onClick={handleSend}
                 disabled={!content.trim() && !file}
@@ -327,7 +314,6 @@ export default function ConversationPage() {
                 Envoyer
               </button>
             </div>
-
             {file && (
               <div className="mt-3 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
                 {file.type.startsWith('image') ? (
