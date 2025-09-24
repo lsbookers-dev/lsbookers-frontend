@@ -18,7 +18,7 @@ function isObjResp(x: unknown): x is { messages: Message[] } {
   return !!x && typeof x === 'object' && Array.isArray((x as { messages: unknown }).messages)
 }
 const toAbs = (u?: string | null) => {
-  if (!u) return '/default-avatar.png'
+  if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
   if (u.startsWith('//')) return `https:${u}`
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
@@ -38,7 +38,7 @@ export default function ConversationPage() {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  // Récupère ton id depuis localStorage
+  // Récupère ton id (comme l’AuthContext le stocke déjà en localStorage)
   useEffect(() => {
     try {
       const raw = localStorage.getItem('user')
@@ -51,7 +51,7 @@ export default function ConversationPage() {
     }
   }, [])
 
-  /* -------- marquer conversation comme lue -------- */
+  /* -------- mark as seen -------- */
   const markSeen = useCallback(async () => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -64,7 +64,7 @@ export default function ConversationPage() {
     }
   }, [conversationId])
 
-  /* -------- récupérer messages -------- */
+  /* -------- fetch messages -------- */
   const fetchMessages = useCallback(async (): Promise<void> => {
     if (!conversationId || !API_BASE) return
     const token = getAuthToken()
@@ -76,9 +76,25 @@ export default function ConversationPage() {
       const payload = res.data
       const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
       setMessages(Array.isArray(list) ? list : [])
-    } catch (err) {
-      console.error('Erreur fetch messages :', err)
-      setMessages([])
+      return
+    } catch {
+      try {
+        const urlAlt = `${API_BASE}/api/messages/conversation/${conversationId}`
+        const resAlt: AxiosResponse<ApiMessagesResponse> = await axios.get(urlAlt, { headers: commonHeaders })
+        const payloadAlt = resAlt.data
+        const listAlt = isArrayResp(payloadAlt) ? payloadAlt : isObjResp(payloadAlt) ? payloadAlt.messages : []
+        setMessages(Array.isArray(listAlt) ? listAlt : [])
+      } catch {
+        try {
+          const urlLegacy = `${API_BASE}/messages/messages/${conversationId}`
+          const resLegacy: AxiosResponse<ApiMessagesResponse> = await axios.get(urlLegacy, { headers: commonHeaders })
+          const payloadLegacy = resLegacy.data
+          const listLegacy = isArrayResp(payloadLegacy) ? payloadLegacy : isObjResp(payloadLegacy) ? payloadLegacy.messages : []
+          setMessages(Array.isArray(listLegacy) ? listLegacy : [])
+        } catch (err: unknown) {
+          console.error('Erreur fetch messages :', err)
+        }
+      }
     }
   }, [conversationId])
 
@@ -89,7 +105,7 @@ export default function ConversationPage() {
     })()
   }, [conversationId, markSeen, fetchMessages])
 
-  // re-sync quand on revient sur la page
+  // Re-sync quand on revient sur la page/onglet
   useEffect(() => {
     const onVisibility = () => { if (document.visibilityState === 'visible') markSeen().then(fetchMessages) }
     const onPageShow = () => { markSeen().then(fetchMessages) }
@@ -101,7 +117,7 @@ export default function ConversationPage() {
     }
   }, [markSeen, fetchMessages])
 
-  // scroll auto
+  // Scroll en bas à chaque MAJ
   useEffect(() => {
     const el = messagesContainerRef.current
     if (el) el.scrollTop = el.scrollHeight
@@ -113,9 +129,20 @@ export default function ConversationPage() {
     if (!content.trim() && !file) return
 
     const token = getAuthToken()
-    if (!token) return
 
     try {
+      // Optimistic si texte seul
+      if (content.trim() && !file) {
+        const optimistic: Message = {
+          id: `temp-${Date.now()}`,
+          content,
+          createdAt: new Date().toISOString(),
+          sender: { id: currentUserId ?? 0, name: 'Vous' },
+          seen: false,
+        }
+        setMessages(prev => [...prev, optimistic])
+      }
+
       const fd = new FormData()
       fd.append('conversationId', conversationId)
       if (content.trim()) fd.append('content', content.trim())
@@ -127,9 +154,9 @@ export default function ConversationPage() {
         }
         fd.append('file', file)
         if (file.type.startsWith('image')) {
-          fd.append('type', 'image')
+          fd.append('type', 'image'); fd.append('folder', 'messages')
         } else if (file.type.startsWith('video')) {
-          fd.append('type', 'video')
+          fd.append('type', 'video'); fd.append('folder', 'messages')
         }
       }
 
@@ -137,21 +164,18 @@ export default function ConversationPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      setContent('')
-      setFile(null)
-      if (inputRef.current) inputRef.current.value = ''
-
+      setContent(''); setFile(null); if (inputRef.current) inputRef.current.value = ''
       const newConvId = res.data?.conversationId
       if (newConvId && String(newConvId) !== String(conversationId)) {
-        router.replace(`/messages/${newConvId}`)
-        return
+        router.replace(`/messages/${newConvId}`); return
       }
 
       await fetchMessages()
       await markSeen()
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Erreur envoi message :', err)
       alert("Erreur lors de l'envoi. Vérifie la console.")
+      setMessages(prev => prev.filter(m => typeof m.id === 'string' && m.id.startsWith('temp-')))
     }
   }
 
@@ -159,6 +183,7 @@ export default function ConversationPage() {
     if (e.key === 'Enter') { e.preventDefault(); handleSend() }
   }
 
+  /* -------- rendu fichiers -------- */
   const renderFile = (url: string) => {
     const cleanUrl = toAbs(url.trim())
     const lower = cleanUrl.toLowerCase()
@@ -191,27 +216,29 @@ export default function ConversationPage() {
             <button
               onClick={() => router.push('/messages')}
               className="text-sm px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+              aria-label="Retour"
             >
               ← Retour
             </button>
             <h1 className="text-xl sm:text-2xl font-semibold">Conversation</h1>
-            <div className="w-[76px]" />
+            <div className="w-[76px]" aria-hidden />
           </div>
           <div className="h-[2px] w-full bg-gradient-to-r from-pink-600 via-violet-600 to-blue-600 opacity-80" />
         </header>
 
-        {/* Fenêtre scrollable */}
+        {/* Carte + fenêtre scrollable fixe */}
         <section className="mt-6 rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-4 sm:p-5 flex flex-col">
           <div
             ref={messagesContainerRef}
             className="h-[60vh] overflow-y-auto pr-1 space-y-3"
           >
             {messages.map((msg) => {
+              const avatar = toAbs(msg.sender?.image) || '/default-avatar.png'
               const isMe = currentUserId !== null && Number(msg.sender?.id) === currentUserId
-              const avatar = toAbs(msg.sender?.image)
 
               return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  {/* Gauche (autre) */}
                   {!isMe && (
                     <div className="flex items-end gap-2 max-w-[80%]">
                       <Image
@@ -224,7 +251,14 @@ export default function ConversationPage() {
                       />
                       <div>
                         <div className="inline-block rounded-2xl rounded-tl-md border border-white/10 bg-white/[0.05] px-3 py-2">
-                          {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.content && (
+                            <>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                              {msg.content.includes('http') && (
+                                <div className="mt-2">{renderFile(msg.content)}</div>
+                              )}
+                            </>
+                          )}
                         </div>
                         <div className="mt-1 ml-1 text-[11px] text-white/50">
                           {msg.sender?.name ?? '—'} • {new Date(msg.createdAt).toLocaleString()}
@@ -232,11 +266,20 @@ export default function ConversationPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Droite (moi) */}
                   {isMe && (
                     <div className="flex items-end gap-2 max-w-[80%]">
                       <div>
                         <div className="inline-block rounded-2xl rounded-tr-md border border-white/10 bg-gradient-to-br from-pink-600/30 to-violet-600/30 px-3 py-2">
-                          {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.content && (
+                            <>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                              {msg.content.includes('http') && (
+                                <div className="mt-2">{renderFile(msg.content)}</div>
+                              )}
+                            </>
+                          )}
                         </div>
                         <div className="mt-1 text-right text-[11px] text-white/50">
                           {new Date(msg.createdAt).toLocaleString()} • {msg.seen ? '✓ Vu' : 'Non lu'}
@@ -265,13 +308,13 @@ export default function ConversationPage() {
               <input
                 id="fileInput"
                 type="file"
-                accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="hidden"
               />
               <label
                 htmlFor="fileInput"
-                className="cursor-pointer rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm hover:bg-white/15"
+                className="cursor-pointer whitespace-nowrap rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm hover:bg-white/15"
               >
                 Fichier
               </label>
@@ -279,7 +322,7 @@ export default function ConversationPage() {
               <button
                 onClick={handleSend}
                 disabled={!content.trim() && !file}
-                className="rounded-lg bg-gradient-to-r from-pink-600 to-violet-600 px-4 py-2 text-sm font-semibold disabled:opacity-60 hover:opacity-90"
+                className="whitespace-nowrap rounded-lg bg-gradient-to-r from-pink-600 to-violet-600 px-4 py-2 text-sm font-semibold disabled:opacity-60 hover:opacity-90"
               >
                 Envoyer
               </button>
@@ -287,10 +330,17 @@ export default function ConversationPage() {
 
             {file && (
               <div className="mt-3 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-                <p className="text-sm text-white truncate mr-3">{file.name}</p>
+                {file.type.startsWith('image') ? (
+                  <Image src={URL.createObjectURL(file)} alt="aperçu" width={48} height={48} className="rounded mr-3" unoptimized />
+                ) : file.type.startsWith('video') ? (
+                  <video src={URL.createObjectURL(file)} className="w-20 h-12 rounded mr-3" controls />
+                ) : (
+                  <p className="text-sm text-white truncate mr-3">{file.name}</p>
+                )}
                 <button
                   onClick={() => setFile(null)}
                   className="text-red-400 hover:text-red-300 text-sm font-semibold"
+                  title="Supprimer le fichier"
                 >
                   ✖
                 </button>
