@@ -3,7 +3,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
-// ✅ Types
+/* ===================== Types ===================== */
 
 type Profile = {
   id: number
@@ -16,7 +16,6 @@ type Profile = {
   typeEtablissement?: string
   bannerUrl?: string
   bio?: string
-  avatar?: string | null
 }
 
 type User = {
@@ -45,19 +44,32 @@ type AuthContextType = {
   logout: () => void
 }
 
-// ✅ Contexte
+/* ===================== Context ===================== */
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// ✅ Normalisation des données user renvoyées par l’API
-const normalizeUser = (raw: any): User => ({
+/* ===================== Helpers ===================== */
+// ✅ Typage strict pour la réponse brute du backend
+type RawUser = {
+  id: string | number
+  email: string
+  role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
+  name?: string
+  avatar?: string | null
+  avatarUrl?: string | null
+  profile?: Profile
+}
+
+// ✅ Normalisation des données backend → User
+const normalizeUser = (raw: RawUser): User => ({
   id: String(raw.id),
   email: raw.email,
   role: raw.role,
   name: raw.name,
-  avatarUrl: raw.avatar || raw.avatarUrl || raw.profile?.avatar || null,
+  avatarUrl: raw.avatar || raw.avatarUrl || raw.profile?.bannerUrl || null,
   profile: raw.profile || undefined,
 })
 
+/* ===================== Provider ===================== */
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
@@ -67,6 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL
 
+  // 🔄 Vérifie si un utilisateur est stocké dans le localStorage
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
@@ -90,6 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(false)
   }, [pathname, router])
 
+  /* ===================== Login ===================== */
   const login = async (email: string, password: string) => {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
@@ -103,22 +117,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const data = await res.json()
-    const user = normalizeUser(data.user)
-    console.log('👤 Utilisateur connecté :', user)
+    console.log('👤 Utilisateur connecté :', data.user)
+
+    const normalized = normalizeUser(data.user)
 
     localStorage.setItem('token', data.token)
-    localStorage.setItem('user', JSON.stringify(user))
+    localStorage.setItem('user', JSON.stringify(normalized))
 
     setToken(data.token)
-    setUser(user)
+    setUser(normalized)
 
-    if (user.role === 'ADMIN') {
+    if (normalized.role === 'ADMIN') {
       router.replace('/admin/dashboard')
     } else {
       router.replace('/home')
     }
   }
 
+  /* ===================== Register ===================== */
   const register = async (data: RegisterData) => {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
@@ -132,22 +148,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const resData = await res.json()
-    const user = normalizeUser(resData.user)
-    console.log('🆕 Nouvel utilisateur inscrit :', user)
+    console.log('🆕 Nouvel utilisateur inscrit :', resData.user)
+
+    const normalized = normalizeUser(resData.user)
 
     localStorage.setItem('token', resData.token)
-    localStorage.setItem('user', JSON.stringify(user))
+    localStorage.setItem('user', JSON.stringify(normalized))
 
     setToken(resData.token)
-    setUser(user)
+    setUser(normalized)
 
-    if (user.role === 'ADMIN') {
+    if (normalized.role === 'ADMIN') {
       router.replace('/admin/dashboard')
     } else {
       router.replace('/home')
     }
   }
 
+  /* ===================== Logout ===================== */
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -163,6 +181,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
+/* ===================== Hook ===================== */
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
