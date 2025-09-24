@@ -21,7 +21,6 @@ type AuthUser = {
   profile?: { id?: number | string } | null
 }
 
-// Type pour les notifications
 type Notification = {
   id: number
   userId: number
@@ -36,7 +35,8 @@ export default function Header() {
   const router = useRouter()
   const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
   const [menuOpen, setMenuOpen] = useState(false)
-  const [notifCount, setNotifCount] = useState<number>(0)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   // Logo depuis Cloudinary (modifiable en admin) sinon fallback local
@@ -78,7 +78,7 @@ export default function Header() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
-  // Charger le nombre de notifications non lues
+  // Charger les notifications
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!user?.id || !API_BASE) return
@@ -89,8 +89,7 @@ export default function Header() {
         })
         if (res.ok) {
           const data = await res.json()
-          const unread = data.notifications.filter((n: Notification) => !n.read).length
-          setNotifCount(unread)
+          setNotifications(data.notifications)
         }
       } catch (err) {
         console.error('Erreur chargement notifications:', err)
@@ -134,7 +133,6 @@ export default function Header() {
             >
               Recherche
             </button>
-            {/* “Messagerie” texte SUPPRIMÉ — on garde l’icône à droite */}
             <button
               onClick={() => goTo('/offers')}
               className="text-white/80 hover:text-white transition"
@@ -150,26 +148,65 @@ export default function Header() {
           </nav>
           {/* Right : quick actions */}
           <div className="flex items-center gap-3 md:gap-4">
-            {/* Messages (on garde l’icône uniquement) */}
+            {/* Messages (avec notifications) */}
             <button
-              onClick={() => goTo('/messages')}
+              onClick={() => setIsNotifOpen(!isNotifOpen)}
               className="relative rounded-full p-2 hover:bg-white/10 transition"
               title="Messagerie"
             >
               <Mail className="h-5 w-5 text-white/90" />
-            </button>
-            {/* Notifications */}
-            <button
-              onClick={() => goTo('/notifications')}
-              className="relative rounded-full p-2 hover:bg-white/10 transition"
-              title="Notifications"
-            >
-              <Bell className="h-5 w-5 text-white/90" />
-              {notifCount > 0 && (
+              {notifications.filter(n => !n.read && n.type === 'NEW_MESSAGE').length > 0 && (
                 <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-pink-600 text-[10px] font-semibold text-white grid place-items-center shadow">
-                  {notifCount}
+                  {notifications.filter(n => !n.read && n.type === 'NEW_MESSAGE').length}
                 </span>
               )}
+            </button>
+            {isNotifOpen && (
+              <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-white/10 bg-neutral-900/95 backdrop-blur shadow-xl p-4 z-50 max-h-96 overflow-y-auto">
+                <h2 className="text-lg font-semibold mb-2">Messagerie</h2>
+                {notifications.length === 0 ? (
+                  <p className="text-sm text-neutral-400">Aucune notification.</p>
+                ) : (
+                  notifications
+                    .filter(n => n.type === 'NEW_MESSAGE')
+                    .map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-2 rounded-lg ${notif.read ? 'bg-black/30' : 'bg-black/50'} mb-2`}
+                      >
+                        <p className="text-sm">{notif.message}</p>
+                        <p className="text-xs text-neutral-400">{new Date(notif.createdAt).toLocaleDateString()}</p>
+                        {!notif.read && (
+                          <button
+                            onClick={() => {
+                              fetch(`${API_BASE}/api/notifications/${notif.id}`, {
+                                method: 'PATCH',
+                                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                              }).then(() => setNotifications(notifications.map(n => n.id === notif.id ? { ...n, read: true } : n)))
+                            }}
+                            className="mt-1 text-xs text-pink-600 hover:text-pink-500"
+                          >
+                            Marquer comme lu
+                          </button>
+                        )}
+                      </div>
+                    ))
+                )}
+                <button
+                  onClick={() => setIsNotifOpen(false)}
+                  className="w-full mt-2 text-sm text-white/80 hover:text-white"
+                >
+                  Fermer
+                </button>
+              </div>
+            )}
+            {/* Notifications (cloche, sans badge pour l'instant) */}
+            <button
+              onClick={() => goTo('/notifications')} // Placeholder pour d'autres notifications
+              className="rounded-full p-2 hover:bg-white/10 transition"
+              title="Autres notifications"
+            >
+              <Bell className="h-5 w-5 text-white/90" />
             </button>
             {/* Avatar + menu */}
             <div className="relative">
