@@ -14,8 +14,9 @@ type Profile = {
   latitude?: number
   longitude?: number
   typeEtablissement?: string
-  bannerUrl?: string        // ✅ requis pour la bannière
-  bio?: string              // ✅ requis pour la bio
+  bannerUrl?: string
+  bio?: string
+  avatar?: string | null
 }
 
 type User = {
@@ -24,7 +25,7 @@ type User = {
   role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
   name?: string
   profile?: Profile
-  avatarUrl?: string
+  avatarUrl?: string | null
 }
 
 type RegisterData = {
@@ -46,6 +47,16 @@ type AuthContextType = {
 
 // ✅ Contexte
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// ✅ Normalisation des données user renvoyées par l’API
+const normalizeUser = (raw: any): User => ({
+  id: String(raw.id),
+  email: raw.email,
+  role: raw.role,
+  name: raw.name,
+  avatarUrl: raw.avatar || raw.avatarUrl || raw.profile?.avatar || null,
+  profile: raw.profile || undefined,
+})
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
@@ -83,7 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password }),
     })
 
     if (!res.ok) {
@@ -92,15 +103,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const data = await res.json()
-    console.log('👤 Utilisateur connecté :', data.user)
+    const user = normalizeUser(data.user)
+    console.log('👤 Utilisateur connecté :', user)
 
     localStorage.setItem('token', data.token)
-    localStorage.setItem('user', JSON.stringify(data.user))
+    localStorage.setItem('user', JSON.stringify(user))
 
     setToken(data.token)
-    setUser(data.user)
+    setUser(user)
 
-    if (data.user.role === 'ADMIN') {
+    if (user.role === 'ADMIN') {
       router.replace('/admin/dashboard')
     } else {
       router.replace('/home')
@@ -111,7 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     })
 
     if (!res.ok) {
@@ -120,15 +132,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const resData = await res.json()
-    console.log('🆕 Nouvel utilisateur inscrit :', resData.user)
+    const user = normalizeUser(resData.user)
+    console.log('🆕 Nouvel utilisateur inscrit :', user)
 
     localStorage.setItem('token', resData.token)
-    localStorage.setItem('user', JSON.stringify(resData.user))
+    localStorage.setItem('user', JSON.stringify(user))
 
     setToken(resData.token)
-    setUser(resData.user)
+    setUser(user)
 
-    if (resData.user.role === 'ADMIN') {
+    if (user.role === 'ADMIN') {
       router.replace('/admin/dashboard')
     } else {
       router.replace('/home')
