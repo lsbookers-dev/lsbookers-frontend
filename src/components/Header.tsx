@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -14,7 +13,6 @@ import {
 } from 'lucide-react'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
-
 type AuthUser = {
   id: number | string
   name?: string
@@ -27,13 +25,13 @@ export default function Header() {
   const router = useRouter()
   const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
   const [menuOpen, setMenuOpen] = useState(false)
-  const [notifCount] = useState<number>(3)
+  const [notifCount, setNotifCount] = useState<number>(0)
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   // Logo depuis Cloudinary (modifiable en admin) sinon fallback local
   const LOGO =
     process.env.NEXT_PUBLIC_LOGO_URL ||
     'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-
   // Avatar courant (fallback si vide)
   const avatarUrl = useMemo(() => {
     return user?.avatar ||
@@ -42,7 +40,6 @@ export default function Header() {
   }, [user?.avatar])
 
   const goTo = (path: string) => router.push(path)
-
   const goToProfile = () => {
     if (!user) return
     switch (user.role) {
@@ -69,6 +66,27 @@ export default function Header() {
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
+
+  // Charger le nombre de notifications non lues
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user?.id || !API_BASE) return
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch(`${API_BASE}/api/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const unread = data.notifications.filter((n: any) => !n.read).length
+          setNotifCount(unread)
+        }
+      } catch (err) {
+        console.error('Erreur chargement notifications:', err)
+      }
+    }
+    fetchNotifications()
+  }, [API_BASE, user?.id])
 
   return (
     <header className="sticky top-0 z-50 w-full bg-neutral-950/80 backdrop-blur-md border-b border-white/10">
@@ -97,7 +115,6 @@ export default function Header() {
               </div>
             </div>
           </div>
-
           {/* Center : NAV (⚠️ barre de recherche SUPPRIMÉE) */}
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <button
@@ -106,7 +123,6 @@ export default function Header() {
             >
               Recherche
             </button>
-
             {/* “Messagerie” texte SUPPRIMÉ — on garde l’icône à droite */}
             <button
               onClick={() => goTo('/offers')}
@@ -114,7 +130,6 @@ export default function Header() {
             >
               Offres
             </button>
-
             <button
               onClick={() => goTo('/subscriptions')}
               className="text-white/80 hover:text-white transition"
@@ -122,7 +137,6 @@ export default function Header() {
               Abonnements
             </button>
           </nav>
-
           {/* Right : quick actions */}
           <div className="flex items-center gap-3 md:gap-4">
             {/* Messages (on garde l’icône uniquement) */}
@@ -133,7 +147,6 @@ export default function Header() {
             >
               <Mail className="h-5 w-5 text-white/90" />
             </button>
-
             {/* Notifications */}
             <button
               onClick={() => goTo('/notifications')}
@@ -147,7 +160,6 @@ export default function Header() {
                 </span>
               )}
             </button>
-
             {/* Avatar + menu */}
             <div className="relative">
               <button
@@ -183,7 +195,6 @@ export default function Header() {
                 </div>
                 <ChevronDown className="h-4 w-4 text-white/70" />
               </button>
-
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-white/10 bg-neutral-900/95 backdrop-blur shadow-xl overflow-hidden z-50">
                   <button

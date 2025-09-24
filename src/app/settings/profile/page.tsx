@@ -7,6 +7,7 @@ export default function ProfileSettings() {
   const [location, setLocation] = useState('')
   const [soundcloudUrl, setSoundcloudUrl] = useState('')
   const [showSoundcloud, setShowSoundcloud] = useState(false)
+  const [notificationScope, setNotificationScope] = useState('INTERNATIONAL') // Par défaut
   const [token, setToken] = useState<string | null>(null)
   const [userId, setUserId] = useState<number | null>(null)
   const [profileId, setProfileId] = useState<number | null>(null)
@@ -32,6 +33,9 @@ export default function ProfileSettings() {
         setLocation(profile.location || '')
         setSoundcloudUrl(profile.soundcloudUrl || '')
         setShowSoundcloud(!!profile.showSoundcloud)
+        // Charger les préférences de notification
+        const prefs = profile.notificationPreferences
+        if (prefs) setNotificationScope(prefs.locationScope)
       }
     }
     loadProfile()
@@ -48,7 +52,7 @@ export default function ProfileSettings() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ location, soundcloudUrl, showSoundcloud }),
+      body: JSON.stringify({ location, soundcloudUrl, showSoundcloud, notificationPreferences: { locationScope: notificationScope } }),
     })
     if (res.ok) {
       alert('Paramètres mis à jour ✅')
@@ -85,6 +89,19 @@ export default function ProfileSettings() {
             onChange={(e) => setShowSoundcloud(e.target.checked)}
           />
           <label>Afficher le player SoundCloud</label>
+        </div>
+        {/* Préférences de notification */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Préférences de notification</label>
+          <select
+            className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+            value={notificationScope}
+            onChange={(e) => setNotificationScope(e.target.value)}
+          >
+            <option value="REGION">Ma région</option>
+            <option value="FRANCE">France</option>
+            <option value="INTERNATIONAL">International</option>
+          </select>
         </div>
         <button
           onClick={saveSettings}
