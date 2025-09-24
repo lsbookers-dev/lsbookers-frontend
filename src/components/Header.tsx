@@ -49,11 +49,12 @@ export default function Header() {
     process.env.NEXT_PUBLIC_LOGO_URL ||
     'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
 
+  // ✅ Avatar avec fallback Cloudinary
   const avatarUrl = useMemo(() => {
     return (
       user?.avatar ||
       (typeof window !== 'undefined' ? localStorage.getItem('avatar') : null) ||
-      '/default-avatar.png'
+      'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/default-avatar.png'
     )
   }, [user?.avatar])
 
@@ -105,13 +106,13 @@ export default function Header() {
     fetchNotifications()
   }, [API_BASE, user?.id])
 
-  // Charger le nombre de conversations non lues
+  // ✅ Charger le nombre de conversations non lues
   useEffect(() => {
     const fetchUnread = async () => {
       if (!user?.id || !API_BASE) return
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch(`${API_BASE}/api/conversations/unread-count`, {
+        const res = await fetch(`${API_BASE}/api/messages/unread-count`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (res.ok) {
