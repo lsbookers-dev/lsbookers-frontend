@@ -21,6 +21,17 @@ type AuthUser = {
   profile?: { id?: number | string } | null
 }
 
+// Type pour les notifications
+type Notification = {
+  id: number
+  userId: number
+  type: string
+  message: string
+  read: boolean
+  createdAt: string
+  offerId?: number
+}
+
 export default function Header() {
   const router = useRouter()
   const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
@@ -78,7 +89,7 @@ export default function Header() {
         })
         if (res.ok) {
           const data = await res.json()
-          const unread = data.notifications.filter((n: any) => !n.read).length
+          const unread = data.notifications.filter((n: Notification) => !n.read).length
           setNotifCount(unread)
         }
       } catch (err) {
