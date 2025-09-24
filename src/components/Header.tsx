@@ -37,17 +37,21 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [unreadMessages, setUnreadMessages] = useState(0)
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   // Logo depuis Cloudinary (modifiable en admin) sinon fallback local
   const LOGO =
     process.env.NEXT_PUBLIC_LOGO_URL ||
     'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
+
   // Avatar courant (fallback si vide)
   const avatarUrl = useMemo(() => {
-    return user?.avatar ||
+    return (
+      user?.avatar ||
       (typeof window !== 'undefined' ? localStorage.getItem('avatar') : null) ||
       '/default-avatar.png'
+    )
   }, [user?.avatar])
 
   const goTo = (path: string) => router.push(path)
@@ -71,7 +75,7 @@ export default function Header() {
     }
   }
 
-  // Fermer le menu au changement de route (sécurité UX)
+  // Fermer le menu au changement de route
   useEffect(() => {
     const onPop = () => setMenuOpen(false)
     window.addEventListener('popstate', onPop)
@@ -98,11 +102,31 @@ export default function Header() {
     fetchNotifications()
   }, [API_BASE, user?.id])
 
+  // Charger le nombre de conversations non lues
+  useEffect(() => {
+    const fetchUnread = async () => {
+      if (!user?.id || !API_BASE) return
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch(`${API_BASE}/api/conversations/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setUnreadMessages(data.count || 0)
+        }
+      } catch (err) {
+        console.error('Erreur chargement unread messages:', err)
+      }
+    }
+    fetchUnread()
+  }, [API_BASE, user?.id])
+
   return (
     <header className="sticky top-0 z-50 w-full bg-neutral-950/80 backdrop-blur-md border-b border-white/10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="h-16 md:h-18 flex items-center justify-between gap-4">
-          {/* Left : Logo + tagline */}
+          {/* Left : Logo */}
           <div
             className="flex items-center gap-3 cursor-pointer group"
             onClick={() => goTo('/home')}
@@ -125,18 +149,13 @@ export default function Header() {
               </div>
             </div>
           </div>
-          {/* Center : NAV (⚠️ barre de recherche SUPPRIMÉE) */}
+
+          {/* Center : NAV */}
           <nav className="hidden md:flex items-center gap-6 text-sm">
-            <button
-              onClick={() => goTo('/search')}
-              className="text-white/80 hover:text-white transition"
-            >
+            <button onClick={() => goTo('/search')} className="text-white/80 hover:text-white transition">
               Recherche
             </button>
-            <button
-              onClick={() => goTo('/offers')}
-              className="text-white/80 hover:text-white transition"
-            >
+            <button onClick={() => goTo('/offers')} className="text-white/80 hover:text-white transition">
               Offres
             </button>
             <button
@@ -146,70 +165,91 @@ export default function Header() {
               Abonnements
             </button>
           </nav>
+
           {/* Right : quick actions */}
           <div className="flex items-center gap-3 md:gap-4">
-            {/* Messagerie (sans action) */}
+            {/* Messagerie */}
             <button
               onClick={() => goTo('/messages')}
-              className="rounded-full p-2 hover:bg-white/10 transition"
+              className="relative rounded-full p-2 hover:bg-white/10 transition"
               title="Messagerie"
             >
               <Mail className="h-5 w-5 text-white/90" />
-            </button>
-            {/* Notifications (avec fenêtre) */}
-            <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative rounded-full p-2 hover:bg-white/10 transition"
-              title="Notifications"
-            >
-              <Bell className="h-5 w-5 text-white/90" />
-              {notifications.filter(n => !n.read).length > 0 && (
+              {unreadMessages > 0 && (
                 <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-pink-600 text-[10px] font-semibold text-white grid place-items-center shadow">
-                  {notifications.filter(n => !n.read).length}
+                  {unreadMessages}
                 </span>
               )}
             </button>
-            {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-white/10 bg-neutral-900/95 backdrop-blur shadow-xl p-4 z-50 max-h-96 overflow-y-auto">
-                <h2 className="text-lg font-semibold mb-2">Notifications</h2>
-                {notifications.length === 0 ? (
-                  <p className="text-sm text-neutral-400">Aucune notification.</p>
-                ) : (
-                  notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={`p-2 rounded-lg ${notif.read ? 'bg-black/30' : 'bg-black/50'} mb-2`}
-                    >
-                      <p className="text-sm">{notif.message}</p>
-                      <p className="text-xs text-neutral-400">{new Date(notif.createdAt).toLocaleDateString()}</p>
-                      {!notif.read && (
-                        <button
-                          onClick={() => {
-                            fetch(`${API_BASE}/api/notifications/${notif.id}`, {
-                              method: 'PATCH',
-                              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-                            }).then(() => setNotifications(notifications.map(n => n.id === notif.id ? { ...n, read: true } : n)))
-                          }}
-                          className="mt-1 text-xs text-pink-600 hover:text-pink-500"
-                        >
-                          Marquer comme lu
-                        </button>
-                      )}
-                    </div>
-                  ))
+
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="relative rounded-full p-2 hover:bg-white/10 transition"
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5 text-white/90" />
+                {notifications.filter((n) => !n.read).length > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-pink-600 text-[10px] font-semibold text-white grid place-items-center shadow">
+                    {notifications.filter((n) => !n.read).length}
+                  </span>
                 )}
-                <button
-                  onClick={() => setIsNotifOpen(false)}
-                  className="w-full mt-2 text-sm text-white/80 hover:text-white"
-                >
-                  Fermer
-                </button>
-              </div>
-            )}
+              </button>
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-white/10 bg-neutral-900/95 backdrop-blur shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+                    <h2 className="text-sm font-semibold text-white">Notifications</h2>
+                    {notifications.some((n) => !n.read) && (
+                      <button
+                        onClick={() => {
+                          fetch(`${API_BASE}/api/notifications`, {
+                            method: 'PATCH',
+                            headers: {
+                              Authorization: `Bearer ${localStorage.getItem('token')}`,
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ ids: notifications.map((n) => n.id) }),
+                          }).then(() =>
+                            setNotifications(notifications.map((n) => ({ ...n, read: true })))
+                          )
+                        }}
+                        className="text-xs text-pink-500 hover:text-pink-400"
+                      >
+                        Tout marquer lu
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    {notifications.length === 0 ? (
+                      <p className="text-sm text-neutral-400 p-2">Aucune notification.</p>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`p-2 rounded-lg mb-2 cursor-pointer hover:bg-white/5 ${
+                            notif.read ? 'opacity-60' : 'opacity-100'
+                          }`}
+                          onClick={() => {
+                            if (notif.offerId) goTo(`/offers/${notif.offerId}`)
+                          }}
+                        >
+                          <p className="text-sm truncate">{notif.message}</p>
+                          <p className="text-xs text-neutral-400">
+                            {new Date(notif.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Avatar + menu */}
             <div className="relative">
               <button
-                onClick={() => setMenuOpen(v => !v)}
+                onClick={() => setMenuOpen((v) => !v)}
                 className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 pl-1 pr-2 py-1 hover:bg-white/10 transition"
                 title="Compte"
               >
