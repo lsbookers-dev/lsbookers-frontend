@@ -7,7 +7,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
-import { Settings2, Plus, MapPin, Heart, MessageCircle, Trash2 } from 'lucide-react'
+import { Settings2, Plus, MapPin, MessageCircle, Trash2 } from 'lucide-react'
 /* ================= Types ================= */
 type StoredUser = {
   id: number | string
