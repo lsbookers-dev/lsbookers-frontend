@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -12,29 +11,26 @@ import {
   Star,
   MapPin,
   SlidersHorizontal,
+  Trash2,
 } from 'lucide-react'
-
 /* ================= Types ================= */
 type RoleTag = { label: string }
 type Publication = {
   id: number
   title: string
-  image: string
+  media: string
+  mediaType: 'image' | 'video'
   caption?: string
   time?: string
-  likes?: number
-  comments?: number
 }
 type Review = { id: number; author: string; authorAvatar: string; rating: number; text: string }
 type PriceLine = { id: number; label: string; price: string }
-
 type StoredUser = {
   id: number | string
   name?: string
   role?: string
   profile?: { id: number }
 }
-
 type ApiUser = { id: number; name: string }
 type ApiProfile = {
   id: number
@@ -46,10 +42,9 @@ type ApiProfile = {
   country?: string | null
   radiusKm?: number | null
   specialties?: string[] | null
-  bannerPositionY?: number | null // nouveau: position Y de la bannière (%)
+  bannerPositionY?: number | null
   user?: ApiUser
 }
-
 /* ================= Helpers ================= */
 async function uploadToCloudinary(
   file: File,
@@ -59,12 +54,10 @@ async function uploadToCloudinary(
   const API = process.env.NEXT_PUBLIC_API_URL
   if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant')
   const base = API.replace(/\/$/, '')
-
   const fd = new FormData()
   fd.append('file', file)
   fd.append('folder', folder)
   fd.append('type', type)
-
   const res = await fetch(`${base}/api/upload`, { method: 'POST', body: fd })
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { error?: string }
@@ -72,13 +65,10 @@ async function uploadToCloudinary(
   }
   return res.json() as Promise<{ url: string; public_id: string }>
 }
-
 /* ============================================================ */
-
 export default function ProviderProfilePage() {
   const router = useRouter()
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
   // --------- “mock” valeurs de départ pour l’UI ----------
   const providerDefaults = useMemo(
     () => ({
@@ -94,14 +84,12 @@ export default function ProviderProfilePage() {
     }),
     []
   )
-
   /* ===== Auth + profile réels ===== */
   const [token, setToken] = useState<string | null>(null)
   const [userId, setUserId] = useState<number | null>(null)
   const [profileId, setProfileId] = useState<number | null>(null)
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null)
   const [profile, setProfile] = useState<ApiProfile | null>(null)
-
   useEffect(() => {
     try {
       const t = localStorage.getItem('token')
@@ -118,19 +106,18 @@ export default function ProviderProfilePage() {
       /* ignore */
     }
   }, [])
-
   /* ===== Visuels (avec MAJ immédiate) ===== */
   const [bannerUrl, setBannerUrl] = useState<string>(providerDefaults.banner)
   const [avatarUrl, setAvatarUrl] = useState<string>(providerDefaults.avatar)
   const bannerInputRef = useRef<HTMLInputElement | null>(null)
   const avatarInputRef = useRef<HTMLInputElement | null>(null)
+  const pubInputRef = useRef<HTMLInputElement | null>(null)
   const [bannerUploading, setBannerUploading] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
-
+  const [pubUploading, setPubUploading] = useState(false)
   // Position verticale de la bannière (object-position-y)
   const [bannerPosY, setBannerPosY] = useState<number>(50) // %
   const [tweakOpen, setTweakOpen] = useState(false) // popover réglage
-
   // Prestations (badges)
   const [roles, setRoles] = useState<RoleTag[]>(providerDefaults.roles)
   const allRoleOptions = useMemo(
@@ -138,27 +125,22 @@ export default function ProviderProfilePage() {
     []
   )
   const [rolePickerOpen, setRolePickerOpen] = useState(false)
-
   // Zone d’intervention (éditable via petit popover)
   const [locDraft, setLocDraft] = useState(providerDefaults.location)
   const [countryDraft, setCountryDraft] = useState(providerDefaults.country)
   const [radiusDraft, setRadiusDraft] = useState<string>(String(providerDefaults.radiusKm))
   const [geoOpen, setGeoOpen] = useState(false)
-
   // Description
   const [description, setDescription] = useState(providerDefaults.description)
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState(description)
-
-  // Publications (portfolio => like/comment)
-  const [publications, setPublications] = useState<Publication[]>([
-    { id: 1, title: 'Cocktail dînatoire', image: '/media/prov1.jpg', caption: 'Buffet 120 pers — merci !', time: 'Il y a 4h', likes: 12, comments: 3 },
-    { id: 2, title: 'Photobooth soirée', image: '/media/prov2.jpg', likes: 8, comments: 1 },
-    { id: 3, title: 'Feu d’artifice', image: '/media/prov3.jpg', likes: 21, comments: 7 },
-    { id: 4, title: 'Décor mariage', image: '/media/prov4.jpg', likes: 5, comments: 2 },
-  ])
+  // Publications
+  const [publications, setPublications] = useState<Publication[]>([])
   const [showAllPubs, setShowAllPubs] = useState(false)
-
+  const [showAddPubModal, setShowAddPubModal] = useState(false)
+  const [newPubTitle, setNewPubTitle] = useState('')
+  const [newPubCaption, setNewPubCaption] = useState('')
+  const [newPubFile, setNewPubFile] = useState<File | null>(null)
   // Avis & Tarifs (colonne droite)
   const [reviews] = useState<Review[]>([
     { id: 1, author: 'Wedding Planning', authorAvatar: '/avatars/pro1.png', rating: 5, text: 'Service impeccable, réactif et flexible. Reco ++' },
@@ -170,7 +152,6 @@ export default function ProviderProfilePage() {
   ])
   const [newPriceLabel, setNewPriceLabel] = useState('')
   const [newPriceValue, setNewPriceValue] = useState('')
-
   /* ===== Charger profil depuis l’API ===== */
   useEffect(() => {
     const loadProfile = async () => {
@@ -186,8 +167,6 @@ export default function ProviderProfilePage() {
           if (p.avatar) setAvatarUrl(p.avatar)
           if (typeof p.bannerPositionY === 'number') setBannerPosY(p.bannerPositionY)
           if (!profileId && p.id) setProfileId(p.id)
-
-          // hydrate “header”
           if (p.location) setLocDraft(p.location)
           if (p.country) setCountryDraft(p.country)
           if (typeof p.radiusKm === 'number') setRadiusDraft(String(p.radiusKm))
@@ -205,13 +184,26 @@ export default function ProviderProfilePage() {
     }
     loadProfile()
   }, [API_BASE, userId, profileId])
-
+  /* ===== Charger publications depuis l’API ===== */
+  useEffect(() => {
+    const loadPublications = async () => {
+      if (!API_BASE || !profileId) return
+      try {
+        const res = await fetch(`${API_BASE}/api/publications/profile/${profileId}`)
+        if (!res.ok) throw new Error('Failed to load publications')
+        const data = await res.json()
+        setPublications(data.publications || [])
+      } catch (err) {
+        console.error('Erreur de chargement des publications:', err)
+      }
+    }
+    loadPublications()
+  }, [API_BASE, profileId])
   /* =============== Actions persistance =============== */
   const saveProfile = async (fields: Record<string, unknown>) => {
     if (!API_BASE) throw new Error('NEXT_PUBLIC_API_URL manquant')
     if (!token) throw new Error('TOKEN_ABSENT')
     if (!profileId) throw new Error('PROFILE_ID_ABSENT')
-
     const res = await fetch(`${API_BASE}/api/profile/${profileId}`, {
       method: 'PUT',
       headers: {
@@ -225,7 +217,6 @@ export default function ProviderProfilePage() {
       throw new Error(err?.error || 'PROFILE_SAVE_FAILED')
     }
   }
-
   const onSelectBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -243,7 +234,6 @@ export default function ProviderProfilePage() {
       e.target.value = ''
     }
   }
-
   const onSelectAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -261,8 +251,6 @@ export default function ProviderProfilePage() {
       e.target.value = ''
     }
   }
-
-  // Ajustement vertical de la bannière (stocké en %)
   const persistBannerPos = async (val: number) => {
     setBannerPosY(val)
     try {
@@ -271,13 +259,11 @@ export default function ProviderProfilePage() {
       /* optionnel: silencieux si backend pas prêt */
     }
   }
-
   const toggleRole = (label: string) => {
     setRoles(prev =>
       prev.some(r => r.label === label) ? prev.filter(r => r.label !== label) : [...prev, { label }]
     )
   }
-
   const saveSpecialties = async () => {
     try {
       await saveProfile({ specialties: roles.map(r => r.label) })
@@ -286,7 +272,6 @@ export default function ProviderProfilePage() {
       alert('Impossible de sauvegarder les prestations.')
     }
   }
-
   const saveGeo = async () => {
     try {
       const radiusNum = parseInt(radiusDraft || '0', 10) || 0
@@ -297,20 +282,60 @@ export default function ProviderProfilePage() {
       alert('Échec de sauvegarde de la zone.')
     }
   }
-
-  const addPublication = () => {
-    const title = window.prompt('Titre de la publication ?')
-    if (!title) return
-    const image = window.prompt("URL de l'image ?") || '/media/pub_placeholder.jpg'
-    setPublications(prev => [{ id: Date.now(), title, image, likes: 0, comments: 0 }, ...prev])
+  const addPublication = async () => {
+    if (!newPubTitle.trim() || !newPubFile) return
+    try {
+      setPubUploading(true)
+      const mediaType = newPubFile.type.startsWith('video/') ? 'video' : 'image'
+      const { url } = await uploadToCloudinary(newPubFile, 'media', mediaType)
+      const newPub = {
+        title: newPubTitle,
+        media: url,
+        mediaType,
+        caption: newPubCaption.trim() || undefined,
+        profileId,
+      }
+      const res = await fetch(`${API_BASE}/api/publications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(newPub),
+      })
+      if (!res.ok) throw new Error('Failed to save publication')
+      const savedPub = await res.json()
+      setPublications(prev => [savedPub, ...prev])
+      setNewPubTitle('')
+      setNewPubCaption('')
+      setNewPubFile(null)
+      setShowAddPubModal(false)
+      alert('Publication ajoutée ✅')
+    } catch (err) {
+      console.error('Erreur lors de l’ajout de la publication:', err)
+      alert('Échec de l’ajout de la publication')
+    } finally {
+      setPubUploading(false)
+      if (pubInputRef.current) pubInputRef.current.value = ''
+    }
   }
-
-  const likePub = (id: number) =>
-    setPublications(prev => prev.map(p => (p.id === id ? { ...p, likes: (p.likes || 0) + 1 } : p)))
-
-  const commentPub = (id: number) =>
-    setPublications(prev => prev.map(p => (p.id === id ? { ...p, comments: (p.comments || 0) + 1 } : p)))
-
+  const deletePublication = async (id: number) => {
+    if (!confirm('Supprimer cette publication ?')) return
+    try {
+      const res = await fetch(`${API_BASE}/api/publications/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      if (!res.ok) throw new Error('Failed to delete publication')
+      setPublications(prev => prev.filter(p => p.id !== id))
+      alert('Publication supprimée ✅')
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err)
+      alert('Échec de la suppression')
+    }
+  }
   const addPrice = () => {
     const lbl = newPriceLabel.trim()
     const val = newPriceValue.trim()
@@ -320,14 +345,10 @@ export default function ProviderProfilePage() {
     setNewPriceValue('')
   }
   const removePrice = (id: number) => setPrices(prev => prev.filter(p => p.id !== id))
-
   /* =========================== UI =========================== */
-
-  // publications: 1 “hero” + 3 vignettes
   const sorted = [...publications].sort((a, b) => b.id - a.id)
   const heroPub = sorted[0]
   const restPubs = sorted.slice(1, 4)
-
   return (
     <div className="min-h-screen bg-black text-white">
       {/* ===== Bannière ===== */}
@@ -340,7 +361,6 @@ export default function ProviderProfilePage() {
           className="object-cover opacity-90"
           style={{ objectPosition: `50% ${bannerPosY}%` }}
         />
-
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <button
             onClick={() => router.push('/settings/profile')}
@@ -349,7 +369,6 @@ export default function ProviderProfilePage() {
             <Settings2 size={18} />
             Réglages
           </button>
-
           <button
             onClick={() => bannerInputRef.current?.click()}
             className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl"
@@ -358,8 +377,6 @@ export default function ProviderProfilePage() {
           >
             {bannerUploading ? 'Envoi…' : 'Changer'}
           </button>
-
-          {/* Popover: Ajuster centrage */}
           <div className="relative">
             <button
               onClick={() => setTweakOpen(v => !v)}
@@ -384,14 +401,11 @@ export default function ProviderProfilePage() {
             )}
           </div>
         </div>
-
         <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={onSelectBanner} />
       </div>
-
       {/* ===== Header infos ===== */}
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          {/* Avatar + édit */}
           <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
             <Image src={avatarUrl} alt="Avatar" fill className="object-cover" />
             <button
@@ -404,13 +418,10 @@ export default function ProviderProfilePage() {
             </button>
             <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={onSelectAvatar} />
           </div>
-
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">
               {currentUser?.name ?? profile?.user?.name ?? providerDefaults.name}
             </h1>
-
-            {/* Ligne: localisation compacte */}
             <p className="text-sm text-neutral-300 flex items-center gap-2 mt-1">
               <MapPin size={16} className="text-violet-400" />
               <span>
@@ -425,8 +436,6 @@ export default function ProviderProfilePage() {
                 Régler
               </button>
             </p>
-
-            {/* Prestations (badges) + gérer */}
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {roles.map(r => (
                 <span key={r.label} className="text-xs px-2 py-1 rounded-full bg-violet-600/20 border border-violet-600/40">
@@ -471,8 +480,6 @@ export default function ProviderProfilePage() {
                 )}
               </div>
             </div>
-
-            {/* Popover zone d’intervention */}
             {geoOpen && (
               <div className="mt-3 rounded-2xl bg-neutral-900 border border-white/10 p-3 w-full max-w-xl">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -508,7 +515,6 @@ export default function ProviderProfilePage() {
             )}
           </div>
         </div>
-
         <div className="flex items-center gap-3">
           <button className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200">
             <MessageCircle size={18} /> Contacter
@@ -518,12 +524,10 @@ export default function ProviderProfilePage() {
           </button>
         </div>
       </div>
-
       {/* ===== Corps ===== */}
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
         {/* Colonne gauche */}
         <div className="space-y-6">
-          {/* Description (au-dessus) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Description</h2>
@@ -560,7 +564,6 @@ export default function ProviderProfilePage() {
                 </div>
               )}
             </div>
-
             {!editingDesc ? (
               <p className="text-neutral-200 mt-3 leading-relaxed">{description}</p>
             ) : (
@@ -572,8 +575,6 @@ export default function ProviderProfilePage() {
               />
             )}
           </section>
-
-          {/* Publications (ex-portfolio) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Publications</h2>
@@ -585,51 +586,65 @@ export default function ProviderProfilePage() {
                   Voir tout
                 </button>
                 <button
-                  onClick={addPublication}
+                  onClick={() => setShowAddPubModal(true)}
                   className="text-sm px-3 py-1 rounded-full bg-violet-600 hover:bg-violet-500 flex items-center gap-1"
                 >
                   <Plus size={16} /> Ajouter
                 </button>
               </div>
             </div>
-
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              {heroPub && (
-                <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                  <div className="relative w-full h-64">
-                    <Image src={heroPub.image} alt={heroPub.title} fill className="object-cover" />
-                  </div>
-                  <div className="p-3">
-                    <p className="font-medium">{heroPub.title}</p>
-                    {heroPub.caption && <p className="text-sm text-neutral-300 mt-1">{heroPub.caption}</p>}
-                    <div className="flex items-center gap-4 text-sm text-neutral-300 mt-2">
-                      <button onClick={() => likePub(heroPub.id)} className="hover:text-white">❤️ {heroPub.likes ?? 0}</button>
-                      <button onClick={() => commentPub(heroPub.id)} className="hover:text-white">💬 {heroPub.comments ?? 0}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
-                {restPubs.map(p => (
-                  <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                    <div className="relative w-full h-28">
-                      <Image src={p.image} alt={p.title} fill className="object-cover" />
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm font-medium truncate">{p.title}</p>
-                      <div className="flex items-center gap-4 text-xs text-neutral-300 mt-1">
-                        <button onClick={() => likePub(p.id)} className="hover:text-white">❤️ {p.likes ?? 0}</button>
-                        <button onClick={() => commentPub(p.id)} className="hover:text-white">💬 {p.comments ?? 0}</button>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
+              {publications.length > 0 && (
+                <>
+                  {heroPub && (
+                    <div className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                      <div className="relative w-full h-64">
+                        {heroPub.mediaType === 'image' ? (
+                          <Image src={heroPub.media} alt={heroPub.title} fill className="object-cover" />
+                        ) : (
+                          <video src={heroPub.media} controls className="w-full h-full object-cover" />
+                        )}
+                        <button
+                          onClick={() => deletePublication(heroPub.id)}
+                          className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="p-3">
+                        <p className="font-medium">{heroPub.title}</p>
+                        {heroPub.caption && <p className="text-sm text-neutral-300 mt-1">{heroPub.caption}</p>}
                       </div>
                     </div>
+                  )}
+                  <div className="grid grid-cols-1 gap-4">
+                    {restPubs.map(p => (
+                      <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                        <div className="relative w-full h-28">
+                          {p.mediaType === 'image' ? (
+                            <Image src={p.media} alt={p.title} fill className="object-cover" />
+                          ) : (
+                            <video src={p.media} controls className="w-full h-full object-cover" />
+                          )}
+                          <button
+                            onClick={() => deletePublication(p.id)}
+                            className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                            title="Supprimer"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <div className="p-2">
+                          <p className="text-sm font-medium truncate">{p.title}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </div>
           </section>
-
-          {/* Planning (inchangé / placeholder) */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Planning</h2>
             <div className="mt-3 h-48 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center">
@@ -637,10 +652,8 @@ export default function ProviderProfilePage() {
             </div>
           </section>
         </div>
-
         {/* Colonne droite */}
         <aside className="space-y-6">
-          {/* Avis */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Avis</h2>
@@ -671,13 +684,10 @@ export default function ProviderProfilePage() {
               ))}
             </div>
           </section>
-
-          {/* Tarifs */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Tarifs</h2>
             </div>
-
             <ul className="mt-3 space-y-2">
               {prices.map(p => (
                 <li
@@ -697,7 +707,6 @@ export default function ProviderProfilePage() {
                 </li>
               ))}
             </ul>
-
             <div className="mt-3 grid grid-cols-1 gap-2">
               <input
                 className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
@@ -721,7 +730,6 @@ export default function ProviderProfilePage() {
           </section>
         </aside>
       </div>
-
       {/* ===== Modal Publications ===== */}
       {showAllPubs && (
         <div
@@ -742,20 +750,79 @@ export default function ProviderProfilePage() {
               </button>
             </div>
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {publications.map(p => (
+              {sorted.map(p => (
                 <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
                   <div className="relative w-full h-40">
-                    <Image src={p.image} alt={p.title} fill className="object-cover" />
+                    {p.mediaType === 'image' ? (
+                      <Image src={p.media} alt={p.title} fill className="object-cover" />
+                    ) : (
+                      <video src={p.media} controls className="w-full h-full object-cover" />
+                    )}
+                    <button
+                      onClick={() => deletePublication(p.id)}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded"
+                      title="Supprimer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                   <div className="p-3">
                     <p className="text-sm font-medium">{p.title}</p>
                     {p.caption && <p className="text-xs text-neutral-400 mt-1">{p.caption}</p>}
-                    <div className="flex items-center gap-4 text-xs text-neutral-300 mt-2">
-                      ❤️ {p.likes ?? 0} • 💬 {p.comments ?? 0}
-                    </div>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ===== Modal Ajout Publication ===== */}
+      {showAddPubModal && (
+        <div
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowAddPubModal(false)}
+        >
+          <div
+            className="max-w-md w-full bg-neutral-950 border border-white/10 rounded-2xl p-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Nouvelle publication</h3>
+              <button
+                onClick={() => setShowAddPubModal(false)}
+                className="text-sm px-3 py-1 rounded bg-white/10 hover:bg-white/20"
+              >
+                Fermer
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <input
+                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Titre de la publication"
+                value={newPubTitle}
+                onChange={e => setNewPubTitle(e.target.value)}
+              />
+              <textarea
+                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                placeholder="Légende (optionnel)"
+                rows={3}
+                value={newPubCaption}
+                onChange={e => setNewPubCaption(e.target.value)}
+              />
+              <input
+                ref={pubInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
+                onChange={e => setNewPubFile(e.target.files?.[0] || null)}
+              />
+              <button
+                onClick={addPublication}
+                className="w-full text-sm px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50"
+                disabled={pubUploading || !newPubTitle || !newPubFile}
+              >
+                {pubUploading ? 'Envoi…' : 'Publier'}
+              </button>
             </div>
           </div>
         </div>
