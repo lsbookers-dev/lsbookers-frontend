@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import axios, { isAxiosError } from 'axios'
 import { useAuth } from '@/context/AuthContext'
 import Image from 'next/image'
-import Link from 'next/link' // utilisé pour /register et /contact
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
@@ -16,14 +16,18 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+  const API =
+    (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app')
+      .replace(/\/$/, '')
+
   const ENV_FALLBACK =
     process.env.NEXT_PUBLIC_LOGIN_BG ||
-    // ⚠️ Mets une URL d'image valide ici pour éviter les 404 en prod
+    // ⚠️ Mets une image valide pour éviter les 404
     'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1600&auto=format'
 
   const [bgUrl, setBgUrl] = useState<string>(ENV_FALLBACK)
 
+  // ---- Récup du fond (non bloquant si 404) ----
   useEffect(() => {
     if (!API) return
     ;(async () => {
@@ -33,19 +37,28 @@ export default function LoginPage() {
         const data = (await r.json()) as { value?: string }
         if (data?.value) setBgUrl(data.value)
       } catch {
-        /* on garde l’ENV si l’endpoint renvoie 404 */
+        /* on garde l’ENV */
       }
     })()
   }, [API])
 
+  // ---- Déconnexion automatique uniquement au 1er rendu, si l'utilisateur était déjà connecté AVANT d'arriver sur /login ----
+  const didRunLogoutRef = useRef(false)
+  const initialUserRef = useRef(user) // capture la valeur initiale au montage
   useEffect(() => {
-    if (user) {
+    if (didRunLogoutRef.current) return
+    didRunLogoutRef.current = true
+    if (initialUserRef.current) {
+      // L'utilisateur était déjà connecté AVANT d'arriver sur /login → on le déconnecte
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       setUser(null)
     }
-  }, [user, setUser])
+    // IMPORTANT : pas de dépendance sur `user` pour ne pas relancer après un succès de login
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setUser])
 
+  // ---- Login ----
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -61,12 +74,17 @@ export default function LoginPage() {
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true, timeout: 15000 }
       )
 
-      const { token, user } = response.data || {}
-      if (token) localStorage.setItem('token', token)
-      if (user) localStorage.setItem('user', JSON.stringify(user))
+      const { token, user: userPayload } = response.data || {}
 
-      setUser(user || null)
-      router.push(user?.isAdmin ? '/admin/settings' : '/home')
+      if (token) localStorage.setItem('token', token)
+      if (userPayload) localStorage.setItem('user', JSON.stringify(userPayload))
+
+      setUser(userPayload || null)
+
+      // navigation fiable
+      const to = userPayload?.isAdmin ? '/admin/settings' : '/home'
+      // replace évite de revenir sur /login via "Précédent"
+      router.replace(to)
     } catch (err) {
       console.error('❌ Erreur de connexion', err)
       let msg = "Échec de la connexion. Réessaie."
@@ -155,18 +173,17 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* ✅ Lien forcé côté serveur vers forgot-password */}
-            {/* eslint-disable @next/next/no-html-link-for-pages */}
+            {/* Lien vers "Mot de passe oublié ?" (revient sur Link propre) */}
             <div className="flex items-center justify-between">
-              <a
+              <Link
                 href="/forgot-password"
-                className="relative z-30 text-sm text-white/75 hover:text-white underline underline-offset-4 transition"
+                className="text-sm text-white/75 hover:text-white underline underline-offset-4 transition"
+                prefetch={false}
               >
                 Mot de passe oublié ?
-              </a>
+              </Link>
               <span className="text-xs text-white/50">Connexion sécurisée</span>
             </div>
-            {/* eslint-enable @next/next/no-html-link-for-pages */}
 
             <button
               type="submit"
