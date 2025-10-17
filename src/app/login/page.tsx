@@ -16,10 +16,14 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // URL absolue de ton frontend en prod (à définir dans .env : NEXT_PUBLIC_APP_URL=https://ton-domaine)
+  const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+  const FORGOT_ABS = APP_URL ? `${APP_URL}/forgot-password` : '/forgot-password'
+
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
   const ENV_FALLBACK =
     process.env.NEXT_PUBLIC_LOGIN_BG ||
-    // ✅ Mets une image valide pour éviter les 404 en prod
+    // ✅ Mets une image valide pour éviter les 404 (ici Unsplash générique)
     'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1600&auto=format'
 
   const [bgUrl, setBgUrl] = useState<string>(ENV_FALLBACK)
@@ -33,7 +37,7 @@ export default function LoginPage() {
         const data = (await r.json()) as { value?: string }
         if (data?.value) setBgUrl(data.value)
       } catch {
-        /* on garde l’ENV si l’endpoint renvoie 404 */
+        // on garde l’ENV si l’endpoint renvoie 404 / erreur
       }
     })()
   }, [API])
@@ -83,6 +87,19 @@ export default function LoginPage() {
     }
   }
 
+  // 🔒 Navigation ABSOLUE vers /forgot-password (contourne tout blocage JS)
+  const goForgot = (e?: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e) e.preventDefault()
+    try {
+      if (typeof window !== 'undefined') {
+        window.location.assign(FORGOT_ABS)
+      }
+    } catch {
+      // fallback ultra-basique
+      window.location.href = FORGOT_ABS
+    }
+  }
+
   return (
     <div className="relative w-full min-h-screen text-white overflow-hidden bg-black">
       {/* Fond */}
@@ -100,10 +117,10 @@ export default function LoginPage() {
       <div className="absolute inset-x-0 top-0 z-10 h-40 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 z-10 h-40 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
-      {/* 🔎 Lien de secours pour test direct (peut être retiré après) */}
+      {/* 🔎 Lien de secours absolu pour test direct (retire-le après validation) */}
       <a
-        href="/forgot-password"
-        onClick={(e) => { e.preventDefault(); window.location.assign('/forgot-password') }}
+        href={FORGOT_ABS}
+        onClick={goForgot}
         className="fixed top-3 right-3 z-50 text-xs text-white/70 underline underline-offset-4 hover:text-white"
       >
         Test /forgot-password
@@ -164,12 +181,12 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* ✅ Lien forcé côté serveur vers forgot-password */}
+            {/* ✅ Lien ABSOLU et navigation forcée */}
             {/* eslint-disable @next/next/no-html-link-for-pages */}
             <div className="flex items-center justify-between">
               <a
-                href="/forgot-password"
-                onClick={(e) => { e.preventDefault(); window.location.assign('/forgot-password') }}
+                href={FORGOT_ABS}
+                onClick={goForgot}
                 className="relative z-30 text-sm text-white/75 hover:text-white underline underline-offset-4 transition"
               >
                 Mot de passe oublié ?
