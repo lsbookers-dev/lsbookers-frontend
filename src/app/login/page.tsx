@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import axios, { isAxiosError } from 'axios'
 import { useAuth } from '@/context/AuthContext'
 import Image from 'next/image'
+import Link from 'next/link' // ✅ ajouté pour navigation interne
 
 export default function LoginPage() {
   const router = useRouter()
@@ -15,7 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // ---------- Fond Cloudinary (inchangé) ----------
+  // ---------- Fond Cloudinary ----------
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
   const ENV_FALLBACK =
     process.env.NEXT_PUBLIC_LOGIN_BG ||
@@ -37,7 +38,7 @@ export default function LoginPage() {
     })()
   }, [API])
 
-  // ---------- Nettoyage session si déjà connecté (inchangé) ----------
+  // ---------- Nettoyage session ----------
   useEffect(() => {
     if (user) {
       localStorage.removeItem('token')
@@ -47,7 +48,7 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ---------- Login (inchangé) ----------
+  // ---------- Login ----------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -100,7 +101,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative w-full min-h-screen h-dvh text-white overflow-hidden bg-black">
-      {/* Fond 4K (inchangé) */}
+      {/* Fond */}
       <Image
         src={bgUrl}
         alt="Fond de connexion — structure lumière & son"
@@ -110,20 +111,20 @@ export default function LoginPage() {
         className="object-cover z-0"
       />
 
-      {/* Overlays + glows pour lisibilité et style cohérent Register */}
+      {/* Overlays + glows */}
       <div className="absolute inset-0 z-10 bg-black/55" />
       <div className="absolute inset-x-0 top-0 z-10 h-40 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 z-10 h-40 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
       <div className="absolute -top-24 -left-24 z-10 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl" />
       <div className="absolute -bottom-24 -right-24 z-10 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
 
-      {/* Carte de login centrée */}
+      {/* Carte de connexion */}
       <div className="relative z-20 flex items-center justify-center min-h-screen h-dvh px-5">
         <form
           onSubmit={handleSubmit}
           className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl"
         >
-          {/* Header titre + bouton retour (router.push gardé) */}
+          {/* Header */}
           <div className="mb-1 flex items-center justify-between">
             <h2 className="text-2xl font-bold tracking-tight">Se connecter</h2>
             <button
@@ -134,6 +135,7 @@ export default function LoginPage() {
               Retour
             </button>
           </div>
+
           <p className="text-sm text-white/70">
             Nouveau sur la plateforme ?{' '}
             <button
@@ -180,17 +182,16 @@ export default function LoginPage() {
 
             {/* Actions secondaires */}
             <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => router.push('/forgot-password')}
-                className="text-sm text-white/75 hover:text-white underline underline-offset-4"
+              <Link
+                href="/forgot-password"
+                className="text-sm text-white/75 hover:text-white underline underline-offset-4 transition"
               >
                 Mot de passe oublié ?
-              </button>
+              </Link>
               <span className="text-xs text-white/50">Connexion sécurisée</span>
             </div>
 
-            {/* CTA principal (couleurs alignées Register) */}
+            {/* CTA principal */}
             <button
               type="submit"
               disabled={loading}
@@ -226,7 +227,7 @@ export default function LoginPage() {
               </span>
             </button>
 
-            {/* Lien secondaire */}
+            {/* Lien contact */}
             <p className="text-center text-xs text-white/60">
               Besoin d’aide ?{' '}
               <button
