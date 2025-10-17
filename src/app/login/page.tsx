@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import axios, { isAxiosError } from 'axios'
 import { useAuth } from '@/context/AuthContext'
 import Image from 'next/image'
-import Link from 'next/link' // utilisé pour /register et /contact
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
@@ -19,7 +19,7 @@ export default function LoginPage() {
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
   const ENV_FALLBACK =
     process.env.NEXT_PUBLIC_LOGIN_BG ||
-    // ⚠️ Mets une URL d'image valide ici pour éviter les 404 en prod
+    // ✅ Mets une image valide pour éviter les 404 en prod
     'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1600&auto=format'
 
   const [bgUrl, setBgUrl] = useState<string>(ENV_FALLBACK)
@@ -100,6 +100,15 @@ export default function LoginPage() {
       <div className="absolute inset-x-0 top-0 z-10 h-40 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 z-10 h-40 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
+      {/* 🔎 Lien de secours pour test direct (peut être retiré après) */}
+      <a
+        href="/forgot-password"
+        onClick={(e) => { e.preventDefault(); window.location.assign('/forgot-password') }}
+        className="fixed top-3 right-3 z-50 text-xs text-white/70 underline underline-offset-4 hover:text-white"
+      >
+        Test /forgot-password
+      </a>
+
       {/* Carte */}
       <div className="relative z-20 flex items-center justify-center min-h-screen px-5">
         <form
@@ -160,6 +169,7 @@ export default function LoginPage() {
             <div className="flex items-center justify-between">
               <a
                 href="/forgot-password"
+                onClick={(e) => { e.preventDefault(); window.location.assign('/forgot-password') }}
                 className="relative z-30 text-sm text-white/75 hover:text-white underline underline-offset-4 transition"
               >
                 Mot de passe oublié ?
