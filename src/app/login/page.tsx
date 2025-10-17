@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import axios, { isAxiosError } from 'axios'
 import { useAuth } from '@/context/AuthContext'
 import Image from 'next/image'
-import Link from 'next/link' // ✅ Ajouté pour navigation fiable
+import Link from 'next/link' // utilisé pour /register et /contact
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
@@ -19,7 +19,8 @@ export default function LoginPage() {
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
   const ENV_FALLBACK =
     process.env.NEXT_PUBLIC_LOGIN_BG ||
-    'https://res.cloudinary.com/your-cloud/image/upload/vXXXXXXXX/login_bg.png'
+    // ⚠️ Mets une URL d'image valide ici pour éviter les 404 en prod
+    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1600&auto=format'
 
   const [bgUrl, setBgUrl] = useState<string>(ENV_FALLBACK)
 
@@ -32,7 +33,7 @@ export default function LoginPage() {
         const data = (await r.json()) as { value?: string }
         if (data?.value) setBgUrl(data.value)
       } catch {
-        /* ignore erreur */
+        /* on garde l’ENV si l’endpoint renvoie 404 */
       }
     })()
   }, [API])
@@ -61,7 +62,6 @@ export default function LoginPage() {
       )
 
       const { token, user } = response.data || {}
-
       if (token) localStorage.setItem('token', token)
       if (user) localStorage.setItem('user', JSON.stringify(user))
 
@@ -86,9 +86,16 @@ export default function LoginPage() {
   return (
     <div className="relative w-full min-h-screen text-white overflow-hidden bg-black">
       {/* Fond */}
-      <Image src={bgUrl} alt="Fond de connexion" fill priority sizes="100vw" className="object-cover z-0" />
+      <Image
+        src={bgUrl}
+        alt="Fond de connexion"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover z-0"
+      />
 
-      {/* Overlays (désactivés pour bloquer aucun clic) */}
+      {/* Overlays (ne bloquent pas les clics) */}
       <div className="absolute inset-0 z-10 bg-black/55 pointer-events-none" />
       <div className="absolute inset-x-0 top-0 z-10 h-40 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 z-10 h-40 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
@@ -148,16 +155,18 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* ✅ Lien fonctionnel vers forgot-password */}
+            {/* ✅ Lien forcé côté serveur vers forgot-password */}
+            {/* eslint-disable @next/next/no-html-link-for-pages */}
             <div className="flex items-center justify-between">
-              <Link
+              <a
                 href="/forgot-password"
-                className="text-sm text-white/75 hover:text-white underline underline-offset-4 transition"
+                className="relative z-30 text-sm text-white/75 hover:text-white underline underline-offset-4 transition"
               >
                 Mot de passe oublié ?
-              </Link>
+              </a>
               <span className="text-xs text-white/50">Connexion sécurisée</span>
             </div>
+            {/* eslint-enable @next/next/no-html-link-for-pages */}
 
             <button
               type="submit"
