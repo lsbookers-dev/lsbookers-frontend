@@ -60,7 +60,7 @@ export default function RegisterPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white">
-      {/* Glow décoratifs (no NYC asset needed) */}
+      {/* Glow décoratifs */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
         <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl" />
@@ -68,10 +68,10 @@ export default function RegisterPage() {
       </div>
 
       <div className="relative mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
-        {/* Panneau branding (garde la cohérence LSBookers) */}
-        <aside className="hidden lg:flex flex-col justify-between border-r border-white/10/">
+        {/* Panneau branding */}
+        <aside className="hidden lg:flex flex-col justify-between border-r border-white/10">
           <div className="p-10">
-            <Link href="/" className="inline-flex items-center gap-3 group">
+            <Link href="/" className="inline-flex items-center gap-3 group" aria-label="Retour à l’accueil">
               <div className="h-12 w-12 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/25 transition flex items-center justify-center">
                 <span className="font-black text-lg tracking-widest">LS</span>
               </div>
@@ -111,13 +111,13 @@ export default function RegisterPage() {
           </div>
         </aside>
 
-        {/* Carte formulaire (glass + micro-interactions) */}
+        {/* Carte formulaire */}
         <main className="flex items-center justify-center p-6 lg:p-12">
           <form
             onSubmit={handleSubmit}
             className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl"
           >
-            {/* Liseré animé discret */}
+            {/* Liseré discret */}
             <span className="pointer-events-none absolute inset-0 rounded-2xl [mask-image:linear-gradient(black,transparent_30%,transparent_70%,black)]">
               <span className="absolute inset-0 -z-10 rounded-2xl ring-1 ring-white/10" />
             </span>
@@ -131,6 +131,7 @@ export default function RegisterPage() {
                 Retour
               </Link>
             </div>
+
             <p className="text-sm text-white/65">
               Tu as déjà un compte ?{' '}
               <Link href="/login" className="underline underline-offset-4 hover:text-white">
@@ -147,13 +148,17 @@ export default function RegisterPage() {
             <div className="mt-6 space-y-4">
               {/* Nom */}
               <div>
-                <label className="mb-2 block text-sm text-white/80">Nom / Pseudo</label>
+                <label htmlFor="name" className="mb-2 block text-sm text-white/80">
+                  Nom / Pseudo
+                </label>
                 <div className="relative">
                   <input
+                    id="name"
                     type="text"
                     value={name}
                     onChange={e => setName(e.target.value)}
                     required
+                    autoComplete="name"
                     placeholder="Ex. DJ Nova"
                     className="w-full rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
                   />
@@ -165,13 +170,17 @@ export default function RegisterPage() {
 
               {/* Email */}
               <div>
-                <label className="mb-2 block text-sm text-white/80">Email</label>
+                <label htmlFor="email" className="mb-2 block text-sm text-white/80">
+                  Email
+                </label>
                 <div className="relative">
                   <input
+                    id="email"
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
+                    autoComplete="email"
                     placeholder="nom@domaine.com"
                     className="w-full rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
                   />
@@ -183,13 +192,17 @@ export default function RegisterPage() {
 
               {/* Mot de passe */}
               <div>
-                <label className="mb-2 block text-sm text-white/80">Mot de passe</label>
+                <label htmlFor="password" className="mb-2 block text-sm text-white/80">
+                  Mot de passe
+                </label>
                 <div className="relative">
                   <input
+                    id="password"
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
+                    autoComplete="new-password"
                     placeholder="Au moins 8 caractères"
                     className="w-full rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
                   />
@@ -201,21 +214,24 @@ export default function RegisterPage() {
 
               {/* Type de compte */}
               <div>
-                <label className="mb-2 block text-sm text-white/80">Type de compte</label>
+                <label htmlFor="role" className="mb-2 block text-sm text-white/80">
+                  Type de compte
+                </label>
                 <div className="relative">
                   <select
+                    id="role"
                     value={role}
                     onChange={e => setRole(e.target.value as UserRole)}
                     className="w-full appearance-none rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
                   >
                     <option value="ARTIST" className="bg-neutral-900">
-                      Artistes
+                      Artiste
                     </option>
                     <option value="ORGANIZER" className="bg-neutral-900">
-                      Organisateurs / Établissements
+                      Organisateur / Établissement
                     </option>
                     <option value="PROVIDER" className="bg-neutral-900">
-                      Prestataires
+                      Prestataire
                     </option>
                   </select>
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
@@ -263,17 +279,10 @@ export default function RegisterPage() {
               {/* Liens légers */}
               <p className="text-center text-xs text-white/60">
                 En t’inscrivant, tu acceptes nos{' '}
-                <Link href="#" className="underline underline-offset-4 hover:text-white">
+                <Link href="/legal/terms" className="underline underline-offset-4 hover:text-white">
                   conditions d’utilisation
                 </Link>
                 .
-              </p>
-
-              <p className="text-center text-sm text-white/70">
-                Déjà un compte ?{' '}
-                <Link href="/login" className="underline underline-offset-4 hover:text-white">
-                  Se connecter
-                </Link>
               </p>
             </div>
           </form>
