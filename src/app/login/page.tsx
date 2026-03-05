@@ -20,7 +20,6 @@ export default function LoginPage() {
       .replace(/\/$/, '')
 
   // ---- Récup du fond (conservé, même si on ne l'affiche plus en image ici) ----
-  // On garde ton code tel quel pour ne rien casser côté logique.
   const ENV_FALLBACK =
     process.env.NEXT_PUBLIC_LOGIN_BG ||
     'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1600&auto=format'
@@ -97,7 +96,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white">
-      {/* Glow décoratifs (mêmes que Register) */}
+      {/* Glow décoratifs */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
         <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl" />
@@ -105,7 +104,7 @@ export default function LoginPage() {
       </div>
 
       <div className="relative mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
-        {/* Panneau branding (identique Register) */}
+        {/* Panneau branding */}
         <aside className="hidden lg:flex flex-col justify-between border-r border-white/10">
           <div className="p-10">
             <Link href="/" className="inline-flex items-center gap-3 group" aria-label="Retour à l’accueil">
@@ -119,24 +118,12 @@ export default function LoginPage() {
             </Link>
 
             <div className="mt-12 space-y-5">
-              <h1 className="text-4xl font-extrabold tracking-tight">
-                Content de te revoir.
-              </h1>
+              <h1 className="text-4xl font-extrabold tracking-tight">Content de te revoir.</h1>
               <p className="max-w-md text-white/70">
                 Connecte-toi pour accéder à ton espace, gérer ton profil et échanger avec la communauté.
               </p>
 
-              <div className="mt-6 grid grid-cols-3 gap-3 text-sm">
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/80">
-                  Offres
-                </span>
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/80">
-                  Messagerie
-                </span>
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/80">
-                  Bookings
-                </span>
-              </div>
+              {/* ✅ Suppression des 3 tags ici (comme demandé) */}
             </div>
           </div>
 
@@ -147,7 +134,7 @@ export default function LoginPage() {
           </div>
         </aside>
 
-        {/* Carte formulaire (glass + micro-interactions) */}
+        {/* Carte formulaire */}
         <main className="flex items-center justify-center p-6 lg:p-12">
           <form
             onSubmit={handleSubmit}
