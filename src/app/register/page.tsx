@@ -268,7 +268,7 @@ export default function RegisterPage() {
               <p className="text-center text-xs text-white/60">
                 En t’inscrivant, tu acceptes nos{' '}
                 <Link href="/legal/terms" className="underline underline-offset-4 hover:text-white">
-                  conditions d’utilisation
+                  conditions d’utilisation.
                 </Link>
                 .
               </p>
