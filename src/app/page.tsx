@@ -23,12 +23,12 @@ export default function LandingPage() {
         className="z-0 object-cover"
       />
 
-      {/* Overlays + ambiance (proche Register/Login) */}
+      {/* Overlays + ambiance */}
       <div className="absolute inset-0 z-10 bg-black/45" />
       <div className="absolute inset-x-0 top-0 z-10 h-40 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 z-10 h-56 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
-      {/* Glow décoratifs (mêmes codes que Register/Login) */}
+      {/* Glow décoratifs */}
       <div className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
         <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl" />
@@ -49,7 +49,8 @@ export default function LandingPage() {
             </div>
           </Link>
 
-          <div className="hidden sm:flex items-center gap-2">
+          {/* Uniquement ces 2 CTA */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => router.push('/login')}
               className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition"
@@ -76,28 +77,15 @@ export default function LandingPage() {
 
               <h1 className="mt-5 text-4xl font-extrabold tracking-tight md:text-6xl">
                 LSBookers
-                <span className="block text-white/80">Connecte l’événementiel en un clic.</span>
+                <span className="block text-white/80">La nouvelle scène de l’événementiel.</span>
               </h1>
 
               <p className="mt-5 max-w-xl text-base text-white/75 md:text-lg">
-                Artistes, organisateurs et prestataires se rencontrent, échangent et collaborent
-                dans un environnement moderne : messagerie, offres, visibilité et planning.
+                LS Bookers, Réseau Social et Plateforme destinée à l&apos;événementiel et
+                l&apos;organisation de vos évènements privés.
               </p>
 
-              {/* Bénéfices rapides */}
-              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 backdrop-blur">
-                  Offres
-                </span>
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 backdrop-blur">
-                  Messagerie
-                </span>
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 backdrop-blur">
-                  Planning
-                </span>
-              </div>
-
-              {/* CTA (mobile + desktop) */}
+              {/* CTA central */}
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => router.push('/register')}
@@ -112,17 +100,10 @@ export default function LandingPage() {
                 >
                   Se connecter
                 </button>
-
-                <Link
-                  href="/contact"
-                  className="text-sm text-white/70 underline underline-offset-4 hover:text-white transition"
-                >
-                  Nous contacter
-                </Link>
               </div>
             </div>
 
-            {/* Carte glass (style Register/Login) */}
+            {/* Bloc features en mode "icônes d’app" */}
             <div className="flex items-center justify-center lg:justify-end">
               <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
                 {/* Liseré discret */}
@@ -130,40 +111,20 @@ export default function LandingPage() {
                   <span className="absolute inset-0 -z-10 rounded-2xl ring-1 ring-white/10" />
                 </span>
 
-                <h2 className="text-2xl font-bold tracking-tight">Démarre en 2 minutes</h2>
+                <h2 className="text-2xl font-bold tracking-tight">Fonctionnalités</h2>
                 <p className="mt-2 text-sm text-white/70">
-                  Choisis ton rôle, complète ton profil et commence à publier, chercher des offres
-                  et contacter des profils.
+                  Une expérience moderne pensée pour l’événementiel.
                 </p>
 
-                <div className="mt-6 space-y-3">
-                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                    <span className="font-semibold text-white">Artistes</span> — visibilité, médias, disponibilités
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                    <span className="font-semibold text-white">Organisateurs</span> — offres, événements, bookings
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                    <span className="font-semibold text-white">Prestataires</span> — services, zone, demandes
-                  </div>
+                <div className="mt-6 grid grid-cols-3 gap-3">
+                  <FeatureIcon label="Planning" icon="📅" />
+                  <FeatureIcon label="Messageries" icon="💬" />
+                  <FeatureIcon label="Booking" icon="🎟️" />
+                  <FeatureIcon label="Offres d’emplois" icon="🧩" />
+                  <FeatureIcon label="Promotion" icon="🚀" />
                 </div>
 
-                <div className="mt-6 flex items-center gap-3">
-                  <button
-                    onClick={() => router.push('/register')}
-                    className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white hover:bg-emerald-500 transition"
-                  >
-                    Inscription
-                  </button>
-                  <button
-                    onClick={() => router.push('/login')}
-                    className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 font-semibold text-white/85 hover:bg-white/10 hover:text-white transition backdrop-blur"
-                  >
-                    Connexion
-                  </button>
-                </div>
-
-                <p className="mt-4 text-center text-xs text-white/60">
+                <p className="mt-6 text-center text-xs text-white/55">
                   © {new Date().getFullYear()} LSBookers — Tous droits réservés.
                 </p>
               </div>
@@ -188,25 +149,18 @@ export default function LandingPage() {
             </div>
           </div>
         </footer>
-
-        {/* CTA mobile sticky (optionnel mais premium) */}
-        <div className="sm:hidden sticky bottom-0 z-30 border-t border-white/10 bg-black/35 backdrop-blur px-4 py-3">
-          <div className="mx-auto flex max-w-md gap-2">
-            <button
-              onClick={() => router.push('/login')}
-              className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white/85 hover:bg-white/10 hover:text-white transition"
-            >
-              Connexion
-            </button>
-            <button
-              onClick={() => router.push('/register')}
-              className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 transition"
-            >
-              Inscription
-            </button>
-          </div>
-        </div>
       </div>
+    </div>
+  )
+}
+
+function FeatureIcon({ label, icon }: { label: string; icon: string }) {
+  return (
+    <div className="group flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3 py-4 text-center backdrop-blur transition hover:bg-white/10">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10 group-hover:ring-white/20 transition">
+        <span className="text-xl">{icon}</span>
+      </div>
+      <p className="mt-2 text-xs font-semibold text-white/80 leading-tight">{label}</p>
     </div>
   )
 }
