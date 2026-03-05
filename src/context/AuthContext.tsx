@@ -48,7 +48,6 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 /* ===================== Helpers ===================== */
-// ✅ Typage strict pour la réponse brute du backend
 type RawUser = {
   id: string | number
   email: string
@@ -59,7 +58,6 @@ type RawUser = {
   profile?: Profile
 }
 
-// ✅ Normalisation des données backend → User
 const normalizeUser = (raw: RawUser): User => ({
   id: String(raw.id),
   email: raw.email,
@@ -68,6 +66,15 @@ const normalizeUser = (raw: RawUser): User => ({
   avatarUrl: raw.avatar || raw.avatarUrl || raw.profile?.bannerUrl || null,
   profile: raw.profile || undefined,
 })
+
+/* ===================== Routes publiques ===================== */
+const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/contact']
+
+const isPublicPath = (pathname: string) => {
+  if (PUBLIC_PATHS.includes(pathname)) return true
+  if (pathname.startsWith('/legal/')) return true
+  return false
+}
 
 /* ===================== Provider ===================== */
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -79,7 +86,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-  // 🔄 Vérifie si un utilisateur est stocké dans le localStorage
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
@@ -91,15 +97,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } else {
       setToken(null)
       setUser(null)
-      if (
-        pathname !== '/login' &&
-        pathname !== '/register' &&
-        pathname !== '/' &&
-        !pathname.startsWith('/admin')
-      ) {
+
+      // ✅ Ne redirige que si la page n'est PAS publique
+      if (!isPublicPath(pathname) && !pathname.startsWith('/admin')) {
         router.replace('/login')
       }
     }
+
     setLoading(false)
   }, [pathname, router])
 
