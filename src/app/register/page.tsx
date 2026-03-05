@@ -86,21 +86,9 @@ export default function RegisterPage() {
                 Rejoins la scène, en un clic.
               </h1>
               <p className="max-w-md text-white/70">
-                Crée ton compte, choisis ton rôle et commence à publier, réserver et
-                collaborer. Un environnement professionnel, moderne et pensé pour l’événementiel.
+                Crée ton compte et commence à publier, réserver et collaborer.
+                Un environnement professionnel, moderne et pensé pour l’événementiel.
               </p>
-
-              <div className="mt-6 grid grid-cols-3 gap-3 text-sm">
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/80">
-                  Messagerie
-                </span>
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/80">
-                  Planning
-                </span>
-                <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/80">
-                  Géolocalisation
-                </span>
-              </div>
             </div>
           </div>
 
