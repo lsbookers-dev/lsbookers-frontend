@@ -85,22 +85,7 @@ export default function LandingPage() {
                 l&apos;organisation de vos évènements privés.
               </p>
 
-              {/* CTA central */}
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => router.push('/register')}
-                  className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-500 active:scale-[0.99] transition"
-                >
-                  Créer un compte
-                </button>
-
-                <button
-                  onClick={() => router.push('/login')}
-                  className="rounded-xl border border-white/15 bg-white/5 px-6 py-3 font-semibold text-white/85 hover:bg-white/10 hover:text-white active:scale-[0.99] transition backdrop-blur"
-                >
-                  Se connecter
-                </button>
-              </div>
+              {/* ✅ CTA supprimés ici (comme demandé) */}
             </div>
 
             {/* Bloc features en mode "icônes d’app" */}
@@ -117,6 +102,7 @@ export default function LandingPage() {
                 </p>
 
                 <div className="mt-6 grid grid-cols-3 gap-3">
+                  <FeatureIcon label="Actualités" icon="📰" />
                   <FeatureIcon label="Planning" icon="📅" />
                   <FeatureIcon label="Messageries" icon="💬" />
                   <FeatureIcon label="Booking" icon="🎟️" />
