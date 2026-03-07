@@ -1,8 +1,8 @@
 'use client'
 
 import './globals.css'
-import { ReactNode, useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -10,9 +10,7 @@ import Footer from '@/components/Footer'
 function LayoutContent({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   const pathname = usePathname()
-  const router = useRouter()
 
-  // ✅ Ajout : toutes les pages accessibles sans connexion
   const publicPaths = [
     '/',
     '/login',
@@ -22,33 +20,22 @@ function LayoutContent({ children }: { children: ReactNode }) {
     '/contact',
   ]
 
-  const isPublicPage = publicPaths.includes(pathname)
+  const isPublicPage =
+    publicPaths.includes(pathname) || pathname.startsWith('/legal/')
   const isAdminPage = pathname.startsWith('/admin')
 
-  // 🚫 Si non connecté et page privée → redirection login
-  useEffect(() => {
-    if (!loading && !user && !isPublicPage && !isAdminPage) {
-      router.replace('/login')
-    }
-  }, [loading, user, isPublicPage, isAdminPage, router])
-
-  // ⏳ Attente du chargement du contexte d’auth
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen text-white">
+      <div className="flex h-screen items-center justify-center text-white">
         <p>Chargement de l’application...</p>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white">
-      {/* ✅ Afficher Header sauf sur pages publiques ou admin */}
+    <div className="flex min-h-screen flex-col bg-black text-white">
       {!isPublicPage && !isAdminPage && user && <Header />}
-
       <main className="flex-grow">{children}</main>
-
-      {/* ✅ Footer sauf sur pages publiques ou admin */}
       {!isPublicPage && !isAdminPage && user && <Footer />}
     </div>
   )
