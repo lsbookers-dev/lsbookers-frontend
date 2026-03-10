@@ -356,25 +356,23 @@ export default function ProviderProfilePage() {
     }
   }
 
-  const toggleRole = (label: string) => {
-    setRoles((prev) =>
-      prev.some((r) => r.label === label)
-        ? prev.filter((r) => r.label !== label)
-        : [...prev, { label }]
-    )
-  }
+  const toggleRole = async (label: string) => {
+    const next = roles.some((r) => r.label === label)
+      ? roles.filter((r) => r.label !== label)
+      : [...roles, { label }]
 
-  const saveSpecialties = async () => {
+    const previous = roles
+    setRoles(next)
+
     try {
-      const updated = await saveProfile({ specialties: roles.map((r) => r.label) })
+      const updated = await saveProfile({ specialties: next.map((r) => r.label) })
 
       if (updated?.specialties) {
         setRoles(updated.specialties.map((s) => ({ label: s })))
       }
-
-      alert('Prestations mises à jour ✅')
     } catch (err) {
       console.error(err)
+      setRoles(previous)
       alert('Impossible de sauvegarder les prestations.')
     }
   }
@@ -502,7 +500,6 @@ export default function ProviderProfilePage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* ===== Bannière ===== */}
       <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
         <Image
           src={bannerUrl}
@@ -566,7 +563,6 @@ export default function ProviderProfilePage() {
         />
       </div>
 
-      {/* ===== Header infos ===== */}
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
@@ -645,18 +641,6 @@ export default function ProviderProfilePage() {
                         </button>
                       )
                     })}
-
-                    <div className="pt-2 mt-2 border-t border-white/10">
-                      <button
-                        onClick={() => {
-                          setRolePickerOpen(false)
-                          saveSpecialties()
-                        }}
-                        className="w-full text-center text-sm px-2 py-1 rounded bg-violet-600 hover:bg-violet-500"
-                      >
-                        Enregistrer
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>
@@ -715,9 +699,7 @@ export default function ProviderProfilePage() {
         </div>
       </div>
 
-      {/* ===== Corps ===== */}
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
-        {/* Colonne gauche */}
         <div className="space-y-6">
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
@@ -858,7 +840,6 @@ export default function ProviderProfilePage() {
           </section>
         </div>
 
-        {/* Colonne droite */}
         <aside className="space-y-6">
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <div className="flex items-center justify-between">
@@ -950,7 +931,6 @@ export default function ProviderProfilePage() {
         </aside>
       </div>
 
-      {/* ===== Modal Publications ===== */}
       {showAllPubs && (
         <div
           className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
@@ -1003,7 +983,6 @@ export default function ProviderProfilePage() {
         </div>
       )}
 
-      {/* ===== Modal Ajout Publication ===== */}
       {showAddPubModal && (
         <div
           className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
