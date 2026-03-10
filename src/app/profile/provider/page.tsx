@@ -95,7 +95,6 @@ export default function ProviderProfilePage() {
   const router = useRouter()
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-  // --------- valeurs de départ UI ----------
   const providerDefaults = useMemo(
     () => ({
       banner: '/banners/provider_banner.jpg',
@@ -153,11 +152,10 @@ export default function ProviderProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [pubUploading, setPubUploading] = useState(false)
 
-  // Position verticale de la bannière
   const [bannerPosY, setBannerPosY] = useState<number>(50)
   const [tweakOpen, setTweakOpen] = useState(false)
 
-  // Prestations
+  /* ===== Prestations ===== */
   const [roles, setRoles] = useState<RoleTag[]>(providerDefaults.roles)
   const allRoleOptions = useMemo(
     () => [
@@ -173,19 +171,19 @@ export default function ProviderProfilePage() {
   )
   const [rolePickerOpen, setRolePickerOpen] = useState(false)
 
-  // Zone d’intervention
+  /* ===== Zone d’intervention ===== */
   const [locDraft, setLocDraft] = useState(providerDefaults.location)
   const [countryDraft, setCountryDraft] = useState(providerDefaults.country)
   const [radiusDraft, setRadiusDraft] = useState<string>(String(providerDefaults.radiusKm))
   const [geoOpen, setGeoOpen] = useState(false)
 
-  // Description
+  /* ===== Description ===== */
   const [description, setDescription] = useState(providerDefaults.description)
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState(providerDefaults.description)
   const [descSaving, setDescSaving] = useState(false)
 
-  // Publications
+  /* ===== Publications ===== */
   const [publications, setPublications] = useState<Publication[]>([])
   const [showAllPubs, setShowAllPubs] = useState(false)
   const [showAddPubModal, setShowAddPubModal] = useState(false)
@@ -193,7 +191,7 @@ export default function ProviderProfilePage() {
   const [newPubCaption, setNewPubCaption] = useState('')
   const [newPubFile, setNewPubFile] = useState<File | null>(null)
 
-  // Avis & Tarifs
+  /* ===== Avis & Tarifs ===== */
   const [reviews] = useState<Review[]>([
     {
       id: 1,
@@ -224,7 +222,9 @@ export default function ProviderProfilePage() {
       if (!API_BASE || !userId) return
 
       try {
-        const r = await fetch(`${API_BASE}/api/profile/user/${userId}`)
+        const r = await fetch(`${API_BASE}/api/profile/user/${userId}`, {
+          cache: 'no-store',
+        })
         if (!r.ok) return
 
         const data = (await r.json()) as { profile?: ApiProfile }
@@ -300,6 +300,7 @@ export default function ProviderProfilePage() {
     }
 
     const data = (await res.json()) as { profile?: ApiProfile }
+
     if (data?.profile) {
       setProfile(data.profile)
       return data.profile
@@ -351,7 +352,7 @@ export default function ProviderProfilePage() {
     try {
       await saveProfile({ bannerPositionY: val })
     } catch {
-      /* silencieux si backend pas prêt */
+      /* non bloquant */
     }
   }
 
@@ -366,11 +367,14 @@ export default function ProviderProfilePage() {
   const saveSpecialties = async () => {
     try {
       const updated = await saveProfile({ specialties: roles.map((r) => r.label) })
+
       if (updated?.specialties) {
         setRoles(updated.specialties.map((s) => ({ label: s })))
       }
+
       alert('Prestations mises à jour ✅')
-    } catch {
+    } catch (err) {
+      console.error(err)
       alert('Impossible de sauvegarder les prestations.')
     }
   }
