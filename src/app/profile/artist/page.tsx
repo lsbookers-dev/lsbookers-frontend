@@ -100,6 +100,20 @@ async function uploadToCloudinary(
   return res.json() as Promise<{ url: string; public_id: string }>
 }
 
+const buildSoundcloudEmbedUrl = (url: string) => {
+  const trimmed = url.trim()
+
+  if (!trimmed) return ''
+
+  if (trimmed.includes('w.soundcloud.com/player/')) {
+    return trimmed
+  }
+
+  return `https://w.soundcloud.com/player/?url=${encodeURIComponent(
+    trimmed
+  )}&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true`
+}
+
 export default function ArtistProfilePage() {
   const router = useRouter()
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -486,7 +500,7 @@ export default function ArtistProfilePage() {
 
   const soundcloudToDisplay =
     soundcloudUrl && soundcloudUrl.trim().length > 0
-      ? soundcloudUrl
+      ? buildSoundcloudEmbedUrl(soundcloudUrl)
       : artist.soundcloudEmbedUrl
 
   return (
