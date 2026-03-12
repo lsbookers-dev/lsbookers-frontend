@@ -1,10 +1,24 @@
 'use client'
-import { useEffect, useMemo, useState, useCallback } from 'react'
+
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import Image from 'next/image'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
+import {
+  MessageCircle,
+  Search,
+  Plus,
+  Trash2,
+  ChevronRight,
+  Inbox,
+} from 'lucide-react'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
-interface ProfileLite { avatar?: string | null }
+
+interface ProfileLite {
+  avatar?: string | null
+}
+
 interface User {
   id: number
   name: string
@@ -12,21 +26,23 @@ interface User {
   image?: string | null
   profile?: ProfileLite | null
 }
+
 interface Conversation {
   id: number
   participants: User[]
   lastMessage: string
   updatedAt: string
-}
-interface MessageLite {
-  id: string | number
-  seen: boolean
-  sender: { id: number }
-  createdAt: string
+  lastMessageMeta?: {
+    id: number
+    senderId: number
+    seen: boolean
+    createdAt: string
+    attachmentType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null
+  } | null
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-// URL absolue (avatars)
+
 const toAbs = (u?: string | null) => {
   if (!u) return '/default-avatar.png'
   if (u.startsWith('http://') || u.startsWith('https://')) return u
@@ -34,15 +50,138 @@ const toAbs = (u?: string | null) => {
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
+const roleLabel = (role?: Role) => {
+  if (role === 'ARTIST') return 'Artiste'
+  if (role === 'ORGANIZER') return 'Organisateur'
+  if (role === 'PROVIDER') return 'Prestataire'
+  return 'Utilisateur'
+}
+
+function formatConversationDate(date?: string) {
+  if (!date) return ''
+  const d = new Date(date)
+  const now = new Date()
+
+  const sameDay =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+
+  if (sameDay) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  return d.toLocaleDateString()
+}
+
+function attachmentHint(type?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null) {
+  if (type === 'IMAGE') return '📷 Image'
+  if (type === 'VIDEO') return '🎬 Vidéo'
+  if (type === 'DOCUMENT') return '📄 Document'
+  return ''
+}
+
+function MultiUserSearchDropdown({
+  users,
+  loading,
+  search,
+  onSearchChange,
+  onSelect,
+  getAvatarSrc,
+}: {
+  users: User[]
+  loading: boolean
+  search: string
+  onSearchChange: (value: string) => void
+  onSelect: (userId: number) => void
+  getAvatarSrc: (u?: User | null) => string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!ref.current) return
+      if (!ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    if (search.trim()) setOpen(true)
+  }, [search])
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="relative">
+        <Search
+          size={16}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
+        />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          onFocus={() => setOpen(true)}
+          placeholder="Rechercher un utilisateur…"
+          className="w-full rounded-xl bg-black/40 border border-white/10 focus:border-white/30 outline-none pl-10 pr-4 py-3 text-sm text-white placeholder-white/40"
+        />
+      </div>
+
+      {open && (
+        <div className="absolute z-50 top-full mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/95 backdrop-blur shadow-2xl max-h-80 overflow-y-auto">
+          {loading ? (
+            <div className="px-4 py-4 text-sm text-white/50">Chargement des utilisateurs…</div>
+          ) : users.length > 0 ? (
+            <ul className="p-2 space-y-1">
+              {users.map((u) => (
+                <li
+                  key={u.id}
+                  onClick={() => {
+                    onSelect(u.id)
+                    setOpen(false)
+                  }}
+                  className="cursor-pointer rounded-xl px-3 py-3 flex items-center gap-3 hover:bg-white/5 transition"
+                >
+                  <img
+                    src={getAvatarSrc(u)}
+                    alt={u.name}
+                    className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">{u.name}</p>
+                    <p className="text-xs text-white/50">{roleLabel(u.role)}</p>
+                  </div>
+                  <ChevronRight size={16} className="text-white/30" />
+                </li>
+              ))}
+            </ul>
+          ) : search.trim() ? (
+            <div className="px-4 py-4 text-sm text-white/50">Aucun utilisateur trouvé.</div>
+          ) : (
+            <div className="px-4 py-4 text-sm text-white/50">
+              Commence à taper un nom pour créer une conversation.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MessagesPage() {
   const { user, token } = useAuth()
   const router = useRouter()
+
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [unreadMap, setUnreadMap] = useState<Record<number, boolean>>({})
   const [error, setError] = useState<string | null>(null)
+
   const [search, setSearch] = useState('')
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
+
+  const [conversationSearch, setConversationSearch] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const authedHeaders = useMemo(
@@ -53,74 +192,64 @@ export default function MessagesPage() {
   const getAvatarSrc = (u?: User | null) =>
     toAbs(u?.profile?.avatar || u?.image || '/default-avatar.png')
 
-  /* Charger conversations */
+  const getOtherUser = useCallback(
+    (conv: Conversation) =>
+      conv.participants.find((p) => String(p.id) !== String(user?.id)),
+    [user?.id]
+  )
+
   const fetchConversations = useCallback(async () => {
     if (!token) return
+
     try {
       setError(null)
+
       const res = await fetch(`${API_BASE}/api/messages/conversations?t=${Date.now()}`, {
         headers: authedHeaders,
         cache: 'no-store',
       })
+
       if (!res.ok) throw new Error('HTTP ' + res.status)
+
       const raw = await res.json()
-      const list: Conversation[] = (raw?.conversations ?? raw ?? []) as Conversation[]
-      const sorted = [...(Array.isArray(list) ? list : [])].sort(
+      const list: Conversation[] = Array.isArray(raw?.conversations) ? raw.conversations : []
+
+      const sorted = [...list].sort(
         (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
       )
+
       setConversations(sorted)
     } catch (err) {
       console.error('Conversations load error:', err)
       setError('Impossible de charger les conversations.')
+      setConversations([])
     }
   }, [token, authedHeaders])
 
-  /* Calculer non-lus en front */
-  const computeUnread = useCallback(async (convs: Conversation[]) => {
-    if (!token || !user?.id) return
-    try {
-      const entries = await Promise.all(
-        convs.map(async (c) => {
-          try {
-            const r = await fetch(`${API_BASE}/api/messages/messages/${c.id}?t=${Date.now()}`, {
-              headers: authedHeaders,
-              cache: 'no-store',
-            })
-            if (!r.ok) throw new Error('HTTP ' + r.status)
-            const data = await r.json()
-            const arr: MessageLite[] = (Array.isArray(data) ? data : data?.messages) ?? []
-            const last = arr[arr.length - 1]
-            const unread = !!last && last.sender?.id !== Number(user.id) && !last.seen
-            return [c.id, unread] as const
-          } catch {
-            return [c.id, false] as const
-          }
-        })
-      )
-      const map: Record<number, boolean> = {}
-      entries.forEach(([id, u]) => (map[id] = u))
-      setUnreadMap(map)
-    } catch {
-      /* silent */
-    }
-  }, [token, authedHeaders, user?.id])
-
-  /* Chercher des utilisateurs (nouvelle conv) */
   const fetchUsers = useCallback(async () => {
     if (!token) return
+
     try {
       setLoadingUsers(true)
+
       const res = await fetch(`${API_BASE}/api/users?t=${Date.now()}`, {
         headers: authedHeaders,
         cache: 'no-store',
       })
+
       if (!res.ok) throw new Error('HTTP ' + res.status)
+
       const raw = (await res.json()) as { users?: User[] } | User[]
       const list: User[] = Array.isArray(raw) ? raw : raw?.users ?? []
-      const filtered = user?.id ? list.filter(u => Number(u.id) !== Number(user.id)) : list
+
+      const filtered = user?.id
+        ? list.filter((u) => Number(u.id) !== Number(user.id))
+        : list
+
       setAllUsers(filtered)
     } catch (err) {
       console.error('Users load error:', err)
+      setAllUsers([])
     } finally {
       setLoadingUsers(false)
     }
@@ -136,33 +265,21 @@ export default function MessagesPage() {
     if (user === null) router.push('/login')
   }, [user, router])
 
-  useEffect(() => {
-    if (conversations.length) computeUnread(conversations)
-  }, [conversations, computeUnread])
-
-  // Re-sync lors du retour onglet/page
-  useEffect(() => {
-    const onShow = () => { fetchConversations().then(() => computeUnread(conversations)) }
-    window.addEventListener('visibilitychange', onShow)
-    window.addEventListener('pageshow', onShow as unknown as EventListener)
-    return () => {
-      window.removeEventListener('visibilitychange', onShow)
-      window.removeEventListener('pageshow', onShow as unknown as EventListener)
-    }
-  }, [fetchConversations, computeUnread, conversations])
-
-  /* Démarrer (ou rouvrir) une conversation */
   const startConversation = useCallback(
     async (recipientId: number) => {
       if (!token) return
-      const existing = conversations.find(conv =>
-        conv.participants.some(p => Number(p.id) === Number(recipientId)) &&
-        conv.participants.some(p => Number(p.id) === Number(user?.id))
+
+      const existing = conversations.find(
+        (conv) =>
+          conv.participants.some((p) => Number(p.id) === Number(recipientId)) &&
+          conv.participants.some((p) => Number(p.id) === Number(user?.id))
       )
+
       if (existing) {
         router.push(`/messages/${existing.id}`)
         return
       }
+
       try {
         const res = await fetch(`${API_BASE}/api/messages/send`, {
           method: 'POST',
@@ -170,43 +287,50 @@ export default function MessagesPage() {
             'Content-Type': 'application/json',
             ...(authedHeaders || {}),
           },
-          body: JSON.stringify({ recipientId, content: 'Salut !' }),
+          body: JSON.stringify({
+            recipientId,
+            content: 'Bonjour !',
+          }),
         })
+
         if (!res.ok) throw new Error('HTTP ' + res.status)
+
         const data = await res.json().catch(() => ({}))
-        const convId =
-          data?.conversationId ??
-          data?.conversation?.id ??
-          data?.id ??
-          null
-        if (convId) router.push(`/messages/${convId}`)
-        else await fetchConversations()
+        const convId = data?.conversationId ?? null
+
+        if (convId) {
+          router.push(`/messages/${convId}`)
+        } else {
+          await fetchConversations()
+        }
+
+        setSearch('')
       } catch (err) {
         console.error('Erreur démarrage conversation :', err)
+        alert('Impossible de démarrer la conversation.')
       }
     },
-    [token, authedHeaders, conversations, router, fetchConversations, user?.id]
+    [token, conversations, user?.id, authedHeaders, router, fetchConversations]
   )
 
-  /* Supprimer une conversation */
   const deleteConversation = useCallback(
     async (convId: number) => {
       if (!token) return
+
       const ok = confirm('Supprimer cette conversation ?')
       if (!ok) return
+
       try {
         setDeletingId(convId)
+
         const res = await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
           method: 'DELETE',
           headers: authedHeaders,
         })
+
         if (!res.ok) throw new Error('HTTP ' + res.status)
-        setConversations(prev => prev.filter(c => c.id !== convId))
-        setUnreadMap(prev => {
-          const copy = { ...prev }
-          delete copy[convId]
-          return copy
-        })
+
+        setConversations((prev) => prev.filter((c) => c.id !== convId))
       } catch (err) {
         console.error('Erreur suppression conversation :', err)
         alert('Suppression impossible.')
@@ -217,145 +341,209 @@ export default function MessagesPage() {
     [token, authedHeaders]
   )
 
-  /* Ouvrir une conversation et marquer comme lu */
-  const openConversation = useCallback(async (convId: number) => {
-    if (!token) {
-      setUnreadMap(prev => ({ ...prev, [convId]: false }))
+  const openConversation = useCallback(
+    (convId: number) => {
       router.push(`/messages/${convId}`)
-      return
-    }
-    try {
-      const res = await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
-        method: 'POST',
-        headers: authedHeaders,
-      })
-      if (res.ok) {
-        setUnreadMap(prev => ({ ...prev, [convId]: false }))
-        router.push(`/messages/${convId}`)
-      } else {
-        console.error('Erreur marquage lu:', await res.text())
-        router.push(`/messages/${convId}`) // Fallback si échec
-      }
-    } catch (err) {
-      console.error('Erreur marquage lu:', err)
-      router.push(`/messages/${convId}`) // Fallback si échec
-    }
-  }, [token, authedHeaders, router])
+    },
+    [router]
+  )
 
-  const getOtherUser = (conv: Conversation) =>
-    conv.participants.find(p => String(p.id) !== String(user?.id))
-
-  const filteredUsers = search
-    ? allUsers.filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
+  const filteredUsers = search.trim()
+    ? allUsers.filter((u) =>
+        u.name?.toLowerCase().includes(search.trim().toLowerCase())
+      )
     : []
 
+  const filteredConversations = conversations.filter((conv) => {
+    const other = getOtherUser(conv)
+    const query = conversationSearch.trim().toLowerCase()
+
+    if (!query) return true
+
+    return (
+      other?.name?.toLowerCase().includes(query) ||
+      conv.lastMessage?.toLowerCase().includes(query)
+    )
+  })
+
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white">
-      {/* Bandeau titre */}
-      <div className="relative overflow-hidden">
+    <main className="min-h-screen bg-black text-white">
+      {/* Header premium */}
+      <div className="relative overflow-hidden border-b border-white/10">
         <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-violet-600/10 to-blue-600/10 blur-3xl" />
-        <div className="relative px-6 pt-10 pb-6 max-w-6xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold">💬 Messagerie</h1>
-          <p className="text-white/70 mt-2">
-            Retrouve tes conversations et démarre de nouveaux échanges.
-          </p>
+        <div className="relative px-6 pt-10 pb-8 max-w-7xl mx-auto">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
+                <MessageCircle className="text-violet-400" />
+                Messagerie
+              </h1>
+              <p className="text-white/70 mt-2 max-w-2xl">
+                Retrouve tes conversations, contacte rapidement un artiste, un organisateur
+                ou un prestataire, et centralise tes échanges professionnels.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 min-w-[220px]">
+              <p className="text-xs text-white/50">Conversations</p>
+              <p className="text-2xl font-semibold mt-1">{conversations.length}</p>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="px-6 pb-10 max-w-6xl mx-auto w-full">
-        <div className="grid gap-6 md:grid-cols-[360px,1fr]">
-          {/* Colonne gauche : recherche */}
-          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5">
-            <h2 className="text-lg font-semibold mb-1">Nouvelle conversation</h2>
-            <p className="text-white/60 text-sm mb-4">Cherche un artiste, un organisateur ou un prestataire.</p>
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un utilisateur…"
-              className="w-full rounded-xl bg-black/40 border border-white/10 focus:border-white/30 outline-none px-4 py-3"
+
+      <div className="px-6 py-8 max-w-7xl mx-auto">
+        <div className="grid gap-6 xl:grid-cols-[360px,1fr]">
+          {/* Colonne gauche */}
+          <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-9 h-9 rounded-xl bg-violet-600/20 flex items-center justify-center">
+                <Plus size={18} className="text-violet-300" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Nouvelle conversation</h2>
+                <p className="text-sm text-white/50">Trouve un utilisateur et écris-lui.</p>
+              </div>
+            </div>
+
+            <MultiUserSearchDropdown
+              users={filteredUsers}
+              loading={loadingUsers}
+              search={search}
+              onSearchChange={setSearch}
+              onSelect={startConversation}
+              getAvatarSrc={getAvatarSrc}
             />
-            {loadingUsers && <p className="text-gray-400 text-sm mt-3">Chargement des utilisateurs…</p>}
-            {search && (
-              <ul className="space-y-2 max-h-80 overflow-y-auto pr-1 mt-3">
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map(u => {
-                    const src = getAvatarSrc(u)
-                    return (
-                      <li
-                        key={u.id}
-                        onClick={() => startConversation(u.id)}
-                        className="cursor-pointer rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 flex items-center gap-3 transition"
-                      >
-                        <img
-                          src={src}
-                          alt={u.name}
-                          className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-medium truncate">{u.name}</span>
-                          <span className="text-xs text-white/50">{u.role}</span>
-                        </div>
-                        <span className="ml-auto text-xs text-white/40">▶</span>
-                      </li>
-                    )
-                  })
-                ) : (
-                  <li className="text-gray-500 italic text-sm text-center py-2">Aucun utilisateur trouvé.</li>
-                )}
-              </ul>
-            )}
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+              <p className="text-sm font-medium text-white mb-1">Conseil</p>
+              <p className="text-sm text-white/55 leading-relaxed">
+                Utilise la messagerie pour préparer les bookings, envoyer des visuels,
+                partager des documents et centraliser les échanges importants.
+              </p>
+            </div>
           </section>
-          {/* Colonne droite : conversations */}
-          <section className="relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur p-5">
-            <h2 className="text-lg font-semibold mb-5">Vos conversations</h2>
-            {conversations.length === 0 && !error ? (
-              <p className="text-gray-400 text-sm">Aucune conversation pour le moment.</p>
+
+          {/* Colonne droite */}
+          <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl min-h-[540px]">
+            <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
+              <div>
+                <h2 className="text-lg font-semibold">Vos conversations</h2>
+                <p className="text-sm text-white/50">
+                  Ouvre une discussion existante ou reprends un échange non lu.
+                </p>
+              </div>
+
+              <div className="relative w-full sm:w-[280px]">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
+                />
+                <input
+                  type="text"
+                  value={conversationSearch}
+                  onChange={(e) => setConversationSearch(e.target.value)}
+                  placeholder="Filtrer les conversations…"
+                  className="w-full rounded-xl bg-black/40 border border-white/10 focus:border-white/30 outline-none pl-10 pr-4 py-3 text-sm text-white placeholder-white/40"
+                />
+              </div>
+            </div>
+
+            {error ? (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-300 text-sm">
+                {error}
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="h-[420px] rounded-2xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
+                <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+                  <Inbox className="text-white/40" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Aucune conversation</h3>
+                <p className="text-white/50 text-sm max-w-md">
+                  Démarre une nouvelle conversation depuis le panneau de gauche pour
+                  commencer à échanger.
+                </p>
+              </div>
             ) : (
               <ul className="space-y-3">
-                {conversations.map(conv => {
+                {filteredConversations.map((conv) => {
                   const other = getOtherUser(conv)
                   const src = getAvatarSrc(other)
-                  const unread = !!unreadMap[conv.id]
+                  const isUnread =
+                    !!conv.lastMessageMeta &&
+                    Number(conv.lastMessageMeta.senderId) !== Number(user?.id) &&
+                    !conv.lastMessageMeta.seen
+
                   return (
                     <li
                       key={conv.id}
                       onClick={() => openConversation(conv.id)}
-                      className={`group rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer
-                        ${unread
-                          ? 'bg-indigo-500/10 border-indigo-500/25'
+                      className={`group rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer ${
+                        isUnread
+                          ? 'bg-violet-500/10 border-violet-500/25'
                           : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'
-                        }`}
+                      }`}
                     >
-                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${unread ? 'bg-indigo-500' : 'bg-transparent'}`} />
+                      {isUnread && (
+                        <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl bg-violet-500" />
+                      )}
+
                       <img
                         src={src}
                         alt={other?.name ?? 'User'}
-                        className="w-12 h-12 rounded-full object-cover ring-1 ring-white/10"
+                        className="w-14 h-14 rounded-full object-cover ring-1 ring-white/10 shrink-0"
                       />
+
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className={`text-base truncate ${unread ? 'font-semibold' : 'font-medium'}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3
+                            className={`text-base truncate ${
+                              isUnread ? 'font-semibold text-white' : 'font-medium text-white'
+                            }`}
+                          >
                             {other?.name ?? 'Conversation'}
                           </h3>
-                          {unread && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-600/30 border border-indigo-400/40 text-indigo-200">
+
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60">
+                            {roleLabel(other?.role)}
+                          </span>
+
+                          {isUnread && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-600/20 border border-violet-400/30 text-violet-200">
                               Non lu
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-white/60 truncate max-w-[60ch]">{conv.lastMessage || '…'}</p>
+
+                        <p className="text-sm text-white/70 mt-1 truncate">
+                          {conv.lastMessage ||
+                            attachmentHint(conv.lastMessageMeta?.attachmentType) ||
+                            'Conversation'}
+                        </p>
+
+                        {conv.lastMessageMeta?.attachmentType && !conv.lastMessage && (
+                          <p className="text-xs text-white/40 mt-1">
+                            {attachmentHint(conv.lastMessageMeta.attachmentType)}
+                          </p>
+                        )}
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className="text-[11px] text-white/50 whitespace-nowrap">
-                          {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
+
+                      <div className="flex flex-col items-end gap-3 shrink-0">
+                        <span className="text-[11px] text-white/45 whitespace-nowrap">
+                          {formatConversationDate(conv.updatedAt)}
                         </span>
+
                         <button
-                          onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id) }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteConversation(conv.id)
+                          }}
                           disabled={deletingId === conv.id}
                           title="Supprimer la conversation"
-                          className="text-white/80 hover:text-red-400 text-xs border border-white/15 hover:border-red-400/70 rounded-md px-2 py-1"
+                          className="inline-flex items-center gap-1 text-xs border border-white/10 hover:border-red-400/60 text-white/70 hover:text-red-300 rounded-lg px-2.5 py-1.5 transition"
                         >
-                          {deletingId === conv.id ? '…' : 'Supprimer'}
+                          <Trash2 size={12} />
+                          {deletingId === conv.id ? '...' : 'Supprimer'}
                         </button>
                       </div>
                     </li>
@@ -363,10 +551,9 @@ export default function MessagesPage() {
                 })}
               </ul>
             )}
-            {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
           </section>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
