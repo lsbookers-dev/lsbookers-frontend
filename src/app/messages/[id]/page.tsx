@@ -84,6 +84,25 @@ function fileTypeLabel(type?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null) {
   return 'Fichier'
 }
 
+function Avatar({
+  src,
+  alt,
+  size = 40,
+}: {
+  src: string
+  alt: string
+  size?: number
+}) {
+  return (
+    <div
+      className="relative shrink-0 overflow-hidden rounded-full ring-1 ring-white/10"
+      style={{ width: size, height: size }}
+    >
+      <Image src={src} alt={alt} fill className="object-cover" unoptimized />
+    </div>
+  )
+}
+
 export default function ConversationPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -113,15 +132,12 @@ export default function ConversationPage() {
     }
   }, [])
 
-  const authedHeaders = useMemo((): Record<string, string> => {
-  const token = getAuthToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}, [])
-
   const fetchConversationMeta = useCallback(async () => {
     try {
+      const token = getAuthToken()
+
       const res = await fetch(`${API_BASE}/api/messages/conversations?t=${Date.now()}`, {
-        headers: authedHeaders,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         cache: 'no-store',
       })
 
@@ -134,7 +150,7 @@ export default function ConversationPage() {
     } catch (err) {
       console.error('Erreur chargement conversation meta:', err)
     }
-  }, [conversationId, authedHeaders])
+  }, [conversationId])
 
   const markSeen = useCallback(async () => {
     if (!conversationId) return
@@ -207,23 +223,27 @@ export default function ConversationPage() {
 
     if (msg.attachmentType === 'IMAGE') {
       return (
-        <Image
-          src={url}
-          alt={msg.attachmentName || 'image'}
-          width={280}
-          height={280}
-          className="rounded-2xl mt-2"
-          unoptimized
-        />
+        <div className="mt-2">
+          <Image
+            src={url}
+            alt={msg.attachmentName || 'image'}
+            width={280}
+            height={280}
+            className="rounded-2xl object-cover"
+            unoptimized
+          />
+        </div>
       )
     }
 
     if (msg.attachmentType === 'VIDEO') {
       return (
-        <video controls className="w-[280px] rounded-2xl mt-2">
-          <source src={url} />
-          Votre navigateur ne supporte pas la vidéo.
-        </video>
+        <div className="mt-2">
+          <video controls className="w-[280px] max-w-full rounded-2xl bg-black">
+            <source src={url} />
+            Votre navigateur ne supporte pas la vidéo.
+          </video>
+        </div>
       )
     }
 
@@ -232,12 +252,18 @@ export default function ConversationPage() {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-3 mt-2 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
+        className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 hover:bg-black/30 transition"
       >
-        <FileText size={18} />
-        <div>
-          <p className="text-sm font-medium">{msg.attachmentName || 'Document'}</p>
-          <p className="text-xs text-white/50">{fileTypeLabel(msg.attachmentType)}</p>
+        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+          <FileText size={18} className="text-white/80" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">
+            {msg.attachmentName || 'Document'}
+          </p>
+          <p className="text-xs text-white/50">
+            {fileTypeLabel(msg.attachmentType)}
+          </p>
         </div>
       </a>
     )
@@ -299,7 +325,6 @@ export default function ConversationPage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      {/* Header */}
       <div className="border-b border-white/10">
         <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
           <button
@@ -313,10 +338,10 @@ export default function ConversationPage() {
           <div className="flex items-center gap-3">
             {otherParticipant && (
               <>
-                <img
+                <Avatar
                   src={toAbs(otherParticipant.profile?.avatar || otherParticipant.image)}
                   alt={otherParticipant.name}
-                  className="w-10 h-10 rounded-full object-cover"
+                  size={40}
                 />
                 <div>
                   <div className="font-semibold">{otherParticipant.name}</div>
@@ -330,7 +355,6 @@ export default function ConversationPage() {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="max-w-5xl mx-auto px-6 py-6">
         <div className="border border-white/10 rounded-2xl overflow-hidden bg-neutral-900/60">
           <div
@@ -377,7 +401,6 @@ export default function ConversationPage() {
             )}
           </div>
 
-          {/* Envoi */}
           <div className="border-t border-white/10 p-4 flex gap-3 items-center">
             <input
               ref={inputRef}
@@ -408,11 +431,14 @@ export default function ConversationPage() {
               disabled={sending}
               className="bg-gradient-to-r from-pink-600 to-violet-600 px-4 py-2 rounded-xl flex gap-2 items-center disabled:opacity-60"
             >
-              {file && (
-                file.type.startsWith('image') ? <ImageIcon size={16} /> :
-                file.type.startsWith('video') ? <Video size={16} /> :
-                <FileText size={16} />
-              )}
+              {file &&
+                (file.type.startsWith('image') ? (
+                  <ImageIcon size={16} />
+                ) : file.type.startsWith('video') ? (
+                  <Video size={16} />
+                ) : (
+                  <FileText size={16} />
+                ))}
               <Send size={16} />
               Envoyer
             </button>

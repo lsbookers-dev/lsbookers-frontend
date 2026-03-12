@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import Image from 'next/image'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import {
@@ -12,6 +11,7 @@ import {
   ChevronRight,
   Inbox,
 } from 'lucide-react'
+import Image from 'next/image'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
@@ -81,6 +81,31 @@ function attachmentHint(type?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null) {
   return ''
 }
 
+function Avatar({
+  src,
+  alt,
+  size = 40,
+}: {
+  src: string
+  alt: string
+  size?: number
+}) {
+  return (
+    <div
+      className="relative shrink-0 overflow-hidden rounded-full ring-1 ring-white/10"
+      style={{ width: size, height: size }}
+    >
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className="object-cover"
+        unoptimized
+      />
+    </div>
+  )
+}
+
 function MultiUserSearchDropdown({
   users,
   loading,
@@ -144,11 +169,7 @@ function MultiUserSearchDropdown({
                   }}
                   className="cursor-pointer rounded-xl px-3 py-3 flex items-center gap-3 hover:bg-white/5 transition"
                 >
-                  <img
-                    src={getAvatarSrc(u)}
-                    alt={u.name}
-                    className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
-                  />
+                  <Avatar src={getAvatarSrc(u)} alt={u.name} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-white truncate">{u.name}</p>
                     <p className="text-xs text-white/50">{roleLabel(u.role)}</p>
@@ -368,7 +389,6 @@ export default function MessagesPage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      {/* Header premium */}
       <div className="relative overflow-hidden border-b border-white/10">
         <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-violet-600/10 to-blue-600/10 blur-3xl" />
         <div className="relative px-6 pt-10 pb-8 max-w-7xl mx-auto">
@@ -394,7 +414,6 @@ export default function MessagesPage() {
 
       <div className="px-6 py-8 max-w-7xl mx-auto">
         <div className="grid gap-6 xl:grid-cols-[360px,1fr]">
-          {/* Colonne gauche */}
           <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-9 h-9 rounded-xl bg-violet-600/20 flex items-center justify-center">
@@ -424,7 +443,6 @@ export default function MessagesPage() {
             </div>
           </section>
 
-          {/* Colonne droite */}
           <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl min-h-[540px]">
             <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
               <div>
@@ -488,11 +506,7 @@ export default function MessagesPage() {
                         <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl bg-violet-500" />
                       )}
 
-                      <img
-                        src={src}
-                        alt={other?.name ?? 'User'}
-                        className="w-14 h-14 rounded-full object-cover ring-1 ring-white/10 shrink-0"
-                      />
+                      <Avatar src={src} alt={other?.name ?? 'User'} size={56} />
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
