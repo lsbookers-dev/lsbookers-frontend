@@ -92,7 +92,7 @@ function Avatar({
 }) {
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-full ring-1 ring-white/10"
+      className="relative shrink-0 overflow-hidden rounded-full ring-1 ring-white/10 bg-white/5"
       style={{ width: size, height: size }}
     >
       <Image
@@ -135,10 +135,11 @@ function MultiUserSearchDropdown({
 
   useEffect(() => {
     if (search.trim()) setOpen(true)
+    else setOpen(false)
   }, [search])
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative z-[120]">
       <div className="relative">
         <Search
           size={16}
@@ -148,16 +149,20 @@ function MultiUserSearchDropdown({
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            if (search.trim()) setOpen(true)
+          }}
           placeholder="Rechercher un utilisateur…"
-          className="w-full rounded-xl bg-black/40 border border-white/10 focus:border-white/30 outline-none pl-10 pr-4 py-3 text-sm text-white placeholder-white/40"
+          className="w-full rounded-2xl bg-black/40 border border-white/10 focus:border-white/30 outline-none pl-10 pr-4 py-3 text-sm text-white placeholder-white/40"
         />
       </div>
 
       {open && (
-        <div className="absolute z-50 top-full mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/95 backdrop-blur shadow-2xl max-h-80 overflow-y-auto">
+        <div className="absolute z-[9999] top-full mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl max-h-96 overflow-y-auto">
           {loading ? (
-            <div className="px-4 py-4 text-sm text-white/50">Chargement des utilisateurs…</div>
+            <div className="px-4 py-4 text-sm text-white/50">
+              Chargement des utilisateurs…
+            </div>
           ) : users.length > 0 ? (
             <ul className="p-2 space-y-1">
               {users.map((u) => (
@@ -178,11 +183,9 @@ function MultiUserSearchDropdown({
                 </li>
               ))}
             </ul>
-          ) : search.trim() ? (
-            <div className="px-4 py-4 text-sm text-white/50">Aucun utilisateur trouvé.</div>
           ) : (
             <div className="px-4 py-4 text-sm text-white/50">
-              Commence à taper un nom pour créer une conversation.
+              Aucun utilisateur trouvé.
             </div>
           )}
         </div>
@@ -286,14 +289,44 @@ export default function MessagesPage() {
     if (user === null) router.push('/login')
   }, [user, router])
 
+  useEffect(() => {
+    if (!token) return
+
+    const interval = setInterval(() => {
+      fetchConversations()
+    }, 5000)
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchConversations()
+      }
+    }
+
+    const onFocus = () => fetchConversations()
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [token, fetchConversations])
+
   const startConversation = useCallback(
     async (recipientId: number) => {
-      if (!token) return
+      if (!token || !user?.id) return
+
+      if (Number(recipientId) === Number(user.id)) {
+        alert("Tu ne peux pas t'envoyer un message à toi-même.")
+        return
+      }
 
       const existing = conversations.find(
         (conv) =>
           conv.participants.some((p) => Number(p.id) === Number(recipientId)) &&
-          conv.participants.some((p) => Number(p.id) === Number(user?.id))
+          conv.participants.some((p) => Number(p.id) === Number(user.id))
       )
 
       if (existing) {
@@ -302,7 +335,7 @@ export default function MessagesPage() {
       }
 
       try {
-        const res = await fetch(`${API_BASE}/api/messages/send`, {
+        const res = await fetch(`${API_BASE}/api/messages/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -310,14 +343,13 @@ export default function MessagesPage() {
           },
           body: JSON.stringify({
             recipientId,
-            content: 'Bonjour !',
           }),
         })
 
         if (!res.ok) throw new Error('HTTP ' + res.status)
 
         const data = await res.json().catch(() => ({}))
-        const convId = data?.conversationId ?? null
+        const convId = data?.conversationId ?? data?.conversation?.id ?? null
 
         if (convId) {
           router.push(`/messages/${convId}`)
@@ -370,9 +402,13 @@ export default function MessagesPage() {
   )
 
   const filteredUsers = search.trim()
-    ? allUsers.filter((u) =>
-        u.name?.toLowerCase().includes(search.trim().toLowerCase())
-      )
+    ? allUsers.filter((u) => {
+        const query = search.trim().toLowerCase()
+        return (
+          Number(u.id) !== Number(user?.id) &&
+          u.name?.toLowerCase().includes(query)
+        )
+      })
     : []
 
   const filteredConversations = conversations.filter((conv) => {
@@ -399,8 +435,8 @@ export default function MessagesPage() {
                 Messagerie
               </h1>
               <p className="text-white/70 mt-2 max-w-2xl">
-                Retrouve tes conversations, contacte rapidement un artiste, un organisateur
-                ou un prestataire, et centralise tes échanges professionnels.
+                Gère tes échanges avec les artistes, organisateurs et prestataires
+                dans un espace centralisé.
               </p>
             </div>
 
@@ -413,15 +449,17 @@ export default function MessagesPage() {
       </div>
 
       <div className="px-6 py-8 max-w-7xl mx-auto">
-        <div className="grid gap-6 xl:grid-cols-[360px,1fr]">
-          <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl">
+        <div className="grid gap-6 xl:grid-cols-[380px,1fr] items-start">
+          <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl relative z-[120]">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-violet-600/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-violet-600/20 flex items-center justify-center">
                 <Plus size={18} className="text-violet-300" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold">Nouvelle conversation</h2>
-                <p className="text-sm text-white/50">Trouve un utilisateur et écris-lui.</p>
+                <p className="text-sm text-white/50">
+                  Recherche un utilisateur pour ouvrir un échange.
+                </p>
               </div>
             </div>
 
@@ -433,17 +471,9 @@ export default function MessagesPage() {
               onSelect={startConversation}
               getAvatarSrc={getAvatarSrc}
             />
-
-            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-              <p className="text-sm font-medium text-white mb-1">Conseil</p>
-              <p className="text-sm text-white/55 leading-relaxed">
-                Utilise la messagerie pour préparer les bookings, envoyer des visuels,
-                partager des documents et centraliser les échanges importants.
-              </p>
-            </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl min-h-[540px]">
+          <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl min-h-[540px] relative z-0">
             <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
               <div>
                 <h2 className="text-lg font-semibold">Vos conversations</h2>
@@ -478,8 +508,7 @@ export default function MessagesPage() {
                 </div>
                 <h3 className="text-lg font-medium mb-2">Aucune conversation</h3>
                 <p className="text-white/50 text-sm max-w-md">
-                  Démarre une nouvelle conversation depuis le panneau de gauche pour
-                  commencer à échanger.
+                  Lance une nouvelle conversation depuis la colonne de gauche.
                 </p>
               </div>
             ) : (
