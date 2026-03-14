@@ -62,7 +62,6 @@ type Conversation = {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
 function isArrayResp(x: unknown): x is Message[] {
   return Array.isArray(x)
@@ -78,6 +77,8 @@ const toAbs = (u?: string | null) => {
   if (u.startsWith('//')) return `https:${u}`
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
+
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
 function formatMessageTime(date: string) {
   return new Date(date).toLocaleString()
@@ -101,7 +102,7 @@ function Avatar({
 }) {
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-full ring-1 ring-white/10 bg-white/5"
+      className="relative shrink-0 overflow-hidden rounded-full ring-1 ring-white/10"
       style={{ width: size, height: size }}
     >
       <Image src={src} alt={alt} fill className="object-cover" unoptimized />
@@ -109,23 +110,27 @@ function Avatar({
   )
 }
 
-function areMessagesEqual(a: Message[], b: Message[]) {
+function messagesAreSame(a: Message[], b: Message[]) {
   if (a.length !== b.length) return false
+
   for (let i = 0; i < a.length; i += 1) {
-    const ma = a[i]
-    const mb = b[i]
+    const x = a[i]
+    const y = b[i]
+
     if (
-      ma.id !== mb.id ||
-      ma.content !== mb.content ||
-      ma.seen !== mb.seen ||
-      ma.attachmentUrl !== mb.attachmentUrl ||
-      ma.attachmentType !== mb.attachmentType ||
-      ma.attachmentName !== mb.attachmentName ||
-      ma.createdAt !== mb.createdAt
+      x.id !== y.id ||
+      x.content !== y.content ||
+      x.attachmentUrl !== y.attachmentUrl ||
+      x.attachmentType !== y.attachmentType ||
+      x.attachmentName !== y.attachmentName ||
+      x.createdAt !== y.createdAt ||
+      x.seen !== y.seen ||
+      x.sender.id !== y.sender.id
     ) {
       return false
     }
   }
+
   return true
 }
 
@@ -158,20 +163,14 @@ export default function ConversationPage() {
     }
   }, [])
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = messagesContainerRef.current
     if (!el) return
+
     el.scrollTo({
       top: el.scrollHeight,
       behavior,
     })
-  }, [])
-
-  const isNearBottom = useCallback(() => {
-    const el = messagesContainerRef.current
-    if (!el) return true
-    const threshold = 120
-    return el.scrollHeight - el.scrollTop - el.clientHeight < threshold
   }, [])
 
   const fetchConversationMeta = useCallback(async () => {
@@ -214,14 +213,14 @@ export default function ConversationPage() {
   }, [conversationId])
 
   const fetchMessages = useCallback(
-    async (options?: { silent?: boolean }) => {
+    async (silent = false) => {
       if (!conversationId) return
 
       const token = getAuthToken()
       if (!token) return
 
       try {
-        if (!options?.silent) setLoading(true)
+        if (!silent) setLoading(true)
 
         const url = `${API_BASE}/api/messages/messages/${conversationId}`
         const res = await axios.get<ApiMessagesResponse>(url, {
@@ -232,17 +231,12 @@ export default function ConversationPage() {
         const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
         const nextMessages = Array.isArray(list) ? list : []
 
-        setMessages((prev) => {
-          if (areMessagesEqual(prev, nextMessages)) return prev
-          return nextMessages
-        })
+        setMessages((prev) => (messagesAreSame(prev, nextMessages) ? prev : nextMessages))
       } catch (err) {
         console.error('Erreur fetch messages :', err)
-        if (!options?.silent) {
-          setMessages([])
-        }
+        if (!silent) setMessages([])
       } finally {
-        if (!options?.silent) setLoading(false)
+        if (!silent) setLoading(false)
       }
     },
     [conversationId]
@@ -250,8 +244,8 @@ export default function ConversationPage() {
 
   useEffect(() => {
     ;(async () => {
-      await Promise.all([fetchConversationMeta(), markSeen(), fetchMessages()])
-      setTimeout(() => scrollToBottom('auto'), 100)
+      await Promise.all([fetchConversationMeta(), markSeen(), fetchMessages(false)])
+      setTimeout(() => scrollToBottom('auto'), 120)
     })()
   }, [conversationId, fetchConversationMeta, markSeen, fetchMessages, scrollToBottom])
 
@@ -259,24 +253,19 @@ export default function ConversationPage() {
     if (!conversationId) return
 
     const interval = setInterval(async () => {
-      await fetchMessages({ silent: true })
-      await fetchConversationMeta()
-      if (document.visibilityState === 'visible') {
-        await markSeen()
-      }
+      await fetchMessages(true)
+      await markSeen()
     }, 3000)
 
     const onVisibility = async () => {
       if (document.visibilityState === 'visible') {
-        await fetchMessages({ silent: true })
-        await fetchConversationMeta()
+        await fetchMessages(true)
         await markSeen()
       }
     }
 
     const onFocus = async () => {
-      await fetchMessages({ silent: true })
-      await fetchConversationMeta()
+      await fetchMessages(true)
       await markSeen()
     }
 
@@ -288,23 +277,21 @@ export default function ConversationPage() {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('focus', onFocus)
     }
-  }, [conversationId, fetchConversationMeta, fetchMessages, markSeen])
+  }, [conversationId, fetchMessages, markSeen])
 
   useEffect(() => {
     const lastMessage = messages[messages.length - 1]
-    const previousLastId = previousLastMessageIdRef.current
-    const nextLastId = lastMessage?.id || null
+    const lastId = lastMessage?.id ?? null
+    const prevId = previousLastMessageIdRef.current
 
-    if (!previousLastId && nextLastId) {
-      scrollToBottom('auto')
-    } else if (nextLastId && previousLastId !== nextLastId) {
-      if (isNearBottom() || lastMessage?.sender.id === currentUserId) {
-        scrollToBottom('smooth')
-      }
+    if (!prevId && lastId) {
+      setTimeout(() => scrollToBottom('auto'), 100)
+    } else if (lastId && lastId !== prevId) {
+      setTimeout(() => scrollToBottom('smooth'), 100)
     }
 
-    previousLastMessageIdRef.current = nextLastId
-  }, [messages, currentUserId, isNearBottom, scrollToBottom])
+    previousLastMessageIdRef.current = lastId
+  }, [messages, scrollToBottom])
 
   const otherParticipant = useMemo(() => {
     if (!conversation || currentUserId == null) return null
@@ -325,9 +312,9 @@ export default function ConversationPage() {
           <Image
             src={url}
             alt={msg.attachmentName || 'image'}
-            width={320}
-            height={320}
-            className="rounded-2xl object-cover max-w-full"
+            width={280}
+            height={280}
+            className="rounded-2xl object-cover"
             unoptimized
           />
         </div>
@@ -338,12 +325,12 @@ export default function ConversationPage() {
       return (
         <div className="mt-2">
           <video
-            src={url}
             controls
             preload="metadata"
             playsInline
-            className="w-[320px] max-w-full rounded-2xl bg-black"
+            className="w-[280px] max-w-full rounded-2xl bg-black"
           >
+            <source src={url} />
             Votre navigateur ne supporte pas la vidéo.
           </video>
         </div>
@@ -394,6 +381,7 @@ export default function ConversationPage() {
           alert("Format d'image non supporté")
           return
         }
+
         fd.append('file', file)
       }
 
@@ -408,9 +396,9 @@ export default function ConversationPage() {
 
       if (fileInputRef.current) fileInputRef.current.value = ''
 
-      await fetchMessages({ silent: true })
+      await fetchMessages(true)
       await markSeen()
-      setTimeout(() => scrollToBottom('smooth'), 50)
+      setTimeout(() => scrollToBottom('smooth'), 100)
     } catch (err) {
       console.error('Erreur envoi message', err)
       alert("Erreur lors de l'envoi")
@@ -428,28 +416,27 @@ export default function ConversationPage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <div className="relative border-b border-white/10 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-violet-600/10 to-blue-600/10 blur-3xl" />
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
+      <div className="border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
           <button
             onClick={() => router.push('/messages')}
-            className="flex items-center gap-2 text-sm bg-white/5 px-3 py-2 rounded-xl hover:bg-white/10 transition border border-white/10"
+            className="flex gap-2 items-center text-sm bg-white/5 px-3 py-2 rounded-lg hover:bg-white/10 transition"
           >
             <ArrowLeft size={16} />
             Retour
           </button>
 
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3">
             {otherParticipant && (
               <>
                 <Avatar
                   src={toAbs(otherParticipant.profile?.avatar || otherParticipant.image)}
                   alt={otherParticipant.name}
-                  size={44}
+                  size={40}
                 />
-                <div className="min-w-0">
-                  <div className="font-semibold truncate">{otherParticipant.name}</div>
-                  <div className="text-xs text-white/50 truncate">{otherParticipant.role}</div>
+                <div>
+                  <div className="font-semibold">{otherParticipant.name}</div>
+                  <div className="text-xs text-white/50">{otherParticipant.role}</div>
                 </div>
               </>
             )}
@@ -459,19 +446,17 @@ export default function ConversationPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <div className="border border-white/10 rounded-3xl overflow-hidden bg-neutral-900/70 backdrop-blur shadow-2xl">
+      <div className="max-w-5xl mx-auto px-6 py-6">
+        <div className="border border-white/10 rounded-2xl overflow-hidden bg-neutral-900/60">
           <div
             ref={messagesContainerRef}
-            className="h-[62vh] overflow-y-auto p-4 sm:p-6 space-y-4 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.03),_transparent_30%)]"
+            className="h-[60vh] overflow-y-auto p-6 space-y-4"
           >
             {loading ? (
-              <div className="text-white/50 text-center py-10">Chargement des messages…</div>
+              <div className="text-white/50 text-center">Chargement des messages…</div>
             ) : messages.length === 0 ? (
-              <div className="text-center text-white/50 flex flex-col items-center gap-3 py-16">
-                <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center">
-                  <MessageCircle size={28} />
-                </div>
+              <div className="text-center text-white/50 flex flex-col items-center gap-3">
+                <MessageCircle size={40} />
                 <p>Aucun message</p>
               </div>
             ) : (
@@ -484,29 +469,19 @@ export default function ConversationPage() {
                     key={msg.id}
                     className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-[82%] sm:max-w-[70%] ${isMe ? 'text-right' : ''}`}>
-                      {!isMe && (
-                        <div className="text-xs text-white/45 mb-1 ml-1">
-                          {msg.sender.name}
-                        </div>
-                      )}
-
+                    <div className={`max-w-[70%] ${isMe ? 'text-right' : ''}`}>
                       <div
-                        className={`rounded-2xl px-4 py-3 shadow-sm ${
+                        className={`rounded-xl px-4 py-3 ${
                           isMe
-                            ? 'bg-gradient-to-r from-pink-600/30 to-violet-600/30 border border-pink-400/10'
-                            : 'bg-white/10 border border-white/10'
+                            ? 'bg-gradient-to-r from-pink-600/30 to-violet-600/30'
+                            : 'bg-white/10'
                         }`}
                       >
-                        {msg.content && (
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                            {msg.content}
-                          </p>
-                        )}
+                        {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
                         {renderAttachment(msg)}
                       </div>
 
-                      <div className="text-xs text-white/40 mt-1 px-1">
+                      <div className="text-xs text-white/40 mt-1">
                         {formatMessageTime(msg.createdAt)}
                         {isMe ? ` • ${msg.seen ? 'Vu' : 'Non lu'}` : ''}
                       </div>
@@ -517,77 +492,64 @@ export default function ConversationPage() {
             )}
           </div>
 
-          <div className="border-t border-white/10 bg-black/20 p-4">
-            <div className="flex gap-3 items-center">
-              <input
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Écris ton message..."
-                className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-white/30"
-              />
+          <div className="border-t border-white/10 p-4 flex gap-3 items-center">
+            <input
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Écris ton message..."
+              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2"
+            />
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition border border-white/10"
-                type="button"
-                title="Joindre un fichier"
-              >
-                <Paperclip size={18} />
-              </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition"
+              type="button"
+            >
+              <Paperclip size={18} />
+            </button>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="hidden"
-              />
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="hidden"
+            />
 
-              <button
-                onClick={handleSend}
-                disabled={sending}
-                className="bg-gradient-to-r from-pink-600 to-violet-600 px-4 py-3 rounded-2xl flex gap-2 items-center disabled:opacity-60 hover:opacity-90 transition"
-              >
-                {file &&
-                  (file.type.startsWith('image') ? (
-                    <ImageIcon size={16} />
-                  ) : file.type.startsWith('video') ? (
-                    <Video size={16} />
-                  ) : (
-                    <FileText size={16} />
-                  ))}
-                <Send size={16} />
-                <span className="hidden sm:inline">{sending ? 'Envoi…' : 'Envoyer'}</span>
-              </button>
-            </div>
-
-            {file && (
-              <div className="mt-3">
-                <div className="rounded-2xl bg-white/5 border border-white/10 px-3 py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm truncate">{file.name}</p>
-                    <p className="text-xs text-white/50 mt-0.5">
-                      {file.type.startsWith('image')
-                        ? 'Image'
-                        : file.type.startsWith('video')
-                        ? 'Vidéo'
-                        : 'Document'}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setFile(null)
-                      if (fileInputRef.current) fileInputRef.current.value = ''
-                    }}
-                    className="text-red-400 hover:text-red-300 text-sm shrink-0"
-                  >
-                    Retirer
-                  </button>
-                </div>
-              </div>
-            )}
+            <button
+              onClick={handleSend}
+              disabled={sending}
+              className="bg-gradient-to-r from-pink-600 to-violet-600 px-4 py-2 rounded-xl flex gap-2 items-center disabled:opacity-60"
+            >
+              {file &&
+                (file.type.startsWith('image') ? (
+                  <ImageIcon size={16} />
+                ) : file.type.startsWith('video') ? (
+                  <Video size={16} />
+                ) : (
+                  <FileText size={16} />
+                ))}
+              <Send size={16} />
+              Envoyer
+            </button>
           </div>
+
+          {file && (
+            <div className="px-4 pb-4">
+              <div className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 flex items-center justify-between">
+                <span className="text-sm truncate">{file.name}</span>
+                <button
+                  onClick={() => {
+                    setFile(null)
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Retirer
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>
