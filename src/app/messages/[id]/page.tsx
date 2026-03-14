@@ -1,13 +1,6 @@
 'use client'
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  KeyboardEvent,
-  useCallback,
-  useMemo,
-} from 'react'
+import { useEffect, useRef, useState, KeyboardEvent, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import axios from 'axios'
@@ -110,30 +103,6 @@ function Avatar({
   )
 }
 
-function messagesAreSame(a: Message[], b: Message[]) {
-  if (a.length !== b.length) return false
-
-  for (let i = 0; i < a.length; i += 1) {
-    const x = a[i]
-    const y = b[i]
-
-    if (
-      x.id !== y.id ||
-      x.content !== y.content ||
-      x.attachmentUrl !== y.attachmentUrl ||
-      x.attachmentType !== y.attachmentType ||
-      x.attachmentName !== y.attachmentName ||
-      x.createdAt !== y.createdAt ||
-      x.seen !== y.seen ||
-      x.sender.id !== y.sender.id
-    ) {
-      return false
-    }
-  }
-
-  return true
-}
-
 export default function ConversationPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -148,8 +117,8 @@ export default function ConversationPage() {
   const [conversation, setConversation] = useState<Conversation | null>(null)
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const previousLastMessageIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     try {
@@ -161,16 +130,6 @@ export default function ConversationPage() {
     } catch {
       setCurrentUserId(null)
     }
-  }, [])
-
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    const el = messagesContainerRef.current
-    if (!el) return
-
-    el.scrollTo({
-      top: el.scrollHeight,
-      behavior,
-    })
   }, [])
 
   const fetchConversationMeta = useCallback(async () => {
@@ -212,86 +171,42 @@ export default function ConversationPage() {
     }
   }, [conversationId])
 
-  const fetchMessages = useCallback(
-    async (silent = false) => {
-      if (!conversationId) return
+  const fetchMessages = useCallback(async () => {
+    if (!conversationId) return
 
-      const token = getAuthToken()
-      if (!token) return
+    const token = getAuthToken()
+    if (!token) return
 
-      try {
-        if (!silent) setLoading(true)
+    try {
+      setLoading(true)
 
-        const url = `${API_BASE}/api/messages/messages/${conversationId}`
-        const res = await axios.get<ApiMessagesResponse>(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+      const url = `${API_BASE}/api/messages/messages/${conversationId}`
+      const res = await axios.get<ApiMessagesResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
-        const payload = res.data
-        const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
-        const nextMessages = Array.isArray(list) ? list : []
+      const payload = res.data
+      const list = isArrayResp(payload) ? payload : isObjResp(payload) ? payload.messages : []
 
-        setMessages((prev) => (messagesAreSame(prev, nextMessages) ? prev : nextMessages))
-      } catch (err) {
-        console.error('Erreur fetch messages :', err)
-        if (!silent) setMessages([])
-      } finally {
-        if (!silent) setLoading(false)
-      }
-    },
-    [conversationId]
-  )
+      setMessages(Array.isArray(list) ? list : [])
+    } catch (err) {
+      console.error('Erreur fetch messages :', err)
+      setMessages([])
+    } finally {
+      setLoading(false)
+    }
+  }, [conversationId])
 
   useEffect(() => {
     ;(async () => {
-      await Promise.all([fetchConversationMeta(), markSeen(), fetchMessages(false)])
-      setTimeout(() => scrollToBottom('auto'), 120)
+      await Promise.all([fetchConversationMeta(), markSeen(), fetchMessages()])
     })()
-  }, [conversationId, fetchConversationMeta, markSeen, fetchMessages, scrollToBottom])
+  }, [conversationId, fetchConversationMeta, markSeen, fetchMessages])
 
   useEffect(() => {
-    if (!conversationId) return
-
-    const interval = setInterval(async () => {
-      await fetchMessages(true)
-      await markSeen()
-    }, 3000)
-
-    const onVisibility = async () => {
-      if (document.visibilityState === 'visible') {
-        await fetchMessages(true)
-        await markSeen()
-      }
-    }
-
-    const onFocus = async () => {
-      await fetchMessages(true)
-      await markSeen()
-    }
-
-    document.addEventListener('visibilitychange', onVisibility)
-    window.addEventListener('focus', onFocus)
-
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener('visibilitychange', onVisibility)
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [conversationId, fetchMessages, markSeen])
-
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1]
-    const lastId = lastMessage?.id ?? null
-    const prevId = previousLastMessageIdRef.current
-
-    if (!prevId && lastId) {
-      setTimeout(() => scrollToBottom('auto'), 100)
-    } else if (lastId && lastId !== prevId) {
-      setTimeout(() => scrollToBottom('smooth'), 100)
-    }
-
-    previousLastMessageIdRef.current = lastId
-  }, [messages, scrollToBottom])
+    const el = messagesContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages])
 
   const otherParticipant = useMemo(() => {
     if (!conversation || currentUserId == null) return null
@@ -324,12 +239,7 @@ export default function ConversationPage() {
     if (msg.attachmentType === 'VIDEO') {
       return (
         <div className="mt-2">
-          <video
-            controls
-            preload="metadata"
-            playsInline
-            className="w-[280px] max-w-full rounded-2xl bg-black"
-          >
+          <video controls className="w-[280px] max-w-full rounded-2xl bg-black">
             <source src={url} />
             Votre navigateur ne supporte pas la vidéo.
           </video>
@@ -396,9 +306,8 @@ export default function ConversationPage() {
 
       if (fileInputRef.current) fileInputRef.current.value = ''
 
-      await fetchMessages(true)
+      await fetchMessages()
       await markSeen()
-      setTimeout(() => scrollToBottom('smooth'), 100)
     } catch (err) {
       console.error('Erreur envoi message', err)
       alert("Erreur lors de l'envoi")
@@ -477,7 +386,7 @@ export default function ConversationPage() {
                             : 'bg-white/10'
                         }`}
                       >
-                        {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                        {msg.content && <p>{msg.content}</p>}
                         {renderAttachment(msg)}
                       </div>
 
@@ -494,6 +403,7 @@ export default function ConversationPage() {
 
           <div className="border-t border-white/10 p-4 flex gap-3 items-center">
             <input
+              ref={inputRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={handleKeyDown}
