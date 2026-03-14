@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
-  MessageSquare,
+  MessageCircle,
   Search,
   Trash2,
   ChevronRight,
@@ -109,12 +109,103 @@ function Avatar({
   )
 }
 
+function MultiUserSearchDropdown({
+  users,
+  loading,
+  search,
+  onSearchChange,
+  onSelect,
+  getAvatarSrc,
+}: {
+  users: User[]
+  loading: boolean
+  search: string
+  onSearchChange: (value: string) => void
+  onSelect: (userId: number) => void
+  getAvatarSrc: (u?: User | null) => string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!ref.current) return
+      if (!ref.current.contains(e.target as Node)) setOpen(false)
+    }
+
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    if (search.trim()) setOpen(true)
+    else setOpen(false)
+  }, [search])
+
+  return (
+    <div ref={ref} className="relative z-[120]">
+      <div className="relative">
+        <Search
+          size={16}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
+        />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Rechercher un utilisateur…"
+          className="w-full rounded-xl bg-black/40 border border-white/10 focus:border-white/30 outline-none pl-10 pr-4 py-3 text-sm text-white placeholder-white/40"
+        />
+      </div>
+
+      {open && (
+        <div className="absolute z-[9999] top-full mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl max-h-96 overflow-y-auto">
+          {loading ? (
+            <div className="px-4 py-4 text-sm text-white/50">
+              Chargement des utilisateurs…
+            </div>
+          ) : users.length > 0 ? (
+            <ul className="p-2 space-y-1">
+              {users.map((u) => (
+                <li
+                  key={u.id}
+                  onClick={() => {
+                    onSelect(u.id)
+                    setOpen(false)
+                  }}
+                  className="cursor-pointer rounded-xl px-3 py-3 flex items-center gap-3 hover:bg-white/5 transition"
+                >
+                  <Avatar src={getAvatarSrc(u)} alt={u.name} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">{u.name}</p>
+                    <p className="text-xs text-white/50">{roleLabel(u.role)}</p>
+                  </div>
+                  <ChevronRight size={16} className="text-white/30" />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="px-4 py-4 text-sm text-white/50">
+              Aucun utilisateur trouvé.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MessagesPage() {
   const { user, token } = useAuth()
   const router = useRouter()
 
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  const [search, setSearch] = useState('')
+  const [allUsers, setAllUsers] = useState<User[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+
   const [conversationSearch, setConversationSearch] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -143,7 +234,7 @@ export default function MessagesPage() {
         cache: 'no-store',
       })
 
-      if (!res.ok) throw new Error('HTTP ' + res.status)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
       const raw = await res.json()
       const list: Conversation[] = Array.isArray(raw?.conversations) ? raw.conversations : []
@@ -160,10 +251,117 @@ export default function MessagesPage() {
     }
   }, [token, authedHeaders])
 
+  const fetchUsers = useCallback(async () => {
+    if (!token) return
+
+    try {
+      setLoadingUsers(true)
+
+      const res = await fetch(`${API_BASE}/api/users?t=${Date.now()}`, {
+        headers: authedHeaders,
+        cache: 'no-store',
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      const raw = (await res.json()) as { users?: User[] } | User[]
+      const list: User[] = Array.isArray(raw) ? raw : raw?.users ?? []
+
+      const filtered = user?.id
+        ? list.filter((u) => Number(u.id) !== Number(user.id))
+        : list
+
+      setAllUsers(filtered)
+    } catch (err) {
+      console.error('Users load error:', err)
+      setAllUsers([])
+    } finally {
+      setLoadingUsers(false)
+    }
+  }, [token, authedHeaders, user?.id])
+
   useEffect(() => {
     if (!token) return
     fetchConversations()
+    fetchUsers()
+  }, [token, fetchConversations, fetchUsers])
+
+  useEffect(() => {
+    if (!token) return
+
+    const interval = setInterval(() => {
+      fetchConversations()
+    }, 5000)
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchConversations()
+      }
+    }
+
+    const onFocus = () => {
+      fetchConversations()
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [token, fetchConversations])
+
+  const startConversation = useCallback(
+    async (recipientId: number) => {
+      if (!token || !user?.id) return
+
+      if (Number(recipientId) === Number(user.id)) {
+        alert("Tu ne peux pas t'envoyer un message à toi-même.")
+        return
+      }
+
+      const existing = conversations.find(
+        (conv) =>
+          conv.participants.some((p) => Number(p.id) === Number(recipientId)) &&
+          conv.participants.some((p) => Number(p.id) === Number(user.id))
+      )
+
+      if (existing) {
+        router.push(`/messages/${existing.id}`)
+        return
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/messages/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authedHeaders || {}),
+          },
+          body: JSON.stringify({ recipientId }),
+        })
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+        const data = await res.json().catch(() => ({}))
+        const convId = data?.conversationId ?? data?.conversation?.id ?? null
+
+        if (convId) {
+          router.push(`/messages/${convId}`)
+        } else {
+          await fetchConversations()
+        }
+
+        setSearch('')
+      } catch (err) {
+        console.error('Erreur démarrage conversation :', err)
+        alert('Impossible de démarrer la conversation.')
+      }
+    },
+    [token, user?.id, conversations, router, authedHeaders, fetchConversations]
+  )
 
   const deleteConversation = useCallback(
     async (convId: number) => {
@@ -180,7 +378,7 @@ export default function MessagesPage() {
           headers: authedHeaders,
         })
 
-        if (!res.ok) throw new Error('HTTP ' + res.status)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
         setConversations((prev) => prev.filter((c) => c.id !== convId))
       } catch (err) {
@@ -200,6 +398,16 @@ export default function MessagesPage() {
     [router]
   )
 
+  const filteredUsers = search.trim()
+    ? allUsers.filter((u) => {
+        const query = search.trim().toLowerCase()
+        return (
+          Number(u.id) !== Number(user?.id) &&
+          u.name?.toLowerCase().includes(query)
+        )
+      })
+    : []
+
   const filteredConversations = conversations.filter((conv) => {
     const other = getOtherUser(conv)
     const query = conversationSearch.trim().toLowerCase()
@@ -213,118 +421,157 @@ export default function MessagesPage() {
   })
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <div className="grid grid-cols-1 xl:grid-cols-[340px,1fr] gap-6">
-
-          {/* Sidebar */}
-          <aside className="rounded-3xl border border-white/10 bg-neutral-900 min-h-[78vh] overflow-hidden">
-
-            <div className="border-b border-white/10 p-5">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-violet-600/15 flex items-center justify-center">
-                  <MessageSquare className="text-violet-300" size={22} />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold">Messagerie</h1>
-                  <p className="text-sm text-white/45">Espace de discussion LSBookers</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-b border-white/10">
-              <div className="flex items-center gap-2 mb-3">
-                <PenSquare size={15} className="text-white/45" />
-                <p className="text-sm font-medium text-white/80">
-                  Nouvelle conversation
-                </p>
-              </div>
-
-              <p className="text-xs text-white/45">
-                Utilise la recherche en haut pour démarrer une conversation.
+    <main className="min-h-screen bg-black text-white">
+      <div className="relative overflow-hidden border-b border-white/10">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-violet-600/10 to-blue-600/10 blur-3xl" />
+        <div className="relative px-6 pt-10 pb-8 max-w-7xl mx-auto">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
+                <MessageCircle className="text-violet-400" />
+                Messagerie
+              </h1>
+              <p className="text-white/70 mt-2 max-w-2xl">
+                Gère tes échanges avec les artistes, organisateurs et prestataires
+                dans un espace centralisé.
               </p>
             </div>
 
-          </aside>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 min-w-[220px]">
+              <p className="text-xs text-white/50">Conversations</p>
+              <p className="text-2xl font-semibold mt-1">{conversations.length}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* Main panel */}
-          <section className="rounded-3xl border border-white/10 bg-neutral-900 min-h-[78vh] overflow-hidden">
-
-            <div className="border-b border-white/10 px-5 py-4 flex items-center justify-between gap-4">
+      <div className="px-6 py-8 max-w-7xl mx-auto">
+        <div className="grid gap-6 xl:grid-cols-[380px,1fr] items-start">
+          <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl relative z-[120]">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-violet-600/20 flex items-center justify-center">
+                <PenSquare size={18} className="text-violet-300" />
+              </div>
               <div>
-                <h2 className="text-lg font-semibold">Boîte de réception</h2>
-                <p className="text-sm text-white/45">
-                  Retrouve ici toutes tes conversations professionnelles.
+                <h2 className="text-lg font-semibold">Nouvelle conversation</h2>
+                <p className="text-sm text-white/50">
+                  Recherche un utilisateur pour ouvrir un échange.
                 </p>
               </div>
             </div>
 
-            <div className="p-4 sm:p-5">
+            <MultiUserSearchDropdown
+              users={filteredUsers}
+              loading={loadingUsers}
+              search={search}
+              onSearchChange={setSearch}
+              onSelect={startConversation}
+              getAvatarSrc={getAvatarSrc}
+            />
+          </section>
 
-              {error ? (
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-300 text-sm">
-                  {error}
+          <section className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur p-5 shadow-2xl min-h-[540px] relative z-0">
+            <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
+              <div>
+                <h2 className="text-lg font-semibold">Vos conversations</h2>
+                <p className="text-sm text-white/50">
+                  Ouvre une discussion existante ou reprends un échange non lu.
+                </p>
+              </div>
+
+              <div className="relative w-full sm:w-[280px]">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
+                />
+                <input
+                  type="text"
+                  value={conversationSearch}
+                  onChange={(e) => setConversationSearch(e.target.value)}
+                  placeholder="Filtrer les conversations…"
+                  className="w-full rounded-xl bg-black/40 border border-white/10 focus:border-white/30 outline-none pl-10 pr-4 py-3 text-sm text-white placeholder-white/40"
+                />
+              </div>
+            </div>
+
+            {error ? (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-300 text-sm">
+                {error}
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="h-[420px] rounded-2xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
+                <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+                  <Inbox className="text-white/40" />
                 </div>
-              ) : filteredConversations.length === 0 ? (
+                <h3 className="text-lg font-medium mb-2">Aucune conversation</h3>
+                <p className="text-white/50 text-sm max-w-md">
+                  Lance une nouvelle conversation depuis la colonne de gauche.
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {filteredConversations.map((conv) => {
+                  const other = getOtherUser(conv)
+                  const src = getAvatarSrc(other)
+                  const isUnread =
+                    !!conv.lastMessageMeta &&
+                    Number(conv.lastMessageMeta.senderId) !== Number(user?.id) &&
+                    !conv.lastMessageMeta.seen
 
-                <div className="h-[60vh] rounded-2xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-                    <Inbox className="text-white/35" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">Aucune conversation</h3>
-                  <p className="text-white/45 text-sm max-w-md">
-                    Lance une nouvelle conversation depuis la colonne de gauche.
-                  </p>
-                </div>
+                  return (
+                    <li
+                      key={conv.id}
+                      onClick={() => openConversation(conv.id)}
+                      className={`group rounded-2xl border p-4 transition flex items-start gap-4 relative cursor-pointer ${
+                        isUnread
+                          ? 'bg-violet-500/10 border-violet-500/25'
+                          : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'
+                      }`}
+                    >
+                      {isUnread && (
+                        <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl bg-violet-500" />
+                      )}
 
-              ) : (
+                      <Avatar src={src} alt={other?.name ?? 'User'} size={56} />
 
-                <ul className="space-y-2">
-                  {filteredConversations.map((conv) => {
-                    const other = getOtherUser(conv)
-                    const src = getAvatarSrc(other)
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3
+                            className={`text-base truncate ${
+                              isUnread ? 'font-semibold text-white' : 'font-medium text-white'
+                            }`}
+                          >
+                            {other?.name ?? 'Conversation'}
+                          </h3>
 
-                    return (
-                      <li
-                        key={conv.id}
-                        onClick={() => openConversation(conv.id)}
-                        className="group rounded-2xl border px-4 py-4 transition flex items-start gap-4 relative cursor-pointer bg-white/[0.03] border-white/10 hover:bg-white/[0.05]"
-                      >
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60">
+                            {roleLabel(other?.role)}
+                          </span>
 
-                        <Avatar src={src} alt={other?.name ?? 'User'} size={52} />
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-4">
-
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-
-                                <h3 className="text-sm font-medium text-white truncate">
-                                  {other?.name ?? 'Conversation'}
-                                </h3>
-
-                                <span className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/50">
-                                  {roleLabel(other?.role)}
-                                </span>
-
-                              </div>
-
-                              <p className="text-sm text-white/60 mt-1 truncate">
-                                {conv.lastMessage ||
-                                  attachmentHint(conv.lastMessageMeta?.attachmentType) ||
-                                  'Conversation'}
-                              </p>
-
-                            </div>
-
-                            <div className="text-right shrink-0">
-                              <div className="text-[11px] text-white/35 whitespace-nowrap">
-                                {formatConversationDate(conv.updatedAt)}
-                              </div>
-                            </div>
-
-                          </div>
+                          {isUnread && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-600/20 border border-violet-400/30 text-violet-200">
+                              Non lu
+                            </span>
+                          )}
                         </div>
+
+                        <p className="text-sm text-white/70 mt-1 truncate">
+                          {conv.lastMessage ||
+                            attachmentHint(conv.lastMessageMeta?.attachmentType) ||
+                            'Conversation'}
+                        </p>
+
+                        {conv.lastMessageMeta?.attachmentType && !conv.lastMessage && (
+                          <p className="text-xs text-white/40 mt-1">
+                            {attachmentHint(conv.lastMessageMeta.attachmentType)}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col items-end gap-3 shrink-0">
+                        <span className="text-[11px] text-white/45 whitespace-nowrap">
+                          {formatConversationDate(conv.updatedAt)}
+                        </span>
 
                         <button
                           onClick={(e) => {
@@ -332,20 +579,18 @@ export default function MessagesPage() {
                             deleteConversation(conv.id)
                           }}
                           disabled={deletingId === conv.id}
-                          className="shrink-0 opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1 text-xs border border-white/10 hover:border-red-400/60 text-white/60 hover:text-red-300 rounded-lg px-2.5 py-1.5"
+                          title="Supprimer la conversation"
+                          className="inline-flex items-center gap-1 text-xs border border-white/10 hover:border-red-400/60 text-white/70 hover:text-red-300 rounded-lg px-2.5 py-1.5 transition"
                         >
                           <Trash2 size={12} />
                           {deletingId === conv.id ? '...' : 'Supprimer'}
                         </button>
-
-                      </li>
-                    )
-                  })}
-                </ul>
-
-              )}
-
-            </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </section>
         </div>
       </div>
