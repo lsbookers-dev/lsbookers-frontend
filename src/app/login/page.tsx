@@ -14,6 +14,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [emailNotVerified, setEmailNotVerified] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
 
   const API =
     (process.env.NEXT_PUBLIC_API_URL ||
@@ -23,6 +26,7 @@ export default function LoginPage() {
     e.preventDefault()
 
     setError(null)
+    setEmailNotVerified(false)
     setLoading(true)
 
     try {
@@ -51,6 +55,10 @@ export default function LoginPage() {
       if (isAxiosError(err)) {
         if (err.response?.status === 401) {
           message = 'Identifiants incorrects.'
+        } else if (err.response?.status === 403 && err.response?.data?.error === 'EMAIL_NOT_VERIFIED') {
+          setEmailNotVerified(true)
+          setLoading(false)
+          return
         } else if (err.response?.status === 429) {
           message = 'Trop de tentatives. Réessayez dans 5 minutes.'
         } else if (err.message?.includes('Network')) {
@@ -61,6 +69,18 @@ export default function LoginPage() {
       setError(message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    setResendLoading(true)
+    try {
+      await axios.post(`${API}/api/auth/resend-verification`, { email })
+      setResendSent(true)
+    } catch {
+      setResendSent(true) // Toujours afficher succès
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -140,6 +160,25 @@ export default function LoginPage() {
             {error && (
               <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                 {error}
+              </div>
+            )}
+
+            {emailNotVerified && (
+              <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-sm text-amber-200">
+                <p className="font-semibold">Email non confirmé</p>
+                <p className="mt-1 text-amber-200/80">Vérifie ta boîte mail et clique sur le lien de confirmation.</p>
+                {resendSent ? (
+                  <p className="mt-2 text-emerald-400 text-xs">Email renvoyé !</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                    className="mt-2 text-xs text-amber-300 underline underline-offset-4 hover:text-white disabled:opacity-60"
+                  >
+                    {resendLoading ? 'Envoi…' : 'Renvoyer l\'email de confirmation'}
+                  </button>
+                )}
               </div>
             )}
 

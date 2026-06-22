@@ -1,31 +1,54 @@
 'use client'
 
-import Link from 'next/link'
 import { useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
 
-export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('')
+export default function ResetPasswordPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const token = searchParams.get('token')
+
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
 
+    if (password !== confirm) {
+      setError('Les mots de passe ne correspondent pas.')
+      return
+    }
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.')
+      return
+    }
+    if (!token) {
+      setError('Lien invalide.')
+      return
+    }
+
+    setLoading(true)
     try {
-      await axios.post(`${API}/api/auth/forgot-password`, { email })
-      setSent(true)
+      await axios.post(`${API}/api/auth/reset-password`, { token, password })
+      setDone(true)
     } catch (err) {
-      if (isAxiosError(err) && err.response?.status === 429) {
-        setError('Trop de tentatives. Réessayez dans 5 minutes.')
+      if (isAxiosError(err)) {
+        const msg = err.response?.data?.error || err.response?.data?.message
+        if (err.response?.status === 400) {
+          setError('Ce lien est invalide ou a expiré. Refais une demande de réinitialisation.')
+        } else {
+          setError(msg || 'Erreur lors de la réinitialisation.')
+        }
       } else {
-        // On affiche toujours le succès pour ne pas révéler si l'email existe
-        setSent(true)
+        setError('Erreur réseau.')
       }
     } finally {
       setLoading(false)
@@ -53,9 +76,9 @@ export default function ForgotPasswordPage() {
               </div>
             </Link>
             <div className="mt-12 space-y-5">
-              <h1 className="text-4xl font-extrabold tracking-tight">Mot de passe oublié ?</h1>
+              <h1 className="text-4xl font-extrabold tracking-tight">Nouveau mot de passe</h1>
               <p className="max-w-md text-white/70">
-                Pas de panique. Saisis ton email et on t&apos;envoie un lien pour créer un nouveau mot de passe.
+                Choisis un nouveau mot de passe sécurisé pour ton compte LSBookers.
               </p>
             </div>
           </div>
@@ -68,38 +91,42 @@ export default function ForgotPasswordPage() {
           <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
 
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Réinitialiser</h2>
+              <h2 className="text-2xl font-bold">Nouveau mot de passe</h2>
               <Link
                 href="/login"
                 className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition"
               >
-                Retour
+                Connexion
               </Link>
             </div>
 
-            {sent ? (
+            {done ? (
               <div className="space-y-4 py-4 text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600/20 ring-2 ring-emerald-500/50">
                   <svg className="h-7 w-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">Vérifie ta boîte mail</h3>
+                  <h3 className="font-bold text-lg">Mot de passe modifié !</h3>
                   <p className="mt-2 text-sm text-white/60">
-                    Si un compte existe avec cet email, tu recevras un lien de réinitialisation dans quelques instants.
+                    Ton mot de passe a été mis à jour. Tu peux maintenant te connecter.
                   </p>
                 </div>
-                <p className="text-xs text-white/40">Le lien est valable 1 heure.</p>
-                <Link href="/login" className="inline-block text-sm text-emerald-400 underline underline-offset-4 hover:text-emerald-300">
-                  Retour à la connexion
-                </Link>
+                <button
+                  onClick={() => router.replace('/login')}
+                  className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500"
+                >
+                  Se connecter →
+                </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-sm text-white/60">
-                  Entre l&apos;adresse email associée à ton compte.
-                </p>
+                {!token && (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    Lien invalide. Refais une demande de réinitialisation.
+                  </div>
+                )}
 
                 {error && (
                   <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
@@ -108,24 +135,37 @@ export default function ForgotPasswordPage() {
                 )}
 
                 <div>
-                  <label className="mb-2 block text-sm text-white/80">Email</label>
+                  <label className="mb-2 block text-sm text-white/80">Nouveau mot de passe</label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
                     required
-                    autoComplete="email"
-                    placeholder="nom@domaine.com"
+                    autoComplete="new-password"
+                    placeholder="Au moins 8 caractères"
+                    className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-white/80">Confirmer le mot de passe</label>
+                  <input
+                    type="password"
+                    value={confirm}
+                    onChange={e => setConfirm(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    placeholder="••••••••"
                     className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !token}
                   className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
                 >
-                  {loading ? 'Envoi en cours…' : 'Envoyer le lien'}
+                  {loading ? 'Enregistrement…' : 'Enregistrer le mot de passe'}
                 </button>
               </form>
             )}
