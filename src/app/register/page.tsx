@@ -308,11 +308,11 @@ export default function RegisterPage() {
               </h1>
               <p className="max-w-md text-white/70">
                 Crée ton compte et commence à publier, réserver et collaborer.
-                Un environnement professionnel, moderne et pensé pour l'événementiel.
+                Un environnement professionnel, moderne et pensé pour l&apos;événementiel.
               </p>
 
               <div className="mt-8 space-y-3 text-sm text-white/60">
-                {['Réseau social dédié à l\'événementiel', 'Agenda & gestion des événements', 'Contrats et paiements sécurisés'].map((item) => (
+                {["Réseau social dédié à l'événementiel", "Agenda & gestion des événements", "Contrats et paiements sécurisés"].map((item) => (
                   <div key={item} className="flex items-center gap-2">
                     <span className="text-emerald-400">✓</span>
                     {item}
@@ -421,9 +421,9 @@ export default function RegisterPage() {
                 <SubmitButton loading={loading} label="Continuer →" />
 
                 <p className="text-center text-xs text-white/50">
-                  En t'inscrivant, tu acceptes nos{' '}
+                  En t&apos;inscrivant, tu acceptes nos{' '}
                   <Link href="/legal/terms" className="underline underline-offset-4 hover:text-white">
-                    conditions d'utilisation
+                    conditions d&apos;utilisation
                   </Link>.
                 </p>
               </form>
@@ -564,7 +564,7 @@ export default function RegisterPage() {
                       placeholder="Ex. 12345678900012"
                       maxLength={17}
                     />
-                    <p className="mt-1 text-xs text-white/40">Ce numéro sera vérifié lors de l'activation des paiements.</p>
+                    <p className="mt-1 text-xs text-white/40">Ce numéro sera vérifié lors de l&apos;activation des paiements.</p>
                   </Field>
                 )}
 
