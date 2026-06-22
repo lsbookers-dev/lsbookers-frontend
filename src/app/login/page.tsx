@@ -52,7 +52,7 @@ export default function LoginPage() {
         if (err.response?.status === 401) {
           message = 'Identifiants incorrects.'
         } else if (err.response?.status === 429) {
-          message = 'Trop de tentatives. Réessayez dans 15 minutes.'
+          message = 'Trop de tentatives. Réessayez dans 5 minutes.'
         } else if (err.message?.includes('Network')) {
           message = 'Erreur réseau.'
         }
