@@ -3,64 +3,283 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import axios, { isAxiosError } from 'axios'
 
-// Rôles autorisés
-type UserRole = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
+type LegalStatus = 'INDIVIDUAL' | 'AUTO_ENTREPRENEUR' | 'COMPANY'
+type OrganizerType = 'INDIVIDUAL' | 'PROFESSIONAL'
 
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
+
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+}
+
+// ─────────────────────────────────────────────
+// Composants UI réutilisables
+// ─────────────────────────────────────────────
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm text-white/80">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
+    />
+  )
+}
+
+function Select(props: React.SelectHTMLAttributes<HTMLSelectElement> & { options: { value: string; label: string }[] }) {
+  const { options, ...rest } = props
+  return (
+    <div className="relative">
+      <select
+        {...rest}
+        className="w-full appearance-none rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
+      >
+        {options.map(o => (
+          <option key={o.value} value={o.value} className="bg-neutral-900">
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40">▾</span>
+    </div>
+  )
+}
+
+function ErrorBox({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+      {message}
+    </div>
+  )
+}
+
+function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
+    >
+      {loading ? (
+        <span className="inline-flex items-center justify-center gap-2">
+          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+          </svg>
+          Chargement…
+        </span>
+      ) : label}
+    </button>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Barre de progression
+// ─────────────────────────────────────────────
+const STEPS = ['Compte', 'Identité', 'Profil', 'Prêt !']
+
+function ProgressBar({ current }: { current: number }) {
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between">
+        {STEPS.map((label, i) => {
+          const stepNum = i + 1
+          const done = stepNum < current
+          const active = stepNum === current
+          return (
+            <div key={i} className="flex flex-1 flex-col items-center gap-1">
+              <div
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition
+                  ${done ? 'bg-emerald-600 text-white' : active ? 'bg-emerald-600/30 ring-2 ring-emerald-500 text-white' : 'bg-white/10 text-white/40'}`}
+              >
+                {done ? '✓' : stepNum}
+              </div>
+              <span className={`hidden sm:block text-xs transition ${active ? 'text-white' : done ? 'text-emerald-400' : 'text-white/30'}`}>
+                {label}
+              </span>
+              {i < STEPS.length - 1 && (
+                <div className={`absolute hidden`} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {/* Ligne de progression */}
+      <div className="relative mt-2 h-1 w-full rounded-full bg-white/10">
+        <div
+          className="h-1 rounded-full bg-emerald-600 transition-all duration-500"
+          style={{ width: `${((current - 1) / (STEPS.length - 1)) * 100}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Page principale
+// ─────────────────────────────────────────────
 export default function RegisterPage() {
   const router = useRouter()
 
-  // === Etat inchangé ===
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [role, setRole] = useState<UserRole>('ARTIST')
+  const [step, setStep] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // === Logique inchangée ===
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Token conservé entre les étapes
+  const [token, setToken] = useState('')
+
+  // ── Étape 1 ──
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [role, setRole] = useState<Role>('ARTIST')
+
+  // ── Étape 2 ──
+  const [pseudo, setPseudo] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
+  const [phone, setPhone] = useState('')
+  const [countryOfResidence, setCountryOfResidence] = useState('France')
+
+  // ── Étape 3 ──
+  const [legalStatus, setLegalStatus] = useState<LegalStatus>('INDIVIDUAL')
+  const [organizerType, setOrganizerType] = useState<OrganizerType>('INDIVIDUAL')
+  const [establishmentName, setEstablishmentName] = useState('')
+  const [typeEtablissement, setTypeEtablissement] = useState('')
+  const [siret, setSiret] = useState('')
+  const [city, setCity] = useState('')
+
+  // ─────────────────────────────────────────────
+  // Étape 1 : création du compte
+  // ─────────────────────────────────────────────
+  const handleStep1 = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas.')
+      return
+    }
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.')
+      return
+    }
+
     setLoading(true)
-
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-      if (!API) throw new Error('NEXT_PUBLIC_API_URL manquant')
-
-      const res = await fetch(`${API}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name, email, password, role }),
-      })
-
-      if (!res.ok) {
-        let msg = "Échec de l'inscription. Réessaie."
-        if (res.status === 409) msg = 'Un compte existe déjà avec cet email.'
-        else if (res.status === 400) msg = 'Données invalides (email ou mot de passe).'
-        else if (res.status === 404) msg = 'Endpoint introuvable (vérifie NEXT_PUBLIC_API_URL).'
-        try {
-          const data = await res.json()
-          if (data?.message) msg = data.message
-          if (data?.error) msg = data.error
-        } catch {}
-        throw new Error(msg)
-      }
-
-      // Succès -> redirection
-      router.push('/login')
+      const { data } = await axios.post(
+        `${API}/api/auth/register`,
+        { email, password, role },
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+      setToken(data.token)
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      setStep(2)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Échec de l'inscription. Réessaie."
-      setError(msg)
+      if (isAxiosError(err)) {
+        const msg = err.response?.data?.error
+        if (err.response?.status === 400 && msg?.includes('inscrit')) {
+          setError('Un compte existe déjà avec cet email.')
+        } else if (err.response?.status === 429) {
+          setError('Trop de tentatives. Réessayez dans 5 minutes.')
+        } else {
+          setError(msg || "Échec de la création du compte.")
+        }
+      } else {
+        setError("Erreur réseau.")
+      }
     } finally {
       setLoading(false)
     }
   }
 
+  // ─────────────────────────────────────────────
+  // Étape 2 : identité
+  // ─────────────────────────────────────────────
+  const handleStep2 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      await axios.patch(
+        `${API}/api/auth/step2`,
+        { pseudo, firstName, lastName, dateOfBirth: dateOfBirth || undefined, phone: phone || undefined, countryOfResidence },
+        { headers: authHeaders(token) }
+      )
+      setStep(3)
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const msg = err.response?.data?.error
+        if (err.response?.status === 409) {
+          setError('Ce pseudo est déjà utilisé. Choisis-en un autre.')
+        } else {
+          setError(msg || "Erreur lors de l'enregistrement.")
+        }
+      } else {
+        setError("Erreur réseau.")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Étape 3 : profil légal
+  // ─────────────────────────────────────────────
+  const handleStep3 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      await axios.patch(
+        `${API}/api/auth/step3`,
+        {
+          legalStatus,
+          organizerType: role === 'ORGANIZER' ? organizerType : undefined,
+          establishmentName: (role === 'ORGANIZER' && organizerType === 'PROFESSIONAL') ? establishmentName || undefined : undefined,
+          typeEtablissement: (role === 'ORGANIZER' && organizerType === 'PROFESSIONAL') ? typeEtablissement || undefined : undefined,
+          siret: (legalStatus !== 'INDIVIDUAL') ? siret || undefined : undefined,
+          city: city || undefined,
+        },
+        { headers: authHeaders(token) }
+      )
+      setStep(4)
+    } catch (err) {
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.error || "Erreur lors de l'enregistrement.")
+      } else {
+        setError("Erreur réseau.")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Rendu
+  // ─────────────────────────────────────────────
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white">
-      {/* Glow décoratifs */}
+
+      {/* Glows décoratifs */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
         <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl" />
@@ -68,10 +287,11 @@ export default function RegisterPage() {
       </div>
 
       <div className="relative mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
+
         {/* Panneau branding */}
         <aside className="hidden lg:flex flex-col justify-between border-r border-white/10">
           <div className="p-10">
-            <Link href="/" className="inline-flex items-center gap-3 group" aria-label="Retour à l’accueil">
+            <Link href="/" className="inline-flex items-center gap-3 group">
               <div className="h-12 w-12 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/25 transition flex items-center justify-center">
                 <span className="font-black text-lg tracking-widest">LS</span>
               </div>
@@ -83,12 +303,22 @@ export default function RegisterPage() {
 
             <div className="mt-12 space-y-5">
               <h1 className="text-4xl font-extrabold tracking-tight">
-                Rejoins la scène, en un clic.
+                Rejoins la scène,{' '}
+                <span className="text-emerald-400">en quelques étapes.</span>
               </h1>
               <p className="max-w-md text-white/70">
                 Crée ton compte et commence à publier, réserver et collaborer.
-                Un environnement professionnel, moderne et pensé pour l’événementiel.
+                Un environnement professionnel, moderne et pensé pour l'événementiel.
               </p>
+
+              <div className="mt-8 space-y-3 text-sm text-white/60">
+                {['Réseau social dédié à l\'événementiel', 'Agenda & gestion des événements', 'Contrats et paiements sécurisés'].map((item) => (
+                  <div key={item} className="flex items-center gap-2">
+                    <span className="text-emerald-400">✓</span>
+                    {item}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -101,15 +331,9 @@ export default function RegisterPage() {
 
         {/* Carte formulaire */}
         <main className="flex items-center justify-center p-6 lg:p-12">
-          <form
-            onSubmit={handleSubmit}
-            className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl"
-          >
-            {/* Liseré discret */}
-            <span className="pointer-events-none absolute inset-0 rounded-2xl [mask-image:linear-gradient(black,transparent_30%,transparent_70%,black)]">
-              <span className="absolute inset-0 -z-10 rounded-2xl ring-1 ring-white/10" />
-            </span>
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
 
+            {/* En-tête */}
             <div className="mb-1 flex items-center justify-between">
               <h2 className="text-2xl font-bold">Créer un compte</h2>
               <Link
@@ -120,160 +344,340 @@ export default function RegisterPage() {
               </Link>
             </div>
 
-            <p className="text-sm text-white/65">
-              Tu as déjà un compte ?{' '}
-              <Link href="/login" className="underline underline-offset-4 hover:text-white">
-                Se connecter
-              </Link>
-            </p>
-
-            {error && (
-              <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-                {error}
-              </div>
+            {step < 4 && (
+              <p className="mb-5 text-sm text-white/65">
+                Déjà un compte ?{' '}
+                <Link href="/login" className="underline underline-offset-4 hover:text-white">
+                  Se connecter
+                </Link>
+              </p>
             )}
 
-            <div className="mt-6 space-y-4">
-              {/* Nom */}
-              <div>
-                <label htmlFor="name" className="mb-2 block text-sm text-white/80">
-                  Nom / Pseudo
-                </label>
-                <div className="relative">
-                  <input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    required
-                    autoComplete="name"
-                    placeholder="Ex. DJ Nova"
-                    className="w-full rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30">
-                    ✦
-                  </span>
-                </div>
-              </div>
+            {/* Barre de progression */}
+            <ProgressBar current={step} />
 
-              {/* Email */}
-              <div>
-                <label htmlFor="email" className="mb-2 block text-sm text-white/80">
-                  Email
-                </label>
-                <div className="relative">
-                  <input
-                    id="email"
+            {error && <ErrorBox message={error} />}
+
+            {/* ─── ÉTAPE 1 : Compte ─── */}
+            {step === 1 && (
+              <form onSubmit={handleStep1} className="space-y-4">
+                <Field label="Type de compte">
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: 'ARTIST', label: 'Artiste', desc: 'DJ, musicien, performer…' },
+                      { value: 'ORGANIZER', label: 'Organisateur', desc: 'Club, festival, soirée privée…' },
+                      { value: 'PROVIDER', label: 'Prestataire', desc: 'Photo, son, décoration…' },
+                    ] as { value: Role; label: string; desc: string }[]).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setRole(opt.value)}
+                        className={`flex flex-col items-center gap-1 rounded-xl border p-3 text-center text-xs transition
+                          ${role === opt.value
+                            ? 'border-emerald-500 bg-emerald-500/15 text-white'
+                            : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white'
+                          }`}
+                      >
+                        <span className="font-semibold">{opt.label}</span>
+                        <span className="text-white/50 leading-tight">{opt.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field label="Email">
+                  <Input
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
                     autoComplete="email"
                     placeholder="nom@domaine.com"
-                    className="w-full rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
                   />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30">
-                    @
-                  </span>
-                </div>
-              </div>
+                </Field>
 
-              {/* Mot de passe */}
-              <div>
-                <label htmlFor="password" className="mb-2 block text-sm text-white/80">
-                  Mot de passe
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
+                <Field label="Mot de passe">
+                  <Input
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
                     autoComplete="new-password"
                     placeholder="Au moins 8 caractères"
-                    className="w-full rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
                   />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30">
-                    •••
-                  </span>
-                </div>
-              </div>
+                </Field>
 
-              {/* Type de compte */}
-              <div>
-                <label htmlFor="role" className="mb-2 block text-sm text-white/80">
-                  Type de compte
-                </label>
-                <div className="relative">
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={e => setRole(e.target.value as UserRole)}
-                    className="w-full appearance-none rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
+                <Field label="Confirmer le mot de passe">
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                  />
+                </Field>
+
+                <SubmitButton loading={loading} label="Continuer →" />
+
+                <p className="text-center text-xs text-white/50">
+                  En t'inscrivant, tu acceptes nos{' '}
+                  <Link href="/legal/terms" className="underline underline-offset-4 hover:text-white">
+                    conditions d'utilisation
+                  </Link>.
+                </p>
+              </form>
+            )}
+
+            {/* ─── ÉTAPE 2 : Identité ─── */}
+            {step === 2 && (
+              <form onSubmit={handleStep2} className="space-y-4">
+                <p className="text-sm text-white/60">
+                  Ces informations nous permettent de sécuriser ton compte et de respecter la réglementation.
+                </p>
+
+                <Field label="Pseudo (visible sur ton profil)">
+                  <Input
+                    type="text"
+                    value={pseudo}
+                    onChange={e => setPseudo(e.target.value)}
+                    required
+                    placeholder="Ex. DJNova, PhotoStudio94…"
+                    pattern="[a-zA-Z0-9_.\-]{3,30}"
+                    title="3 à 30 caractères : lettres, chiffres, tirets, underscores"
+                  />
+                  <p className="mt-1 text-xs text-white/40">Lettres, chiffres, tirets et underscores — 3 à 30 caractères.</p>
+                </Field>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Prénom">
+                    <Input
+                      type="text"
+                      value={firstName}
+                      onChange={e => setFirstName(e.target.value)}
+                      required
+                      autoComplete="given-name"
+                      placeholder="Prénom"
+                    />
+                  </Field>
+                  <Field label="Nom">
+                    <Input
+                      type="text"
+                      value={lastName}
+                      onChange={e => setLastName(e.target.value)}
+                      required
+                      autoComplete="family-name"
+                      placeholder="Nom"
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Date de naissance (optionnel)">
+                  <Input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={e => setDateOfBirth(e.target.value)}
+                    max={new Date(Date.now() - 13 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                  />
+                </Field>
+
+                <Field label="Téléphone (optionnel)">
+                  <Input
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    autoComplete="tel"
+                    placeholder="+33 6 XX XX XX XX"
+                  />
+                </Field>
+
+                <Field label="Pays de résidence">
+                  <Select
+                    value={countryOfResidence}
+                    onChange={e => setCountryOfResidence(e.target.value)}
+                    options={[
+                      { value: 'France', label: 'France' },
+                      { value: 'Belgique', label: 'Belgique' },
+                      { value: 'Suisse', label: 'Suisse' },
+                      { value: 'Luxembourg', label: 'Luxembourg' },
+                      { value: 'Canada', label: 'Canada' },
+                      { value: 'Autre', label: 'Autre' },
+                    ]}
+                  />
+                </Field>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white/70 hover:bg-white/10 hover:text-white transition"
                   >
-                    <option value="ARTIST" className="bg-neutral-900">
-                      Artiste
-                    </option>
-                    <option value="ORGANIZER" className="bg-neutral-900">
-                      Organisateur / Établissement
-                    </option>
-                    <option value="PROVIDER" className="bg-neutral-900">
-                      Prestataire
-                    </option>
-                  </select>
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
-                    ▾
-                  </span>
+                    ← Retour
+                  </button>
+                  <SubmitButton loading={loading} label="Continuer →" />
                 </div>
+              </form>
+            )}
+
+            {/* ─── ÉTAPE 3 : Profil légal ─── */}
+            {step === 3 && (
+              <form onSubmit={handleStep3} className="space-y-4">
+                <p className="text-sm text-white/60">
+                  Ces informations légales sont obligatoires pour utiliser les services de paiement.
+                </p>
+
+                {/* Statut légal */}
+                <Field label="Ton statut">
+                  <div className="space-y-2">
+                    {([
+                      { value: 'INDIVIDUAL', label: 'Particulier', desc: 'Tu agis à titre personnel.' },
+                      { value: 'AUTO_ENTREPRENEUR', label: 'Auto-entrepreneur', desc: 'Tu as un numéro SIRET.' },
+                      { value: 'COMPANY', label: 'Société / Association', desc: 'SARL, SAS, association…' },
+                    ] as { value: LegalStatus; label: string; desc: string }[]).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setLegalStatus(opt.value)}
+                        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-2.5 text-left transition
+                          ${legalStatus === opt.value
+                            ? 'border-emerald-500 bg-emerald-500/15 text-white'
+                            : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white'
+                          }`}
+                      >
+                        <span className={`h-4 w-4 flex-shrink-0 rounded-full border-2 transition ${legalStatus === opt.value ? 'border-emerald-400 bg-emerald-400' : 'border-white/30'}`} />
+                        <div>
+                          <p className="text-sm font-medium">{opt.label}</p>
+                          <p className="text-xs text-white/50">{opt.desc}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                {/* SIRET si auto-entrepreneur ou société */}
+                {legalStatus !== 'INDIVIDUAL' && (
+                  <Field label={legalStatus === 'COMPANY' ? 'Numéro SIRET / KBIS' : 'Numéro SIRET'}>
+                    <Input
+                      type="text"
+                      value={siret}
+                      onChange={e => setSiret(e.target.value)}
+                      placeholder="Ex. 12345678900012"
+                      maxLength={17}
+                    />
+                    <p className="mt-1 text-xs text-white/40">Ce numéro sera vérifié lors de l'activation des paiements.</p>
+                  </Field>
+                )}
+
+                {/* Champs spécifiques Organisateur */}
+                {role === 'ORGANIZER' && (
+                  <>
+                    <Field label="Tu organises en tant que">
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { value: 'INDIVIDUAL', label: 'Particulier', desc: 'Soirée privée' },
+                          { value: 'PROFESSIONAL', label: 'Professionnel', desc: 'Club, festival, agence…' },
+                        ] as { value: OrganizerType; label: string; desc: string }[]).map(opt => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setOrganizerType(opt.value)}
+                            className={`flex flex-col items-center gap-1 rounded-xl border p-3 text-xs transition
+                              ${organizerType === opt.value
+                                ? 'border-emerald-500 bg-emerald-500/15 text-white'
+                                : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20'
+                              }`}
+                          >
+                            <span className="font-semibold">{opt.label}</span>
+                            <span className="text-white/50">{opt.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    {organizerType === 'PROFESSIONAL' && (
+                      <>
+                        <Field label="Nom de l'établissement">
+                          <Input
+                            type="text"
+                            value={establishmentName}
+                            onChange={e => setEstablishmentName(e.target.value)}
+                            placeholder="Ex. Club Nova, Festival Lumières…"
+                          />
+                        </Field>
+                        <Field label="Type d'établissement">
+                          <Select
+                            value={typeEtablissement}
+                            onChange={e => setTypeEtablissement(e.target.value)}
+                            options={[
+                              { value: '', label: '— Sélectionner —' },
+                              { value: 'Club / Discothèque', label: 'Club / Discothèque' },
+                              { value: 'Bar', label: 'Bar' },
+                              { value: 'Festival', label: 'Festival' },
+                              { value: 'Salle de concert', label: 'Salle de concert' },
+                              { value: 'Agence événementielle', label: 'Agence événementielle' },
+                              { value: 'Restaurant', label: 'Restaurant' },
+                              { value: 'Association', label: 'Association' },
+                              { value: 'Autre', label: 'Autre' },
+                            ]}
+                          />
+                        </Field>
+                      </>
+                    )}
+                  </>
+                )}
+
+                <Field label="Ville (optionnel)">
+                  <Input
+                    type="text"
+                    value={city}
+                    onChange={e => setCity(e.target.value)}
+                    placeholder="Ex. Paris, Lyon, Marseille…"
+                  />
+                </Field>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white/70 hover:bg-white/10 hover:text-white transition"
+                  >
+                    ← Retour
+                  </button>
+                  <SubmitButton loading={loading} label="Terminer →" />
+                </div>
+
+                <p className="text-center text-xs text-white/40">
+                  Tu pourras compléter ton profil public dans tes paramètres.
+                </p>
+              </form>
+            )}
+
+            {/* ─── ÉTAPE 4 : Succès ─── */}
+            {step === 4 && (
+              <div className="space-y-6 py-4 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600/20 ring-2 ring-emerald-500/50">
+                  <svg className="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-bold">Bienvenue sur LSBookers !</h3>
+                  <p className="mt-2 text-sm text-white/60">
+                    Ton compte a été créé avec succès. Tu peux maintenant accéder à ta plateforme.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => router.replace('/home')}
+                  className="w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-500"
+                >
+                  Accéder à mon espace →
+                </button>
               </div>
+            )}
 
-              {/* CTA */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="group mt-2 w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  {loading && (
-                    <svg
-                      className="h-4 w-4 animate-spin"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden="true"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        d="M4 12a8 8 0 018-8"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  )}
-                  {loading ? 'Création…' : "S'inscrire"}
-                </span>
-              </button>
-
-              {/* Liens légers */}
-              <p className="text-center text-xs text-white/60">
-                En t’inscrivant, tu acceptes nos{' '}
-                <Link href="/legal/terms" className="underline underline-offset-4 hover:text-white">
-                  conditions d’utilisation.
-                </Link>
-                .
-              </p>
-            </div>
-          </form>
+          </div>
         </main>
       </div>
     </div>
