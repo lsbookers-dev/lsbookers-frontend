@@ -652,28 +652,55 @@ export default function RegisterPage() {
               </form>
             )}
 
-            {/* ─── ÉTAPE 4 : Succès ─── */}
+            {/* ─── ÉTAPE 4 : Vérification email ─── */}
             {step === 4 && (
-              <div className="space-y-6 py-4 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600/20 ring-2 ring-emerald-500/50">
-                  <svg className="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              <div className="space-y-5 py-4 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/20 ring-2 ring-amber-500/40">
+                  <svg className="h-8 w-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-bold">Bienvenue sur LSBookers !</h3>
+                  <h3 className="text-xl font-bold">Vérifie ton email !</h3>
                   <p className="mt-2 text-sm text-white/60">
-                    Ton compte a été créé avec succès. Tu peux maintenant accéder à ta plateforme.
+                    Un email de confirmation t&apos;a été envoyé. Clique sur le lien pour activer ton compte avant de te connecter.
                   </p>
                 </div>
 
+                <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white/70 space-y-1">
+                  <p>1. Ouvre ta boîte mail</p>
+                  <p>2. Cherche un email de <span className="text-emerald-400">noreply@lsbookers.com</span></p>
+                  <p>3. Clique sur &quot;Confirmer mon email&quot;</p>
+                  <p>4. Reviens ici pour te connecter</p>
+                </div>
+
                 <button
-                  onClick={() => router.replace('/home')}
+                  onClick={() => router.replace('/login')}
                   className="w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-500"
                 >
-                  Accéder à mon espace →
+                  J&apos;ai confirmé → Se connecter
                 </button>
+
+                <p className="text-xs text-white/40">
+                  Pas reçu l&apos;email ?{' '}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await fetch(`${API}/api/auth/resend-verification`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email }),
+                        })
+                      } catch {}
+                      alert('Email renvoyé !')
+                    }}
+                    className="text-white/60 underline underline-offset-4 hover:text-white"
+                  >
+                    Renvoyer
+                  </button>
+                </p>
               </div>
             )}
 
