@@ -178,7 +178,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         method: 'POST',
         credentials: 'include',
       })
-    } catch (_) {}
+    } catch { }
     localStorage.removeItem('user')
     setToken(null)
     setUser(null)
