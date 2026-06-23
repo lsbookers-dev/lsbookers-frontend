@@ -131,8 +131,14 @@ function Section({ title, icon, children }: {
 // ─────────────────────────────────────────────
 export default function ProfileSettings() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const role = user?.role || 'ARTIST'
+
+  // Headers auth — cookie httpOnly + Authorization header (fallback Safari)
+  const authHeaders = (extra?: Record<string, string>) => ({
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  })
 
   const [profile, setProfile] = useState<Profile>({
     id: 0,
@@ -198,6 +204,7 @@ export default function ProfileSettings() {
     const res = await fetch(`${API}/api/upload`, {
       method: 'POST',
       credentials: 'include',
+      headers: authHeaders(),
       body: fd,
     })
     if (!res.ok) throw new Error('Échec upload')
@@ -236,7 +243,7 @@ export default function ProfileSettings() {
       const res = await fetch(`${API}/api/profile/${profile.id}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           bio: profile.bio,
           location: profile.location,

@@ -87,14 +87,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const API_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
-    // On ne lit plus le token depuis localStorage (sécurité httpOnly cookie)
-    // On nettoie l'ancien token s'il existe encore
-    localStorage.removeItem('token')
-
+    // On lit le token depuis localStorage (fallback pour Safari qui bloque les cookies cross-origin)
+    const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
 
     if (storedUser) {
       setUser(JSON.parse(storedUser))
+      if (storedToken) setToken(storedToken)
       console.log('✅ AuthContext : utilisateur détecté dans le localStorage')
     } else {
       setToken(null)
@@ -127,8 +126,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const normalized = normalizeUser(data.user)
 
-    // Token gardé en mémoire uniquement (le cookie httpOnly est posé par le backend)
+    // Cookie httpOnly posé par le backend + token en localStorage (fallback Safari)
     localStorage.setItem('user', JSON.stringify(normalized))
+    localStorage.setItem('token', data.token)
 
     setToken(data.token)
     setUser(normalized)
@@ -160,6 +160,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const normalized = normalizeUser(resData.user)
 
     localStorage.setItem('user', JSON.stringify(normalized))
+    localStorage.setItem('token', resData.token)
 
     setToken(resData.token)
     setUser(normalized)
