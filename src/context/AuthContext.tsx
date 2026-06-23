@@ -87,18 +87,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const API_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token')
+    // On ne lit plus le token depuis localStorage (sécurité httpOnly cookie)
+    // On nettoie l'ancien token s'il existe encore
+    localStorage.removeItem('token')
+
     const storedUser = localStorage.getItem('user')
 
-    if (storedToken && storedUser) {
-      setToken(storedToken)
+    if (storedUser) {
       setUser(JSON.parse(storedUser))
       console.log('✅ AuthContext : utilisateur détecté dans le localStorage')
     } else {
       setToken(null)
       setUser(null)
 
-      // ✅ Ne redirige que si la page n'est PAS publique
       if (!isPublicPath(pathname) && !pathname.startsWith('/admin')) {
         router.replace('/login')
       }
@@ -180,6 +181,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       })
     } catch { }
     localStorage.removeItem('user')
+    localStorage.removeItem('token') // nettoyage sécurité
     setToken(null)
     setUser(null)
     router.replace('/login')
