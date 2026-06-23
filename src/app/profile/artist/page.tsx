@@ -86,14 +86,14 @@ const buildSoundcloudEmbed = (url: string) => {
 // ─────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────
+function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
+}
+
 export default function ArtistProfilePage() {
   const router = useRouter()
-  const { user, token } = useAuth()
-
-  const authHeaders = (extra?: Record<string, string>) => ({
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...extra,
-  })
+  const { user } = useAuth()
 
   const [profile, setProfile] = useState<ApiProfile | null>(null)
   const [publications, setPublications] = useState<Publication[]>([])
@@ -155,7 +155,7 @@ export default function ArtistProfilePage() {
       const uploadRes = await fetch(`${API}/api/upload`, {
         method: 'POST',
         credentials: 'include',
-        headers: authHeaders(),
+        headers: getAuthHeaders(),
         body: fd,
       })
       if (!uploadRes.ok) throw new Error('Upload échoué')
@@ -166,7 +166,7 @@ export default function ArtistProfilePage() {
       const pubRes = await fetch(`${API}/api/publications`, {
         method: 'POST',
         credentials: 'include',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           title: pubTitle,
           media: url,
@@ -198,7 +198,7 @@ export default function ArtistProfilePage() {
       const res = await fetch(`${API}/api/publications/${id}`, {
         method: 'DELETE',
         credentials: 'include',
-        headers: authHeaders(),
+        headers: getAuthHeaders(),
       })
       if (!res.ok) throw new Error('Échec')
       setPublications(prev => prev.filter(p => p.id !== id))

@@ -129,16 +129,16 @@ function Section({ title, icon, children }: {
 // ─────────────────────────────────────────────
 // Page principale
 // ─────────────────────────────────────────────
+// Lit le token fraîchement depuis localStorage à chaque appel (fiable sur tous les navigateurs)
+function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
+}
+
 export default function ProfileSettings() {
   const router = useRouter()
-  const { user, token } = useAuth()
+  const { user } = useAuth()
   const role = user?.role || 'ARTIST'
-
-  // Headers auth — cookie httpOnly + Authorization header (fallback Safari)
-  const authHeaders = (extra?: Record<string, string>) => ({
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...extra,
-  })
 
   const [profile, setProfile] = useState<Profile>({
     id: 0,
@@ -204,7 +204,7 @@ export default function ProfileSettings() {
     const res = await fetch(`${API}/api/upload`, {
       method: 'POST',
       credentials: 'include',
-      headers: authHeaders(),
+      headers: getAuthHeaders(),
       body: fd,
     })
     if (!res.ok) throw new Error('Échec upload')
@@ -243,7 +243,7 @@ export default function ProfileSettings() {
       const res = await fetch(`${API}/api/profile/${profile.id}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           bio: profile.bio,
           location: profile.location,
