@@ -42,7 +42,7 @@ export default function LoginPage() {
 
       const { token, user } = response.data
 
-      if (token) localStorage.setItem('token', token)
+      // Token gardé en mémoire uniquement — cookie httpOnly posé par le backend
       if (user) localStorage.setItem('user', JSON.stringify(user))
 
       setUser(user)

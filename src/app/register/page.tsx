@@ -187,10 +187,10 @@ export default function RegisterPage() {
       const { data } = await axios.post(
         `${API}/api/auth/register`,
         { email, password, role },
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       )
       setToken(data.token)
-      localStorage.setItem('token', data.token)
+      // Token gardé en mémoire uniquement — cookie httpOnly posé par le backend
       localStorage.setItem('user', JSON.stringify(data.user))
       setStep(2)
     } catch (err) {

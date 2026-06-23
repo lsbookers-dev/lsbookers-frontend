@@ -112,6 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, password }),
     })
 
@@ -125,7 +126,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const normalized = normalizeUser(data.user)
 
-    localStorage.setItem('token', data.token)
+    // Token gardé en mémoire uniquement (le cookie httpOnly est posé par le backend)
     localStorage.setItem('user', JSON.stringify(normalized))
 
     setToken(data.token)
@@ -143,6 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     })
 
@@ -156,7 +158,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const normalized = normalizeUser(resData.user)
 
-    localStorage.setItem('token', resData.token)
     localStorage.setItem('user', JSON.stringify(normalized))
 
     setToken(resData.token)
@@ -170,8 +171,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   /* ===================== Logout ===================== */
-  const logout = () => {
-    localStorage.removeItem('token')
+  const logout = async () => {
+    // Efface le cookie httpOnly côté serveur
+    try {
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch (_) {}
     localStorage.removeItem('user')
     setToken(null)
     setUser(null)
