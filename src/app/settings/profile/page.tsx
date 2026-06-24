@@ -448,8 +448,8 @@ export default function ProfileSettings() {
           </Section>
         )}
 
-        {/* ── SECTION : Médias (Artistes & Prestataires) ── */}
-        {(role === 'ARTIST' || role === 'PROVIDER') && (
+        {/* ── SECTION : Médias (Artistes, Organisateurs & Prestataires) ── */}
+        {(role === 'ARTIST' || role === 'PROVIDER' || role === 'ORGANIZER') && (
           <Section title="Liens médias" icon={<Music size={18} />}>
             <div className="space-y-4">
               {role === 'ARTIST' && (
