@@ -325,7 +325,7 @@ export default function OrganizerProfilePage() {
             </div>
 
             {sorted.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucune publication pour l'instant.</p>
+              <p className="text-sm text-neutral-500">Aucune publication pour l&apos;instant.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
                 {heroPub && (
@@ -385,7 +385,7 @@ export default function OrganizerProfilePage() {
             <h2 className="text-lg font-semibold mb-3">Avis</h2>
 
             {reviews.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucun avis pour l'instant.</p>
+              <p className="text-sm text-neutral-500">Aucun avis pour l&apos;instant.</p>
             ) : (
               <div className="space-y-3">
                 {reviews.slice(0, 5).map(r => {
