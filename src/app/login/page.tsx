@@ -47,7 +47,7 @@ export default function LoginPage() {
 
       setUser(user)
 
-      const redirect = user?.isAdmin ? '/admin/dashboard' : '/home'
+      const redirect = (user?.isAdmin || user?.role === 'ADMIN') ? '/admin/dashboard' : '/home'
       router.replace(redirect)
     } catch (err) {
       let message = 'Échec de la connexion.'
