@@ -34,11 +34,11 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
   const [busy, setBusy]           = useState(false)
   const [showBlockMenu, setShowBlockMenu] = useState(false)
 
-  // Masquer si c'est son propre profil
   const currentUserId = getTokenUserId()
-  if (currentUserId === targetUserId) return null
+  const isSelf = currentUserId === targetUserId
 
   useEffect(() => {
+    if (isSelf) return
     const load = async () => {
       try {
         const [fRes, bRes] = await Promise.all([
@@ -54,7 +54,9 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
       }
     }
     load()
-  }, [targetUserId])
+  }, [targetUserId, isSelf])
+
+  if (isSelf) return null
 
   const handleFollow = async () => {
     if (busy) return
