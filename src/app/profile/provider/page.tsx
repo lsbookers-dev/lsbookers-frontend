@@ -66,9 +66,7 @@ const displayName = (profile: ApiProfile | null): string => {
   if (!profile) return '—'
   const u = profile.user
   if (!u) return '—'
-  if (profile.showRealName && (u.firstName || u.lastName)) {
-    return [u.firstName, u.lastName].filter(Boolean).join(' ')
-  }
+  // Pour un prestataire : toujours afficher le pseudo (nom de la société / marque)
   return u.pseudo || u.email || '—'
 }
 

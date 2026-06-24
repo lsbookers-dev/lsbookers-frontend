@@ -66,9 +66,7 @@ const displayName = (profile: ApiProfile | null): string => {
   if (!profile) return '—'
   const u = profile.user
   if (!u) return '—'
-  if (profile.showRealName && (u.firstName || u.lastName)) {
-    return [u.firstName, u.lastName].filter(Boolean).join(' ')
-  }
+  // Pour un organisateur : toujours afficher le pseudo (nom de l'établissement)
   return u.pseudo || u.email || '—'
 }
 
@@ -425,19 +423,6 @@ export default function OrganizerProfilePage() {
             )}
           </section>
 
-          {/* Disponibilité */}
-          {profile?.availableForBooking !== undefined && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold mb-2">Disponibilité</h2>
-              <span className={`inline-block text-sm px-3 py-1 rounded-full font-medium ${
-                profile.availableForBooking
-                  ? 'bg-green-600/20 text-green-400 border border-green-600/30'
-                  : 'bg-neutral-700/40 text-neutral-400 border border-white/10'
-              }`}>
-                {profile.availableForBooking ? '✓ Disponible pour réservation' : 'Non disponible'}
-              </span>
-            </section>
-          )}
         </aside>
       </div>
 
