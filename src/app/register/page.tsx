@@ -396,9 +396,9 @@ export default function RegisterPage() {
             {step === 2 && (
               <form onSubmit={handleStep2} className="space-y-4">
                 <p className="text-sm text-white/60">
-                  {role === ‘ARTIST’
-                    ? "Ces informations permettent de sécuriser ton compte et d’identifier ton profil."
-                    : "Ces informations permettent d’identifier votre établissement et de respecter la réglementation."}
+                  {role === 'ARTIST'
+                    ? "Ces informations permettent de sécuriser ton compte et d'identifier ton profil."
+                    : "Ces informations permettent d'identifier votre établissement et de respecter la réglementation."}
                 </p>
 
                 {/* Champ principal — adapté au rôle */}
