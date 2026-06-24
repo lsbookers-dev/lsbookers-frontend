@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Settings2, MessageCircle, UserPlus, Star, Trash2, Plus, MapPin, Music,
+  Settings2, MessageCircle, Star, Trash2, Plus, MapPin, Music,
 } from 'lucide-react'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -273,9 +273,8 @@ export default function ArtistProfilePage() {
 
             {/* Stats followers / avis */}
             <div className="flex items-center gap-4 mt-2 text-xs text-white/40">
-              {(profile?.followersCount ?? 0) > 0 && (
-                <span><strong className="text-white">{profile?.followersCount}</strong> abonné{(profile?.followersCount ?? 0) > 1 ? 's' : ''}</span>
-              )}
+              <span><strong className="text-white">{profile?.followingCount ?? 0}</strong> abonné{(profile?.followingCount ?? 0) > 1 ? 's' : ''}</span>
+              <span><strong className="text-white">{profile?.followersCount ?? 0}</strong> abonnement{(profile?.followersCount ?? 0) > 1 ? 's' : ''}</span>
               {(profile?.reviewsCount ?? 0) > 0 && (
                 <span>
                   <strong className="text-white">{profile?.reviewsAvg?.toFixed(1)}</strong>★ · {profile?.reviewsCount} avis
@@ -288,21 +287,12 @@ export default function ArtistProfilePage() {
           </div>
         </div>
 
-        {/* Actions (visible par d'autres utilisateurs → ici c'est son propre profil) */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push('/messages')}
-            className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm font-medium"
-          >
-            <MessageCircle size={16} /> Messages
-          </button>
-          <button
-            className="bg-pink-600 rounded-full px-4 py-2 flex items-center gap-2 hover:bg-pink-500 text-sm font-medium"
-            disabled
-          >
-            <UserPlus size={16} /> Vous
-          </button>
-        </div>
+        <button
+          onClick={() => router.push('/messages')}
+          className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm font-medium"
+        >
+          <MessageCircle size={16} /> Messages
+        </button>
       </div>
 
       {/* ── Corps principal ── */}

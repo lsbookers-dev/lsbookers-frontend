@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Settings2, MessageCircle, UserPlus, Star, Trash2, Plus, MapPin,
+  Settings2, MessageCircle, Star, Trash2, Plus, MapPin,
 } from 'lucide-react'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -242,19 +242,16 @@ export default function ProviderProfilePage() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">{displayName(profile)}</h1>
 
-            {(profile?.followersCount !== undefined || profile?.reviewsAvg != null) && (
-              <div className="flex items-center gap-3 mt-1 text-sm text-neutral-400">
-                {profile?.followersCount !== undefined && (
-                  <span>{profile.followersCount} abonné{profile.followersCount !== 1 ? 's' : ''}</span>
-                )}
-                {profile?.reviewsAvg != null && (
-                  <span className="flex items-center gap-1">
-                    <Star size={13} className="fill-yellow-400 text-yellow-400" />
-                    {profile.reviewsAvg.toFixed(1)} ({profile.reviewsCount} avis)
-                  </span>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-3 mt-1 text-sm text-neutral-400">
+              <span><strong className="text-white">{profile?.followingCount ?? 0}</strong> abonné{(profile?.followingCount ?? 0) > 1 ? 's' : ''}</span>
+              <span><strong className="text-white">{profile?.followersCount ?? 0}</strong> abonnement{(profile?.followersCount ?? 0) > 1 ? 's' : ''}</span>
+              {profile?.reviewsAvg != null && (
+                <span className="flex items-center gap-1">
+                  <Star size={13} className="fill-yellow-400 text-yellow-400" />
+                  {profile.reviewsAvg.toFixed(1)} ({profile.reviewsCount} avis)
+                </span>
+              )}
+            </div>
 
             {(profile?.location || profile?.country) && (
               <p className="text-sm text-neutral-300 flex items-center gap-1 mt-1">
@@ -276,14 +273,9 @@ export default function ProviderProfilePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200">
-            <MessageCircle size={18} /> Contacter
-          </button>
-          <button className="bg-violet-600 rounded-full px-5 py-2 flex items-center gap-2 hover:bg-violet-500">
-            <UserPlus size={18} /> Suivre
-          </button>
-        </div>
+        <button className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200">
+          <MessageCircle size={18} /> Messages
+        </button>
       </div>
 
       {/* ── Corps */}
