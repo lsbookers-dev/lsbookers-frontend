@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
-import { Star, MessageCircle } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 
 /* ================== Types ================== */
 type ApiUser = {
   id: number
-  name: string
+  pseudo?: string | null
+  firstName?: string | null
+  lastName?: string | null
   email?: string
   role?: string
 }
@@ -76,22 +78,6 @@ export default function ArtistPublicProfilePage() {
     () => ({
       banner: '/banners/artist_banner.jpg',
       avatar: '/avatars/a1.png',
-      reviewsFallback: [
-        {
-          id: 1,
-          author: 'Studio 88',
-          authorAvatar: '/avatars/pro1.png',
-          rating: 5,
-          text: 'Merci pour cette prestation, ravis — je recommande !',
-        },
-        {
-          id: 2,
-          author: 'Wedding Planning',
-          authorAvatar: '/avatars/pro2.png',
-          rating: 4,
-          text: 'Très bonne prestation et très professionnel.',
-        },
-      ],
     }),
     []
   )
@@ -155,14 +141,16 @@ export default function ArtistPublicProfilePage() {
     )
   }
 
-  const name = profile.user?.name || 'Artiste'
+  const name =
+    profile.user?.pseudo ||
+    [profile.user?.firstName, profile.user?.lastName].filter(Boolean).join(' ') ||
+    'Artiste'
   const location = profile.location || '—'
   const country = profile.country || ''
   const specialties = Array.isArray(profile.specialties) ? profile.specialties : []
   const bannerUrl = toAbs(profile.banner) || defaults.banner
   const avatarUrl = toAbs(profile.avatar) || defaults.avatar
   const bio = profile.bio || "Cet artiste n’a pas encore rédigé de description."
-  const reviews = defaults.reviewsFallback
 
   const sortedPublications = [...publications].sort((a, b) => b.id - a.id)
   const heroPub = sortedPublications[0]
@@ -330,35 +318,7 @@ export default function ArtistPublicProfilePage() {
 
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Avis</h2>
-
-            <div className="mt-3 space-y-3">
-              {reviews.map((r) => (
-                <div key={r.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-9 w-9 rounded-full overflow-hidden">
-                      <Image src={r.authorAvatar} alt={r.author} fill className="object-cover" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{r.author}</p>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            size={14}
-                            className={
-                              i < r.rating
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-neutral-600'
-                            }
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-neutral-200 mt-2 leading-relaxed">{r.text}</p>
-                </div>
-              ))}
-            </div>
+            <p className="text-neutral-400 text-sm mt-3">Les avis seront ajoutés prochainement.</p>
           </section>
 
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">

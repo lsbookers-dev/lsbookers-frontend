@@ -8,7 +8,9 @@ import { MessageCircle } from 'lucide-react'
 /* =============== Types =============== */
 type PublicUser = {
   id: number
-  name: string
+  pseudo?: string | null
+  firstName?: string | null
+  lastName?: string | null
   role?: string | null
   email?: string | null
 }
@@ -160,7 +162,10 @@ export default function OrganizerPublicProfilePage() {
     )
   }
 
-  const name = profile.user?.name || 'Organisateur'
+  const name =
+    profile.user?.pseudo ||
+    [profile.user?.firstName, profile.user?.lastName].filter(Boolean).join(' ') ||
+    'Organisateur'
   const role = profile.user?.role || 'ORGANIZER'
   const bannerUrl = toAbs(profile.banner) || defaults.banner
   const avatarUrl = toAbs(profile.avatar) || defaults.avatar

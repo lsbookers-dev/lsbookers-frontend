@@ -9,7 +9,9 @@ import { MessageCircle } from 'lucide-react'
 
 type PublicUser = {
   id: number
-  name: string
+  pseudo?: string | null
+  firstName?: string | null
+  lastName?: string | null
   email?: string | null
   role?: string | null
 }
@@ -141,7 +143,10 @@ export default function ProviderPublicProfilePage() {
 
   /* ===== Données ===== */
 
-  const name = profile.user?.name || 'Prestataire'
+  const name =
+    profile.user?.pseudo ||
+    [profile.user?.firstName, profile.user?.lastName].filter(Boolean).join(' ') ||
+    'Prestataire'
   const role = profile.user?.role || 'PROVIDER'
 
   const bannerUrl = toAbs(profile.banner) || defaults.banner
@@ -380,8 +385,6 @@ export default function ProviderPublicProfilePage() {
               <h2 className="text-lg font-semibold">Informations</h2>
 
               <ul className="mt-3 space-y-2 text-sm text-white/80">
-
-                <li><span className="text-white/50">Email :</span> {profile.user?.email ?? '—'}</li>
 
                 <li><span className="text-white/50">Établissement :</span> {etab || '—'}</li>
 
