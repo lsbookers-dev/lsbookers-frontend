@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
+import FollowButton from '@/components/FollowButton'
 
 /* ================= Types ================= */
 
@@ -27,6 +28,8 @@ type PublicProfile = {
   radiusKm?: number | null
   avatar?: string | null
   banner?: string | null
+  followersCount?: number
+  followingCount?: number
   user?: PublicUser
 }
 
@@ -221,18 +224,21 @@ export default function ProviderPublicProfilePage() {
 
             </div>
 
-            <div className="ml-auto">
-
-              <button
-                onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
-                className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
-              >
-
-                <MessageCircle size={16} />
-                Contacter
-
-              </button>
-
+            <div className="ml-auto flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2">
+                <FollowButton targetUserId={profile.userId} />
+                <button
+                  onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
+                  className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
+                >
+                  <MessageCircle size={16} />
+                  Contacter
+                </button>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-white/50">
+                <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnés</span>
+                <span><strong className="text-white">{profile.followingCount ?? 0}</strong> abonnements</span>
+              </div>
             </div>
 
           </div>

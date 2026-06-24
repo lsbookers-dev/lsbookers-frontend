@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
+import FollowButton from '@/components/FollowButton'
 
 /* ================== Types ================== */
 type ApiUser = {
@@ -31,6 +32,8 @@ type ApiProfile = {
   banner?: string | null
   soundcloudUrl?: string | null
   showSoundcloud?: boolean | null
+  followersCount?: number
+  followingCount?: number
   user?: ApiUser
 }
 
@@ -200,14 +203,21 @@ export default function ArtistPublicProfilePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
-            className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200"
-          >
-            <MessageCircle size={18} />
-            Contacter
-          </button>
+        <div className="flex flex-col items-end gap-3">
+          <div className="flex items-center gap-3">
+            <FollowButton targetUserId={profile.userId} />
+            <button
+              onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
+              className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
+            >
+              <MessageCircle size={16} />
+              Contacter
+            </button>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-white/50">
+            <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnés</span>
+            <span><strong className="text-white">{profile.followingCount ?? 0}</strong> abonnements</span>
+          </div>
         </div>
       </div>
 
