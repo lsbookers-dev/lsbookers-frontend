@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import CropModal from '@/components/CropModal'
 import {
   Camera, Save, ArrowLeft, Music, MapPin, User, Briefcase,
-  CheckCircle, XCircle
+  CheckCircle, XCircle, ShieldOff, ShieldAlert
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────
@@ -165,6 +165,17 @@ export default function ProfileSettings() {
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [cropModal, setCropModal] = useState<{ src: string; type: 'avatar' | 'banner' } | null>(null)
 
+  type BlockedUser = {
+    id: number
+    pseudo?: string | null
+    firstName?: string | null
+    lastName?: string | null
+    role?: string | null
+    avatar?: string | null
+  }
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([])
+  const [unblockingId, setUnblockingId] = useState<number | null>(null)
+
   const avatarRef = useRef<HTMLInputElement>(null)
   const bannerRef = useRef<HTMLInputElement>(null)
 
@@ -195,7 +206,31 @@ export default function ProfileSettings() {
       })
       .catch(console.error)
       .finally(() => setLoading(false))
+
+    // Charger la liste des bloqués
+    fetch(`${API}/api/block/list`, { headers: getAuthHeaders() })
+      .then(r => r.ok ? r.json() : { blocked: [] })
+      .then(d => setBlockedUsers(d.blocked || []))
+      .catch(() => {})
   }, [user])
+
+  // ── Débloquer un utilisateur
+  const handleUnblock = async (targetId: number) => {
+    setUnblockingId(targetId)
+    try {
+      const res = await fetch(`${API}/api/block/${targetId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      })
+      if (res.ok) {
+        setBlockedUsers(prev => prev.filter(u => u.id !== targetId))
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setUnblockingId(null)
+    }
+  }
 
   // ── Upload image
   const uploadImage = async (file: File, folder: 'avatars' | 'banners') => {
@@ -514,6 +549,42 @@ export default function ProfileSettings() {
             </div>
           </Section>
         )}
+
+        {/* ── Section Utilisateurs bloqués ── */}
+        <Section title="Utilisateurs bloqués" icon={<ShieldAlert size={18} />}>
+          {blockedUsers.length === 0 ? (
+            <p className="text-sm text-white/40">Vous n&apos;avez bloqué aucun utilisateur.</p>
+          ) : (
+            <ul className="space-y-3">
+              {blockedUsers.map(u => {
+                const displayName =
+                  u.pseudo ||
+                  [u.firstName, u.lastName].filter(Boolean).join(' ') ||
+                  'Utilisateur'
+                const avatarSrc = u.avatar || '/default-avatar.png'
+                return (
+                  <li key={u.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                    <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden">
+                      <Image src={avatarSrc} alt={displayName} fill className="object-cover" unoptimized />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{displayName}</p>
+                      <p className="text-xs text-white/40">{u.role}</p>
+                    </div>
+                    <button
+                      onClick={() => handleUnblock(u.id)}
+                      disabled={unblockingId === u.id}
+                      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition disabled:opacity-40"
+                    >
+                      <ShieldOff size={13} />
+                      {unblockingId === u.id ? 'En cours…' : 'Débloquer'}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </Section>
 
       </div>
     </div>
