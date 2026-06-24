@@ -17,10 +17,6 @@ type OrganizerType = 'INDIVIDUAL' | 'PROFESSIONAL'
 // ─────────────────────────────────────────────
 const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
 
-function authHeaders(token: string) {
-  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-}
-
 // ─────────────────────────────────────────────
 // Composants UI réutilisables
 // ─────────────────────────────────────────────
@@ -141,9 +137,6 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Token conservé entre les étapes
-  const [token, setToken] = useState('')
-
   // ── Étape 1 ──
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -167,12 +160,11 @@ export default function RegisterPage() {
   const [city, setCity] = useState('')
 
   // ─────────────────────────────────────────────
-  // Étape 1 : création du compte
+  // Étape 1 : validation locale uniquement
   // ─────────────────────────────────────────────
-  const handleStep1 = async (e: React.FormEvent) => {
+  const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas.')
       return
@@ -181,90 +173,61 @@ export default function RegisterPage() {
       setError('Le mot de passe doit contenir au moins 8 caractères.')
       return
     }
-
-    setLoading(true)
-    try {
-      const { data } = await axios.post(
-        `${API}/api/auth/register`,
-        { email, password, role },
-        { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
-      )
-      setToken(data.token)
-      // Token gardé en mémoire uniquement — cookie httpOnly posé par le backend
-      localStorage.setItem('user', JSON.stringify(data.user))
-      setStep(2)
-    } catch (err) {
-      if (isAxiosError(err)) {
-        const msg = err.response?.data?.error
-        if (err.response?.status === 400 && msg?.includes('inscrit')) {
-          setError('Un compte existe déjà avec cet email.')
-        } else if (err.response?.status === 429) {
-          setError('Trop de tentatives. Réessayez dans 5 minutes.')
-        } else {
-          setError(msg || "Échec de la création du compte.")
-        }
-      } else {
-        setError("Erreur réseau.")
-      }
-    } finally {
-      setLoading(false)
-    }
+    setStep(2)
   }
 
   // ─────────────────────────────────────────────
-  // Étape 2 : identité
+  // Étape 2 : navigation locale uniquement
   // ─────────────────────────────────────────────
-  const handleStep2 = async (e: React.FormEvent) => {
+  const handleStep2 = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
-    try {
-      await axios.patch(
-        `${API}/api/auth/step2`,
-        { pseudo, firstName, lastName, dateOfBirth: dateOfBirth || undefined, phone: phone || undefined, countryOfResidence },
-        { headers: authHeaders(token) }
-      )
-      setStep(3)
-    } catch (err) {
-      if (isAxiosError(err)) {
-        const msg = err.response?.data?.error
-        if (err.response?.status === 409) {
-          setError('Ce pseudo est déjà utilisé. Choisis-en un autre.')
-        } else {
-          setError(msg || "Erreur lors de l'enregistrement.")
-        }
-      } else {
-        setError("Erreur réseau.")
-      }
-    } finally {
-      setLoading(false)
-    }
+    setStep(3)
   }
 
   // ─────────────────────────────────────────────
-  // Étape 3 : profil légal
+  // Étape 3 : unique appel API — crée le compte complet
   // ─────────────────────────────────────────────
   const handleStep3 = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
     try {
-      await axios.patch(
-        `${API}/api/auth/step3`,
+      const { data } = await axios.post(
+        `${API}/api/auth/register-complete`,
         {
+          // Étape 1
+          email, password, role,
+          // Étape 2
+          pseudo, firstName, lastName,
+          dateOfBirth: dateOfBirth || undefined,
+          phone: phone || undefined,
+          countryOfResidence,
+          // Étape 3
           legalStatus,
           organizerType: role === 'ORGANIZER' ? organizerType : undefined,
           establishmentName: (role === 'ORGANIZER' && organizerType === 'PROFESSIONAL') ? establishmentName || undefined : undefined,
           typeEtablissement: (role === 'ORGANIZER' && organizerType === 'PROFESSIONAL') ? typeEtablissement || undefined : undefined,
-          siret: (legalStatus !== 'INDIVIDUAL') ? siret || undefined : undefined,
+          siret: legalStatus !== 'INDIVIDUAL' ? siret || undefined : undefined,
           city: city || undefined,
         },
-        { headers: authHeaders(token) }
+        { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       )
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
       setStep(4)
     } catch (err) {
       if (isAxiosError(err)) {
-        setError(err.response?.data?.error || "Erreur lors de l'enregistrement.")
+        const msg = err.response?.data?.error
+        if (err.response?.status === 400 && msg?.includes('inscrit')) {
+          setError('Un compte existe déjà avec cet email. Retourne à l\'étape 1 pour en changer.')
+        } else if (err.response?.status === 409) {
+          setError('Ce pseudo est déjà utilisé. Retourne à l\'étape 2 pour en changer.')
+        } else if (err.response?.status === 429) {
+          setError('Trop de tentatives. Réessayez dans 5 minutes.')
+        } else {
+          setError(msg || "Échec de la création du compte.")
+        }
       } else {
         setError("Erreur réseau.")
       }
@@ -433,24 +396,56 @@ export default function RegisterPage() {
             {step === 2 && (
               <form onSubmit={handleStep2} className="space-y-4">
                 <p className="text-sm text-white/60">
-                  Ces informations nous permettent de sécuriser ton compte et de respecter la réglementation.
+                  {role === ‘ARTIST’
+                    ? "Ces informations permettent de sécuriser ton compte et d’identifier ton profil."
+                    : "Ces informations permettent d’identifier votre établissement et de respecter la réglementation."}
                 </p>
 
-                <Field label="Pseudo (visible sur ton profil)">
-                  <Input
-                    type="text"
-                    value={pseudo}
-                    onChange={e => setPseudo(e.target.value)}
-                    required
-                    placeholder="Ex. DJNova, PhotoStudio94…"
-                    pattern="[a-zA-Z0-9_.\-]{3,30}"
-                    title="3 à 30 caractères : lettres, chiffres, tirets, underscores"
-                  />
-                  <p className="mt-1 text-xs text-white/40">Lettres, chiffres, tirets et underscores — 3 à 30 caractères.</p>
-                </Field>
+                {/* Champ principal — adapté au rôle */}
+                {role === 'ARTIST' ? (
+                  <Field label="Pseudo / Nom de scène (visible sur ton profil)">
+                    <Input
+                      type="text"
+                      value={pseudo}
+                      onChange={e => setPseudo(e.target.value)}
+                      required
+                      placeholder="Ex. DJNova, MC Flash…"
+                      pattern="[a-zA-Z0-9_.\-]{3,30}"
+                      title="3 à 30 caractères : lettres, chiffres, tirets, underscores"
+                    />
+                    <p className="mt-1 text-xs text-white/40">Lettres, chiffres, tirets et underscores — 3 à 30 caractères.</p>
+                  </Field>
+                ) : role === 'ORGANIZER' ? (
+                  <Field label="Nom de l&apos;établissement / Nom commercial">
+                    <Input
+                      type="text"
+                      value={pseudo}
+                      onChange={e => setPseudo(e.target.value)}
+                      required
+                      placeholder="Ex. ClubNova, FestivalLumieres…"
+                      pattern="[a-zA-Z0-9_.\-]{3,30}"
+                      title="3 à 30 caractères : lettres, chiffres, tirets, underscores"
+                    />
+                    <p className="mt-1 text-xs text-white/40">Ce nom apparaîtra sur votre profil public. Lettres, chiffres, tirets — 3 à 30 caractères.</p>
+                  </Field>
+                ) : (
+                  <Field label="Nom commercial / Nom de votre activité" >
+                    <Input
+                      type="text"
+                      value={pseudo}
+                      onChange={e => setPseudo(e.target.value)}
+                      required
+                      placeholder="Ex. PhotoStudio94, SonPro…"
+                      pattern="[a-zA-Z0-9_.\-]{3,30}"
+                      title="3 à 30 caractères : lettres, chiffres, tirets, underscores"
+                    />
+                    <p className="mt-1 text-xs text-white/40">Ce nom apparaîtra sur votre profil public. Lettres, chiffres, tirets — 3 à 30 caractères.</p>
+                  </Field>
+                )}
 
+                {/* Prénom / Nom — libellé adapté au rôle */}
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Prénom">
+                  <Field label={role === 'ARTIST' ? 'Prénom' : 'Prénom du responsable'}>
                     <Input
                       type="text"
                       value={firstName}
@@ -460,7 +455,7 @@ export default function RegisterPage() {
                       placeholder="Prénom"
                     />
                   </Field>
-                  <Field label="Nom">
+                  <Field label={role === 'ARTIST' ? 'Nom' : 'Nom du responsable'}>
                     <Input
                       type="text"
                       value={lastName}
@@ -471,8 +466,13 @@ export default function RegisterPage() {
                     />
                   </Field>
                 </div>
+                {role !== 'ARTIST' && (
+                  <p className="text-xs text-white/40 -mt-2">
+                    Utilisés uniquement pour la vérification légale et les paiements — non visibles publiquement.
+                  </p>
+                )}
 
-                <Field label="Date de naissance (optionnel)">
+                <Field label={role === 'ARTIST' ? 'Date de naissance (optionnel)' : 'Date de naissance du responsable (optionnel)'}>
                   <Input
                     type="date"
                     value={dateOfBirth}
@@ -491,7 +491,7 @@ export default function RegisterPage() {
                   />
                 </Field>
 
-                <Field label="Pays de résidence">
+                <Field label="Pays">
                   <Select
                     value={countryOfResidence}
                     onChange={e => setCountryOfResidence(e.target.value)}
@@ -596,7 +596,7 @@ export default function RegisterPage() {
 
                     {organizerType === 'PROFESSIONAL' && (
                       <>
-                        <Field label="Nom de l'établissement">
+                        <Field label="Nom de l&apos;établissement">
                           <Input
                             type="text"
                             value={establishmentName}
@@ -604,7 +604,7 @@ export default function RegisterPage() {
                             placeholder="Ex. Club Nova, Festival Lumières…"
                           />
                         </Field>
-                        <Field label="Type d'établissement">
+                        <Field label="Type d&apos;établissement">
                           <Select
                             value={typeEtablissement}
                             onChange={e => setTypeEtablissement(e.target.value)}
