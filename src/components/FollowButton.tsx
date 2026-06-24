@@ -5,6 +5,7 @@ import { UserPlus, UserMinus, UserX, ShieldOff } from 'lucide-react'
 
 interface Props {
   targetUserId: number
+  onFollowChange?: (isFollowing: boolean) => void
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -14,12 +15,28 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export default function FollowButton({ targetUserId }: Props) {
+/** Décode le payload d'un JWT sans vérification (client-side only) */
+function getTokenUserId(): number | null {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    if (!token) return null
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.id ?? null
+  } catch {
+    return null
+  }
+}
+
+export default function FollowButton({ targetUserId, onFollowChange }: Props) {
   const [following, setFollowing] = useState(false)
   const [blocked, setBlocked]     = useState(false)
   const [loading, setLoading]     = useState(true)
   const [busy, setBusy]           = useState(false)
   const [showBlockMenu, setShowBlockMenu] = useState(false)
+
+  // Masquer si c'est son propre profil
+  const currentUserId = getTokenUserId()
+  if (currentUserId === targetUserId) return null
 
   useEffect(() => {
     const load = async () => {
@@ -48,7 +65,11 @@ export default function FollowButton({ targetUserId }: Props) {
         method,
         headers: authHeaders(),
       })
-      if (res.ok) setFollowing(!following)
+      if (res.ok) {
+        const next = !following
+        setFollowing(next)
+        onFollowChange?.(next)
+      }
     } finally {
       setBusy(false)
     }
@@ -65,8 +86,12 @@ export default function FollowButton({ targetUserId }: Props) {
         headers: authHeaders(),
       })
       if (res.ok) {
-        setBlocked(!blocked)
-        if (!blocked) setFollowing(false) // unfollow auto au blocage
+        const nextBlocked = !blocked
+        setBlocked(nextBlocked)
+        if (nextBlocked && following) {
+          setFollowing(false)
+          onFollowChange?.(false)
+        }
       }
     } finally {
       setBusy(false)
@@ -108,7 +133,7 @@ export default function FollowButton({ targetUserId }: Props) {
       <div className="relative">
         <button
           onClick={() => setShowBlockMenu(v => !v)}
-          className="flex items-center justify-center h-9 w-9 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition text-white/50 hover:text-white"
+          className="flex items-center justify-center h-9 w-9 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition text-white/50 hover:text-white text-lg leading-none"
           title="Plus d'options"
         >
           ···

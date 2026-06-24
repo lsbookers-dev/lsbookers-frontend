@@ -7,7 +7,9 @@ import { useAuth } from '@/context/AuthContext'
 
 interface User {
   id: number
-  name: string
+  pseudo?: string | null
+  firstName?: string | null
+  lastName?: string | null
   role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
   profile: {
     location?: string
@@ -381,7 +383,7 @@ export default function SearchPage() {
                   <div className="relative w-12 h-12 shrink-0">
                     <Image
                       src={user.profile?.avatar || '/default-avatar.png'}
-                      alt={user.name || 'avatar'}
+                      alt={user.pseudo || user.firstName || 'avatar'}
                       fill
                       className="rounded-full object-cover ring-2 ring-white/10"
                       unoptimized
@@ -390,7 +392,9 @@ export default function SearchPage() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-semibold truncate">{user.name}</h2>
+                      <h2 className="text-base font-semibold truncate">
+                        {user.pseudo || [user.firstName, user.lastName].filter(Boolean).join(' ') || '—'}
+                      </h2>
 
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full border ${

@@ -76,6 +76,7 @@ export default function ArtistPublicProfilePage() {
   const [publications, setPublications] = useState<Publication[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [abonnesCount, setAbonnesCount] = useState(0)
 
   const defaults = useMemo(
     () => ({
@@ -102,6 +103,7 @@ export default function ArtistPublicProfilePage() {
         const profileData = (await profileRes.json()) as { profile: ApiProfile }
         const loadedProfile = profileData.profile
         setProfile(loadedProfile)
+        setAbonnesCount(loadedProfile?.followingCount ?? 0)
 
         if (loadedProfile?.id) {
           const pubsRes = await fetch(`${API_BASE}/api/publications/profile/${loadedProfile.id}`, {
@@ -205,7 +207,10 @@ export default function ArtistPublicProfilePage() {
 
         <div className="flex flex-col items-end gap-3">
           <div className="flex items-center gap-3">
-            <FollowButton targetUserId={profile.userId} />
+            <FollowButton
+              targetUserId={profile.userId}
+              onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
+            />
             <button
               onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
               className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
@@ -215,8 +220,8 @@ export default function ArtistPublicProfilePage() {
             </button>
           </div>
           <div className="flex items-center gap-4 text-sm text-white/50">
-            <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnés</span>
-            <span><strong className="text-white">{profile.followingCount ?? 0}</strong> abonnements</span>
+            <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>
+            <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnements</span>
           </div>
         </div>
       </div>

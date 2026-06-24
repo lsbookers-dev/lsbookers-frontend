@@ -83,6 +83,7 @@ export default function OrganizerPublicProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [profile, setProfile] = useState<PublicProfile | null>(null)
+  const [abonnesCount, setAbonnesCount] = useState(0)
   const [publications, setPublications] = useState<Publication[]>([])
   const [offers, setOffers] = useState<Offer[]>([])
 
@@ -110,6 +111,7 @@ export default function OrganizerPublicProfilePage() {
         const profileData = (await profileRes.json()) as { profile?: PublicProfile }
         const loadedProfile = profileData?.profile ?? null
         setProfile(loadedProfile)
+        setAbonnesCount(loadedProfile?.followingCount ?? 0)
 
         if (!loadedProfile) {
           throw new Error('Profil introuvable')
@@ -221,7 +223,10 @@ export default function OrganizerPublicProfilePage() {
 
             <div className="ml-auto flex flex-col items-end gap-2">
               <div className="flex items-center gap-2">
-                <FollowButton targetUserId={profile.userId} />
+                <FollowButton
+                  targetUserId={profile.userId}
+                  onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
+                />
                 <button
                   onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
                   className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
@@ -231,8 +236,8 @@ export default function OrganizerPublicProfilePage() {
                 </button>
               </div>
               <div className="flex items-center gap-4 text-xs text-white/50">
-                <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnés</span>
-                <span><strong className="text-white">{profile.followingCount ?? 0}</strong> abonnements</span>
+                <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>
+                <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnements</span>
               </div>
             </div>
           </div>
