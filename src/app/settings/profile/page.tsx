@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/context/AuthContext'
+import CropModal from '@/components/CropModal'
 import {
   Camera, Save, ArrowLeft, Music, MapPin, User, Briefcase,
   CheckCircle, XCircle
@@ -162,6 +163,7 @@ export default function ProfileSettings() {
   const [error, setError] = useState<string | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [cropModal, setCropModal] = useState<{ src: string; type: 'avatar' | 'banner' } | null>(null)
 
   const avatarRef = useRef<HTMLInputElement>(null)
   const bannerRef = useRef<HTMLInputElement>(null)
@@ -211,26 +213,40 @@ export default function ProfileSettings() {
     return data.url as string
   }
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Ouvre le modal de recadrage au lieu d'uploader directement
+  const openCrop = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploadingAvatar(true)
-    try {
-      const url = await uploadImage(file, 'avatars')
-      setProfile(p => ({ ...p, avatar: url }))
-    } catch { setError('Erreur lors de l\'upload de la photo') }
-    finally { setUploadingAvatar(false) }
+    e.target.value = '' // reset pour permettre de re-sélectionner le même fichier
+    const reader = new FileReader()
+    reader.onload = () => setCropModal({ src: reader.result as string, type })
+    reader.readAsDataURL(file)
   }
 
-  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingBanner(true)
-    try {
-      const url = await uploadImage(file, 'banners')
-      setProfile(p => ({ ...p, banner: url }))
-    } catch { setError('Erreur lors de l\'upload de la bannière') }
-    finally { setUploadingBanner(false) }
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => openCrop(e, 'avatar')
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => openCrop(e, 'banner')
+
+  // Reçoit le blob recadré → upload → sauvegarde l'URL
+  const handleCropConfirm = async (blob: Blob) => {
+    const type = cropModal?.type
+    setCropModal(null)
+    if (!type) return
+    const file = new File([blob], `${type}.jpg`, { type: 'image/jpeg' })
+    if (type === 'avatar') {
+      setUploadingAvatar(true)
+      try {
+        const url = await uploadImage(file, 'avatars')
+        setProfile(p => ({ ...p, avatar: url }))
+      } catch { setError("Erreur lors de l'upload de la photo") }
+      finally { setUploadingAvatar(false) }
+    } else {
+      setUploadingBanner(true)
+      try {
+        const url = await uploadImage(file, 'banners')
+        setProfile(p => ({ ...p, banner: url }))
+      } catch { setError("Erreur lors de l'upload de la bannière") }
+      finally { setUploadingBanner(false) }
+    }
   }
 
   // ── Sauvegarde
@@ -281,6 +297,18 @@ export default function ProfileSettings() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white pb-20">
+
+      {/* Modal de recadrage */}
+      {cropModal && (
+        <CropModal
+          src={cropModal.src}
+          aspectRatio={cropModal.type === 'avatar' ? 1 : 3}
+          displayWidth={cropModal.type === 'avatar' ? 280 : 360}
+          shape={cropModal.type === 'avatar' ? 'circle' : 'rect'}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropModal(null)}
+        />
+      )}
 
       {/* Header fixe */}
       <div className="sticky top-0 z-10 border-b border-white/10 bg-black/60 backdrop-blur-xl">
