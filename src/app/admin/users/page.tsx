@@ -46,6 +46,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError]  = useState<string | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [changingRole, setChangingRole] = useState<number | null>(null)
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
@@ -74,6 +75,25 @@ export default function AdminUsersPage() {
   useEffect(() => { load(page, q) }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const search = () => { setPage(0); load(0, q) }
+
+  const changeRole = async (u: ListedUser, newRole: string) => {
+    if (newRole === u.role) return
+    if (!confirm(`Changer le rôle de ${displayName(u)} de ${ROLE_LABELS[u.role] || u.role} vers ${ROLE_LABELS[newRole] || newRole} ?`)) return
+    setChangingRole(u.id)
+    try {
+      const res = await fetch(`${API}/api/admin/users/${u.id}/role`, {
+        method: 'PATCH',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ role: newRole }),
+      })
+      if (!res.ok) throw new Error()
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x))
+    } catch {
+      alert('Échec du changement de rôle.')
+    } finally {
+      setChangingRole(null)
+    }
+  }
 
   const deleteUser = async (u: ListedUser) => {
     if (!confirm(`Supprimer le compte de ${displayName(u)} (${u.email}) ? Cette action est irréversible.`)) return
@@ -172,7 +192,20 @@ export default function AdminUsersPage() {
               </p>
             </div>
 
-            {/* Action */}
+            {/* Changer le rôle */}
+            <select
+              value={u.role}
+              onChange={e => changeRole(u, e.target.value)}
+              disabled={changingRole === u.id}
+              className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white disabled:opacity-40 flex-shrink-0 cursor-pointer"
+              title="Changer le rôle"
+            >
+              <option value="ARTIST">Artiste</option>
+              <option value="ORGANIZER">Organisateur</option>
+              <option value="PROVIDER">Prestataire</option>
+            </select>
+
+            {/* Supprimer */}
             <button
               onClick={() => deleteUser(u)}
               disabled={deleting === u.id}
