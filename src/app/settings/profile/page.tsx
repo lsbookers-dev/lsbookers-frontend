@@ -204,7 +204,6 @@ export default function ProfileSettings() {
     const res = await fetch(`${API}/api/upload`, {
       method: 'POST',
       credentials: 'include',
-      headers: getAuthHeaders(),
       body: fd,
     })
     if (!res.ok) throw new Error('Échec upload')
