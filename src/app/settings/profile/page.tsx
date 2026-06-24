@@ -452,24 +452,26 @@ export default function ProfileSettings() {
         {(role === 'ARTIST' || role === 'PROVIDER') && (
           <Section title="Liens médias" icon={<Music size={18} />}>
             <div className="space-y-4">
-              <div>
-                <label className="text-sm text-white/70 mb-2 flex items-center gap-1.5">
-                  <span className="text-orange-400">☁</span> SoundCloud
-                </label>
-                <input
-                  value={profile.soundcloudUrl}
-                  onChange={e => setProfile(p => ({ ...p, soundcloudUrl: e.target.value }))}
-                  placeholder="https://soundcloud.com/ton-profil"
-                  className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50"
-                />
-                <div className="mt-2 border-t border-white/8 pt-2">
-                  <Toggle
-                    value={profile.showSoundcloud}
-                    onChange={v => setProfile(p => ({ ...p, showSoundcloud: v }))}
-                    label="Afficher le player SoundCloud sur mon profil"
+              {role === 'ARTIST' && (
+                <div>
+                  <label className="text-sm text-white/70 mb-2 flex items-center gap-1.5">
+                    <span className="text-orange-400">☁</span> SoundCloud
+                  </label>
+                  <input
+                    value={profile.soundcloudUrl}
+                    onChange={e => setProfile(p => ({ ...p, soundcloudUrl: e.target.value }))}
+                    placeholder="https://soundcloud.com/ton-profil"
+                    className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50"
                   />
+                  <div className="mt-2 border-t border-white/8 pt-2">
+                    <Toggle
+                      value={profile.showSoundcloud}
+                      onChange={v => setProfile(p => ({ ...p, showSoundcloud: v }))}
+                      label="Afficher le player SoundCloud sur mon profil"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               <div>
                 <label className="text-sm text-white/70 mb-2 flex items-center gap-1.5">
                   <span className="text-red-400">▶</span> Vidéo de prestation (YouTube / Vimeo)
