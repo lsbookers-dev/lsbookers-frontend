@@ -600,8 +600,6 @@ function MessagesContent() {
                   messages.forEach((msg, i) => {
                     const isMe = msg.sender.id === currentUserId
                     const msgDate = new Date(msg.createdAt).toDateString()
-                    const isLast = i === messages.length - 1
-                    const isLastFromMe = isMe && (i === messages.length - 1 || messages[i + 1]?.sender.id !== currentUserId)
 
                     // Séparateur de date
                     if (msgDate !== lastDate) {
