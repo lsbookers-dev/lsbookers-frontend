@@ -343,7 +343,7 @@ export default function SearchPage() {
               {typeFilter && currentTypeOptions.length > 0 && (
                 <div>
                   <p className="text-xs text-white/40 uppercase tracking-widest mb-2">
-                    {typeFilter === 'ARTIST' ? 'Spécialités' : typeFilter === 'PROVIDER' ? 'Types de prestation' : 'Type d\'établissement'}
+                    {typeFilter === 'ARTIST' ? 'Spécialités' : typeFilter === 'PROVIDER' ? 'Types de prestation' : "Type d'établissement"}
                   </p>
                   <MultiSelectDropdown
                     options={currentTypeOptions}
