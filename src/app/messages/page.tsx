@@ -1,611 +1,729 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import { useAuth } from '@/context/AuthContext'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { useAuth } from '@/context/AuthContext'
 import {
-  MessageCircle,
-  Search,
-  Trash2,
-  ChevronRight,
-  Inbox,
-  PenSquare,
-  Sparkles,
+  Search, Send, Paperclip, ArrowLeft, MessageCircle,
+  Plus, X, FileText, Trash2, CheckCheck, Check,
+  Music2, Building2, Wrench, ImageIcon, Video, Loader2,
 } from 'lucide-react'
 
-type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-interface ProfileLite {
-  avatar?: string | null
-}
+/* ── Types ──────────────────────────────────────────────── */
+type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
 
-interface User {
+interface Participant {
   id: number
   name: string
+  pseudo?: string | null
+  firstName?: string | null
+  lastName?: string | null
   role: Role
-  profile?: ProfileLite | null
+  profile?: { avatar?: string | null } | null
 }
 
 interface Conversation {
   id: number
-  participants: User[]
+  participants: Participant[]
   lastMessage: string
-  updatedAt: string
   lastMessageMeta?: {
     id: number
     senderId: number
     seen: boolean
     createdAt: string
-    attachmentType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null
+    attachmentType?: string | null
   } | null
+  updatedAt: string
 }
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+interface Message {
+  id: string
+  content: string
+  attachmentUrl?: string | null
+  attachmentType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null
+  attachmentName?: string | null
+  createdAt: string
+  seen: boolean
+  sender: { id: number; name: string; image?: string | null }
+}
 
+interface SearchUser {
+  id: number
+  pseudo?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  role: Role
+  profile?: { avatar?: string | null } | null
+}
+
+/* ── Helpers ─────────────────────────────────────────────── */
 const toAbs = (u?: string | null) => {
   if (!u) return '/default-avatar.png'
-  if (u.startsWith('http://') || u.startsWith('https://')) return u
-  if (u.startsWith('//')) return `https:${u}`
+  if (u.startsWith('http') || u.startsWith('//')) return u
   return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
 }
 
-const roleLabel = (role?: Role) => {
-  if (role === 'ARTIST') return 'Artiste'
-  if (role === 'ORGANIZER') return 'Organisateur'
-  if (role === 'PROVIDER') return 'Prestataire'
-  return 'Utilisateur'
+const ROLE_LABEL: Record<Role, string> = {
+  ARTIST: 'Artiste', ORGANIZER: 'Organisateur', PROVIDER: 'Prestataire',
+}
+const ROLE_COLOR: Record<Role, string> = {
+  ARTIST: 'text-pink-400', ORGANIZER: 'text-blue-400', PROVIDER: 'text-violet-400',
+}
+const ROLE_ICON: Record<Role, React.ElementType> = {
+  ARTIST: Music2, ORGANIZER: Building2, PROVIDER: Wrench,
 }
 
-function formatConversationDate(date?: string) {
-  if (!date) return ''
+function formatTime(date: string) {
   const d = new Date(date)
   const now = new Date()
-
-  const sameDay =
-    d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear()
-
-  if (sameDay) {
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const yesterday = new Date()
-  yesterday.setDate(now.getDate() - 1)
-
-  const isYesterday =
-    d.getDate() === yesterday.getDate() &&
-    d.getMonth() === yesterday.getMonth() &&
-    d.getFullYear() === yesterday.getFullYear()
-
-  if (isYesterday) return 'Hier'
-
-  return d.toLocaleDateString()
+  const isToday = d.toDateString() === now.toDateString()
+  if (isToday) return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
+  if (d.toDateString() === yesterday.toDateString()) return 'Hier'
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
 }
 
-function attachmentHint(type?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null) {
-  if (type === 'IMAGE') return '📷 Image'
-  if (type === 'VIDEO') return '🎬 Vidéo'
-  if (type === 'DOCUMENT') return '📄 Document'
-  return ''
+function formatMessageTime(date: string) {
+  return new Date(date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function Avatar({
-  src,
-  alt,
-  size = 42,
-}: {
-  src: string
-  alt: string
-  size?: number
-}) {
+function getHeaders(token: string) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+}
+
+/* ── Avatar ──────────────────────────────────────────────── */
+function Avatar({ src, alt, size = 40, online = false }: { src: string; alt: string; size?: number; online?: boolean }) {
   return (
-    <div
-      className="relative shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10 bg-white/5"
-      style={{ width: size, height: size }}
-    >
-      <Image src={src} alt={alt} fill className="object-cover" unoptimized />
-    </div>
-  )
-}
-
-function MultiUserSearchDropdown({
-  users,
-  loading,
-  search,
-  onSearchChange,
-  onSelect,
-  getAvatarSrc,
-}: {
-  users: User[]
-  loading: boolean
-  search: string
-  onSearchChange: (value: string) => void
-  onSelect: (userId: number) => void
-  getAvatarSrc: (u?: User | null) => string
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!ref.current) return
-      if (!ref.current.contains(e.target as Node)) setOpen(false)
-    }
-
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  useEffect(() => {
-    if (search.trim()) setOpen(true)
-    else setOpen(false)
-  }, [search])
-
-  return (
-    <div ref={ref} className="relative z-[120]">
-      <div className="relative">
-        <Search
-          size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35"
-        />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Rechercher un utilisateur…"
-          className="w-full rounded-2xl bg-black/30 border border-white/10 focus:border-white/25 outline-none pl-10 pr-4 py-3 text-sm text-white placeholder-white/35 transition"
-        />
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div className="w-full h-full rounded-full overflow-hidden ring-1 ring-white/10">
+        <Image src={toAbs(src)} alt={alt} fill className="object-cover" unoptimized />
       </div>
-
-      {open && (
-        <div className="absolute z-[9999] top-full mt-3 w-full rounded-2xl border border-white/10 bg-neutral-950/95 backdrop-blur shadow-2xl max-h-96 overflow-y-auto">
-          {loading ? (
-            <div className="px-4 py-4 text-sm text-white/50">
-              Chargement des utilisateurs…
-            </div>
-          ) : users.length > 0 ? (
-            <ul className="p-2 space-y-1">
-              {users.map((u) => (
-                <li
-                  key={u.id}
-                  onClick={() => {
-                    onSelect(u.id)
-                    setOpen(false)
-                  }}
-                  className="cursor-pointer rounded-2xl px-3 py-3 flex items-center gap-3 hover:bg-white/5 transition"
-                >
-                  <Avatar src={getAvatarSrc(u)} alt={u.name} size={42} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white truncate">{u.name}</p>
-                    <p className="text-xs text-white/45">{roleLabel(u.role)}</p>
-                  </div>
-                  <ChevronRight size={16} className="text-white/25" />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="px-4 py-4 text-sm text-white/45">
-              Aucun utilisateur trouvé.
-            </div>
-          )}
-        </div>
-      )}
+      {online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-[#0a0a0f]" />}
     </div>
   )
 }
 
-export default function MessagesPage() {
-  const { user, token } = useAuth()
+/* ── Pièce jointe dans bulle ────────────────────────────── */
+function AttachmentBubble({ msg }: { msg: Message }) {
+  if (!msg.attachmentUrl) return null
+  const url = toAbs(msg.attachmentUrl)
+
+  if (msg.attachmentType === 'IMAGE') {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="block mt-1">
+        <div className="relative w-52 h-40 rounded-xl overflow-hidden">
+          <Image src={url} alt={msg.attachmentName || 'image'} fill className="object-cover" unoptimized />
+        </div>
+      </a>
+    )
+  }
+  if (msg.attachmentType === 'VIDEO') {
+    return (
+      <video controls className="mt-1 w-52 rounded-xl bg-black max-w-full">
+        <source src={url} />
+      </video>
+    )
+  }
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      className="mt-1 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 hover:bg-white/10 transition max-w-xs">
+      <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+        <FileText className="w-4 h-4 text-white/60" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate text-white">{msg.attachmentName || 'Document'}</p>
+        <p className="text-xs text-white/40">Télécharger</p>
+      </div>
+    </a>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════
+   COMPOSANT PRINCIPAL (nécessite Suspense pour useSearchParams)
+══════════════════════════════════════════════════════════ */
+function MessagesContent() {
+  const { token, user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
+  const activeConvId = searchParams.get('c') ? Number(searchParams.get('c')) : null
+
+  /* ── State ── */
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [error, setError] = useState<string | null>(null)
-
-  const [search, setSearch] = useState('')
-  const [allUsers, setAllUsers] = useState<User[]>([])
-  const [loadingUsers, setLoadingUsers] = useState(false)
-
-  const [conversationSearch, setConversationSearch] = useState('')
+  const [messages, setMessages] = useState<Message[]>([])
+  const [activeConv, setActiveConv] = useState<Conversation | null>(null)
+  const [content, setContent] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [sending, setSending] = useState(false)
+  const [loadingMsgs, setLoadingMsgs] = useState(false)
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
+  const [newConvSearch, setNewConvSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [showNewConv, setShowNewConv] = useState(false)
+  const [convSearch, setConvSearch] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  const authedHeaders = useMemo(
-    () => (token ? { Authorization: `Bearer ${token}` } : undefined),
-    [token]
-  )
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const getAvatarSrc = (u?: User | null) =>
-    toAbs(u?.profile?.avatar || '/default-avatar.png')
+  const currentUserId = user?.id ? Number(user.id) : null
 
-  const getOtherUser = useCallback(
-    (conv: Conversation) =>
-      conv.participants.find((p) => String(p.id) !== String(user?.id)),
-    [user?.id]
-  )
-
+  /* ── Fetch conversations ── */
   const fetchConversations = useCallback(async () => {
     if (!token) return
-
     try {
-      setError(null)
-
       const res = await fetch(`${API_BASE}/api/messages/conversations?t=${Date.now()}`, {
-        headers: authedHeaders,
+        headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       })
+      if (!res.ok) return
+      const data = await res.json()
+      const list: Conversation[] = Array.isArray(data?.conversations) ? data.conversations : []
+      list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      setConversations(list)
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-      const raw = await res.json()
-      const list: Conversation[] = Array.isArray(raw?.conversations) ? raw.conversations : []
-
-      const sorted = [...list].sort(
-        (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
-      )
-
-      setConversations(sorted)
+      // Sync activeConv
+      if (activeConvId) {
+        const found = list.find((c) => c.id === activeConvId)
+        if (found) setActiveConv(found)
+      }
     } catch (err) {
-      console.error('Conversations load error:', err)
-      setError('Impossible de charger les conversations.')
-      setConversations([])
+      console.error('fetchConversations:', err)
     }
-  }, [token, authedHeaders])
+  }, [token, activeConvId])
 
-  const fetchUsers = useCallback(async () => {
-    if (!token) return
-
+  /* ── Fetch messages ── */
+  const fetchMessages = useCallback(async (convId: number, silent = false) => {
+    if (!token || !convId) return
+    if (!silent) setLoadingMsgs(true)
     try {
-      setLoadingUsers(true)
-
-      const res = await fetch(`${API_BASE}/api/users?t=${Date.now()}`, {
-        headers: authedHeaders,
+      const res = await fetch(`${API_BASE}/api/messages/messages/${convId}?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       })
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-      const raw = (await res.json()) as { users?: User[] } | User[]
-      const list: User[] = Array.isArray(raw) ? raw : raw?.users ?? []
-
-      const filtered = user?.id
-        ? list.filter((u) => Number(u.id) !== Number(user.id))
-        : list
-
-      setAllUsers(filtered)
+      if (!res.ok) return
+      const data = await res.json()
+      const list: Message[] = Array.isArray(data) ? data : []
+      setMessages(list)
     } catch (err) {
-      console.error('Users load error:', err)
-      setAllUsers([])
+      console.error('fetchMessages:', err)
     } finally {
-      setLoadingUsers(false)
+      setLoadingMsgs(false)
     }
-  }, [token, authedHeaders, user?.id])
+  }, [token])
 
+  /* ── Mark seen ── */
+  const markSeen = useCallback(async (convId: number) => {
+    if (!token || !convId) return
+    await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {})
+  }, [token])
+
+  /* ── Polling conversations ── */
   useEffect(() => {
     if (!token) return
     fetchConversations()
-    fetchUsers()
-  }, [token, fetchConversations, fetchUsers])
-
-  useEffect(() => {
-    if (!token) return
-
-    const interval = setInterval(() => {
-      fetchConversations()
-    }, 5000)
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        fetchConversations()
-      }
-    }
-
-    const onFocus = () => {
-      fetchConversations()
-    }
-
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onVisibility)
-
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
+    const iv = setInterval(fetchConversations, 5000)
+    return () => clearInterval(iv)
   }, [token, fetchConversations])
 
-  const startConversation = useCallback(
-    async (recipientId: number) => {
-      if (!token || !user?.id) return
+  /* ── Polling messages de la conv active ── */
+  useEffect(() => {
+    if (!activeConvId || !token) return
+    fetchMessages(activeConvId)
+    markSeen(activeConvId)
+    const iv = setInterval(() => fetchMessages(activeConvId, true), 3000)
+    return () => clearInterval(iv)
+  }, [activeConvId, token, fetchMessages, markSeen])
 
-      if (Number(recipientId) === Number(user.id)) {
-        alert("Tu ne peux pas t'envoyer un message à toi-même.")
-        return
-      }
+  /* ── Sync activeConv quand conversations chargées ── */
+  useEffect(() => {
+    if (activeConvId && conversations.length) {
+      const found = conversations.find((c) => c.id === activeConvId)
+      if (found) setActiveConv(found)
+    } else if (!activeConvId) {
+      setActiveConv(null)
+      setMessages([])
+    }
+  }, [activeConvId, conversations])
 
-      const existing = conversations.find(
-        (conv) =>
-          conv.participants.some((p) => Number(p.id) === Number(recipientId)) &&
-          conv.participants.some((p) => Number(p.id) === Number(user.id))
-      )
+  /* ── Auto-scroll bas ── */
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
-      if (existing) {
-        router.push(`/messages/${existing.id}`)
-        return
-      }
-
+  /* ── Recherche nouvelle conv ── */
+  useEffect(() => {
+    if (!newConvSearch.trim() || !token) { setSearchResults([]); return }
+    const t = setTimeout(async () => {
+      setSearchLoading(true)
       try {
-        const res = await fetch(`${API_BASE}/api/messages/start`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authedHeaders || {}),
-          },
-          body: JSON.stringify({ recipientId }),
-        })
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-        const data = await res.json().catch(() => ({}))
-        const convId = data?.conversationId ?? data?.conversation?.id ?? null
-
-        if (convId) {
-          router.push(`/messages/${convId}`)
-        } else {
-          await fetchConversations()
-        }
-
-        setSearch('')
-      } catch (err) {
-        console.error('Erreur démarrage conversation :', err)
-        alert('Impossible de démarrer la conversation.')
-      }
-    },
-    [token, user?.id, conversations, router, authedHeaders, fetchConversations]
-  )
-
-  const deleteConversation = useCallback(
-    async (convId: number) => {
-      if (!token) return
-
-      const ok = confirm('Supprimer cette conversation ?')
-      if (!ok) return
-
-      try {
-        setDeletingId(convId)
-
-        const res = await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
-          method: 'DELETE',
-          headers: authedHeaders,
-        })
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-        setConversations((prev) => prev.filter((c) => c.id !== convId))
-      } catch (err) {
-        console.error('Erreur suppression conversation :', err)
-        alert('Suppression impossible.')
-      } finally {
-        setDeletingId(null)
-      }
-    },
-    [token, authedHeaders]
-  )
-
-  const openConversation = useCallback(
-    (convId: number) => {
-      router.push(`/messages/${convId}`)
-    },
-    [router]
-  )
-
-  const filteredUsers = search.trim()
-    ? allUsers.filter((u) => {
-        const query = search.trim().toLowerCase()
-        return (
-          Number(u.id) !== Number(user?.id) &&
-          u.name?.toLowerCase().includes(query)
+        const res = await fetch(
+          `${API_BASE}/api/search?name=${encodeURIComponent(newConvSearch.trim())}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         )
-      })
-    : []
+        if (!res.ok) return
+        const data = await res.json()
+        setSearchResults(Array.isArray(data?.users) ? data.users : [])
+      } catch { setSearchResults([]) }
+      finally { setSearchLoading(false) }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [newConvSearch, token])
 
-  const filteredConversations = conversations.filter((conv) => {
-    const other = getOtherUser(conv)
-    const query = conversationSearch.trim().toLowerCase()
+  /* ── Sélectionner une conversation ── */
+  const selectConv = useCallback((convId: number) => {
+    router.push(`/messages?c=${convId}`)
+    setMobileView('chat')
+  }, [router])
 
-    if (!query) return true
-
-    return (
-      other?.name?.toLowerCase().includes(query) ||
-      conv.lastMessage?.toLowerCase().includes(query)
+  /* ── Démarrer une conversation ── */
+  const startConversation = useCallback(async (recipientId: number) => {
+    if (!token) return
+    // Chercher si conv existante
+    const existing = conversations.find((c) =>
+      c.participants.some((p) => p.id === recipientId)
     )
+    if (existing) { selectConv(existing.id); setShowNewConv(false); setNewConvSearch(''); return }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/messages/start`, {
+        method: 'POST',
+        headers: getHeaders(token),
+        body: JSON.stringify({ recipientId }),
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.conversationId) {
+        await fetchConversations()
+        selectConv(data.conversationId)
+        setShowNewConv(false)
+        setNewConvSearch('')
+      }
+    } catch (err) { console.error('startConversation:', err) }
+  }, [token, conversations, selectConv, fetchConversations])
+
+  /* ── Envoyer un message ── */
+  const handleSend = useCallback(async () => {
+    if (!activeConvId || !token || sending) return
+    if (!content.trim() && !file) return
+
+    setSending(true)
+    try {
+      const fd = new FormData()
+      fd.append('conversationId', String(activeConvId))
+      if (content.trim()) fd.append('content', content.trim())
+      if (file) fd.append('file', file)
+
+      const res = await fetch(`${API_BASE}/api/messages/send-file`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      })
+      if (!res.ok) return
+
+      setContent('')
+      setFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      if (textareaRef.current) { textareaRef.current.style.height = 'auto' }
+
+      await fetchMessages(activeConvId)
+      await fetchConversations()
+    } catch (err) { console.error('handleSend:', err) }
+    finally { setSending(false) }
+  }, [activeConvId, token, content, file, sending, fetchMessages, fetchConversations])
+
+  /* ── Supprimer une conversation ── */
+  const deleteConversation = useCallback(async (convId: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Supprimer cette conversation ?')) return
+    setDeletingId(convId)
+    try {
+      await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token || ''}` },
+      })
+      setConversations((prev) => prev.filter((c) => c.id !== convId))
+      if (activeConvId === convId) router.push('/messages')
+    } catch (err) { console.error('deleteConversation:', err) }
+    finally { setDeletingId(null) }
+  }, [token, activeConvId, router])
+
+  /* ── Resize textarea ── */
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value)
+    e.target.style.height = 'auto'
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+  }
+
+  /* ── Helpers ── */
+  const getOtherParticipant = (conv: Conversation) =>
+    conv.participants.find((p) => p.id !== currentUserId) ?? conv.participants[0]
+
+  const getDisplayName = (u: SearchUser) =>
+    u.pseudo || [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Utilisateur'
+
+  const filteredConvs = conversations.filter((c) => {
+    if (!convSearch.trim()) return true
+    const other = getOtherParticipant(c)
+    return other?.name?.toLowerCase().includes(convSearch.toLowerCase())
   })
 
+  /* ══ RENDU ══════════════════════════════════════════════ */
   return (
-    <main className="min-h-screen bg-neutral-950 text-white">
-      <div className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-violet-600/10 to-blue-600/10 blur-3xl" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-8">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/60 mb-4">
-                <Sparkles size={14} className="text-violet-300" />
-                Espace de communication LSBookers
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
-                <MessageCircle className="text-violet-400" />
-                Messagerie
-              </h1>
-              <p className="text-white/65 mt-3 max-w-2xl text-sm md:text-base">
-                Centralise tes échanges avec les artistes, organisateurs et prestataires
-                dans une interface claire, moderne et professionnelle.
-              </p>
-            </div>
+    <div className="flex h-[calc(100vh-64px)] bg-[#0a0a0f] text-white overflow-hidden">
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur px-5 py-4 min-w-[220px] shadow-xl">
-              <p className="text-xs uppercase tracking-[0.16em] text-white/45">
-                Conversations
-              </p>
-              <p className="text-3xl font-semibold mt-2">{conversations.length}</p>
-              <p className="text-xs text-white/40 mt-1">Total actuellement visibles</p>
-            </div>
+      {/* ── Panneau gauche : liste des conversations ── */}
+      <div className={`
+        flex flex-col border-r border-white/8 bg-[#0d0d14]
+        w-full md:w-80 lg:w-96 shrink-0
+        ${activeConvId && mobileView === 'chat' ? 'hidden md:flex' : 'flex'}
+      `}>
+
+        {/* Header gauche */}
+        <div className="px-4 pt-5 pb-3 border-b border-white/5">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-lg font-semibold">Messages</h1>
+            <button
+              onClick={() => setShowNewConv((v) => !v)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition ${showNewConv ? 'bg-violet-500 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+            >
+              {showNewConv ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            </button>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="grid gap-6 xl:grid-cols-[390px,1fr] items-start">
-          <section className="rounded-[28px] border border-white/10 bg-neutral-900/75 backdrop-blur p-6 shadow-2xl relative z-[120]">
-            <div className="flex items-start gap-3 mb-5">
-              <div className="w-11 h-11 rounded-2xl bg-violet-600/15 flex items-center justify-center shrink-0">
-                <PenSquare size={19} className="text-violet-300" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Nouvelle conversation</h2>
-                <p className="text-sm text-white/50 mt-1">
-                  Lance rapidement un échange avec un utilisateur de la plateforme.
-                </p>
-              </div>
-            </div>
-
-            <MultiUserSearchDropdown
-              users={filteredUsers}
-              loading={loadingUsers}
-              search={search}
-              onSearchChange={setSearch}
-              onSelect={startConversation}
-              getAvatarSrc={getAvatarSrc}
-            />
-          </section>
-
-          <section className="rounded-[28px] border border-white/10 bg-neutral-900/75 backdrop-blur p-5 sm:p-6 shadow-2xl min-h-[560px] relative z-0">
-            <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
-              <div>
-                <h2 className="text-xl font-semibold">Vos conversations</h2>
-                <p className="text-sm text-white/50 mt-1">
-                  Reprends un échange, consulte les pièces jointes et retrouve les messages non lus.
-                </p>
-              </div>
-
-              <div className="relative w-full sm:w-[320px]">
-                <Search
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35"
-                />
+          {/* Recherche nouvelle conversation */}
+          {showNewConv && (
+            <div className="mb-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
                 <input
                   type="text"
-                  value={conversationSearch}
-                  onChange={(e) => setConversationSearch(e.target.value)}
-                  placeholder="Filtrer les conversations…"
-                  className="w-full rounded-2xl bg-black/30 border border-white/10 focus:border-white/25 outline-none pl-10 pr-4 py-3 text-sm text-white placeholder-white/35 transition"
+                  value={newConvSearch}
+                  onChange={(e) => setNewConvSearch(e.target.value)}
+                  placeholder="Chercher un utilisateur…"
+                  autoFocus
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition"
                 />
               </div>
-            </div>
-
-            {error ? (
-              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-300 text-sm">
-                {error}
-              </div>
-            ) : filteredConversations.length === 0 ? (
-              <div className="h-[430px] rounded-3xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
-                <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center mb-4">
-                  <Inbox className="text-white/35" size={28} />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Aucune conversation</h3>
-                <p className="text-white/45 text-sm max-w-md">
-                  Commence par rechercher un utilisateur dans le bloc de gauche pour ouvrir ton premier échange.
-                </p>
-              </div>
-            ) : (
-              <ul className="space-y-3">
-                {filteredConversations.map((conv) => {
-                  const other = getOtherUser(conv)
-                  const src = getAvatarSrc(other)
-                  const isUnread =
-                    !!conv.lastMessageMeta &&
-                    Number(conv.lastMessageMeta.senderId) !== Number(user?.id) &&
-                    !conv.lastMessageMeta.seen
-
-                  return (
-                    <li
-                      key={conv.id}
-                      onClick={() => openConversation(conv.id)}
-                      className={`group rounded-3xl border p-4 sm:p-5 transition flex items-start gap-4 relative cursor-pointer ${
-                        isUnread
-                          ? 'bg-violet-500/10 border-violet-500/25 shadow-[0_0_0_1px_rgba(139,92,246,0.08)]'
-                          : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.055]'
-                      }`}
-                    >
-                      {isUnread && (
-                        <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-3xl bg-violet-500" />
-                      )}
-
-                      <Avatar src={src} alt={other?.name ?? 'User'} size={58} />
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3
-                                className={`text-[15px] truncate ${
-                                  isUnread ? 'font-semibold text-white' : 'font-medium text-white'
-                                }`}
-                              >
-                                {other?.name ?? 'Conversation'}
-                              </h3>
-
-                              <span className="text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">
-                                {roleLabel(other?.role)}
-                              </span>
-
-                              {isUnread && (
-                                <span className="text-[10px] px-2 py-1 rounded-full bg-violet-600/20 border border-violet-400/30 text-violet-200">
-                                  Non lu
-                                </span>
-                              )}
+              {/* Résultats */}
+              {(newConvSearch.trim()) && (
+                <div className="mt-1 rounded-xl border border-white/8 bg-[#111118] overflow-hidden max-h-56 overflow-y-auto">
+                  {searchLoading ? (
+                    <div className="flex items-center gap-2 p-3 text-sm text-white/40">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Recherche…
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <p className="p-3 text-sm text-white/30">Aucun résultat</p>
+                  ) : (
+                    searchResults.map((u) => {
+                      const Icon = ROLE_ICON[u.role]
+                      return (
+                        <button
+                          key={u.id}
+                          onClick={() => startConversation(u.id)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition text-left"
+                        >
+                          <Avatar src={u.profile?.avatar || ''} alt={getDisplayName(u)} size={36} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{getDisplayName(u)}</p>
+                            <div className={`flex items-center gap-1 text-xs ${ROLE_COLOR[u.role]}`}>
+                              <Icon className="w-3 h-3" />
+                              <span>{ROLE_LABEL[u.role]}</span>
                             </div>
-
-                            <p className="text-sm text-white/60 mt-2 truncate">
-                              {conv.lastMessage ||
-                                attachmentHint(conv.lastMessageMeta?.attachmentType) ||
-                                'Conversation'}
-                            </p>
-
-                            {conv.lastMessageMeta?.attachmentType && !conv.lastMessage && (
-                              <p className="text-xs text-white/40 mt-1">
-                                {attachmentHint(conv.lastMessageMeta.attachmentType)}
-                              </p>
-                            )}
                           </div>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-                          <div className="flex flex-col items-end gap-3 shrink-0">
-                            <span className="text-[11px] text-white/35 whitespace-nowrap">
-                              {formatConversationDate(conv.updatedAt)}
-                            </span>
+          {/* Filtre conversations existantes */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
+            <input
+              type="text"
+              value={convSearch}
+              onChange={(e) => setConvSearch(e.target.value)}
+              placeholder="Filtrer…"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/[0.04] text-sm text-white placeholder-white/20 focus:outline-none border border-transparent focus:border-white/10 transition"
+            />
+          </div>
+        </div>
 
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                deleteConversation(conv.id)
-                              }}
-                              disabled={deletingId === conv.id}
-                              title="Supprimer la conversation"
-                              className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1 text-xs border border-white/10 hover:border-red-400/60 text-white/55 hover:text-red-300 rounded-xl px-2.5 py-1.5"
-                            >
-                              <Trash2 size={12} />
-                              {deletingId === conv.id ? '...' : 'Supprimer'}
-                            </button>
-                          </div>
-                        </div>
+        {/* Liste */}
+        <div className="flex-1 overflow-y-auto">
+          {filteredConvs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
+              <MessageCircle className="w-10 h-10 text-white/10" />
+              <p className="text-sm text-white/30">
+                {conversations.length === 0 ? 'Aucune conversation' : 'Aucun résultat'}
+              </p>
+              {conversations.length === 0 && (
+                <button
+                  onClick={() => setShowNewConv(true)}
+                  className="text-xs text-violet-400 hover:text-violet-300 transition"
+                >
+                  Démarrer une conversation
+                </button>
+              )}
+            </div>
+          ) : (
+            filteredConvs.map((conv) => {
+              const other = getOtherParticipant(conv)
+              const isActive = conv.id === activeConvId
+              const isUnread =
+                !!conv.lastMessageMeta &&
+                conv.lastMessageMeta.senderId !== currentUserId &&
+                !conv.lastMessageMeta.seen
+
+              return (
+                <div
+                  key={conv.id}
+                  onClick={() => selectConv(conv.id)}
+                  className={`group flex items-center gap-3 px-4 py-3 cursor-pointer transition relative ${
+                    isActive
+                      ? 'bg-white/8 border-r-2 border-violet-500'
+                      : 'hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <Avatar src={other?.profile?.avatar || ''} alt={other?.name || '?'} size={44} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-sm truncate ${isUnread ? 'font-semibold text-white' : 'font-medium text-white/80'}`}>
+                        {other?.name}
+                      </p>
+                      <span className="text-[10px] text-white/30 shrink-0">
+                        {conv.updatedAt ? formatTime(conv.updatedAt) : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <p className={`text-xs truncate ${isUnread ? 'text-white/70' : 'text-white/35'}`}>
+                        {conv.lastMessage || 'Nouvelle conversation'}
+                      </p>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isUnread && (
+                          <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
+                        )}
+                        <button
+                          onClick={(e) => deleteConversation(conv.id, e)}
+                          disabled={deletingId === conv.id}
+                          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-md hover:bg-red-500/10 text-white/30 hover:text-red-400"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
-    </main>
+
+      {/* ── Panneau droit : chat ── */}
+      <div className={`
+        flex-1 flex flex-col min-w-0
+        ${activeConvId && mobileView === 'chat' ? 'flex' : 'hidden md:flex'}
+      `}>
+        {!activeConvId || !activeConv ? (
+          /* Empty state */
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-8">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/8 flex items-center justify-center">
+              <MessageCircle className="w-7 h-7 text-white/20" />
+            </div>
+            <div>
+              <p className="font-medium text-white/60">Sélectionne une conversation</p>
+              <p className="text-sm text-white/30 mt-1">ou démarre-en une nouvelle avec le bouton +</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Header chat */}
+            {(() => {
+              const other = getOtherParticipant(activeConv)
+              const Icon = other ? ROLE_ICON[other.role] : null
+              return (
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-white/8 bg-[#0d0d14] shrink-0">
+                  <button
+                    onClick={() => { router.push('/messages'); setMobileView('list') }}
+                    className="md:hidden p-2 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  {other && (
+                    <>
+                      <Avatar src={other.profile?.avatar || ''} alt={other.name} size={38} />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{other.name}</p>
+                        {Icon && (
+                          <div className={`flex items-center gap-1 text-xs ${ROLE_COLOR[other.role]}`}>
+                            <Icon className="w-3 h-3" />
+                            <span>{ROLE_LABEL[other.role]}</span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+              {loadingMsgs && messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+                  <MessageCircle className="w-10 h-10 text-white/10" />
+                  <p className="text-sm text-white/30">Aucun message — dis bonjour !</p>
+                </div>
+              ) : (
+                (() => {
+                  // Grouper les messages par date
+                  const items: React.ReactNode[] = []
+                  let lastDate = ''
+
+                  messages.forEach((msg, i) => {
+                    const isMe = msg.sender.id === currentUserId
+                    const msgDate = new Date(msg.createdAt).toDateString()
+                    const isLast = i === messages.length - 1
+                    const isLastFromMe = isMe && (i === messages.length - 1 || messages[i + 1]?.sender.id !== currentUserId)
+
+                    // Séparateur de date
+                    if (msgDate !== lastDate) {
+                      lastDate = msgDate
+                      items.push(
+                        <div key={`date-${i}`} className="flex items-center gap-3 my-3">
+                          <div className="flex-1 h-px bg-white/5" />
+                          <span className="text-[10px] text-white/25 shrink-0">
+                            {new Date(msg.createdAt).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}
+                          </span>
+                          <div className="flex-1 h-px bg-white/5" />
+                        </div>
+                      )
+                    }
+
+                    items.push(
+                      <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        {/* Avatar interlocuteur */}
+                        {!isMe && (
+                          <div className="w-7 h-7 shrink-0 mb-1">
+                            <Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} />
+                          </div>
+                        )}
+
+                        <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
+                          {/* Bulle */}
+                          <div className={`px-4 py-2.5 rounded-2xl ${
+                            isMe
+                              ? 'bg-gradient-to-br from-violet-600 to-pink-600 text-white rounded-br-md'
+                              : 'bg-white/8 text-white rounded-bl-md'
+                          }`}>
+                            {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                            <AttachmentBubble msg={msg} />
+                          </div>
+
+                          {/* Temps + statut lu */}
+                          <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
+                            <span className="text-[10px] text-white/25">{formatMessageTime(msg.createdAt)}</span>
+                            {isMe && (
+                              msg.seen
+                                ? <CheckCheck className="w-3 h-3 text-violet-400" />
+                                : <Check className="w-3 h-3 text-white/25" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Espace à droite pour messages de moi */}
+                        {isMe && <div className="w-7 shrink-0" />}
+                      </div>
+                    )
+                  })
+
+                  return items
+                })()
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Aperçu fichier sélectionné */}
+            {file && (
+              <div className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+                {file.type.startsWith('image') ? <ImageIcon className="w-4 h-4 text-pink-400 shrink-0" /> :
+                 file.type.startsWith('video') ? <Video className="w-4 h-4 text-blue-400 shrink-0" /> :
+                 <FileText className="w-4 h-4 text-violet-400 shrink-0" />}
+                <span className="text-sm text-white/70 truncate flex-1">{file.name}</span>
+                <button
+                  onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                  className="text-white/30 hover:text-white/70 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Zone de saisie */}
+            <div className="px-4 pb-4 shrink-0">
+              <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={handleTextareaChange}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+                  }}
+                  placeholder="Écrire un message…"
+                  rows={1}
+                  className="flex-1 bg-transparent text-sm text-white placeholder-white/25 focus:outline-none resize-none py-1 max-h-28"
+                />
+                <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 rounded-xl text-white/30 hover:text-white/70 hover:bg-white/5 transition shrink-0 self-end"
+                  type="button"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleSend}
+                  disabled={sending || (!content.trim() && !file)}
+                  className="p-2 rounded-xl bg-gradient-to-br from-violet-600 to-pink-600 text-white hover:opacity-90 disabled:opacity-30 transition shrink-0 self-end"
+                >
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-white/15 mt-1 text-center">Entrée pour envoyer · Shift+Entrée pour nouvelle ligne</p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Export avec Suspense (requis pour useSearchParams) ── */
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-[#0a0a0f]">
+        <Loader2 className="w-8 h-8 text-white/20 animate-spin" />
+      </div>
+    }>
+      <MessagesContent />
+    </Suspense>
   )
 }
