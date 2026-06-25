@@ -328,6 +328,8 @@ function MessagesContent() {
   useEffect(() => {
     if (activeConvId && conversations.length) {
       const found = conversations.find((c) => c.id === activeConvId)
+      // Ne mettre à jour que si trouvé (sinon c'est une conv vide sans messages,
+      // déjà injectée directement par startConversation)
       if (found) setActiveConv(found)
     } else if (!activeConvId) {
       setActiveConv(null)
@@ -406,14 +408,24 @@ function MessagesContent() {
       })
       if (!res.ok) return
       const data = await res.json()
-      if (data.conversationId) {
-        await fetchConversations()
-        selectConv(data.conversationId)
+      if (data.conversationId && data.conversation) {
+        // Injecter activeConv directement depuis la réponse
+        // (la conv n'apparaît pas encore dans la liste car elle est vide)
+        const newConv: Conversation = {
+          id: data.conversation.id,
+          participants: data.conversation.participants,
+          lastMessage: '',
+          lastMessageMeta: null,
+          updatedAt: data.conversation.updatedAt || new Date().toISOString(),
+        }
+        setActiveConv(newConv)
+        router.push(`/messages?c=${data.conversationId}`)
+        setMobileView('chat')
         setShowNewConv(false)
         setNewConvSearch('')
       }
     } catch (err) { console.error('startConversation:', err) }
-  }, [token, conversations, selectConv, fetchConversations])
+  }, [token, conversations, selectConv, router])
 
   /* ── Envoyer un message ── */
   const handleSend = useCallback(async () => {
