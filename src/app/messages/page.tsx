@@ -345,7 +345,10 @@ function MessagesContent() {
       const isFromMe = lastMsg?.sender.id === currentUserId
       // Scroll si : premier chargement, message envoyé par moi, ou utilisateur déjà en bas
       if (prevCount === 0 || isFromMe || isNearBottomRef.current) {
-        messagesEndRef.current?.scrollIntoView({ behavior: prevCount === 0 ? 'auto' : 'smooth' })
+        const el = messagesContainerRef.current
+        if (el) {
+          el.scrollTo({ top: el.scrollHeight, behavior: prevCount === 0 ? 'auto' : 'smooth' })
+        }
       }
     }
     prevMsgCountRef.current = newCount
