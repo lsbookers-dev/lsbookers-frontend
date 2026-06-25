@@ -8,6 +8,7 @@ import {
   Search, Send, Paperclip, ArrowLeft, MessageCircle,
   Plus, X, FileText, Trash2, CheckCheck, Check,
   Music2, Building2, Wrench, ImageIcon, Video, Loader2,
+  Download, ZoomIn,
 } from 'lucide-react'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -95,29 +96,77 @@ function getHeaders(token: string) {
 }
 
 /* ── Avatar ──────────────────────────────────────────────── */
-function Avatar({ src, alt, size = 40, online = false }: { src: string; alt: string; size?: number; online?: boolean }) {
+function Avatar({ src, alt, size = 40 }: { src: string; alt: string; size?: number }) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div className="w-full h-full rounded-full overflow-hidden ring-1 ring-white/10">
         <Image src={toAbs(src)} alt={alt} fill className="object-cover" unoptimized />
       </div>
-      {online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-[#0a0a0f]" />}
+    </div>
+  )
+}
+
+/* ── Lightbox ────────────────────────────────────────────── */
+function Lightbox({ url, name, onClose }: { url: string; name?: string | null; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-[90vw] max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+        <img
+          src={url}
+          alt={name || 'image'}
+          className="max-w-full max-h-[80vh] rounded-xl object-contain"
+        />
+      </div>
+      <div className="flex items-center gap-3 mt-4">
+        <a
+          href={url}
+          download={name || 'image'}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition text-sm font-medium"
+        >
+          <Download className="w-4 h-4" />
+          Télécharger
+        </a>
+        <button
+          onClick={onClose}
+          className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/15 transition text-sm text-white/60"
+        >
+          Fermer
+        </button>
+      </div>
     </div>
   )
 }
 
 /* ── Pièce jointe dans bulle ────────────────────────────── */
-function AttachmentBubble({ msg }: { msg: Message }) {
+function AttachmentBubble({ msg, onImageClick }: { msg: Message; onImageClick: (url: string, name?: string | null) => void }) {
   if (!msg.attachmentUrl) return null
   const url = toAbs(msg.attachmentUrl)
 
   if (msg.attachmentType === 'IMAGE') {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="block mt-1">
-        <div className="relative w-52 h-40 rounded-xl overflow-hidden">
+      <button
+        onClick={() => onImageClick(url, msg.attachmentName)}
+        className="block mt-1 relative group rounded-xl overflow-hidden"
+      >
+        <div className="relative w-52 h-40">
           <Image src={url} alt={msg.attachmentName || 'image'} fill className="object-cover" unoptimized />
         </div>
-      </a>
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
+          <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition" />
+        </div>
+      </button>
     )
   }
   if (msg.attachmentType === 'VIDEO') {
@@ -157,6 +206,7 @@ function MessagesContent() {
   const [activeConv, setActiveConv] = useState<Conversation | null>(null)
   const [content, setContent] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
@@ -166,12 +216,27 @@ function MessagesContent() {
   const [showNewConv, setShowNewConv] = useState(false)
   const [convSearch, setConvSearch] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [lightbox, setLightbox] = useState<{ url: string; name?: string | null } | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const prevMsgCountRef = useRef(0)
+  const isNearBottomRef = useRef(true)
 
   const currentUserId = user?.id ? Number(user.id) : null
+
+  /* ── Preview fichier sélectionné ── */
+  useEffect(() => {
+    if (!file) { setFilePreviewUrl(null); return }
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      const url = URL.createObjectURL(file)
+      setFilePreviewUrl(url)
+      return () => URL.revokeObjectURL(url)
+    }
+    setFilePreviewUrl(null)
+  }, [file])
 
   /* ── Fetch conversations ── */
   const fetchConversations = useCallback(async () => {
@@ -186,8 +251,6 @@ function MessagesContent() {
       const list: Conversation[] = Array.isArray(data?.conversations) ? data.conversations : []
       list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       setConversations(list)
-
-      // Sync activeConv
       if (activeConvId) {
         const found = list.find((c) => c.id === activeConvId)
         if (found) setActiveConv(found)
@@ -224,6 +287,11 @@ function MessagesContent() {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {})
+    // Mise à jour optimiste locale
+    setConversations(prev => prev.map(c => {
+      if (c.id !== convId || !c.lastMessageMeta) return c
+      return { ...c, lastMessageMeta: { ...c.lastMessageMeta, seen: true } }
+    }))
   }, [token])
 
   /* ── Polling conversations ── */
@@ -234,16 +302,25 @@ function MessagesContent() {
     return () => clearInterval(iv)
   }, [token, fetchConversations])
 
-  /* ── Polling messages de la conv active ── */
+  /* ── Polling messages + mark seen automatique ── */
   useEffect(() => {
     if (!activeConvId || !token) return
+
+    // Chargement initial
     fetchMessages(activeConvId)
     markSeen(activeConvId)
-    const iv = setInterval(() => fetchMessages(activeConvId, true), 3000)
+
+    // Polling toutes les 3s
+    const iv = setInterval(async () => {
+      await fetchMessages(activeConvId, true)
+      // Mark seen à chaque poll si la conv est ouverte
+      markSeen(activeConvId)
+    }, 3000)
+
     return () => clearInterval(iv)
   }, [activeConvId, token, fetchMessages, markSeen])
 
-  /* ── Sync activeConv quand conversations chargées ── */
+  /* ── Sync activeConv ── */
   useEffect(() => {
     if (activeConvId && conversations.length) {
       const found = conversations.find((c) => c.id === activeConvId)
@@ -254,10 +331,29 @@ function MessagesContent() {
     }
   }, [activeConvId, conversations])
 
-  /* ── Auto-scroll bas ── */
+  /* ── Smart scroll : seulement si nouveau message ou déjà en bas ── */
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    const newCount = messages.length
+    const prevCount = prevMsgCountRef.current
+
+    if (newCount > prevCount) {
+      const lastMsg = messages[newCount - 1]
+      const isFromMe = lastMsg?.sender.id === currentUserId
+      // Scroll si : premier chargement, message envoyé par moi, ou utilisateur déjà en bas
+      if (prevCount === 0 || isFromMe || isNearBottomRef.current) {
+        messagesEndRef.current?.scrollIntoView({ behavior: prevCount === 0 ? 'auto' : 'smooth' })
+      }
+    }
+    prevMsgCountRef.current = newCount
+  }, [messages, currentUserId])
+
+  /* ── Tracking position scroll ── */
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesContainerRef.current
+    if (!el) return
+    const { scrollTop, scrollHeight, clientHeight } = el
+    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 120
+  }, [])
 
   /* ── Recherche nouvelle conv ── */
   useEffect(() => {
@@ -282,15 +378,17 @@ function MessagesContent() {
   const selectConv = useCallback((convId: number) => {
     router.push(`/messages?c=${convId}`)
     setMobileView('chat')
+    // Pastille disparaît immédiatement (optimiste)
+    setConversations(prev => prev.map(c => {
+      if (c.id !== convId || !c.lastMessageMeta) return c
+      return { ...c, lastMessageMeta: { ...c.lastMessageMeta, seen: true } }
+    }))
   }, [router])
 
   /* ── Démarrer une conversation ── */
   const startConversation = useCallback(async (recipientId: number) => {
     if (!token) return
-    // Chercher si conv existante
-    const existing = conversations.find((c) =>
-      c.participants.some((p) => p.id === recipientId)
-    )
+    const existing = conversations.find((c) => c.participants.some((p) => p.id === recipientId))
     if (existing) { selectConv(existing.id); setShowNewConv(false); setNewConvSearch(''); return }
 
     try {
@@ -332,7 +430,7 @@ function MessagesContent() {
       setContent('')
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
-      if (textareaRef.current) { textareaRef.current.style.height = 'auto' }
+      if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
       await fetchMessages(activeConvId)
       await fetchConversations()
@@ -380,6 +478,11 @@ function MessagesContent() {
   return (
     <div className="flex h-[calc(100vh-64px)] bg-[#0a0a0f] text-white overflow-hidden">
 
+      {/* ── Lightbox ── */}
+      {lightbox && (
+        <Lightbox url={lightbox.url} name={lightbox.name} onClose={() => setLightbox(null)} />
+      )}
+
       {/* ── Panneau gauche : liste des conversations ── */}
       <div className={`
         flex flex-col border-r border-white/8 bg-[#0d0d14]
@@ -413,8 +516,7 @@ function MessagesContent() {
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition"
                 />
               </div>
-              {/* Résultats */}
-              {(newConvSearch.trim()) && (
+              {newConvSearch.trim() && (
                 <div className="mt-1 rounded-xl border border-white/8 bg-[#111118] overflow-hidden max-h-56 overflow-y-auto">
                   {searchLoading ? (
                     <div className="flex items-center gap-2 p-3 text-sm text-white/40">
@@ -538,7 +640,6 @@ function MessagesContent() {
         ${activeConvId && mobileView === 'chat' ? 'flex' : 'hidden md:flex'}
       `}>
         {!activeConvId || !activeConv ? (
-          /* Empty state */
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-8">
             <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/8 flex items-center justify-center">
               <MessageCircle className="w-7 h-7 text-white/20" />
@@ -581,7 +682,11 @@ function MessagesContent() {
             })()}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+            <div
+              ref={messagesContainerRef}
+              onScroll={handleMessagesScroll}
+              className="flex-1 overflow-y-auto px-4 py-4 space-y-1"
+            >
               {loadingMsgs && messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
@@ -593,7 +698,6 @@ function MessagesContent() {
                 </div>
               ) : (
                 (() => {
-                  // Grouper les messages par date
                   const items: React.ReactNode[] = []
                   let lastDate = ''
 
@@ -617,7 +721,6 @@ function MessagesContent() {
 
                     items.push(
                       <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        {/* Avatar interlocuteur */}
                         {!isMe && (
                           <div className="w-7 h-7 shrink-0 mb-1">
                             <Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} />
@@ -625,17 +728,17 @@ function MessagesContent() {
                         )}
 
                         <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
-                          {/* Bulle */}
                           <div className={`px-4 py-2.5 rounded-2xl ${
                             isMe
                               ? 'bg-gradient-to-br from-violet-600 to-pink-600 text-white rounded-br-md'
                               : 'bg-white/8 text-white rounded-bl-md'
                           }`}>
                             {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
-                            <AttachmentBubble msg={msg} />
+                            <AttachmentBubble
+                              msg={msg}
+                              onImageClick={(url, name) => setLightbox({ url, name })}
+                            />
                           </div>
-
-                          {/* Temps + statut lu */}
                           <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
                             <span className="text-[10px] text-white/25">{formatMessageTime(msg.createdAt)}</span>
                             {isMe && (
@@ -646,7 +749,6 @@ function MessagesContent() {
                           </div>
                         </div>
 
-                        {/* Espace à droite pour messages de moi */}
                         {isMe && <div className="w-7 shrink-0" />}
                       </div>
                     )
@@ -660,14 +762,32 @@ function MessagesContent() {
 
             {/* Aperçu fichier sélectionné */}
             {file && (
-              <div className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
-                {file.type.startsWith('image') ? <ImageIcon className="w-4 h-4 text-pink-400 shrink-0" /> :
-                 file.type.startsWith('video') ? <Video className="w-4 h-4 text-blue-400 shrink-0" /> :
-                 <FileText className="w-4 h-4 text-violet-400 shrink-0" />}
-                <span className="text-sm text-white/70 truncate flex-1">{file.name}</span>
+              <div className="mx-4 mb-2 flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+                {/* Miniature image */}
+                {filePreviewUrl && file.type.startsWith('image/') && (
+                  <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0">
+                    <img src={filePreviewUrl} alt="preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                {/* Miniature vidéo */}
+                {filePreviewUrl && file.type.startsWith('video/') && (
+                  <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-black flex items-center justify-center">
+                    <video src={filePreviewUrl} className="w-full h-full object-cover" muted />
+                  </div>
+                )}
+                {/* Icône document */}
+                {!filePreviewUrl && (
+                  <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-violet-400" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white/70 truncate">{file.name}</p>
+                  <p className="text-xs text-white/30">{(file.size / 1024).toFixed(0)} Ko</p>
+                </div>
                 <button
                   onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
-                  className="text-white/30 hover:text-white/70 transition"
+                  className="text-white/30 hover:text-white/70 transition p-1"
                 >
                   <X className="w-4 h-4" />
                 </button>
