@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Search, Send, Paperclip, ArrowLeft, MessageCircle,
   Plus, X, FileText, Trash2, CheckCheck, Check,
-  Music2, Building2, Wrench, ImageIcon, Video, Loader2,
+  Music2, Building2, Wrench, Loader2,
   Download, ZoomIn,
 } from 'lucide-react'
 
@@ -120,10 +120,14 @@ function Lightbox({ url, name, onClose }: { url: string; name?: string | null; o
       onClick={onClose}
     >
       <div className="relative max-w-[90vw] max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
-        <img
+        <Image
           src={url}
           alt={name || 'image'}
+          width={1200}
+          height={900}
           className="max-w-full max-h-[80vh] rounded-xl object-contain"
+          style={{ maxHeight: '80vh', width: 'auto' }}
+          unoptimized
         />
       </div>
       <div className="flex items-center gap-3 mt-4">
@@ -765,8 +769,8 @@ function MessagesContent() {
               <div className="mx-4 mb-2 flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
                 {/* Miniature image */}
                 {filePreviewUrl && file.type.startsWith('image/') && (
-                  <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0">
-                    <img src={filePreviewUrl} alt="preview" className="w-full h-full object-cover" />
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0">
+                    <Image src={filePreviewUrl} alt="preview" fill className="object-cover" unoptimized />
                   </div>
                 )}
                 {/* Miniature vidéo */}
