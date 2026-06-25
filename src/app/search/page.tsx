@@ -434,7 +434,7 @@ export default function SearchPage() {
             </div>
             <div>
               <p className="text-white/60 font-medium">Aucun résultat trouvé</p>
-              <p className="text-white/30 text-sm mt-1">Essaie d'élargir ta recherche ou de modifier les filtres</p>
+              <p className="text-white/30 text-sm mt-1">Essaie d&apos;élargir ta recherche ou de modifier les filtres</p>
             </div>
             {hasActiveFilters && (
               <button
