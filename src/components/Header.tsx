@@ -1,18 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Bell,
-  ChevronDown,
-  LogOut,
-  Mail,
-  Settings,
-  UserRound,
+  Bell, Home, LogOut, Mail, Search,
+  Settings, UserRound, Briefcase, ChevronDown,
 } from 'lucide-react'
 
+/* ─────────────────────────────────────────────────────────
+   TYPES
+───────────────────────────────────────────────────────── */
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
 type AuthUser = {
@@ -20,273 +20,289 @@ type AuthUser = {
   name?: string
   role: Role
   avatar?: string | null
+  avatarUrl?: string | null
   profile?: { id?: number | string } | null
 }
 
-export default function Header() {
-  const router = useRouter()
-  const { user, logout } = useAuth() as {
-    user: AuthUser | null
-    logout: () => void
-  }
+/* ─────────────────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────────────────── */
+function roleLabel(role: Role): string {
+  if (role === 'ARTIST')    return 'Artiste'
+  if (role === 'ORGANIZER') return 'Organisateur'
+  if (role === 'PROVIDER')  return 'Prestataire'
+  return 'Admin'
+}
 
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
+function roleBadgeClass(role: Role): string {
+  if (role === 'ARTIST')    return 'bg-pink-500/15 text-pink-300 border-pink-500/20'
+  if (role === 'ORGANIZER') return 'bg-blue-500/15 text-blue-300 border-blue-500/20'
+  if (role === 'PROVIDER')  return 'bg-green-500/15 text-green-300 border-green-500/20'
+  return 'bg-purple-500/15 text-purple-300 border-purple-500/20'
+}
+
+function profilePath(role: Role): string {
+  if (role === 'ARTIST')    return '/profile/artist'
+  if (role === 'ORGANIZER') return '/profile/organizer'
+  if (role === 'PROVIDER')  return '/profile/provider'
+  return '/admin/dashboard'
+}
+
+/* ─────────────────────────────────────────────────────────
+   COMPOSANT PRINCIPAL
+───────────────────────────────────────────────────────── */
+export default function Header() {
+  const router   = useRouter()
+  const pathname = usePathname()
+  const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-  const LOGO =
-    process.env.NEXT_PUBLIC_LOGO_URL ||
+  const LOGO = process.env.NEXT_PUBLIC_LOGO_URL ||
     'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
 
-  const avatarUrl = useMemo(() => {
-    return (
-      user?.avatar ||
-      (typeof window !== 'undefined' ? localStorage.getItem('avatar') : null) ||
-      '/default-avatar.png'
-    )
-  }, [user?.avatar])
+  const [menuOpen, setMenuOpen]           = useState(false)
+  const [unreadMsg, setUnreadMsg]         = useState(0)
+  const [unreadNotif, setUnreadNotif]     = useState(0)
+  const menuRef = useRef<HTMLDivElement>(null)
 
-  const goTo = (path: string) => router.push(path)
+  const avatarSrc =
+    user?.avatarUrl || user?.avatar ||
+    (typeof window !== 'undefined' ? localStorage.getItem('avatar') : null) ||
+    null
 
-  const goToProfile = () => {
-    if (!user) return
+  const displayName = user?.name || 'Mon compte'
 
-    switch (user.role) {
-      case 'ARTIST':
-        goTo('/profile/artist')
-        break
-      case 'ORGANIZER':
-        goTo('/profile/organizer')
-        break
-      case 'PROVIDER':
-        goTo('/profile/provider')
-        break
-      case 'ADMIN':
-        goTo('/admin/dashboard')
-        break
-      default:
-        goTo('/profile')
-    }
-  }
-
+  /* ── Fermer le menu au clic extérieur ──────────────── */
   useEffect(() => {
-    const onPop = () => setMenuOpen(false)
-    window.addEventListener('popstate', onPop)
-    return () => window.removeEventListener('popstate', onPop)
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const fetchUnreadCount = useCallback(async () => {
+  /* ── Fermer le menu au changement de page ──────────── */
+  useEffect(() => { setMenuOpen(false) }, [pathname])
+
+  /* ── Compteurs non lus ─────────────────────────────── */
+  const fetchCounts = useCallback(async () => {
     if (!user?.id || !API_BASE) return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const headers = { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' }
 
     try {
-      const token = localStorage.getItem('token')
-      if (!token) return
-
-      const res = await fetch(`${API_BASE}/api/messages/unread-count?t=${Date.now()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: 'no-store',
-      })
-
-      if (!res.ok) return
-
-      const data = await res.json()
-      setUnreadCount(Number(data?.count || 0))
-    } catch (err) {
-      console.error('Erreur chargement unread count:', err)
-    }
+      const [msgRes, notifRes] = await Promise.all([
+        fetch(`${API_BASE}/api/messages/unread-count?t=${Date.now()}`, { headers }),
+        fetch(`${API_BASE}/api/notifications/unread-count?t=${Date.now()}`, { headers }),
+      ])
+      if (msgRes.ok)   setUnreadMsg(Number((await msgRes.json()).count ?? 0))
+      if (notifRes.ok) setUnreadNotif(Number((await notifRes.json()).count ?? 0))
+    } catch { /* silencieux */ }
   }, [API_BASE, user?.id])
 
   useEffect(() => {
-    fetchUnreadCount()
-  }, [fetchUnreadCount])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchUnreadCount()
-    }, 5000)
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        fetchUnreadCount()
-      }
-    }
-
-    const onFocus = () => {
-      fetchUnreadCount()
-    }
-
-    const onPageShow = () => {
-      fetchUnreadCount()
-    }
-
-    document.addEventListener('visibilitychange', onVisibility)
-    window.addEventListener('focus', onFocus)
-    window.addEventListener('pageshow', onPageShow)
-
+    fetchCounts()
+    const id = setInterval(fetchCounts, 5000)
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchCounts() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', fetchCounts)
     return () => {
-      clearInterval(interval)
-      document.removeEventListener('visibilitychange', onVisibility)
-      window.removeEventListener('focus', onFocus)
-      window.removeEventListener('pageshow', onPageShow)
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', fetchCounts)
     }
-  }, [fetchUnreadCount])
+  }, [fetchCounts])
+
+  /* ── Liens de navigation desktop ───────────────────── */
+  const navLinks = [
+    { label: 'Accueil',      href: '/home',          active: pathname === '/home' },
+    { label: 'Recherche',    href: '/search',         active: pathname.startsWith('/search') },
+    { label: 'Offres',       href: '/offers',         active: pathname.startsWith('/offers') },
+    { label: 'Abonnements',  href: '/subscriptions',  active: pathname.startsWith('/subscriptions') },
+  ]
+
+  /* ── Liens nav mobile (bas d'écran) ────────────────── */
+  const bottomNav = [
+    { label: 'Accueil',   href: '/home',      icon: Home,      active: pathname === '/home',             badge: 0 },
+    { label: 'Recherche', href: '/search',    icon: Search,    active: pathname.startsWith('/search'),   badge: 0 },
+    { label: 'Offres',    href: '/offers',    icon: Briefcase, active: pathname.startsWith('/offers'),   badge: 0 },
+    { label: 'Messages',  href: '/messages',  icon: Mail,      active: pathname.startsWith('/messages'), badge: unreadMsg },
+    { label: 'Notifs',    href: '/notifications', icon: Bell,  active: pathname.startsWith('/notifications'), badge: unreadNotif },
+  ]
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-neutral-950/80 backdrop-blur-md border-b border-white/10">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="h-16 md:h-18 flex items-center justify-between gap-4">
-          <div
-            className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => goTo('/home')}
-            title="Retour à l'accueil"
-          >
-            <div className="relative h-10 w-10 md:h-12 md:w-12 rounded-2xl overflow-hidden ring-1 ring-white/15 group-hover:ring-white/30 transition">
-              <Image
-                src={LOGO}
-                alt="LSBookers"
-                fill
-                sizes="48px"
-                className="object-cover"
-                priority
-              />
-            </div>
+    <>
+      {/* ══════════════════════════════════════════════════
+          HEADER DESKTOP / MOBILE TOP BAR
+      ══════════════════════════════════════════════════ */}
+      <header className="sticky top-0 z-50 w-full bg-neutral-950/85 backdrop-blur-md border-b border-white/8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between gap-4">
 
-            <div className="leading-tight">
-              <div className="text-white font-semibold text-lg md:text-xl">LSBookers</div>
-              <div className="text-[10px] md:text-xs text-white/60 tracking-wide">
-                CONNECT • BOOK • ENJOY
+            {/* ── Logo ───────────────────────────────────── */}
+            <Link href="/home" className="flex items-center gap-3 group flex-shrink-0">
+              <div className="relative h-10 w-10 rounded-2xl overflow-hidden ring-1 ring-white/15 group-hover:ring-white/30 transition">
+                <Image src={LOGO} alt="LSBookers" fill sizes="40px" className="object-cover" priority />
               </div>
-            </div>
-          </div>
+              <div className="leading-tight hidden sm:block">
+                <div className="text-white font-semibold text-lg">LSBookers</div>
+                <div className="text-[10px] text-white/50 tracking-wide">CONNECT • BOOK • ENJOY</div>
+              </div>
+            </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <button
-              onClick={() => goTo('/search')}
-              className="text-white/80 hover:text-white transition"
-            >
-              Recherche
-            </button>
+            {/* ── Nav desktop ────────────────────────────── */}
+            <nav className="hidden lg:flex items-center gap-1">
+              {navLinks.map(link => (
+                <Link key={link.href} href={link.href}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    link.active
+                      ? 'bg-white/8 text-white'
+                      : 'text-white/55 hover:text-white hover:bg-white/5'
+                  }`}>
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
 
-            <button
-              onClick={() => goTo('/offers')}
-              className="text-white/80 hover:text-white transition"
-            >
-              Offres
-            </button>
+            {/* ── Actions droite ─────────────────────────── */}
+            <div className="flex items-center gap-1 md:gap-2">
 
-            <button
-              onClick={() => goTo('/subscriptions')}
-              className="text-white/80 hover:text-white transition"
-            >
-              Abonnements
-            </button>
-          </nav>
-
-          <div className="flex items-center gap-3 md:gap-4">
-            <button
-              onClick={() => goTo('/messages')}
-              className="relative rounded-full p-2 hover:bg-white/10 transition"
-              title="Messagerie"
-            >
-              <Mail className="h-5 w-5 text-white/90" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-pink-600 text-[10px] font-semibold text-white grid place-items-center shadow">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => goTo('/notifications')}
-              className="rounded-full p-2 hover:bg-white/10 transition"
-              title="Autres notifications"
-            >
-              <Bell className="h-5 w-5 text-white/90" />
-            </button>
-
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 pl-1 pr-2 py-1 hover:bg-white/10 transition"
-                title="Compte"
-              >
-                <span className="relative h-9 w-9 rounded-full overflow-hidden ring-1 ring-white/20 shadow">
-                  <Image
-                    src={avatarUrl}
-                    alt={user?.name || 'Profil'}
-                    fill
-                    sizes="36px"
-                    className="object-cover"
-                    unoptimized
-                  />
-                </span>
-
-                <div className="hidden sm:flex flex-col items-start leading-tight mr-1">
-                  <span className="text-xs text-white/70">
-                    {user?.role === 'ARTIST'
-                      ? 'ARTISTE'
-                      : user?.role === 'ORGANIZER'
-                      ? 'ORGANISATEUR'
-                      : user?.role === 'PROVIDER'
-                      ? 'PRESTATAIRE'
-                      : user?.role === 'ADMIN'
-                      ? 'ADMIN'
-                      : 'COMPTE'}
+              {/* Messages — masqué sur mobile (dans bottom nav) */}
+              <Link href="/messages"
+                className="hidden md:flex relative rounded-full p-2.5 hover:bg-white/8 transition"
+                title="Messagerie">
+                <Mail className="h-5 w-5 text-white/80" />
+                {unreadMsg > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 rounded-full bg-pink-600 text-[9px] font-bold text-white grid place-items-center">
+                    {unreadMsg > 99 ? '99+' : unreadMsg}
                   </span>
+                )}
+              </Link>
 
-                  <span className="text-sm font-medium text-white">
-                    {user?.name || 'Mon compte'}
+              {/* Notifications — masqué sur mobile */}
+              <Link href="/notifications"
+                className="hidden md:flex relative rounded-full p-2.5 hover:bg-white/8 transition"
+                title="Notifications">
+                <Bell className="h-5 w-5 text-white/80" />
+                {unreadNotif > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 rounded-full bg-purple-600 text-[9px] font-bold text-white grid place-items-center">
+                    {unreadNotif > 99 ? '99+' : unreadNotif}
                   </span>
-                </div>
+                )}
+              </Link>
 
-                <ChevronDown className="h-4 w-4 text-white/70" />
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-white/10 bg-neutral-900/95 backdrop-blur shadow-xl overflow-hidden z-50">
+              {/* ── Menu compte ──────────────────────────── */}
+              {user && (
+                <div className="relative" ref={menuRef}>
                   <button
-                    onClick={() => {
-                      setMenuOpen(false)
-                      goToProfile()
-                    }}
-                    className="w-full px-3 py-2.5 text-left text-sm hover:bg-white/5 flex items-center gap-2"
+                    onClick={() => setMenuOpen(v => !v)}
+                    className="flex items-center gap-2 rounded-full border border-white/12 bg-white/5 pl-1 pr-2.5 py-1 hover:bg-white/10 transition"
                   >
-                    <UserRound className="h-4 w-4 text-white/80" />
-                    Voir le profil
+                    {/* Avatar */}
+                    <span className="relative h-8 w-8 rounded-full overflow-hidden ring-1 ring-white/20 bg-zinc-800 flex-shrink-0">
+                      {avatarSrc ? (
+                        <Image src={avatarSrc} alt={displayName} fill sizes="32px" className="object-cover" unoptimized />
+                      ) : (
+                        <span className="w-full h-full flex items-center justify-center text-white/50 text-sm font-bold">
+                          {displayName[0]?.toUpperCase()}
+                        </span>
+                      )}
+                    </span>
+                    {/* Nom — affiché uniquement sur desktop */}
+                    <span className="hidden md:block text-sm font-medium text-white max-w-[120px] truncate">
+                      {displayName}
+                    </span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-white/50 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
                   </button>
 
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false)
-                      goTo('/settings/profile')
-                    }}
-                    className="w-full px-3 py-2.5 text-left text-sm hover:bg-white/5 flex items-center gap-2"
-                  >
-                    <Settings className="h-4 w-4 text-white/80" />
-                    Paramètres
-                  </button>
+                  {/* ── Dropdown ─────────────────────────── */}
+                  {menuOpen && (
+                    <div className="absolute right-0 mt-2 w-60 rounded-2xl border border-white/10 bg-neutral-900/98 backdrop-blur shadow-2xl overflow-hidden z-50">
 
-                  <div className="my-1 h-px bg-white/10" />
+                      {/* Mini profil en tête */}
+                      <div className="px-4 py-3 border-b border-white/8 flex items-center gap-3">
+                        <div className="relative h-10 w-10 rounded-full overflow-hidden ring-1 ring-white/15 bg-zinc-800 flex-shrink-0">
+                          {avatarSrc ? (
+                            <Image src={avatarSrc} alt={displayName} fill sizes="40px" className="object-cover" unoptimized />
+                          ) : (
+                            <span className="w-full h-full flex items-center justify-center text-white/50 font-bold">
+                              {displayName[0]?.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${roleBadgeClass(user.role)}`}>
+                            {roleLabel(user.role)}
+                          </span>
+                        </div>
+                      </div>
 
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false)
-                      logout()
-                    }}
-                    className="w-full px-3 py-2.5 text-left text-sm hover:bg-white/5 flex items-center gap-2 text-rose-400"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Se déconnecter
-                  </button>
+                      {/* Items */}
+                      <div className="py-1">
+                        <button
+                          onClick={() => router.push(profilePath(user.role))}
+                          className="w-full px-4 py-2.5 text-left text-sm text-white/80 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-colors"
+                        >
+                          <UserRound className="h-4 w-4 text-white/50" /> Mon profil
+                        </button>
+                        <button
+                          onClick={() => router.push('/settings/profile')}
+                          className="w-full px-4 py-2.5 text-left text-sm text-white/80 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-colors"
+                        >
+                          <Settings className="h-4 w-4 text-white/50" /> Paramètres
+                        </button>
+                      </div>
+
+                      <div className="border-t border-white/8 py-1">
+                        <button
+                          onClick={() => { setMenuOpen(false); logout() }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-rose-400 hover:bg-rose-500/8 flex items-center gap-3 transition-colors"
+                        >
+                          <LogOut className="h-4 w-4" /> Se déconnecter
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* ══════════════════════════════════════════════════
+          BARRE DE NAVIGATION MOBILE (bas d'écran)
+      ══════════════════════════════════════════════════ */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-neutral-950/95 backdrop-blur-md border-t border-white/8 safe-bottom">
+        <div className="flex items-center justify-around h-16 px-2">
+          {bottomNav.map(item => {
+            const Icon = item.icon
+            return (
+              <Link key={item.href} href={item.href}
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all ${
+                  item.active ? 'text-white' : 'text-white/35 hover:text-white/60'
+                }`}>
+                <div className="relative">
+                  <Icon className={`h-5 w-5 transition-transform ${item.active ? 'scale-110' : ''}`} />
+                  {item.badge > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] px-0.5 rounded-full bg-pink-600 text-[9px] font-bold text-white grid place-items-center">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-medium">{item.label}</span>
+                {item.active && (
+                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-purple-400" />
+                )}
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
+    </>
   )
 }
