@@ -18,6 +18,7 @@ type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 type AuthUser = {
   id: number | string
   name?: string
+  email?: string
   role: Role
   avatar?: string | null
   avatarUrl?: string | null
@@ -34,12 +35,6 @@ function roleLabel(role: Role): string {
   return 'Admin'
 }
 
-function roleBadgeClass(role: Role): string {
-  if (role === 'ARTIST')    return 'bg-pink-500/15 text-pink-300 border-pink-500/20'
-  if (role === 'ORGANIZER') return 'bg-blue-500/15 text-blue-300 border-blue-500/20'
-  if (role === 'PROVIDER')  return 'bg-green-500/15 text-green-300 border-green-500/20'
-  return 'bg-purple-500/15 text-purple-300 border-purple-500/20'
-}
 
 function profilePath(role: Role): string {
   if (role === 'ARTIST')    return '/profile/artist'
@@ -65,12 +60,22 @@ export default function Header() {
   const [unreadNotif, setUnreadNotif]     = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const avatarSrc =
-    user?.avatarUrl || user?.avatar ||
-    (typeof window !== 'undefined' ? localStorage.getItem('avatar') : null) ||
-    null
+  // Lire aussi directement le localStorage pour les utilisateurs déjà connectés
+  // (le fix de normalizeUser s'applique seulement après une reconnexion)
+  const [localAvatar, setLocalAvatar] = useState<string | null>(null)
+  const [localName, setLocalName]     = useState<string | null>(null)
+  useEffect(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('user') || 'null')
+      if (raw) {
+        setLocalAvatar(raw.avatarUrl || raw.avatar || raw.profile?.avatar || null)
+        setLocalName(raw.pseudo || raw.name || raw.firstName || null)
+      }
+    } catch { /* silencieux */ }
+  }, [user])
 
-  const displayName = user?.name || 'Mon compte'
+  const avatarSrc = user?.avatarUrl || user?.avatar || localAvatar || null
+  const displayName = user?.name || localName || 'Mon compte'
 
   /* ── Fermer le menu au clic extérieur ──────────────── */
   useEffect(() => {
@@ -235,9 +240,7 @@ export default function Header() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-white truncate">{displayName}</p>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${roleBadgeClass(user.role)}`}>
-                            {roleLabel(user.role)}
-                          </span>
+                          <p className="text-xs text-white/40 truncate">{user.email}</p>
                         </div>
                       </div>
 

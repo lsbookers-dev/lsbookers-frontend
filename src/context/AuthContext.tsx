@@ -53,17 +53,19 @@ type RawUser = {
   email: string
   role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
   name?: string
+  pseudo?: string
+  firstName?: string
   avatar?: string | null
   avatarUrl?: string | null
-  profile?: Profile
+  profile?: Profile & { avatar?: string | null }
 }
 
 const normalizeUser = (raw: RawUser): User => ({
   id: String(raw.id),
   email: raw.email,
   role: raw.role,
-  name: raw.name,
-  avatarUrl: raw.avatar || raw.avatarUrl || raw.profile?.bannerUrl || null,
+  name: raw.pseudo || raw.name || raw.firstName || undefined,
+  avatarUrl: raw.avatar || raw.avatarUrl || raw.profile?.avatar || null,
   profile: raw.profile || undefined,
 })
 
