@@ -516,7 +516,7 @@ function OffersSection({ apiBase }: { apiBase: string }) {
               </div>
               <Link href={`/offers`}
                 className="mt-1 w-full text-center text-xs font-medium bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/30 text-purple-300 rounded-lg py-2 transition-colors">
-                Voir l'offre
+                Voir l&apos;offre
               </Link>
             </div>
           ))}
@@ -647,7 +647,7 @@ export default function HomePage() {
                   📸
                 </div>
                 <div>
-                  <p className="text-white/60 font-medium">Aucune publication pour l'instant</p>
+                  <p className="text-white/60 font-medium">Aucune publication pour l&apos;instant</p>
                   <p className="text-white/30 text-sm mt-1">
                     Suis des artistes et prestataires pour voir leurs publications ici.
                   </p>
