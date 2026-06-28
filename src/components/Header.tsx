@@ -234,7 +234,6 @@ export default function Header() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-white truncate">{displayName}</p>
-                          <p className="text-xs text-white/40 truncate">{user.email}</p>
                         </div>
                       </div>
 
