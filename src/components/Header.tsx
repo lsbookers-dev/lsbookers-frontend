@@ -28,12 +28,6 @@ type AuthUser = {
 /* ─────────────────────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────────────────────── */
-function roleLabel(role: Role): string {
-  if (role === 'ARTIST')    return 'Artiste'
-  if (role === 'ORGANIZER') return 'Organisateur'
-  if (role === 'PROVIDER')  return 'Prestataire'
-  return 'Admin'
-}
 
 
 function profilePath(role: Role): string {
