@@ -64,10 +64,6 @@ export default function LandingPage() {
     process.env.NEXT_PUBLIC_LANDING_BG ||
     'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
 
-  const LOGO =
-    process.env.NEXT_PUBLIC_LOGO_URL ||
-    'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-
   return (
     <div className="w-full bg-neutral-950 text-white overflow-x-hidden">
 
