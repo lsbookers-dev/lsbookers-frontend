@@ -1,57 +1,146 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 import { useAuth } from '@/context/AuthContext'
 
+/* ─────────────────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────────────────── */
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 12) return 'Bonjour 🌤'
+  if (h >= 12 && h < 18) return 'Bon après-midi ☀️'
+  if (h >= 18 && h < 22) return 'Bonsoir 🌆'
+  return 'Bonne nuit 🌙'
+}
+
+/* ─────────────────────────────────────────────────────────
+   PANNEAU GAUCHE — carte profil fictive
+───────────────────────────────────────────────────────── */
+function BrandingPanel() {
+  return (
+    <aside className="hidden lg:flex flex-col justify-between border-r border-white/8 relative overflow-hidden">
+
+      {/* Logo */}
+      <div className="relative z-10 p-10">
+        <Link href="/" className="inline-flex items-center gap-3 group">
+          <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
+            <span className="font-black text-base tracking-widest">LS</span>
+          </div>
+          <div className="leading-tight">
+            <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
+            <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
+          </div>
+        </Link>
+
+        <div className="mt-10 space-y-2">
+          <p className="text-xs text-purple-400 font-semibold tracking-widest uppercase">Aperçu de la plateforme</p>
+          <h1 className="text-3xl font-black tracking-tight">Content de<br />te revoir.</h1>
+          <p className="text-white/55 text-sm max-w-xs">
+            Retrouve ton espace, tes messages et tes opportunités.
+          </p>
+        </div>
+
+        {/* Carte profil fictive */}
+        <div className="mt-10 space-y-3">
+
+          {/* Profil card */}
+          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-lg flex-shrink-0">🎤</div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white truncate">DJ Nova</p>
+                <p className="text-xs text-white/45">Paris · Artiste</p>
+              </div>
+              <span className="ml-auto text-xs bg-green-500/15 text-green-400 border border-green-500/20 rounded-full px-2 py-0.5 flex-shrink-0">Dispo</span>
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {['House', 'Techno', 'Club'].map(t => (
+                <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/55 border border-white/10">{t}</span>
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-xs text-white/40 pt-1 border-t border-white/8">
+              <span>⭐ 4.9 · 48 avis</span>
+              <span>127 abonnés</span>
+            </div>
+          </div>
+
+          {/* Notification fictive */}
+          <div className="rounded-xl border border-purple-500/20 bg-purple-600/10 backdrop-blur p-3 flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-purple-600/30 flex items-center justify-center text-sm flex-shrink-0">🎪</div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white truncate">Club Nova t&apos;a contacté</p>
+              <p className="text-[10px] text-white/45">Soirée · 14 juillet · Paris</p>
+            </div>
+            <span className="ml-auto flex-shrink-0 h-2 w-2 rounded-full bg-purple-400" />
+          </div>
+
+          {/* Message fictif */}
+          <div className="rounded-xl border border-white/8 bg-white/4 backdrop-blur p-3 flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-pink-600/20 border border-pink-500/30 flex items-center justify-center text-sm flex-shrink-0">💬</div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white truncate">Festival Lumières</p>
+              <p className="text-[10px] text-white/45">Nouvelle proposition reçue</p>
+            </div>
+            <span className="ml-auto flex-shrink-0 text-[10px] bg-pink-600/20 text-pink-400 rounded-full px-1.5 py-0.5">+1</span>
+          </div>
+
+        </div>
+      </div>
+
+      <div className="relative z-10 p-10">
+        <p className="text-xs text-white/30">© {new Date().getFullYear()} LSBookers — Tous droits réservés.</p>
+      </div>
+    </aside>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────
+   PAGE PRINCIPALE
+───────────────────────────────────────────────────────── */
 export default function LoginPage() {
   const router = useRouter()
   const { setUser } = useAuth()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail]                       = useState('')
+  const [password, setPassword]                 = useState('')
+  const [error, setError]                       = useState<string | null>(null)
+  const [loading, setLoading]                   = useState(false)
   const [emailNotVerified, setEmailNotVerified] = useState(false)
-  const [resendLoading, setResendLoading] = useState(false)
-  const [resendSent, setResendSent] = useState(false)
+  const [resendLoading, setResendLoading]       = useState(false)
+  const [resendSent, setResendSent]             = useState(false)
+  const [greeting, setGreeting]                 = useState('')
 
-  const API =
-    (process.env.NEXT_PUBLIC_API_URL ||
-      'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
+  const BG = process.env.NEXT_PUBLIC_LANDING_BG ||
+    'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
+
+  const API = (process.env.NEXT_PUBLIC_API_URL ||
+    'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
+
+  useEffect(() => { setGreeting(getGreeting()) }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     setError(null)
     setEmailNotVerified(false)
     setLoading(true)
-
     try {
       const response = await axios.post(
         `${API}/api/auth/login`,
         { email, password },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          withCredentials: true,
-          timeout: 15000,
-        }
+        { headers: { 'Content-Type': 'application/json' }, withCredentials: true, timeout: 15000 }
       )
-
       const { user, token } = response.data
-
       if (token) localStorage.setItem('token', token)
-      if (user) localStorage.setItem('user', JSON.stringify(user))
-
+      if (user)  localStorage.setItem('user', JSON.stringify(user))
       setUser(user)
-
-      const redirect = (user?.isAdmin || user?.role === 'ADMIN') ? '/admin/dashboard' : '/home'
-      router.replace(redirect)
+      router.replace((user?.isAdmin || user?.role === 'ADMIN') ? '/admin/dashboard' : '/home')
     } catch (err) {
       let message = 'Échec de la connexion.'
-
       if (isAxiosError(err)) {
         if (err.response?.status === 401) {
           message = 'Identifiants incorrects.'
@@ -65,7 +154,6 @@ export default function LoginPage() {
           message = 'Erreur réseau.'
         }
       }
-
       setError(message)
     } finally {
       setLoading(false)
@@ -78,171 +166,156 @@ export default function LoginPage() {
       await axios.post(`${API}/api/auth/resend-verification`, { email })
       setResendSent(true)
     } catch {
-      setResendSent(true) // Toujours afficher succès
+      setResendSent(true)
     } finally {
       setResendLoading(false)
     }
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white">
-      
-      {/* Glow décoratifs */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl" />
+    <div className="relative min-h-screen w-full overflow-hidden text-white">
+
+      {/* Photo de fond */}
+      <Image
+        src={BG}
+        alt="LSBookers"
+        fill
+        priority
+        sizes="100vw"
+        className="z-0 object-cover"
+      />
+      <div className="absolute inset-0 z-10 bg-black/60" />
+      <div className="pointer-events-none absolute inset-0 z-10">
+        <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl" />
         <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-pink-500/15 blur-3xl" />
-        <div className="absolute left-1/2 top-1/2 h-64 w-[42rem] -translate-x-1/2 -translate-y-1/2 rotate-12 rounded-[4rem] border border-white/5 bg-white/5 blur-2xl" />
       </div>
 
-      <div className="relative mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
+      {/* Grille 2 colonnes */}
+      <div className="relative z-20 mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
 
-        {/* Branding gauche */}
-        <aside className="hidden lg:flex flex-col justify-between border-r border-white/10">
-          <div className="p-10">
-
-            <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="h-12 w-12 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/25 transition flex items-center justify-center">
-                <span className="font-black text-lg tracking-widest">LS</span>
-              </div>
-
-              <div className="leading-tight">
-                <p className="text-xl font-extrabold tracking-tight">Bookers</p>
-                <p className="text-xs text-white/60">Plateforme de booking</p>
-              </div>
-            </Link>
-
-            <div className="mt-12 space-y-5">
-              <h1 className="text-4xl font-extrabold tracking-tight">
-                Content de te revoir.
-              </h1>
-
-              <p className="max-w-md text-white/70">
-                Connecte-toi pour accéder à ton espace et gérer ton activité
-                sur la plateforme LSBookers.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-10">
-            <p className="text-xs text-white/50">
-              © {new Date().getFullYear()} LSBookers — Tous droits réservés.
-            </p>
-          </div>
-        </aside>
+        <BrandingPanel />
 
         {/* Formulaire */}
         <main className="flex items-center justify-center p-6 lg:p-12">
-          <form
-            onSubmit={handleSubmit}
-            className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl"
-          >
-            <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Se connecter</h2>
+          <div className="w-full max-w-md">
 
-              <Link
-                href="/"
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition"
-              >
-                Retour
-              </Link>
+            {/* En-tête mobile */}
+            <div className="lg:hidden flex items-center gap-3 mb-8">
+              <div className="h-9 w-9 rounded-xl bg-white/10 backdrop-blur ring-1 ring-white/15 flex items-center justify-center">
+                <span className="font-black text-sm tracking-widest">LS</span>
+              </div>
+              <span className="font-extrabold text-base">LSBookers</span>
             </div>
 
-            <p className="text-sm text-white/65">
-              Nouveau sur la plateforme ?{' '}
-              <Link
-                href="/register"
-                className="underline underline-offset-4 hover:text-white"
-              >
-                Créer un compte
-              </Link>
-            </p>
-
-            {error && (
-              <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-                {error}
-              </div>
-            )}
-
-            {emailNotVerified && (
-              <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-sm text-amber-200">
-                <p className="font-semibold">Email non confirmé</p>
-                <p className="mt-1 text-amber-200/80">Vérifie ta boîte mail et clique sur le lien de confirmation.</p>
-                {resendSent ? (
-                  <p className="mt-2 text-violet-400 text-xs">Email renvoyé !</p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResendVerification}
-                    disabled={resendLoading}
-                    className="mt-2 text-xs text-amber-300 underline underline-offset-4 hover:text-white disabled:opacity-60"
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl p-7 shadow-2xl"
+            >
+              {/* Titre */}
+              <div className="mb-5">
+                <p className="text-xs text-purple-400 font-semibold tracking-widest uppercase mb-1">{greeting}</p>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-black">Se connecter</h2>
+                  <Link
+                    href="/"
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white transition"
                   >
-                    {resendLoading ? 'Envoi…' : 'Renvoyer l\'email de confirmation'}
-                  </button>
-                )}
-              </div>
-            )}
-
-            <div className="mt-6 space-y-4">
-
-              {/* Email */}
-              <div>
-                <label className="mb-2 block text-sm text-white/80">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="nom@domaine.com"
-                  className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60"
-                />
+                    ← Retour
+                  </Link>
+                </div>
+                <p className="text-sm text-white/50 mt-1">
+                  Pas encore de compte ?{' '}
+                  <Link href="/register" className="text-purple-400 hover:text-purple-300 font-medium transition">
+                    Créer un compte
+                  </Link>
+                </p>
               </div>
 
-              {/* Mot de passe */}
-              <div>
-                <label className="mb-2 block text-sm text-white/80">
-                  Mot de passe
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                  className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60"
-                />
-              </div>
+              {/* Erreurs */}
+              {error && (
+                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {error}
+                </div>
+              )}
 
-              {/* Forgot password */}
-              <div className="flex items-center justify-between">
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-white/70 underline underline-offset-4 hover:text-white"
+              {emailNotVerified && (
+                <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                  <p className="font-semibold">Email non confirmé</p>
+                  <p className="mt-1 text-amber-200/70 text-xs">Vérifie ta boîte mail et clique sur le lien de confirmation.</p>
+                  {resendSent ? (
+                    <p className="mt-2 text-purple-400 text-xs">Email renvoyé !</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendLoading}
+                      className="mt-2 text-xs text-amber-300 underline underline-offset-4 hover:text-white disabled:opacity-60"
+                    >
+                      {resendLoading ? 'Envoi…' : 'Renvoyer l\'email de confirmation'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-4">
+
+                {/* Email */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-white/75">Email</label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">✉️</span>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      placeholder="nom@domaine.com"
+                      className="w-full rounded-xl bg-white/5 pl-10 pr-4 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Mot de passe */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-medium text-white/75">Mot de passe</label>
+                    <Link href="/forgot-password" className="text-xs text-white/45 hover:text-purple-400 transition">
+                      Mot de passe oublié ?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">🔒</span>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="w-full rounded-xl bg-white/5 pl-10 pr-4 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Bouton */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-500 disabled:opacity-60 transition shadow-lg shadow-purple-900/40 mt-2"
                 >
-                  Mot de passe oublié ?
-                </Link>
+                  {loading ? 'Connexion…' : 'Se connecter →'}
+                </button>
+
+                <p className="text-center text-xs text-white/35">
+                  Besoin d&apos;aide ?{' '}
+                  <Link href="/contact" className="underline underline-offset-4 hover:text-white transition">
+                    Contacte-nous
+                  </Link>
+                </p>
+
               </div>
+            </form>
 
-              {/* Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-xl bg-purple-600 px-4 py-2.5 font-semibold text-white hover:bg-purple-500 disabled:opacity-60 transition"
-              >
-                {loading ? 'Connexion…' : 'Se connecter'}
-              </button>
-
-              <p className="text-center text-xs text-white/60">
-                Besoin d’aide ?{' '}
-                <Link
-                  href="/contact"
-                  className="underline underline-offset-4 hover:text-white"
-                >
-                  Contacte-nous
-                </Link>
-              </p>
-
-            </div>
-          </form>
+          </div>
         </main>
       </div>
     </div>
