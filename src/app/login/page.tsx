@@ -89,8 +89,8 @@ export default function LoginPage() {
       
       {/* Glow décoratifs */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
-        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl" />
+        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-pink-500/15 blur-3xl" />
         <div className="absolute left-1/2 top-1/2 h-64 w-[42rem] -translate-x-1/2 -translate-y-1/2 rotate-12 rounded-[4rem] border border-white/5 bg-white/5 blur-2xl" />
       </div>
 
@@ -168,7 +168,7 @@ export default function LoginPage() {
                 <p className="font-semibold">Email non confirmé</p>
                 <p className="mt-1 text-amber-200/80">Vérifie ta boîte mail et clique sur le lien de confirmation.</p>
                 {resendSent ? (
-                  <p className="mt-2 text-emerald-400 text-xs">Email renvoyé !</p>
+                  <p className="mt-2 text-violet-400 text-xs">Email renvoyé !</p>
                 ) : (
                   <button
                     type="button"
@@ -193,7 +193,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="nom@domaine.com"
-                  className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/60"
+                  className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60"
                 />
               </div>
 
@@ -208,7 +208,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/60"
+                  className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60"
                 />
               </div>
 
@@ -226,7 +226,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 transition"
+                className="w-full rounded-xl bg-purple-600 px-4 py-2.5 font-semibold text-white hover:bg-purple-500 disabled:opacity-60 transition"
               >
                 {loading ? 'Connexion…' : 'Se connecter'}
               </button>

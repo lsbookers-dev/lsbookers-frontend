@@ -33,7 +33,7 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
+      className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-purple-500/60"
     />
   )
 }
@@ -44,7 +44,7 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement> & { options
     <div className="relative">
       <select
         {...rest}
-        className="w-full appearance-none rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
+        className="w-full appearance-none rounded-xl bg-white/5 px-4 py-2.5 pr-10 text-white outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-purple-500/60"
       >
         {options.map(o => (
           <option key={o.value} value={o.value} className="bg-neutral-900">
@@ -70,7 +70,7 @@ function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
     <button
       type="submit"
       disabled={loading}
-      className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
+      className="w-full rounded-xl bg-purple-600 px-4 py-2.5 font-semibold text-white transition hover:bg-purple-500 disabled:opacity-60"
     >
       {loading ? (
         <span className="inline-flex items-center justify-center gap-2">
@@ -102,11 +102,11 @@ function ProgressBar({ current }: { current: number }) {
             <div key={i} className="flex flex-1 flex-col items-center gap-1">
               <div
                 className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition
-                  ${done ? 'bg-emerald-600 text-white' : active ? 'bg-emerald-600/30 ring-2 ring-emerald-500 text-white' : 'bg-white/10 text-white/40'}`}
+                  ${done ? 'bg-purple-600 text-white' : active ? 'bg-purple-600/30 ring-2 ring-purple-500 text-white' : 'bg-white/10 text-white/40'}`}
               >
                 {done ? '✓' : stepNum}
               </div>
-              <span className={`hidden sm:block text-xs transition ${active ? 'text-white' : done ? 'text-emerald-400' : 'text-white/30'}`}>
+              <span className={`hidden sm:block text-xs transition ${active ? 'text-white' : done ? 'text-purple-400' : 'text-white/30'}`}>
                 {label}
               </span>
               {i < STEPS.length - 1 && (
@@ -119,7 +119,7 @@ function ProgressBar({ current }: { current: number }) {
       {/* Ligne de progression */}
       <div className="relative mt-2 h-1 w-full rounded-full bg-white/10">
         <div
-          className="h-1 rounded-full bg-emerald-600 transition-all duration-500"
+          className="h-1 rounded-full bg-purple-600 transition-all duration-500"
           style={{ width: `${((current - 1) / (STEPS.length - 1)) * 100}%` }}
         />
       </div>
@@ -244,8 +244,8 @@ export default function RegisterPage() {
 
       {/* Glows décoratifs */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
-        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl" />
+        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-pink-500/15 blur-3xl" />
         <div className="absolute left-1/2 top-1/2 h-64 w-[42rem] -translate-x-1/2 -translate-y-1/2 rotate-12 rounded-[4rem] border border-white/5 bg-white/5 blur-2xl" />
       </div>
 
@@ -267,7 +267,7 @@ export default function RegisterPage() {
             <div className="mt-12 space-y-5">
               <h1 className="text-4xl font-extrabold tracking-tight">
                 Rejoins la scène,{' '}
-                <span className="text-emerald-400">en quelques étapes.</span>
+                <span className="text-purple-400">en quelques étapes.</span>
               </h1>
               <p className="max-w-md text-white/70">
                 Crée ton compte et commence à publier, réserver et collaborer.
@@ -277,7 +277,7 @@ export default function RegisterPage() {
               <div className="mt-8 space-y-3 text-sm text-white/60">
                 {["Réseau social dédié à l'événementiel", "Agenda & gestion des événements", "Contrats et paiements sécurisés"].map((item) => (
                   <div key={item} className="flex items-center gap-2">
-                    <span className="text-emerald-400">✓</span>
+                    <span className="text-purple-400">✓</span>
                     {item}
                   </div>
                 ))}
@@ -337,7 +337,7 @@ export default function RegisterPage() {
                         onClick={() => setRole(opt.value)}
                         className={`flex flex-col items-center gap-1 rounded-xl border p-3 text-center text-xs transition
                           ${role === opt.value
-                            ? 'border-emerald-500 bg-emerald-500/15 text-white'
+                            ? 'border-purple-500 bg-purple-500/15 text-white'
                             : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white'
                           }`}
                       >
@@ -540,11 +540,11 @@ export default function RegisterPage() {
                         onClick={() => setLegalStatus(opt.value)}
                         className={`flex w-full items-center gap-3 rounded-xl border px-4 py-2.5 text-left transition
                           ${legalStatus === opt.value
-                            ? 'border-emerald-500 bg-emerald-500/15 text-white'
+                            ? 'border-purple-500 bg-purple-500/15 text-white'
                             : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white'
                           }`}
                       >
-                        <span className={`h-4 w-4 flex-shrink-0 rounded-full border-2 transition ${legalStatus === opt.value ? 'border-emerald-400 bg-emerald-400' : 'border-white/30'}`} />
+                        <span className={`h-4 w-4 flex-shrink-0 rounded-full border-2 transition ${legalStatus === opt.value ? 'border-purple-400 bg-purple-400' : 'border-white/30'}`} />
                         <div>
                           <p className="text-sm font-medium">{opt.label}</p>
                           <p className="text-xs text-white/50">{opt.desc}</p>
@@ -583,7 +583,7 @@ export default function RegisterPage() {
                             onClick={() => setOrganizerType(opt.value)}
                             className={`flex flex-col items-center gap-1 rounded-xl border p-3 text-xs transition
                               ${organizerType === opt.value
-                                ? 'border-emerald-500 bg-emerald-500/15 text-white'
+                                ? 'border-purple-500 bg-purple-500/15 text-white'
                                 : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20'
                               }`}
                           >
@@ -670,14 +670,14 @@ export default function RegisterPage() {
 
                 <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white/70 space-y-1">
                   <p>1. Ouvre ta boîte mail</p>
-                  <p>2. Cherche un email de <span className="text-emerald-400">noreply@lsbookers.com</span></p>
+                  <p>2. Cherche un email de <span className="text-purple-400">noreply@lsbookers.com</span></p>
                   <p>3. Clique sur &quot;Confirmer mon email&quot;</p>
                   <p>4. Reviens ici pour te connecter</p>
                 </div>
 
                 <button
                   onClick={() => router.replace('/login')}
-                  className="w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-500"
+                  className="w-full rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white transition hover:bg-purple-500"
                 >
                   J&apos;ai confirmé → Se connecter
                 </button>
