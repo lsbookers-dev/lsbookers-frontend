@@ -19,14 +19,13 @@ function getGreeting() {
 }
 
 /* ─────────────────────────────────────────────────────────
-   PANNEAU GAUCHE — carte profil fictive
+   PANNEAU GAUCHE — minimaliste
 ───────────────────────────────────────────────────────── */
 function BrandingPanel() {
   return (
-    <aside className="hidden lg:flex flex-col justify-between border-r border-white/8 relative overflow-hidden">
+    <aside className="hidden lg:flex flex-col justify-between border-r border-white/8">
 
-      {/* Logo */}
-      <div className="relative z-10 p-10">
+      <div className="p-10">
         <Link href="/" className="inline-flex items-center gap-3 group">
           <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
             <span className="font-black text-base tracking-widest">LS</span>
@@ -37,62 +36,18 @@ function BrandingPanel() {
           </div>
         </Link>
 
-        <div className="mt-10 space-y-2">
-          <p className="text-xs text-purple-400 font-semibold tracking-widest uppercase">Aperçu de la plateforme</p>
-          <h1 className="text-3xl font-black tracking-tight">Content de<br />te revoir.</h1>
-          <p className="text-white/55 text-sm max-w-xs">
-            Retrouve ton espace, tes messages et tes opportunités.
+        <div className="mt-16">
+          <h1 className="text-5xl font-black tracking-tight leading-[1.1]">
+            Content de<br />
+            te revoir.
+          </h1>
+          <p className="mt-6 text-lg text-white/50 leading-relaxed max-w-xs">
+            Des opportunités t&apos;attendent<br />de l&apos;autre côté.
           </p>
-        </div>
-
-        {/* Carte profil fictive */}
-        <div className="mt-10 space-y-3">
-
-          {/* Profil card */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-lg flex-shrink-0">🎤</div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-white truncate">DJ Nova</p>
-                <p className="text-xs text-white/45">Paris · Artiste</p>
-              </div>
-              <span className="ml-auto text-xs bg-green-500/15 text-green-400 border border-green-500/20 rounded-full px-2 py-0.5 flex-shrink-0">Dispo</span>
-            </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {['House', 'Techno', 'Club'].map(t => (
-                <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/55 border border-white/10">{t}</span>
-              ))}
-            </div>
-            <div className="flex items-center justify-between text-xs text-white/40 pt-1 border-t border-white/8">
-              <span>⭐ 4.9 · 48 avis</span>
-              <span>127 abonnés</span>
-            </div>
-          </div>
-
-          {/* Notification fictive */}
-          <div className="rounded-xl border border-purple-500/20 bg-purple-600/10 backdrop-blur p-3 flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-purple-600/30 flex items-center justify-center text-sm flex-shrink-0">🎪</div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">Club Nova t&apos;a contacté</p>
-              <p className="text-[10px] text-white/45">Soirée · 14 juillet · Paris</p>
-            </div>
-            <span className="ml-auto flex-shrink-0 h-2 w-2 rounded-full bg-purple-400" />
-          </div>
-
-          {/* Message fictif */}
-          <div className="rounded-xl border border-white/8 bg-white/4 backdrop-blur p-3 flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-pink-600/20 border border-pink-500/30 flex items-center justify-center text-sm flex-shrink-0">💬</div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">Festival Lumières</p>
-              <p className="text-[10px] text-white/45">Nouvelle proposition reçue</p>
-            </div>
-            <span className="ml-auto flex-shrink-0 text-[10px] bg-pink-600/20 text-pink-400 rounded-full px-1.5 py-0.5">+1</span>
-          </div>
-
         </div>
       </div>
 
-      <div className="relative z-10 p-10">
+      <div className="p-10">
         <p className="text-xs text-white/30">© {new Date().getFullYear()} LSBookers — Tous droits réservés.</p>
       </div>
     </aside>
