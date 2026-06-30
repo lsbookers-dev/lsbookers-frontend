@@ -340,6 +340,7 @@ export default function ProfileSettings() {
           aspectRatio={cropModal.type === 'avatar' ? 1 : 3}
           displayWidth={cropModal.type === 'avatar' ? 280 : 360}
           shape={cropModal.type === 'avatar' ? 'circle' : 'rect'}
+          maxZoom={6}
           onConfirm={handleCropConfirm}
           onCancel={() => setCropModal(null)}
         />
