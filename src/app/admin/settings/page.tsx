@@ -2,7 +2,8 @@
 'use client'
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import CropModal from '@/components/CropModal'
 
 type AdminSettings = {
   welcomeText: string
@@ -107,6 +108,7 @@ export default function AdminSettingsPage() {
         if (!res.ok) throw new Error(`UPLOAD ${res.status}`)
         const data = (await res.json()) as { url?: string }
         const url = data.url || ''
+        if (field === 'headerLogoUrl') sessionStorage.removeItem('site_logo')
         await saveAll({ [field]: url } as Partial<AdminSettings>)
       } catch (e) {
         console.error(e)
@@ -174,15 +176,82 @@ export default function AdminSettingsPage() {
           url={settings.registerBgUrl}
           onPick={(f) => void uploadAndSet('registerBgUrl', f)}
         />
-        <ImagePicker
-          label="Logo — Header"
+        <LogoPicker
           url={settings.headerLogoUrl}
-          onPick={(f) => void uploadAndSet('headerLogoUrl', f)}
+          onUpload={(f) => void uploadAndSet('headerLogoUrl', f)}
         />
       </div>
 
       {notice && <p className="mt-6 text-sm text-white/70">{notice}</p>}
     </div>
+  )
+}
+
+function LogoPicker({
+  url,
+  onUpload,
+}: {
+  url: string
+  onUpload: (file: File) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const handleFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setCropSrc(ev.target?.result as string)
+    reader.readAsDataURL(f)
+    e.currentTarget.value = ''
+  }
+
+  const handleConfirm = async (blob: Blob) => {
+    setCropSrc(null)
+    setBusy(true)
+    try {
+      await onUpload(new File([blob], 'logo.png', { type: 'image/png' }))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      {cropSrc && (
+        <CropModal
+          src={cropSrc}
+          aspectRatio={1}
+          displayWidth={300}
+          shape="rect"
+          onConfirm={handleConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
+      <section className="rounded-2xl border border-purple-500/30 p-4 bg-black/30">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h4 className="font-semibold text-purple-300">Logo — Header</h4>
+            <p className="text-xs text-white/50 mt-0.5">Recadrage carré automatique</p>
+            {url && <p className="text-[10px] text-white/30 break-all mt-1">{url}</p>}
+          </div>
+          <label className={`px-4 py-2 rounded-xl cursor-pointer font-medium text-sm transition ${busy ? 'bg-white/10 opacity-60' : 'bg-purple-600 hover:bg-purple-500 text-white'}`}>
+            {busy ? 'Envoi…' : 'Choisir un logo'}
+            <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={busy} />
+          </label>
+        </div>
+        {url && (
+          <div className="mt-4 flex items-center gap-4">
+            <img src={url} alt="Logo actuel" className="h-20 w-20 rounded-xl border border-white/10 object-contain bg-black" />
+            <div className="text-xs text-white/40">
+              <p>Logo actuel</p>
+              <p className="mt-1 text-white/25">Choisir un nouveau fichier pour remplacer</p>
+            </div>
+          </div>
+        )}
+      </section>
+    </>
   )
 }
 

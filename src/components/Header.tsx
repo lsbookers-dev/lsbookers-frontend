@@ -46,6 +46,23 @@ export default function Header() {
   const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+  const LOGO_FALLBACK = '/logo-black.png'
+  const [logoSrc, setLogoSrc] = useState(LOGO_FALLBACK)
+
+  useEffect(() => {
+    if (!API_BASE) return
+    const cached = sessionStorage.getItem('site_logo')
+    if (cached) { setLogoSrc(cached); return }
+    fetch(`${API_BASE}/api/admin/settings`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const url = d?.headerLogoUrl || LOGO_FALLBACK
+        sessionStorage.setItem('site_logo', url)
+        setLogoSrc(url)
+      })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [API_BASE])
 
   const [menuOpen, setMenuOpen]           = useState(false)
   const [unreadMsg, setUnreadMsg]         = useState(0)
@@ -142,7 +159,7 @@ export default function Header() {
             {/* ── Logo ───────────────────────────────────── */}
             <Link href="/home" className="flex items-center flex-shrink-0 group">
               <div className="relative h-12 w-12 group-hover:opacity-80 transition">
-                <Image src="/logo-black.png" alt="LSBookers" fill sizes="48px" className="object-contain" priority />
+                <Image src={logoSrc} alt="LSBookers" fill sizes="48px" className="object-contain" priority unoptimized />
               </div>
             </Link>
 
