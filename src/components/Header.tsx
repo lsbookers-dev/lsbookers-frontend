@@ -46,8 +46,6 @@ export default function Header() {
   const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-  const LOGO = process.env.NEXT_PUBLIC_LOGO_URL ||
-    'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
 
   const [menuOpen, setMenuOpen]           = useState(false)
   const [unreadMsg, setUnreadMsg]         = useState(0)
@@ -142,13 +140,9 @@ export default function Header() {
           <div className="h-16 flex items-center justify-between gap-4">
 
             {/* ── Logo ───────────────────────────────────── */}
-            <Link href="/home" className="flex items-center gap-3 group flex-shrink-0">
-              <div className="relative h-10 w-10 rounded-2xl overflow-hidden ring-1 ring-white/15 group-hover:ring-white/30 transition">
-                <Image src={LOGO} alt="LSBookers" fill sizes="40px" className="object-cover" priority />
-              </div>
-              <div className="leading-tight hidden sm:block">
-                <div className="text-white font-semibold text-lg">LSBookers</div>
-                <div className="text-[10px] text-white/50 tracking-wide">CONNECT • BOOK • ENJOY</div>
+            <Link href="/home" className="flex items-center flex-shrink-0 group">
+              <div className="relative h-12 w-12 group-hover:opacity-80 transition">
+                <Image src="/logo-black.png" alt="LSBookers" fill sizes="48px" className="object-contain" priority />
               </div>
             </Link>
 
