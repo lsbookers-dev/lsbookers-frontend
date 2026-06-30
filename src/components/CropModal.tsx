@@ -165,6 +165,8 @@ export default function CropModal({
                 position: 'absolute',
                 width:  natW * base * zoom,
                 height: natH * base * zoom,
+                maxWidth: 'none',
+                maxHeight: 'none',
                 left: '50%',
                 top: '50%',
                 transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`,
