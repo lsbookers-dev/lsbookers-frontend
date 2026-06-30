@@ -105,7 +105,10 @@ export default function AdminSettingsPage() {
           headers: token ? ({ Authorization: `Bearer ${token}` } as HeadersInit) : undefined,
           body: fd,
         })
-        if (!res.ok) throw new Error(`UPLOAD ${res.status}`)
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({})) as { error?: string; details?: string }
+          throw new Error(`UPLOAD ${res.status} — ${errBody.error ?? ''} ${errBody.details ?? ''}`)
+        }
         const data = (await res.json()) as { url?: string }
         const url = data.url || ''
         if (field === 'headerLogoUrl') sessionStorage.removeItem('site_logo')
@@ -211,7 +214,7 @@ function LogoPicker({
     setCropSrc(null)
     setBusy(true)
     try {
-      await onUpload(new File([blob], 'logo.png', { type: 'image/png' }))
+      await onUpload(new File([blob], 'logo.jpg', { type: 'image/jpeg' }))
     } finally {
       setBusy(false)
     }
