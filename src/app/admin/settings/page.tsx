@@ -223,8 +223,9 @@ function LogoPicker({
         <CropModal
           src={cropSrc}
           aspectRatio={1}
-          displayWidth={300}
+          displayWidth={320}
           shape="rect"
+          maxZoom={6}
           onConfirm={handleConfirm}
           onCancel={() => setCropSrc(null)}
         />

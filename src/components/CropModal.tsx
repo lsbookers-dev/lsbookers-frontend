@@ -8,6 +8,7 @@ interface Props {
   aspectRatio: number   // largeur / hauteur  (1 = carré, 3 = bannière)
   displayWidth?: number // largeur de la zone de preview
   shape?: 'circle' | 'rect'
+  maxZoom?: number      // zoom maximum (défaut 3)
   onConfirm: (blob: Blob) => void
   onCancel: () => void
 }
@@ -17,6 +18,7 @@ export default function CropModal({
   aspectRatio,
   displayWidth = 320,
   shape = 'rect',
+  maxZoom = 3,
   onConfirm,
   onCancel,
 }: Props) {
@@ -80,7 +82,7 @@ export default function CropModal({
   }, [dragging, zoom, natW, natH, base])
 
   const changeZoom = (z: number) => {
-    z = clamp(z, 1, 3)
+    z = clamp(z, 1, maxZoom)
     const { x, y } = clampOffset(tx, ty, z)
     setZoom(z)
     setTx(x)
@@ -119,6 +121,11 @@ export default function CropModal({
     drag.current = { sx: clientX, sy: clientY, stx: tx, sty: ty }
   }
 
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    changeZoom(zoom - e.deltaY * 0.001)
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-[#111118] border border-white/10 rounded-2xl w-full max-w-[440px] shadow-2xl overflow-hidden">
@@ -147,6 +154,7 @@ export default function CropModal({
             }}
             onMouseDown={e => { e.preventDefault(); startDrag(e.clientX, e.clientY) }}
             onTouchStart={e => { startDrag(e.touches[0].clientX, e.touches[0].clientY) }}
+            onWheel={handleWheel}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -181,7 +189,7 @@ export default function CropModal({
               <ZoomOut size={16} />
             </button>
             <input
-              type="range" min={100} max={300} step={5}
+              type="range" min={100} max={Math.round(maxZoom * 100)} step={5}
               value={Math.round(zoom * 100)}
               onChange={e => changeZoom(Number(e.target.value) / 100)}
               className="flex-1 accent-emerald-500"
