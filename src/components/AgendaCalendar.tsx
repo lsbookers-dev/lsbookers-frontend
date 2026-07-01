@@ -656,7 +656,6 @@ export default function AgendaCalendar({
     finally { setBookingSending(false) }
   }
 
-  const upcoming = events.filter(e => new Date(e.start) >= now).slice(0, 4)
   const canBook  = !isOwner && viewerRole === 'ORGANIZER' && selectedAvail?.status === 'AVAILABLE'
 
   return (
