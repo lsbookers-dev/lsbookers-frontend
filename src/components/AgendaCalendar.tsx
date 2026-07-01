@@ -216,6 +216,7 @@ export default function AgendaCalendar({
   const [eventMode, setEventMode] = useState<EventMode>('list')
   const [allEvents, setAllEvents] = useState<EventSummary[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
+  const [eventsError, setEventsError] = useState(false)
 
   // Création d'événement
   const [createTitle, setCreateTitle] = useState('')
@@ -227,6 +228,8 @@ export default function AgendaCalendar({
   const [createCategory, setCreateCategory] = useState('')
   const [createBudget, setCreateBudget] = useState('')
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [lastCreatedId, setLastCreatedId] = useState<number | null>(null)
 
   // Détail événement
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
@@ -331,11 +334,15 @@ export default function AgendaCalendar({
 
   const fetchAllEvents = useCallback(async () => {
     setEventsLoading(true)
+    setEventsError(false)
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`${API}/api/events/all`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) { const d = await res.json(); setAllEvents(d.events || []) }
-    } catch {}
+      else setEventsError(true)
+    } catch {
+      setEventsError(true)
+    }
     finally { setEventsLoading(false) }
   }, [API])
 
@@ -379,10 +386,16 @@ export default function AgendaCalendar({
   const createEvent = useCallback(async () => {
     if (!createTitle.trim() || !createDate) return
     setCreating(true)
+    setCreateError('')
     try {
       const token = localStorage.getItem('token')
-      const startISO = createStartTime ? `${createDate}T${createStartTime}:00.000Z` : `${createDate}T00:00:00.000Z`
-      const endISO = createEndDate && createEndTime ? `${createEndDate}T${createEndTime}:00.000Z` : null
+      // Construire la date en heure locale pour éviter le décalage UTC
+      const startISO = createStartTime
+        ? `${createDate}T${createStartTime}:00`
+        : `${createDate}T12:00:00`
+      const endISO = createEndDate
+        ? (createEndTime ? `${createEndDate}T${createEndTime}:00` : `${createEndDate}T23:59:00`)
+        : null
       const res = await fetch(`${API}/api/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -399,13 +412,20 @@ export default function AgendaCalendar({
       })
       if (res.ok) {
         const d = await res.json()
-        setCreateTitle(''); setCreateDate(''); setCreateEndDate(''); setCreateStartTime(''); setCreateEndTime(''); setCreateLieu(''); setCreateCategory(''); setCreateBudget('')
+        setCreateTitle(''); setCreateDate(''); setCreateEndDate(''); setCreateStartTime('')
+        setCreateEndTime(''); setCreateLieu(''); setCreateCategory(''); setCreateBudget('')
+        setLastCreatedId(d.event.id)
         await fetchAllEvents()
-        openEventDetail(d.event.id)
+        fetchData() // rafraîchir le calendrier
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setCreateError(err.error || 'Erreur lors de la création')
       }
-    } catch {}
+    } catch {
+      setCreateError('Impossible de joindre le serveur')
+    }
     finally { setCreating(false) }
-  }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, fetchAllEvents, openEventDetail])
+  }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, fetchAllEvents, fetchData])
 
   const saveNotes = useCallback(async () => {
     if (!selectedEventId) return
@@ -925,6 +945,9 @@ export default function AgendaCalendar({
                     placeholder="Budget (€)"
                     className="w-28 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40" />
                 </div>
+                {createError && (
+                  <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{createError}</p>
+                )}
                 <button
                   onClick={createEvent}
                   disabled={creating || !createTitle.trim() || !createDate}
@@ -937,6 +960,11 @@ export default function AgendaCalendar({
               {/* Liste des événements existants */}
               {eventsLoading ? (
                 <p className="text-center text-white/30 text-sm py-4">Chargement…</p>
+              ) : eventsError ? (
+                <div className="text-center py-4 space-y-2">
+                  <p className="text-xs text-red-400/70">Impossible de charger les événements.</p>
+                  <button onClick={fetchAllEvents} className="text-xs text-white/50 underline">Réessayer</button>
+                </div>
               ) : allEvents.length === 0 ? (
                 <p className="text-xs text-white/25 italic text-center py-2">Aucun événement créé</p>
               ) : (
@@ -946,7 +974,11 @@ export default function AgendaCalendar({
                     <button
                       key={ev.id}
                       onClick={() => openEventDetail(ev.id)}
-                      className="w-full text-left bg-white/5 rounded-xl p-3 border border-white/8 hover:bg-white/10 transition"
+                      className={`w-full text-left rounded-xl p-3 border hover:bg-white/10 transition ${
+                        ev.id === lastCreatedId
+                          ? 'bg-green-500/10 border-green-500/30'
+                          : 'bg-white/5 border-white/10'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
