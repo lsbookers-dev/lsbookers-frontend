@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, MapPin, Clock, Send, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, MapPin, Clock, Send, X, BookOpen } from 'lucide-react'
 
 /* ─────────────────────────────────────────────────────────
    TYPES
@@ -21,6 +21,36 @@ type AvailDay = {
   date: string
   status: 'AVAILABLE' | 'UNAVAILABLE' | 'BOOKED' | 'TENTATIVE'
   note?: string | null
+}
+
+type BookingItem = {
+  id: number
+  startDate: string
+  fee?: number | null
+  status: string
+  paymentStatus?: string | null
+  message?: string | null
+  requester?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
+  target?:    { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
+}
+
+/* ── Badges ── */
+function BkStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    PENDING:   { label: 'En attente',     cls: 'bg-yellow-500/20 text-yellow-300' },
+    ACCEPTED:  { label: 'Accepté',        cls: 'bg-green-500/20 text-green-300' },
+    DECLINED:  { label: 'Refusé',         cls: 'bg-red-500/20 text-red-300' },
+    CANCELLED: { label: 'Annulé',         cls: 'bg-white/10 text-white/40' },
+    COMPLETED: { label: 'Terminé',        cls: 'bg-blue-500/20 text-blue-300' },
+  }
+  const s = map[status] || map.PENDING
+  return <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${s.cls}`}>{s.label}</span>
+}
+
+function PayBadge({ status }: { status?: string | null }) {
+  if (status === 'PAID')    return <span className="text-[10px] text-green-400">💳 Payé</span>
+  if (status === 'DEPOSIT') return <span className="text-[10px] text-amber-400">💳 Acompte reçu</span>
+  return <span className="text-[10px] text-white/30">💳 Non payé</span>
 }
 
 interface Props {
@@ -98,6 +128,11 @@ export default function AgendaCalendar({
   const [bookingSending, setBookingSending] = useState(false)
   const [bookingSent, setBookingSent] = useState(false)
 
+  // Panneau "Mes Bookings"
+  const [showPanel, setShowPanel] = useState(false)
+  const [panelData, setPanelData] = useState<{ received: BookingItem[]; sent: BookingItem[] } | null>(null)
+  const [panelLoading, setPanelLoading] = useState(false)
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
@@ -129,6 +164,20 @@ export default function AgendaCalendar({
   }, [API, profileId, isOwner, showAvailability, month, year])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  const openPanel = useCallback(async () => {
+    setShowPanel(true)
+    if (panelData) return // déjà chargé
+    setPanelLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/events/booking-requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) setPanelData(await res.json())
+    } catch {}
+    finally { setPanelLoading(false) }
+  }, [API, panelData])
 
   /* Réinitialiser le formulaire de booking quand on change de jour */
   useEffect(() => {
@@ -245,21 +294,153 @@ export default function AgendaCalendar({
           <CalendarDays className="h-4 w-4 text-purple-400" />
           <span className="font-semibold text-sm">Agenda</span>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-white/8 transition text-white/50 hover:text-white">
-            <ChevronLeft className="h-4 w-4" />
+        {!showPanel ? (
+          <div className="flex items-center gap-1">
+            {isOwner && (
+              <button
+                onClick={openPanel}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs hover:bg-purple-600/30 transition mr-2"
+              >
+                <BookOpen className="h-3 w-3" />
+                Mes bookings
+              </button>
+            )}
+            <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-white/8 transition text-white/50 hover:text-white">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-medium w-36 text-center">
+              {MONTHS_FR[month - 1]} {year}
+            </span>
+            <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-white/8 transition text-white/50 hover:text-white">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowPanel(false)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 text-xs hover:bg-white/10 transition"
+          >
+            <X className="h-3 w-3" />
+            Fermer
           </button>
-          <span className="text-sm font-medium w-36 text-center">
-            {MONTHS_FR[month - 1]} {year}
-          </span>
-          <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-white/8 transition text-white/50 hover:text-white">
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* Grille */}
-      <div className="p-4">
+      {/* ─── Panneau "Mes Bookings" ─── */}
+      {showPanel && (() => {
+        const received = panelData?.received || []
+        const sent     = panelData?.sent     || []
+        const now2     = new Date()
+
+        const totalEarnings = received
+          .filter(b => b.status === 'ACCEPTED')
+          .reduce((s, b) => s + (b.fee || 0), 0)
+
+        const thisYearEarnings = received
+          .filter(b => b.status === 'ACCEPTED' && new Date(b.startDate).getFullYear() === now2.getFullYear())
+          .reduce((s, b) => s + (b.fee || 0), 0)
+
+        const thisMonthEarnings = received
+          .filter(b => b.status === 'ACCEPTED' && new Date(b.startDate).getFullYear() === now2.getFullYear() && new Date(b.startDate).getMonth() === now2.getMonth())
+          .reduce((s, b) => s + (b.fee || 0), 0)
+
+        const fmt = (n: number) => n === 0 ? '—' : `${n.toLocaleString('fr-FR')} €`
+        const personName = (b: BookingItem, side: 'requester' | 'target') => {
+          const p = b[side]
+          return p?.user?.pseudo || [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ') || '?'
+        }
+
+        return (
+          <div className="p-4 max-h-[520px] overflow-y-auto space-y-4">
+            {panelLoading ? (
+              <p className="text-center text-white/30 text-sm py-8">Chargement…</p>
+            ) : (
+              <>
+                {/* Stats financières */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Ce mois', value: fmt(thisMonthEarnings) },
+                    { label: 'Cette année', value: fmt(thisYearEarnings) },
+                    { label: 'Total', value: fmt(totalEarnings) },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="bg-white/5 rounded-xl p-3 text-center">
+                      <p className="text-[10px] text-white/40 mb-1">{label}</p>
+                      <p className="text-sm font-bold text-white">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bookings reçus */}
+                <div>
+                  <p className="text-[11px] font-medium text-white/40 uppercase tracking-wide mb-2">
+                    Reçus ({received.length})
+                  </p>
+                  {received.length === 0 ? (
+                    <p className="text-xs text-white/25 italic">Aucune demande reçue</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {received.map(b => (
+                        <div key={b.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white truncate">{personName(b, 'requester')}</p>
+                              <p className="text-xs text-white/50 mt-0.5">
+                                📅 {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
+                              </p>
+                            </div>
+                            <BkStatusBadge status={b.status} />
+                          </div>
+                          {b.status === 'ACCEPTED' && (
+                            <div className="mt-1.5">
+                              <PayBadge status={b.paymentStatus} />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Bookings envoyés */}
+                <div>
+                  <p className="text-[11px] font-medium text-white/40 uppercase tracking-wide mb-2">
+                    Envoyés ({sent.length})
+                  </p>
+                  {sent.length === 0 ? (
+                    <p className="text-xs text-white/25 italic">Aucune demande envoyée</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sent.map(b => (
+                        <div key={b.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white truncate">{personName(b, 'target')}</p>
+                              <p className="text-xs text-white/50 mt-0.5">
+                                📅 {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
+                              </p>
+                            </div>
+                            <BkStatusBadge status={b.status} />
+                          </div>
+                          {b.status === 'ACCEPTED' && (
+                            <div className="mt-1.5">
+                              <PayBadge status={b.paymentStatus} />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Grille + sections calendrier (masquées quand le panneau bookings est ouvert) */}
+      {!showPanel && (<><div className="p-4">
         <div className="grid grid-cols-7 mb-1">
           {DAYS_FR.map((d, i) => (
             <div key={i} className="text-center text-[11px] text-white/30 font-medium py-1">{d}</div>
@@ -487,6 +668,7 @@ export default function AgendaCalendar({
           Aucun événement à venir
         </div>
       )}
+      </>)}
     </div>
   )
 }
