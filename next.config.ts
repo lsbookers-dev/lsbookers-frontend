@@ -20,10 +20,10 @@ const nextConfig = {
         pathname: '/uploads/**',
       },
 
-      // ✅ Cloudinary (bannières/avatars/publications uploadées)
+      // ✅ Vercel Blob (bannières/avatars/publications uploadées)
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        hostname: 'public.blob.vercel-storage.com',
         pathname: '/**',
       },
     ],
