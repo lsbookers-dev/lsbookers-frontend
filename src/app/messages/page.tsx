@@ -48,6 +48,12 @@ interface BookingRequestData {
   message?: string | null
   requesterId: number
   targetId: number
+  paymentStatus?: string | null
+  cancellationRequestedBy?: number | null
+  cancellationNote?: string | null
+  cancellationRequesterUserId?: number | null
+  requesterUserId?: number | null
+  targetUserId?: number | null
 }
 
 interface Message {
@@ -398,6 +404,93 @@ function BookingRequestCard({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ── Carte demande d'annulation ──────────────────────────── */
+function CancellationRequestCard({
+  msg,
+  currentUserId,
+  token,
+  onStatusUpdate,
+}: {
+  msg: Message
+  currentUserId: number | null
+  token: string | null
+  onStatusUpdate: (messageId: string, newStatus: BookingRequestData['status']) => void
+}) {
+  const [responding, setResponding] = useState(false)
+  const [localDone, setLocalDone] = useState<'accepted' | 'denied' | null>(null)
+
+  const br = msg.bookingRequest
+  if (!br) return null
+
+  const dateLabel = br.startDate
+    ? new Date(br.startDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : '—'
+
+  // L'utilisateur courant est-il celui qui a demandé l'annulation ?
+  const isRequester = currentUserId !== null && currentUserId === br.cancellationRequesterUserId
+
+  const respond = async (accept: boolean) => {
+    if (!token || responding) return
+    setResponding(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/events/booking-request/${br.id}/cancel-response`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accept }),
+      })
+      if (res.ok) {
+        setLocalDone(accept ? 'accepted' : 'denied')
+        if (accept) onStatusUpdate(msg.id, 'CANCELLED')
+      }
+    } catch (err) {
+      console.error('cancel-response:', err)
+    } finally {
+      setResponding(false)
+    }
+  }
+
+  return (
+    <div className="max-w-sm w-full rounded-2xl border border-orange-500/30 bg-orange-900/15 overflow-hidden">
+      <div className="px-4 py-3 border-b border-orange-500/20 flex items-center gap-2">
+        <span className="text-base">🚫</span>
+        <span className="text-sm font-semibold text-orange-300">Demande d&apos;annulation</span>
+      </div>
+      <div className="px-4 py-3 space-y-1.5">
+        <p className="text-sm text-white/80 capitalize">📅 {dateLabel}</p>
+        {br.cancellationNote && (
+          <p className="text-sm text-white/55 italic border-l-2 border-orange-500/40 pl-3">&ldquo;{br.cancellationNote}&rdquo;</p>
+        )}
+      </div>
+      <div className="px-4 pb-4">
+        {localDone === 'accepted' ? (
+          <p className="text-xs text-green-400 font-medium">✅ Annulation confirmée</p>
+        ) : localDone === 'denied' ? (
+          <p className="text-xs text-white/40">❌ Demande d&apos;annulation refusée</p>
+        ) : isRequester ? (
+          <p className="text-xs text-white/35">En attente de confirmation…</p>
+        ) : (
+          <div className="flex gap-2 mt-1">
+            <button
+              onClick={() => respond(true)}
+              disabled={responding}
+              className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-500 disabled:opacity-30 transition"
+            >
+              ✓ Confirmer l&apos;annulation
+            </button>
+            <button
+              onClick={() => respond(false)}
+              disabled={responding}
+              className="flex-1 py-2 rounded-xl bg-white/5 text-white/60 text-sm font-medium hover:bg-white/10 disabled:opacity-30 transition"
+            >
+              ✕ Refuser
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -957,6 +1050,37 @@ function MessagesContent() {
                           )}
                           <div className={`flex flex-col max-w-[90%] sm:max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
                             <BookingRequestCard
+                              msg={msg}
+                              currentUserId={currentUserId}
+                              token={token}
+                              onStatusUpdate={(messageId, newStatus) => {
+                                setMessages(prev => prev.map(m => {
+                                  if (m.id !== messageId || !m.bookingRequest) return m
+                                  return { ...m, bookingRequest: { ...m.bookingRequest, status: newStatus } }
+                                }))
+                              }}
+                            />
+                            <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
+                              <span className="text-[10px] text-white/25">{formatMessageTime(msg.createdAt)}</span>
+                            </div>
+                          </div>
+                          {isMe && <div className="w-7 shrink-0" />}
+                        </div>
+                      )
+                      return
+                    }
+
+                    // ── Carte demande d'annulation ──
+                    if (msg.type === 'CANCELLATION_REQUEST' && msg.bookingRequest) {
+                      items.push(
+                        <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          {!isMe && (
+                            <div className="w-7 h-7 shrink-0 mb-1">
+                              <Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} />
+                            </div>
+                          )}
+                          <div className={`flex flex-col max-w-[90%] sm:max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                            <CancellationRequestCard
                               msg={msg}
                               currentUserId={currentUserId}
                               token={token}
