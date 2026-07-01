@@ -286,11 +286,13 @@ export default function ProviderProfilePage() {
         <div className="space-y-6">
 
           {/* Agenda */}
-          <AgendaCalendar
-            profileId={profile.id}
-            isOwner={true}
-            showAvailability={true}
-          />
+          {profile && (
+            <AgendaCalendar
+              profileId={profile.id}
+              isOwner={true}
+              showAvailability={true}
+            />
+          )}
 
           {/* Bio */}
           {profile?.bio && (
