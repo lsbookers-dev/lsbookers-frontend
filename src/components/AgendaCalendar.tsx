@@ -230,6 +230,8 @@ export default function AgendaCalendar({
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   const [lastCreatedId, setLastCreatedId] = useState<number | null>(null)
+  const [deletingEvent, setDeletingEvent] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Détail événement
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
@@ -426,6 +428,28 @@ export default function AgendaCalendar({
     }
     finally { setCreating(false) }
   }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, fetchAllEvents, fetchData])
+
+  const deleteEvent = useCallback(async () => {
+    if (!selectedEventId) return
+    setDeletingEvent(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/events/${selectedEventId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setShowEventPanel(false)
+        setEventMode('list')
+        setSelectedEventId(null)
+        setEventDetail(null)
+        setConfirmDelete(false)
+        await fetchAllEvents()
+        fetchData()
+      }
+    } catch {}
+    finally { setDeletingEvent(false) }
+  }, [API, selectedEventId, fetchAllEvents, fetchData])
 
   const saveNotes = useCallback(async () => {
     if (!selectedEventId) return
@@ -1096,6 +1120,37 @@ export default function AgendaCalendar({
                         <p className="text-xs text-white/70">{eventDetail.description}</p>
                       </div>
                     )}
+
+                    {/* Zone suppression */}
+                    <div className="pt-3 border-t border-white/8 mt-3">
+                      {!confirmDelete ? (
+                        <button
+                          onClick={() => setConfirmDelete(true)}
+                          className="w-full py-2 rounded-xl border border-red-500/30 text-red-400 text-xs hover:bg-red-500/10 transition"
+                        >
+                          🗑 Supprimer l&apos;événement
+                        </button>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-xs text-red-400 text-center">Supprimer définitivement ?</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setConfirmDelete(false)}
+                              className="flex-1 py-2 rounded-xl bg-white/10 text-white/60 text-xs hover:bg-white/15 transition"
+                            >
+                              Annuler
+                            </button>
+                            <button
+                              onClick={deleteEvent}
+                              disabled={deletingEvent}
+                              className="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-500 disabled:opacity-50 transition"
+                            >
+                              {deletingEvent ? 'Suppression…' : 'Confirmer'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -1490,41 +1545,6 @@ export default function AgendaCalendar({
         </div>
       )}
 
-      {/* Prochains événements */}
-      {!selected && upcoming.length > 0 && (
-        <div className="border-t border-white/8 px-4 pb-4 pt-3">
-          <p className="text-xs text-white/40 mb-2 font-medium uppercase tracking-wide">À venir</p>
-          <div className="space-y-2">
-            {upcoming.map(e => (
-              <div key={e.id} className="flex items-start gap-2">
-                <div className="flex-shrink-0 text-center w-9 bg-white/5 rounded-lg py-1">
-                  <div className="text-[10px] text-white/40 uppercase">
-                    {new Date(e.start).toLocaleDateString('fr-FR', { month: 'short' })}
-                  </div>
-                  <div className="text-sm font-bold text-white leading-none">
-                    {new Date(e.start).getDate()}
-                  </div>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate">{e.title}</p>
-                  {e.lieu && <p className="text-[11px] text-white/40 truncate">{e.lieu}</p>}
-                </div>
-                {e.category && (
-                  <span className={`flex-shrink-0 text-[10px] px-2 py-0.5 rounded-full text-white/80 ${categoryColor(e.category)}`}>
-                    {e.category}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {!selected && upcoming.length === 0 && !loading && (
-        <div className="border-t border-white/8 px-4 py-4 text-center text-xs text-white/25 italic">
-          Aucun événement à venir
-        </div>
-      )}
       </>)}
     </div>
   )
