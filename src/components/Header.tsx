@@ -61,7 +61,6 @@ export default function Header() {
         setLogoSrc(url)
       })
       .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_BASE])
 
   const [menuOpen, setMenuOpen]           = useState(false)

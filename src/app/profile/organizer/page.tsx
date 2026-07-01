@@ -289,7 +289,7 @@ export default function OrganizerProfilePage() {
           {profile && (
             <AgendaCalendar
               profileId={profile.id}
-              isOwner={isOwner}
+              isOwner={true}
               showAvailability={false}
             />
           )}

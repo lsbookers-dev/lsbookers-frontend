@@ -288,7 +288,7 @@ export default function ProviderProfilePage() {
           {/* Agenda */}
           <AgendaCalendar
             profileId={profile.id}
-            isOwner={isOwner}
+            isOwner={true}
             showAvailability={true}
           />
 
