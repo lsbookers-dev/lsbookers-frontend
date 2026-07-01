@@ -6,8 +6,9 @@ import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import {
   Heart, Star, MapPin, Users, ChevronLeft, ChevronRight,
-  Briefcase, Loader2, UserPlus, Flame
+  Briefcase, Loader2, UserPlus, Flame, MessageCircle
 } from 'lucide-react'
+import PublicationModal from '@/components/PublicationModal'
 
 /* ─────────────────────────────────────────────────────────────
    TYPES
@@ -32,6 +33,7 @@ type Post = {
   title: string
   createdAt: string
   likesCount: number
+  commentsCount: number
   likedByMe: boolean
   isFromFollow: boolean
   author: {
@@ -216,7 +218,11 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
 /* ─────────────────────────────────────────────────────────────
    CARTE PUBLICATION
 ───────────────────────────────────────────────────────────── */
-function PostCard({ post, onLike }: { post: Post; onLike: (id: number) => void }) {
+function PostCard({ post, onLike, onOpenModal }: {
+  post: Post
+  onLike: (id: number) => void
+  onOpenModal: (post: Post) => void
+}) {
   return (
     <article className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden">
       {/* Header auteur */}
@@ -243,10 +249,13 @@ function PostCard({ post, onLike }: { post: Post; onLike: (id: number) => void }
         )}
       </div>
 
-      {/* Média */}
-      <div className="relative w-full aspect-[4/3] bg-zinc-900">
+      {/* Média — clic ouvre la modale */}
+      <div
+        className="relative w-full aspect-[4/3] bg-zinc-900 cursor-pointer"
+        onClick={() => onOpenModal(post)}
+      >
         {post.mediaType === 'VIDEO' ? (
-          <video src={post.media} controls className="w-full h-full object-cover" />
+          <video src={post.media} className="w-full h-full object-cover" muted preload="metadata" />
         ) : (
           <Image src={post.media} alt={post.caption || post.title} fill className="object-cover" />
         )}
@@ -254,17 +263,26 @@ function PostCard({ post, onLike }: { post: Post; onLike: (id: number) => void }
 
       {/* Footer */}
       <div className="p-3 space-y-2">
-        <button
-          onClick={() => onLike(post.id)}
-          className="flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <Heart
-            className={`w-4 h-4 transition-all ${post.likedByMe ? 'fill-pink-500 text-pink-500 scale-110' : 'text-white/40 hover:text-pink-400'}`}
-          />
-          <span className={post.likedByMe ? 'text-pink-400' : 'text-white/40'}>
-            {post.likesCount}
-          </span>
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => onLike(post.id)}
+            className="flex items-center gap-1.5 text-sm transition-colors"
+          >
+            <Heart
+              className={`w-4 h-4 transition-all ${post.likedByMe ? 'fill-pink-500 text-pink-500 scale-110' : 'text-white/40 hover:text-pink-400'}`}
+            />
+            <span className={post.likedByMe ? 'text-pink-400' : 'text-white/40'}>
+              {post.likesCount}
+            </span>
+          </button>
+          <button
+            onClick={() => onOpenModal(post)}
+            className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>{post.commentsCount ?? 0}</span>
+          </button>
+        </div>
         {post.caption && (
           <p className="text-sm text-white/70 leading-relaxed line-clamp-2">{post.caption}</p>
         )}
@@ -535,6 +553,7 @@ export default function HomePage() {
 
   const [featured, setFeatured]   = useState<FeaturedProfile[]>([])
   const [posts, setPosts]         = useState<Post[]>([])
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [suggested, setSuggested] = useState<SuggestedProfile[]>([])
   const [loadingFeed, setLoadingFeed] = useState(true)
 
@@ -659,7 +678,7 @@ export default function HomePage() {
               </div>
             ) : (
               posts.map(p => (
-                <PostCard key={p.id} post={p} onLike={handleLike} />
+                <PostCard key={p.id} post={p} onLike={handleLike} onOpenModal={setSelectedPost} />
               ))
             )}
           </div>
@@ -677,6 +696,27 @@ export default function HomePage() {
       <div className={mobileTab !== 'offers' ? 'hidden lg:block' : ''}>
         <OffersSection apiBase={API_BASE} />
       </div>
+
+      {/* ── Modale publication (commentaires) ── */}
+      {selectedPost && (
+        <PublicationModal
+          pub={{
+            id: selectedPost.id,
+            title: selectedPost.title,
+            media: selectedPost.media,
+            mediaType: selectedPost.mediaType.toLowerCase() as 'image' | 'video',
+            caption: selectedPost.caption ?? undefined,
+            _count: { likes: selectedPost.likesCount, comments: selectedPost.commentsCount ?? 0 },
+          }}
+          onClose={() => setSelectedPost(null)}
+          onCountChange={(pubId, likes, comments) => {
+            setPosts(prev => prev.map(p =>
+              p.id === pubId ? { ...p, likesCount: likes, commentsCount: comments } : p
+            ))
+          }}
+          initialLiked={selectedPost.likedByMe}
+        />
+      )}
     </main>
   )
 }

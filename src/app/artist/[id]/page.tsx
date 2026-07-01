@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
 import FollowButton from '@/components/FollowButton'
 import AgendaCalendar from '@/components/AgendaCalendar'
+import PublicationsSection from '@/components/PublicationsSection'
 import { useAuth } from '@/context/AuthContext'
 
 /* ================== Types ================== */
@@ -46,6 +47,7 @@ type Publication = {
   mediaType: 'image' | 'video'
   caption?: string
   createdAt?: string
+  _count?: { likes: number; comments: number }
 }
 
 /* ================== Helpers ================== */
@@ -80,7 +82,6 @@ export default function ArtistPublicProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [abonnesCount, setAbonnesCount] = useState(0)
-  const [showAllPubs, setShowAllPubs] = useState(false)
 
   const defaults = useMemo(
     () => ({
@@ -161,10 +162,6 @@ export default function ArtistPublicProfilePage() {
   const avatarUrl = toAbs(profile.avatar) || defaults.avatar
   const bio = profile.bio || "Cet artiste n’a pas encore rédigé de description."
 
-  const sortedPublications = [...publications].sort((a, b) => b.id - a.id)
-  const heroPub = sortedPublications[0]
-  const restPubs = sortedPublications.slice(1, 4)
-
   const soundcloudToDisplay =
     profile.soundcloudUrl && profile.soundcloudUrl.trim().length > 0
       ? buildSoundcloudEmbedUrl(profile.soundcloudUrl)
@@ -232,68 +229,7 @@ export default function ArtistPublicProfilePage() {
 
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
         <div className="space-y-6">
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Publications</h2>
-              {sortedPublications.length > 4 && (
-                <button
-                  onClick={() => setShowAllPubs(true)}
-                  className="text-xs px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
-                >
-                  Voir toutes ({sortedPublications.length})
-                </button>
-              )}
-            </div>
-
-            {sortedPublications.length ? (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                {heroPub && (
-                  <div className="md:col-span-2 rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                    <div className="relative w-full h-64">
-                      {heroPub.mediaType === 'image' ? (
-                        <Image
-                          src={heroPub.media}
-                          alt={heroPub.title}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <video src={heroPub.media} controls className="w-full h-full object-cover" />
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p className="font-medium">{heroPub.title}</p>
-                      {heroPub.caption && (
-                        <p className="text-sm text-neutral-300 mt-1">{heroPub.caption}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
-                  {restPubs.map((p) => (
-                    <div
-                      key={p.id}
-                      className="rounded-xl overflow-hidden border border-white/10 bg-black/30"
-                    >
-                      <div className="relative w-full h-28">
-                        {p.mediaType === 'image' ? (
-                          <Image src={p.media} alt={p.title} fill className="object-cover" />
-                        ) : (
-                          <video src={p.media} controls className="w-full h-full object-cover" />
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <p className="text-sm font-medium truncate">{p.title}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-neutral-400 mt-3">Aucune publication pour le moment.</p>
-            )}
-          </section>
+          <PublicationsSection publications={publications} title="Publications" />
 
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
             <h2 className="text-lg font-semibold">Description</h2>
@@ -355,44 +291,6 @@ export default function ArtistPublicProfilePage() {
         </aside>
       </div>
 
-      {/* ── Modal galerie toutes les publications ── */}
-      {showAllPubs && (
-        <div
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowAllPubs(false)}
-        >
-          <div
-            className="max-w-4xl w-full max-h-[85vh] overflow-y-auto bg-neutral-950 border border-white/10 rounded-2xl p-5"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">Toutes les publications ({sortedPublications.length})</h3>
-              <button
-                onClick={() => setShowAllPubs(false)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
-              >
-                Fermer
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {sortedPublications.map(p => (
-                <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                  <div className="relative w-full h-40">
-                    {p.mediaType === 'image'
-                      ? <Image src={p.media} alt={p.title} fill className="object-cover" />
-                      : <video src={p.media} controls className="w-full h-full object-cover" />
-                    }
-                  </div>
-                  <div className="p-2">
-                    <p className="text-xs font-medium truncate">{p.title}</p>
-                    {p.caption && <p className="text-xs text-white/40 truncate mt-0.5">{p.caption}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

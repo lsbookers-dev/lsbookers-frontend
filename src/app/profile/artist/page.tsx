@@ -5,9 +5,10 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Settings2, MessageCircle, Star, Trash2, Plus, MapPin, Music,
+  Settings2, MessageCircle, Star, Plus, MapPin, Music,
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
+import PublicationsSection from '@/components/PublicationsSection'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -52,6 +53,7 @@ type Publication = {
   mediaType: 'image' | 'video'
   caption?: string
   createdAt?: string
+  _count?: { likes: number; comments: number }
 }
 
 type Review = {
@@ -108,8 +110,6 @@ export default function ArtistProfilePage() {
   const [pubFile, setPubFile] = useState<File | null>(null)
   const [pubUploading, setPubUploading] = useState(false)
   const pubInputRef = useRef<HTMLInputElement>(null)
-
-  const [showAllPubs, setShowAllPubs] = useState(false)
 
   // ── Chargement du profil
   useEffect(() => {
@@ -311,80 +311,20 @@ export default function ArtistProfilePage() {
           )}
 
           {/* Publications */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold">Publications</h2>
-              <div className="flex gap-2">
-                {publications.length > 3 && (
-                  <button
-                    onClick={() => setShowAllPubs(true)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
-                  >
-                    Voir tout ({publications.length})
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowAddPub(true)}
-                  className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
-                >
-                  <Plus size={13} /> Ajouter
-                </button>
-              </div>
-            </div>
-
-            {publications.length === 0 && (
-              <p className="text-sm text-white/30 text-center py-8">Aucune publication pour l&apos;instant</p>
-            )}
-
-            {publications.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-3">
-                {/* Principale */}
-                {publications[0] && (
-                  <div className="rounded-xl overflow-hidden border border-white/10 bg-black/30 relative group">
-                    <div className="relative w-full h-64">
-                      {publications[0].mediaType === 'image'
-                        ? <Image src={publications[0].media} alt={publications[0].title} fill className="object-cover" />
-                        : <video src={publications[0].media} controls className="w-full h-full object-cover" />
-                      }
-                      <button
-                        onClick={() => handleDeletePub(publications[0].id)}
-                        className="absolute top-2 right-2 bg-black/60 hover:bg-red-600 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm font-medium">{publications[0].title}</p>
-                      {publications[0].caption && <p className="text-xs text-white/45 mt-1">{publications[0].caption}</p>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Secondaires */}
-                <div className="flex flex-col gap-3">
-                  {publications.slice(1, 4).map(p => (
-                    <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30 relative group h-28">
-                      <div className="relative w-full h-full">
-                        {p.mediaType === 'image'
-                          ? <Image src={p.media} alt={p.title} fill className="object-cover" />
-                          : <video src={p.media} controls className="w-full h-full object-cover" />
-                        }
-                        <button
-                          onClick={() => handleDeletePub(p.id)}
-                          className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-red-600 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                      <div className="px-2 py-1.5">
-                        <p className="text-xs font-medium truncate">{p.title}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
+          <PublicationsSection
+            publications={publications}
+            title="Publications"
+            isOwner={true}
+            onDelete={handleDeletePub}
+            headerAction={
+              <button
+                onClick={() => setShowAddPub(true)}
+                className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
+              >
+                <Plus size={13} /> Ajouter
+              </button>
+            }
+          />
 
           {/* Agenda */}
           {profile && (
@@ -496,45 +436,6 @@ export default function ArtistProfilePage() {
           )}
         </aside>
       </div>
-
-      {/* ── Modal : toutes les publications ── */}
-      {showAllPubs && (
-        <div
-          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowAllPubs(false)}
-        >
-          <div
-            className="max-w-4xl w-full max-h-[85vh] overflow-y-auto bg-neutral-950 border border-white/10 rounded-2xl p-5"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">Toutes les publications</h3>
-              <button onClick={() => setShowAllPubs(false)} className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20">Fermer</button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {publications.map(p => (
-                <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30 relative group">
-                  <div className="relative w-full h-36">
-                    {p.mediaType === 'image'
-                      ? <Image src={p.media} alt={p.title} fill className="object-cover" />
-                      : <video src={p.media} controls className="w-full h-full object-cover" />
-                    }
-                    <button
-                      onClick={() => handleDeletePub(p.id)}
-                      className="absolute top-2 right-2 bg-black/60 hover:bg-red-600 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                  <div className="p-2">
-                    <p className="text-xs font-medium truncate">{p.title}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Modal : ajouter une publication ── */}
       {showAddPub && (

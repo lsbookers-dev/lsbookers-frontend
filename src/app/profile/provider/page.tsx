@@ -5,9 +5,10 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Settings2, MessageCircle, Star, Trash2, Plus, MapPin,
+  Settings2, MessageCircle, Star, Plus, MapPin,
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
+import PublicationsSection from '@/components/PublicationsSection'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -47,6 +48,7 @@ type Publication = {
   mediaType: 'image' | 'video'
   caption?: string
   createdAt?: string
+  _count?: { likes: number; comments: number }
 }
 
 type Review = {
@@ -95,8 +97,6 @@ export default function ProviderProfilePage() {
   const [pubFile, setPubFile] = useState<File | null>(null)
   const [pubUploading, setPubUploading] = useState(false)
   const pubInputRef = useRef<HTMLInputElement>(null)
-  const [showAllPubs, setShowAllPubs] = useState(false)
-
   // ── Chargement du profil
   useEffect(() => {
     if (!user) return
@@ -193,11 +193,6 @@ export default function ProviderProfilePage() {
       alert('Échec de la suppression.')
     }
   }
-
-  // ── Publications triées
-  const sorted = [...publications].sort((a, b) => b.id - a.id)
-  const heroPub = sorted[0]
-  const restPubs = sorted.slice(1, 4)
 
   if (loading) {
     return (
@@ -303,78 +298,20 @@ export default function ProviderProfilePage() {
           )}
 
           {/* Publications */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Publications</h2>
-              <div className="flex items-center gap-2">
-                {sorted.length > 4 && (
-                  <button
-                    onClick={() => setShowAllPubs(true)}
-                    className="text-sm px-3 py-1 rounded-full bg-white/10 hover:bg-white/20"
-                  >
-                    Voir tout
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowAddPub(true)}
-                  className="text-sm px-3 py-1 rounded-full bg-violet-600 hover:bg-violet-500 flex items-center gap-1"
-                >
-                  <Plus size={16} /> Ajouter
-                </button>
-              </div>
-            </div>
-
-            {sorted.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucune publication pour l&apos;instant.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
-                {heroPub && (
-                  <div className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                    <div className="relative w-full h-64">
-                      {heroPub.mediaType === 'image' ? (
-                        <Image src={heroPub.media} alt={heroPub.title} fill className="object-cover" />
-                      ) : (
-                        <video src={heroPub.media} controls className="w-full h-full object-cover" />
-                      )}
-                      <button
-                        onClick={() => deletePublication(heroPub.id)}
-                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-1.5 rounded"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                    <div className="p-3">
-                      <p className="font-medium">{heroPub.title}</p>
-                      {heroPub.caption && <p className="text-sm text-neutral-300 mt-1">{heroPub.caption}</p>}
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-4">
-                  {restPubs.map(p => (
-                    <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                      <div className="relative w-full h-28">
-                        {p.mediaType === 'image' ? (
-                          <Image src={p.media} alt={p.title} fill className="object-cover" />
-                        ) : (
-                          <video src={p.media} controls className="w-full h-full object-cover" />
-                        )}
-                        <button
-                          onClick={() => deletePublication(p.id)}
-                          className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-1.5 rounded"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                      <div className="p-2">
-                        <p className="text-sm font-medium truncate">{p.title}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
+          <PublicationsSection
+            publications={publications}
+            title="Publications"
+            isOwner={true}
+            onDelete={deletePublication}
+            headerAction={
+              <button
+                onClick={() => setShowAddPub(true)}
+                className="text-xs px-3 py-1.5 rounded-full bg-violet-600 hover:bg-violet-500 flex items-center gap-1 transition"
+              >
+                <Plus size={13} /> Ajouter
+              </button>
+            }
+          />
         </div>
 
         {/* Colonne droite */}
@@ -440,49 +377,6 @@ export default function ProviderProfilePage() {
           )}
         </aside>
       </div>
-
-      {/* ── Modal : toutes les publications */}
-      {showAllPubs && (
-        <div
-          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowAllPubs(false)}
-        >
-          <div
-            className="max-w-5xl w-full bg-neutral-950 border border-white/10 rounded-2xl p-4"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Toutes les publications</h3>
-              <button onClick={() => setShowAllPubs(false)} className="text-sm px-3 py-1 rounded bg-white/10 hover:bg-white/20">
-                Fermer
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto">
-              {sorted.map(p => (
-                <div key={p.id} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                  <div className="relative w-full h-40">
-                    {p.mediaType === 'image' ? (
-                      <Image src={p.media} alt={p.title} fill className="object-cover" />
-                    ) : (
-                      <video src={p.media} controls className="w-full h-full object-cover" />
-                    )}
-                    <button
-                      onClick={() => deletePublication(p.id)}
-                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-1.5 rounded"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                  <div className="p-3">
-                    <p className="text-sm font-medium">{p.title}</p>
-                    {p.caption && <p className="text-xs text-neutral-400 mt-1">{p.caption}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Modal : ajouter une publication */}
       {showAddPub && (
