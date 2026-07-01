@@ -5,6 +5,8 @@ import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
 import FollowButton from '@/components/FollowButton'
+import AgendaCalendar from '@/components/AgendaCalendar'
+import { useAuth } from '@/context/AuthContext'
 
 /* ================= Types ================= */
 
@@ -59,6 +61,7 @@ export default function ProviderPublicProfilePage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const userId = params?.id
+  const { user: viewer } = useAuth()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -384,6 +387,16 @@ export default function ProviderPublicProfilePage() {
               )}
 
             </section>
+
+            {profile && (
+              <AgendaCalendar
+                profileId={profile.id}
+                isOwner={false}
+                showAvailability={true}
+                viewerRole={viewer?.role ?? null}
+                viewerProfileId={viewer?.profile?.id ?? null}
+              />
+            )}
 
           </div>
 

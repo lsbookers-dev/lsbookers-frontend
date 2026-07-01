@@ -5,6 +5,8 @@ import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
 import FollowButton from '@/components/FollowButton'
+import AgendaCalendar from '@/components/AgendaCalendar'
+import { useAuth } from '@/context/AuthContext'
 
 /* ================== Types ================== */
 type ApiUser = {
@@ -71,6 +73,7 @@ export default function ArtistPublicProfilePage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const userId = params?.id
+  const { user: viewer } = useAuth()
 
   const [profile, setProfile] = useState<ApiProfile | null>(null)
   const [publications, setPublications] = useState<Publication[]>([])
@@ -288,15 +291,15 @@ export default function ArtistPublicProfilePage() {
             <p className="text-neutral-200 mt-3 leading-relaxed">{bio}</p>
           </section>
 
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold">Mon agenda</h2>
-            <p className="text-neutral-300 mt-2">
-              (Aperçu public de l’agenda. À relier plus tard au calendrier public.)
-            </p>
-            <div className="mt-3 h-48 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center">
-              <span className="text-neutral-500 text-sm">Calendrier à venir</span>
-            </div>
-          </section>
+          {profile && (
+            <AgendaCalendar
+              profileId={profile.id}
+              isOwner={false}
+              showAvailability={true}
+              viewerRole={viewer?.role ?? null}
+              viewerProfileId={viewer?.profile?.id ?? null}
+            />
+          )}
         </div>
 
         <aside className="space-y-6">
