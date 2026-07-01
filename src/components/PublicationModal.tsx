@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
-import { X, Heart, Send, Trash2, Play } from 'lucide-react'
+import { X, Heart, Send, Trash2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import type { PubCardData } from './PublicationCard'
 
@@ -228,7 +228,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
               <p className="text-xs text-white/40 text-center pt-4">Chargement…</p>
             ) : comments.length === 0 ? (
               <p className="text-xs text-white/40 text-center pt-4">
-                Aucun commentaire pour l'instant.
+                Aucun commentaire pour l&apos;instant.
                 {user ? ' Soyez le premier !' : ''}
               </p>
             ) : (

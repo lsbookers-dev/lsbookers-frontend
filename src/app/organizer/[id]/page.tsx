@@ -278,7 +278,7 @@ export default function OrganizerPublicProfilePage() {
 
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Offres d'emploi</h2>
+                <h2 className="text-lg font-semibold">Offres d&apos;emploi</h2>
               </div>
 
               {sortedOffers.length ? (
