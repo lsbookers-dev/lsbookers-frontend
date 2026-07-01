@@ -232,6 +232,7 @@ export default function AgendaCalendar({
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null)
   const [eventDetailLoading, setEventDetailLoading] = useState(false)
+  const [eventDetailError, setEventDetailError] = useState(false)
   const [detailTab, setDetailTab] = useState<'details' | 'staff' | 'notes' | 'purchases' | 'bookings'>('details')
 
   // Formulaires inline dans le détail
@@ -340,6 +341,7 @@ export default function AgendaCalendar({
 
   const fetchEventDetail = useCallback(async (id: number) => {
     setEventDetailLoading(true)
+    setEventDetailError(false)
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`${API}/api/events/${id}/detail`, { headers: { Authorization: `Bearer ${token}` } })
@@ -347,8 +349,12 @@ export default function AgendaCalendar({
         const d = await res.json()
         setEventDetail(d.event)
         setNotesText(d.event.notes || '')
+      } else {
+        setEventDetailError(true)
       }
-    } catch {}
+    } catch {
+      setEventDetailError(true)
+    }
     finally { setEventDetailLoading(false) }
   }, [API])
 
@@ -365,6 +371,8 @@ export default function AgendaCalendar({
     setSelectedEventId(id)
     setEventMode('detail')
     setDetailTab('details')
+    setEventDetail(null)
+    setEventDetailError(false)
     fetchEventDetail(id)
   }, [fetchEventDetail])
 
@@ -962,8 +970,21 @@ export default function AgendaCalendar({
 
         // ── DETAIL MODE ──
         if (eventMode === 'detail') {
-          if (eventDetailLoading || !eventDetail) {
+          if (eventDetailLoading) {
             return <div className="p-8 text-center text-white/30 text-sm">Chargement…</div>
+          }
+          if (eventDetailError || !eventDetail) {
+            return (
+              <div className="p-8 text-center space-y-3">
+                <p className="text-red-400/80 text-sm">Impossible de charger l&apos;événement.</p>
+                <button
+                  onClick={() => selectedEventId && fetchEventDetail(selectedEventId)}
+                  className="text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-white/70"
+                >
+                  Réessayer
+                </button>
+              </div>
+            )
           }
 
           const DETAIL_TABS = [
