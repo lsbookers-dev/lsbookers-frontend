@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, MapPin, Clock, Send, X, BookOpen } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, MapPin, Clock, Send, X, BookOpen, Plus } from 'lucide-react'
 
 /* ─────────────────────────────────────────────────────────
    TYPES
@@ -36,6 +36,72 @@ type BookingItem = {
   target?:    { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
 }
 
+type EventSummary = {
+  id: number
+  title: string
+  start: string
+  end?: string | null
+  lieu?: string | null
+  category?: string | null
+  status: string
+  isPrivate: boolean
+  budget?: number | null
+}
+
+type StaffItem = {
+  id: number
+  role: string
+  fee?: number | null
+  status: string
+  notes?: string | null
+  profile?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null } | null
+}
+
+type ExpenseItem = {
+  id: number
+  label: string
+  amount?: number | null
+  category?: string | null
+  paid: boolean
+}
+
+type PurchaseItem = {
+  id: number
+  item: string
+  quantity?: number | null
+  price?: number | null
+  done: boolean
+}
+
+type BookingItem2 = {
+  id: number
+  startDate: string
+  fee?: number | null
+  status: string
+  message?: string | null
+  target?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null } | null
+}
+
+type EventDetail = {
+  id: number
+  title: string
+  description?: string | null
+  notes?: string | null
+  start: string
+  end?: string | null
+  allDay: boolean
+  lieu?: string | null
+  category?: string | null
+  isPrivate: boolean
+  budget?: number | null
+  maxCapacity?: number | null
+  status: string
+  staff: StaffItem[]
+  expenses: ExpenseItem[]
+  purchases: PurchaseItem[]
+  bookingRequests: BookingItem2[]
+}
+
 /* ── Badges ── */
 function BkStatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
@@ -61,6 +127,7 @@ interface Props {
   showAvailability?: boolean
   viewerRole?: string | null        // rôle du visiteur connecté
   viewerProfileId?: number | null   // profileId du visiteur (pour envoyer une demande)
+  ownerRole?: string | null         // rôle du propriétaire du profil
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -111,7 +178,10 @@ export default function AgendaCalendar({
   showAvailability = false,
   viewerRole = null,
   viewerProfileId = null,
+  ownerRole = null,
 }: Props) {
+  // ownerRole is available for future use (e.g. restrict event panel to ORGANIZER role)
+  void ownerRole
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   const now = new Date()
@@ -139,6 +209,42 @@ export default function AgendaCalendar({
   const [cancelNoteFor, setCancelNoteFor] = useState<number | null>(null)
   const [cancelNoteText, setCancelNoteText] = useState('')
   const [cancelRequestingId, setCancelRequestingId] = useState<number | null>(null)
+
+  // Panel événements
+  type EventMode = 'list' | 'create' | 'detail'
+  const [showEventPanel, setShowEventPanel] = useState(false)
+  const [eventMode, setEventMode] = useState<EventMode>('list')
+  const [allEvents, setAllEvents] = useState<EventSummary[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+
+  // Création d'événement
+  const [createTitle, setCreateTitle] = useState('')
+  const [createDate, setCreateDate] = useState('')
+  const [createEndDate, setCreateEndDate] = useState('')
+  const [createStartTime, setCreateStartTime] = useState('')
+  const [createEndTime, setCreateEndTime] = useState('')
+  const [createLieu, setCreateLieu] = useState('')
+  const [createCategory, setCreateCategory] = useState('')
+  const [createBudget, setCreateBudget] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  // Détail événement
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
+  const [eventDetail, setEventDetail] = useState<EventDetail | null>(null)
+  const [eventDetailLoading, setEventDetailLoading] = useState(false)
+  const [detailTab, setDetailTab] = useState<'details' | 'staff' | 'notes' | 'purchases' | 'bookings'>('details')
+
+  // Formulaires inline dans le détail
+  const [notesText, setNotesText] = useState('')
+  const [notesSaving, setNotesSaving] = useState(false)
+  const [newExpenseLabel, setNewExpenseLabel] = useState('')
+  const [newExpenseAmount, setNewExpenseAmount] = useState('')
+  const [newExpenseCategory, setNewExpenseCategory] = useState('')
+  const [addingExpense, setAddingExpense] = useState(false)
+  const [newPurchaseItem, setNewPurchaseItem] = useState('')
+  const [newPurchaseQty, setNewPurchaseQty] = useState('')
+  const [newPurchasePrice, setNewPurchasePrice] = useState('')
+  const [addingPurchase, setAddingPurchase] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -221,6 +327,179 @@ export default function AgendaCalendar({
     } catch {}
     finally { setCancelRequestingId(null) }
   }, [API, cancelNoteText, refreshPanel])
+
+  const fetchAllEvents = useCallback(async () => {
+    setEventsLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/events/all`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) { const d = await res.json(); setAllEvents(d.events || []) }
+    } catch {}
+    finally { setEventsLoading(false) }
+  }, [API])
+
+  const fetchEventDetail = useCallback(async (id: number) => {
+    setEventDetailLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/events/${id}/detail`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) {
+        const d = await res.json()
+        setEventDetail(d.event)
+        setNotesText(d.event.notes || '')
+      }
+    } catch {}
+    finally { setEventDetailLoading(false) }
+  }, [API])
+
+  const openEventPanel = useCallback(() => {
+    setShowEventPanel(true)
+    setShowPanel(false)
+    setEventMode('list')
+    setSelectedEventId(null)
+    setEventDetail(null)
+    fetchAllEvents()
+  }, [fetchAllEvents])
+
+  const openEventDetail = useCallback((id: number) => {
+    setSelectedEventId(id)
+    setEventMode('detail')
+    setDetailTab('details')
+    fetchEventDetail(id)
+  }, [fetchEventDetail])
+
+  const createEvent = useCallback(async () => {
+    if (!createTitle.trim() || !createDate) return
+    setCreating(true)
+    try {
+      const token = localStorage.getItem('token')
+      const startISO = createStartTime ? `${createDate}T${createStartTime}:00.000Z` : `${createDate}T00:00:00.000Z`
+      const endISO = createEndDate && createEndTime ? `${createEndDate}T${createEndTime}:00.000Z` : null
+      const res = await fetch(`${API}/api/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: createTitle.trim(),
+          start: startISO,
+          end: endISO,
+          lieu: createLieu.trim() || null,
+          category: createCategory || null,
+          budget: createBudget ? parseFloat(createBudget) : null,
+          isPrivate: true,
+          status: 'DRAFT',
+        }),
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setCreateTitle(''); setCreateDate(''); setCreateEndDate(''); setCreateStartTime(''); setCreateEndTime(''); setCreateLieu(''); setCreateCategory(''); setCreateBudget('')
+        await fetchAllEvents()
+        openEventDetail(d.event.id)
+      }
+    } catch {}
+    finally { setCreating(false) }
+  }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, fetchAllEvents, openEventDetail])
+
+  const saveNotes = useCallback(async () => {
+    if (!selectedEventId) return
+    setNotesSaving(true)
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`${API}/api/events/${selectedEventId}/notes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ notes: notesText }),
+      })
+    } catch {}
+    finally { setNotesSaving(false) }
+  }, [API, selectedEventId, notesText])
+
+  const addExpense = useCallback(async () => {
+    if (!newExpenseLabel.trim() || !selectedEventId) return
+    setAddingExpense(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/events/${selectedEventId}/expenses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ label: newExpenseLabel.trim(), amount: newExpenseAmount || null, category: newExpenseCategory || null }),
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setEventDetail(prev => prev ? { ...prev, expenses: [...prev.expenses, d.expense] } : prev)
+        setNewExpenseLabel(''); setNewExpenseAmount(''); setNewExpenseCategory('')
+      }
+    } catch {}
+    finally { setAddingExpense(false) }
+  }, [API, selectedEventId, newExpenseLabel, newExpenseAmount, newExpenseCategory])
+
+  const toggleExpensePaid = useCallback(async (expenseId: number, paid: boolean) => {
+    if (!selectedEventId) return
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paid }),
+      })
+      setEventDetail(prev => prev ? { ...prev, expenses: prev.expenses.map(e => e.id === expenseId ? { ...e, paid } : e) } : prev)
+    } catch {}
+  }, [API, selectedEventId])
+
+  const deleteExpense = useCallback(async (expenseId: number) => {
+    if (!selectedEventId) return
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setEventDetail(prev => prev ? { ...prev, expenses: prev.expenses.filter(e => e.id !== expenseId) } : prev)
+    } catch {}
+  }, [API, selectedEventId])
+
+  const addPurchase = useCallback(async () => {
+    if (!newPurchaseItem.trim() || !selectedEventId) return
+    setAddingPurchase(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/events/${selectedEventId}/purchases`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ item: newPurchaseItem.trim(), quantity: newPurchaseQty || null, price: newPurchasePrice || null }),
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setEventDetail(prev => prev ? { ...prev, purchases: [...prev.purchases, d.purchase] } : prev)
+        setNewPurchaseItem(''); setNewPurchaseQty(''); setNewPurchasePrice('')
+      }
+    } catch {}
+    finally { setAddingPurchase(false) }
+  }, [API, selectedEventId, newPurchaseItem, newPurchaseQty, newPurchasePrice])
+
+  const togglePurchaseDone = useCallback(async (purchaseId: number, done: boolean) => {
+    if (!selectedEventId) return
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ done }),
+      })
+      setEventDetail(prev => prev ? { ...prev, purchases: prev.purchases.map(p => p.id === purchaseId ? { ...p, done } : p) } : prev)
+    } catch {}
+  }, [API, selectedEventId])
+
+  const deletePurchase = useCallback(async (purchaseId: number) => {
+    if (!selectedEventId) return
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setEventDetail(prev => prev ? { ...prev, purchases: prev.purchases.filter(p => p.id !== purchaseId) } : prev)
+    } catch {}
+  }, [API, selectedEventId])
 
   /* Réinitialiser le formulaire de booking quand on change de jour */
   useEffect(() => {
@@ -337,8 +616,33 @@ export default function AgendaCalendar({
           <CalendarDays className="h-4 w-4 text-purple-400" />
           <span className="font-semibold text-sm">Agenda</span>
         </div>
-        {!showPanel ? (
+        {showEventPanel ? (
+          <div className="flex items-center gap-2">
+            {eventMode === 'detail' && (
+              <button
+                onClick={() => { setEventMode('list'); setSelectedEventId(null); setEventDetail(null) }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 text-xs hover:bg-white/10 transition"
+              >
+                ← Retour
+              </button>
+            )}
+            <button
+              onClick={() => { setShowEventPanel(false); setEventMode('list') }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 text-xs hover:bg-white/10 transition"
+            >
+              <X className="h-3 w-3" /> Fermer
+            </button>
+          </div>
+        ) : !showPanel ? (
           <div className="flex items-center gap-1">
+            {isOwner && (
+              <button
+                onClick={openEventPanel}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-600/20 border border-green-500/30 text-green-300 text-xs hover:bg-green-600/30 transition mr-1"
+              >
+                <Plus className="h-3 w-3" /> Événement
+              </button>
+            )}
             {isOwner && (
               <button
                 onClick={openPanel}
@@ -556,8 +860,370 @@ export default function AgendaCalendar({
         )
       })()}
 
+      {/* ─── Panneau "Événements" ─── */}
+      {showEventPanel && (() => {
+        const statusLabel: Record<string, string> = { DRAFT: 'Brouillon', PUBLISHED: 'Publié', CANCELLED: 'Annulé', COMPLETED: 'Terminé' }
+        const statusCls: Record<string, string> = {
+          DRAFT: 'bg-white/10 text-white/40', PUBLISHED: 'bg-green-500/20 text-green-300',
+          CANCELLED: 'bg-red-500/20 text-red-300', COMPLETED: 'bg-blue-500/20 text-blue-300',
+        }
+        const CATEGORIES = ['Club', 'Mariage', 'Corporate', 'Festival', 'Concert', 'Privé', 'Autre']
+        const EXPENSE_CATEGORIES = ['Technique', 'Catering', 'Décor', 'Communication', 'Personnel', 'Autre']
+
+        // ── LIST MODE ──
+        if (eventMode === 'list') {
+          return (
+            <div className="p-4 max-h-[580px] overflow-y-auto space-y-3">
+              {/* Formulaire de création */}
+              <div className="bg-white/5 rounded-xl border border-white/10 p-3 space-y-2">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wide">Nouvel événement</p>
+                <input
+                  type="text" value={createTitle} onChange={e => setCreateTitle(e.target.value)}
+                  placeholder="Titre de l'événement *"
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[10px] text-white/35 mb-1">Date début *</p>
+                    <input type="date" value={createDate} onChange={e => setCreateDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white/35 mb-1">Heure début</p>
+                    <input type="time" value={createStartTime} onChange={e => setCreateStartTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white/35 mb-1">Date fin</p>
+                    <input type="date" value={createEndDate} onChange={e => setCreateEndDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white/35 mb-1">Heure fin</p>
+                    <input type="time" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                  </div>
+                </div>
+                <input type="text" value={createLieu} onChange={e => setCreateLieu(e.target.value)}
+                  placeholder="Lieu (optionnel)"
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40" />
+                <div className="flex gap-2">
+                  <select value={createCategory} onChange={e => setCreateCategory(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40">
+                    <option value="">Catégorie…</option>
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <input type="number" value={createBudget} onChange={e => setCreateBudget(e.target.value)}
+                    placeholder="Budget (€)"
+                    className="w-28 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40" />
+                </div>
+                <button
+                  onClick={createEvent}
+                  disabled={creating || !createTitle.trim() || !createDate}
+                  className="w-full py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium disabled:opacity-40 transition"
+                >
+                  {creating ? 'Création…' : '+ Créer l\'événement'}
+                </button>
+              </div>
+
+              {/* Liste des événements existants */}
+              {eventsLoading ? (
+                <p className="text-center text-white/30 text-sm py-4">Chargement…</p>
+              ) : allEvents.length === 0 ? (
+                <p className="text-xs text-white/25 italic text-center py-2">Aucun événement créé</p>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-white/40 uppercase tracking-wide font-medium">Événements existants ({allEvents.length})</p>
+                  {allEvents.map(ev => (
+                    <button
+                      key={ev.id}
+                      onClick={() => openEventDetail(ev.id)}
+                      className="w-full text-left bg-white/5 rounded-xl p-3 border border-white/8 hover:bg-white/10 transition"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{ev.title}</p>
+                          <p className="text-xs text-white/40 mt-0.5">
+                            📅 {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {ev.lieu ? ` · ${ev.lieu}` : ''}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${statusCls[ev.status] || 'bg-white/10 text-white/40'}`}>
+                          {statusLabel[ev.status] || ev.status}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        // ── DETAIL MODE ──
+        if (eventMode === 'detail') {
+          if (eventDetailLoading || !eventDetail) {
+            return <div className="p-8 text-center text-white/30 text-sm">Chargement…</div>
+          }
+
+          const DETAIL_TABS = [
+            { key: 'details'   as const, label: 'Détails' },
+            { key: 'staff'     as const, label: 'Personnel' },
+            { key: 'notes'     as const, label: 'Notes & Frais' },
+            { key: 'purchases' as const, label: 'Achats' },
+            { key: 'bookings'  as const, label: 'Bookings' },
+          ]
+
+          const totalExpenses = eventDetail.expenses.reduce((s, e) => s + (e.amount || 0), 0)
+          const paidExpenses  = eventDetail.expenses.filter(e => e.paid).reduce((s, e) => s + (e.amount || 0), 0)
+
+          const personName = (p: StaffItem['profile']) => {
+            if (!p) return 'Non assigné'
+            return p.user?.pseudo || [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ') || '?'
+          }
+
+          const bookingStatusCls: Record<string, string> = {
+            PENDING: 'text-yellow-300', ACCEPTED: 'text-green-300', DECLINED: 'text-red-300', CANCELLED: 'text-white/30',
+          }
+
+          return (
+            <div className="max-h-[600px] overflow-y-auto">
+              {/* En-tête événement */}
+              <div className="px-4 pt-3 pb-2 border-b border-white/8">
+                <p className="text-sm font-semibold text-white truncate">{eventDetail.title}</p>
+                <p className="text-xs text-white/40 mt-0.5">
+                  📅 {new Date(eventDetail.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {eventDetail.lieu ? ` · ${eventDetail.lieu}` : ''}
+                </p>
+              </div>
+
+              {/* Onglets */}
+              <div className="flex border-b border-white/8 overflow-x-auto">
+                {DETAIL_TABS.map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setDetailTab(tab.key)}
+                    className={`px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition ${
+                      detailTab === tab.key ? 'border-violet-500 text-violet-300' : 'border-transparent text-white/40 hover:text-white/70'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-4 space-y-3">
+
+                {/* ── DÉTAILS ── */}
+                {detailTab === 'details' && (
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Titre', value: eventDetail.title },
+                      { label: 'Lieu', value: eventDetail.lieu || '—' },
+                      { label: 'Catégorie', value: eventDetail.category || '—' },
+                      { label: 'Budget', value: eventDetail.budget ? `${Number(eventDetail.budget).toLocaleString('fr-FR')} €` : '—' },
+                      { label: 'Statut', value: statusLabel[eventDetail.status] || eventDetail.status },
+                      { label: 'Capacité max', value: eventDetail.maxCapacity?.toString() || '—' },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="flex items-start justify-between gap-4">
+                        <span className="text-xs text-white/40 shrink-0">{label}</span>
+                        <span className="text-xs text-white text-right">{value}</span>
+                      </div>
+                    ))}
+                    {eventDetail.description && (
+                      <div>
+                        <p className="text-xs text-white/40 mb-1">Description</p>
+                        <p className="text-xs text-white/70">{eventDetail.description}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── PERSONNEL ── */}
+                {detailTab === 'staff' && (
+                  <div className="space-y-2">
+                    {eventDetail.staff.length === 0 ? (
+                      <p className="text-xs text-white/25 italic text-center py-4">Aucun personnel assigné</p>
+                    ) : (
+                      eventDetail.staff.map(s => (
+                        <div key={s.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium text-white">{s.role}</p>
+                              <p className="text-xs text-white/50 mt-0.5">{personName(s.profile)}</p>
+                              {s.fee && <p className="text-xs text-white/40">{Number(s.fee).toLocaleString('fr-FR')} €</p>}
+                            </div>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${s.status === 'BOOKED' ? 'bg-green-500/20 text-green-300' : s.status === 'NEEDED' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
+                              {s.status === 'BOOKED' ? 'Confirmé' : s.status === 'NEEDED' ? 'À pourvoir' : 'Annulé'}
+                            </span>
+                          </div>
+                          {s.notes && <p className="text-xs text-white/40 mt-1 italic">{s.notes}</p>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* ── NOTES & FRAIS ── */}
+                {detailTab === 'notes' && (
+                  <div className="space-y-4">
+                    {/* Notes privées */}
+                    <div>
+                      <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Notes privées</p>
+                      <textarea
+                        value={notesText}
+                        onChange={e => setNotesText(e.target.value)}
+                        placeholder="Vos notes pour cet événement…"
+                        rows={4}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
+                      />
+                      <button
+                        onClick={saveNotes}
+                        disabled={notesSaving}
+                        className="mt-1.5 px-4 py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition"
+                      >
+                        {notesSaving ? 'Sauvegarde…' : 'Sauvegarder'}
+                      </button>
+                    </div>
+
+                    {/* Dépenses */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs text-white/40 uppercase tracking-wide">Frais</p>
+                        <p className="text-xs text-white/50">{paidExpenses.toLocaleString('fr-FR')} € / {totalExpenses.toLocaleString('fr-FR')} € payés</p>
+                      </div>
+                      <div className="space-y-1.5 mb-3">
+                        {eventDetail.expenses.map(e => (
+                          <div key={e.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                            <input
+                              type="checkbox" checked={e.paid}
+                              onChange={ev => toggleExpensePaid(e.id, ev.target.checked)}
+                              className="accent-violet-500 w-3.5 h-3.5 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs ${e.paid ? 'line-through text-white/30' : 'text-white'}`}>{e.label}</p>
+                              {e.category && <p className="text-[10px] text-white/30">{e.category}</p>}
+                            </div>
+                            {e.amount != null && (
+                              <span className="text-xs text-white/60 shrink-0">{Number(e.amount).toLocaleString('fr-FR')} €</span>
+                            )}
+                            <button onClick={() => deleteExpense(e.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
+                          </div>
+                        ))}
+                        {eventDetail.expenses.length === 0 && (
+                          <p className="text-xs text-white/20 italic">Aucune dépense enregistrée</p>
+                        )}
+                      </div>
+                      {/* Formulaire ajout dépense */}
+                      <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
+                        <input type="text" value={newExpenseLabel} onChange={e => setNewExpenseLabel(e.target.value)}
+                          placeholder="Libellé *"
+                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                        <div className="flex gap-2">
+                          <input type="number" value={newExpenseAmount} onChange={e => setNewExpenseAmount(e.target.value)}
+                            placeholder="Montant (€)"
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                          <select value={newExpenseCategory} onChange={e => setNewExpenseCategory(e.target.value)}
+                            className="flex-1 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
+                            <option value="">Catégorie…</option>
+                            {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <button onClick={addExpense} disabled={addingExpense || !newExpenseLabel.trim()}
+                          className="w-full py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition">
+                          {addingExpense ? 'Ajout…' : '+ Ajouter une dépense'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── ACHATS ── */}
+                {detailTab === 'purchases' && (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      {eventDetail.purchases.map(p => (
+                        <div key={p.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                          <input
+                            type="checkbox" checked={p.done}
+                            onChange={ev => togglePurchaseDone(p.id, ev.target.checked)}
+                            className="accent-green-500 w-3.5 h-3.5 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs ${p.done ? 'line-through text-white/30' : 'text-white'}`}>{p.item}</p>
+                            {(p.quantity || p.price) && (
+                              <p className="text-[10px] text-white/30">
+                                {p.quantity ? `x${p.quantity}` : ''}{p.quantity && p.price ? ' · ' : ''}{p.price ? `${Number(p.price).toLocaleString('fr-FR')} €` : ''}
+                              </p>
+                            )}
+                          </div>
+                          <button onClick={() => deletePurchase(p.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
+                        </div>
+                      ))}
+                      {eventDetail.purchases.length === 0 && (
+                        <p className="text-xs text-white/20 italic">Liste vide</p>
+                      )}
+                    </div>
+                    {/* Formulaire ajout achat */}
+                    <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
+                      <input type="text" value={newPurchaseItem} onChange={e => setNewPurchaseItem(e.target.value)}
+                        placeholder="Article *"
+                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                      <div className="flex gap-2">
+                        <input type="number" value={newPurchaseQty} onChange={e => setNewPurchaseQty(e.target.value)}
+                          placeholder="Qté" className="w-20 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                        <input type="number" value={newPurchasePrice} onChange={e => setNewPurchasePrice(e.target.value)}
+                          placeholder="Prix unitaire (€)" className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                      </div>
+                      <button onClick={addPurchase} disabled={addingPurchase || !newPurchaseItem.trim()}
+                        className="w-full py-1.5 rounded-lg bg-green-600/60 hover:bg-green-600 text-white text-xs font-medium disabled:opacity-40 transition">
+                        {addingPurchase ? 'Ajout…' : '+ Ajouter un article'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── BOOKINGS ── */}
+                {detailTab === 'bookings' && (
+                  <div className="space-y-2">
+                    {eventDetail.bookingRequests.length === 0 ? (
+                      <p className="text-xs text-white/25 italic text-center py-4">Aucune demande de booking liée à cet événement</p>
+                    ) : (
+                      eventDetail.bookingRequests.map(b => {
+                        const name = b.target?.user?.pseudo || [b.target?.user?.firstName, b.target?.user?.lastName].filter(Boolean).join(' ') || '?'
+                        return (
+                          <div key={b.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-medium text-white">{name}</p>
+                                <p className="text-xs text-white/40 mt-0.5">
+                                  📅 {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
+                                </p>
+                              </div>
+                              <span className={`text-xs font-medium ${bookingStatusCls[b.status] || 'text-white/40'}`}>{b.status}</span>
+                            </div>
+                            {b.message && <p className="text-xs text-white/40 mt-1 italic">&ldquo;{b.message}&rdquo;</p>}
+                          </div>
+                        )
+                      })
+                    )}
+                    <p className="text-[10px] text-white/25 text-center mt-2">
+                      Pour envoyer une offre, utilisez le profil de l&apos;artiste ou prestataire.
+                    </p>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )
+        }
+
+        return null
+      })()}
+
       {/* Grille + sections calendrier (masquées quand le panneau bookings est ouvert) */}
-      {!showPanel && (<><div className="p-4">
+      {!showPanel && !showEventPanel && (<><div className="p-4">
         <div className="grid grid-cols-7 mb-1">
           {DAYS_FR.map((d, i) => (
             <div key={i} className="text-center text-[11px] text-white/30 font-medium py-1">{d}</div>
