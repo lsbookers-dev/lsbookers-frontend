@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Settings2, MessageCircle, Star, Trash2, Plus, MapPin, Music,
 } from 'lucide-react'
+import AgendaCalendar from '@/components/AgendaCalendar'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -385,13 +386,14 @@ export default function ArtistProfilePage() {
             )}
           </section>
 
-          {/* Agenda (placeholder pour la prochaine phase) */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-            <h2 className="text-base font-semibold mb-3">Mon agenda</h2>
-            <div className="h-72 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center">
-              <p className="text-sm text-white/30">Agenda — bientôt disponible</p>
-            </div>
-          </section>
+          {/* Agenda */}
+          {profile && (
+            <AgendaCalendar
+              profileId={profile.id}
+              isOwner={isOwner}
+              showAvailability={true}
+            />
+          )}
         </div>
 
         {/* Colonne droite */}

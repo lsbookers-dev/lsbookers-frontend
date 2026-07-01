@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Settings2, MessageCircle, Star, Trash2, Plus, MapPin,
 } from 'lucide-react'
+import AgendaCalendar from '@/components/AgendaCalendar'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -283,6 +284,15 @@ export default function OrganizerProfilePage() {
 
         {/* Colonne gauche */}
         <div className="space-y-6">
+
+          {/* Agenda */}
+          {profile && (
+            <AgendaCalendar
+              profileId={profile.id}
+              isOwner={isOwner}
+              showAvailability={false}
+            />
+          )}
 
           {/* Bio */}
           {profile?.bio && (
