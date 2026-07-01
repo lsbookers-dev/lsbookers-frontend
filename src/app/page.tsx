@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -60,9 +61,17 @@ function AudienceCard({
 export default function LandingPage() {
   const router = useRouter()
 
-  const BG =
-    process.env.NEXT_PUBLIC_LANDING_BG ||
-    'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
+  const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
+  const [bgUrl, setBgUrl] = useState(process.env.NEXT_PUBLIC_LANDING_BG || DEFAULT_BG)
+
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/admin/settings`)
+      .then(r => r.json())
+      .then(data => { if (data?.landingBgUrl) setBgUrl(data.landingBgUrl) })
+      .catch(() => {})
+  }, [API_BASE])
 
   return (
     <div className="w-full bg-neutral-950 text-white overflow-x-hidden">
@@ -74,7 +83,7 @@ export default function LandingPage() {
 
         {/* Photo de fond */}
         <Image
-          src={BG}
+          src={bgUrl}
           alt="LSBookers — Plateforme événementielle"
           fill
           priority

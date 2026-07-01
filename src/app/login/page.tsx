@@ -70,13 +70,20 @@ export default function LoginPage() {
   const [resendSent, setResendSent]             = useState(false)
   const [greeting, setGreeting]                 = useState('')
 
-  const BG = process.env.NEXT_PUBLIC_LANDING_BG ||
-    'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
+  const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
+  const [bgUrl, setBgUrl] = useState(process.env.NEXT_PUBLIC_LANDING_BG || DEFAULT_BG)
 
   const API = (process.env.NEXT_PUBLIC_API_URL ||
     'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
 
   useEffect(() => { setGreeting(getGreeting()) }, [])
+
+  useEffect(() => {
+    fetch(`${API}/api/admin/settings`)
+      .then(r => r.json())
+      .then(data => { if (data?.loginBgUrl) setBgUrl(data.loginBgUrl) })
+      .catch(() => {})
+  }, [API])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -132,7 +139,7 @@ export default function LoginPage() {
 
       {/* Photo de fond */}
       <Image
-        src={BG}
+        src={bgUrl}
         alt="LSBookers"
         fill
         priority

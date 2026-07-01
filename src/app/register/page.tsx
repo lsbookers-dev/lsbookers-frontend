@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -210,8 +210,15 @@ function BrandingPanel({ step }: { step: number }) {
 export default function RegisterPage() {
   const router = useRouter()
 
-  const BG = process.env.NEXT_PUBLIC_LANDING_BG ||
-    'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
+  const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
+  const [bgUrl, setBgUrl] = useState(process.env.NEXT_PUBLIC_LANDING_BG || DEFAULT_BG)
+
+  useEffect(() => {
+    fetch(`${API}/api/admin/settings`)
+      .then(r => r.json())
+      .then(data => { if (data?.registerBgUrl) setBgUrl(data.registerBgUrl) })
+      .catch(() => {})
+  }, [])
 
   const [step, setStep]   = useState(1)
   const [error, setError] = useState<string | null>(null)
@@ -302,7 +309,7 @@ export default function RegisterPage() {
     <div className="relative min-h-screen w-full overflow-hidden text-white">
 
       {/* Photo de fond */}
-      <Image src={BG} alt="LSBookers" fill priority sizes="100vw" className="z-0 object-cover" />
+      <Image src={bgUrl} alt="LSBookers" fill priority sizes="100vw" className="z-0 object-cover" />
       <div className="absolute inset-0 z-10 bg-black/60" />
       <div className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl" />
