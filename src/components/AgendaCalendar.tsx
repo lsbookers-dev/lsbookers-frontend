@@ -971,28 +971,35 @@ export default function AgendaCalendar({
                 <div className="space-y-2">
                   <p className="text-[11px] text-white/40 uppercase tracking-wide font-medium">Événements existants ({allEvents.length})</p>
                   {allEvents.map(ev => (
-                    <button
+                    <div
                       key={ev.id}
-                      onClick={() => openEventDetail(ev.id)}
-                      className={`w-full text-left rounded-xl p-3 border hover:bg-white/10 transition ${
+                      className={`rounded-xl border overflow-hidden ${
                         ev.id === lastCreatedId
                           ? 'bg-green-500/10 border-green-500/30'
                           : 'bg-white/5 border-white/10'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{ev.title}</p>
-                          <p className="text-xs text-white/40 mt-0.5">
-                            📅 {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            {ev.lieu ? ` · ${ev.lieu}` : ''}
-                          </p>
+                      <div className="p-3">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{ev.title}</p>
+                            <p className="text-xs text-white/40 mt-0.5">
+                              📅 {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {ev.lieu ? ` · ${ev.lieu}` : ''}
+                            </p>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${statusCls[ev.status] || 'bg-white/10 text-white/40'}`}>
+                            {statusLabel[ev.status] || ev.status}
+                          </span>
                         </div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${statusCls[ev.status] || 'bg-white/10 text-white/40'}`}>
-                          {statusLabel[ev.status] || ev.status}
-                        </span>
+                        <button
+                          onClick={() => openEventDetail(ev.id)}
+                          className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-xs font-medium transition flex items-center justify-center gap-1"
+                        >
+                          Gérer l&apos;événement →
+                        </button>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
