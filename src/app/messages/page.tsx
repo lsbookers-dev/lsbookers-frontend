@@ -8,7 +8,7 @@ import {
   Search, Send, Paperclip, ArrowLeft, MessageCircle,
   Plus, X, FileText, Trash2, CheckCheck, Check,
   Music2, Building2, Wrench, Loader2,
-  Download, ZoomIn,
+  Download, ZoomIn, CalendarDays,
 } from 'lucide-react'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -40,9 +40,22 @@ interface Conversation {
   updatedAt: string
 }
 
+interface BookingRequestData {
+  id: number
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'
+  startDate: string
+  fee?: number | null
+  message?: string | null
+  requesterId: number
+  targetId: number
+}
+
 interface Message {
   id: string
   content: string
+  type?: string | null
+  bookingRequestId?: number | null
+  bookingRequest?: BookingRequestData | null
   attachmentUrl?: string | null
   attachmentType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null
   attachmentName?: string | null
@@ -191,6 +204,201 @@ function AttachmentBubble({ msg, onImageClick }: { msg: Message; onImageClick: (
         <p className="text-xs text-white/40">Télécharger</p>
       </div>
     </a>
+  )
+}
+
+/* ── Status badge demande de booking ────────────────────── */
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    PENDING:   { label: 'En attente', cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+    ACCEPTED:  { label: 'Accepté',    cls: 'bg-green-500/20 text-green-300 border-green-500/30' },
+    DECLINED:  { label: 'Refusé',     cls: 'bg-red-500/20 text-red-300 border-red-500/30' },
+    CANCELLED: { label: 'Annulé',     cls: 'bg-white/10 text-white/40 border-white/10' },
+  }
+  const s = map[status] || map.PENDING
+  return (
+    <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full border ${s.cls}`}>
+      {s.label}
+    </span>
+  )
+}
+
+/* ── Carte demande de booking ────────────────────────────── */
+function BookingRequestCard({
+  msg,
+  currentUserId,
+  token,
+  onStatusUpdate,
+}: {
+  msg: Message
+  currentUserId: number | null
+  token: string | null
+  onStatusUpdate: (messageId: string, newStatus: BookingRequestData['status']) => void
+}) {
+  const [localStatus, setLocalStatus] = useState<BookingRequestData['status'] | null>(null)
+  const [updating, setUpdating] = useState(false)
+  const [showCounter, setShowCounter] = useState(false)
+  const [counterDate, setCounterDate] = useState('')
+  const [counterFee, setCounterFee] = useState('')
+  const [counterMsg, setCounterMsg] = useState('')
+  const [sendingCounter, setSendingCounter] = useState(false)
+
+  const br = msg.bookingRequest
+  if (!br) return null
+
+  const status = localStatus ?? br.status
+  const isSender = msg.sender.id === currentUserId
+
+  const dateLabel = br.startDate
+    ? new Date(br.startDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : '—'
+
+  const updateStatus = async (newStatus: BookingRequestData['status']) => {
+    if (!token || updating) return
+    setUpdating(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/events/booking-request/${br.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) {
+        setLocalStatus(newStatus)
+        onStatusUpdate(msg.id, newStatus)
+      }
+    } catch (err) {
+      console.error('updateStatus:', err)
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const submitCounter = async () => {
+    if (!token || !counterDate || sendingCounter) return
+    setSendingCounter(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/events/booking-request`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetProfileId: br.requesterId,
+          date: counterDate,
+          message: counterMsg.trim() || undefined,
+          fee: counterFee ? parseFloat(counterFee) : undefined,
+        }),
+      })
+      if (res.ok) {
+        setShowCounter(false)
+        await updateStatus('DECLINED')
+      }
+    } catch (err) {
+      console.error('submitCounter:', err)
+    } finally {
+      setSendingCounter(false)
+    }
+  }
+
+  return (
+    <div className="max-w-sm w-full rounded-2xl border border-violet-500/30 bg-violet-900/20 overflow-hidden">
+      {/* En-tête */}
+      <div className="px-4 py-3 border-b border-violet-500/20 flex items-center gap-2">
+        <CalendarDays className="w-4 h-4 text-violet-400 shrink-0" />
+        <span className="text-sm font-semibold text-violet-300">Demande de booking</span>
+        <StatusBadge status={status} />
+      </div>
+
+      {/* Détails */}
+      <div className="px-4 py-3 space-y-1.5">
+        <p className="text-sm text-white/80 capitalize">📅 {dateLabel}</p>
+        {br.fee != null && (
+          <p className="text-sm text-white/80">💶 {Number(br.fee).toLocaleString('fr-FR')} €</p>
+        )}
+        {br.message && (
+          <p className="text-sm text-white/55 italic border-l-2 border-violet-500/40 pl-3">"{br.message}"</p>
+        )}
+      </div>
+
+      {/* Actions */}
+      {status === 'PENDING' && (
+        <div className="px-4 pb-4">
+          {!isSender ? (
+            showCounter ? (
+              <div className="space-y-2 mt-1">
+                <input
+                  type="date"
+                  value={counterDate}
+                  onChange={e => setCounterDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-violet-400"
+                />
+                <input
+                  type="number"
+                  value={counterFee}
+                  onChange={e => setCounterFee(e.target.value)}
+                  placeholder="Cachet proposé (€)"
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-400"
+                />
+                <textarea
+                  value={counterMsg}
+                  onChange={e => setCounterMsg(e.target.value)}
+                  placeholder="Message (optionnel)…"
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-400 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={submitCounter}
+                    disabled={sendingCounter || !counterDate}
+                    className="flex-1 py-2 rounded-xl bg-violet-600 text-white text-sm font-medium hover:bg-violet-500 disabled:opacity-30 transition"
+                  >
+                    {sendingCounter ? 'Envoi…' : 'Envoyer'}
+                  </button>
+                  <button
+                    onClick={() => setShowCounter(false)}
+                    className="px-3 py-2 rounded-xl bg-white/5 text-white/50 text-sm hover:bg-white/10 transition"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => updateStatus('ACCEPTED')}
+                  disabled={updating}
+                  className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-500 disabled:opacity-30 transition"
+                >
+                  ✓ Accepter
+                </button>
+                <button
+                  onClick={() => setShowCounter(true)}
+                  className="flex-1 py-2 rounded-xl bg-amber-600/80 text-white text-sm font-medium hover:bg-amber-500/80 transition"
+                >
+                  ↔ Contre-offre
+                </button>
+                <button
+                  onClick={() => updateStatus('DECLINED')}
+                  disabled={updating}
+                  className="flex-1 py-2 rounded-xl bg-red-700/70 text-white text-sm font-medium hover:bg-red-600/70 disabled:opacity-30 transition"
+                >
+                  ✕ Refuser
+                </button>
+              </div>
+            )
+          ) : (
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-white/35">En attente de réponse…</span>
+              <button
+                onClick={() => updateStatus('CANCELLED')}
+                disabled={updating}
+                className="px-3 py-1.5 rounded-xl bg-white/5 text-white/40 text-xs hover:bg-white/10 disabled:opacity-30 transition"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -738,6 +946,38 @@ function MessagesContent() {
                       )
                     }
 
+                    // ── Carte booking request ──
+                    if (msg.type === 'BOOKING_REQUEST' && msg.bookingRequest) {
+                      items.push(
+                        <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          {!isMe && (
+                            <div className="w-7 h-7 shrink-0 mb-1">
+                              <Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} />
+                            </div>
+                          )}
+                          <div className={`flex flex-col max-w-[90%] sm:max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                            <BookingRequestCard
+                              msg={msg}
+                              currentUserId={currentUserId}
+                              token={token}
+                              onStatusUpdate={(messageId, newStatus) => {
+                                setMessages(prev => prev.map(m => {
+                                  if (m.id !== messageId || !m.bookingRequest) return m
+                                  return { ...m, bookingRequest: { ...m.bookingRequest, status: newStatus } }
+                                }))
+                              }}
+                            />
+                            <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
+                              <span className="text-[10px] text-white/25">{formatMessageTime(msg.createdAt)}</span>
+                            </div>
+                          </div>
+                          {isMe && <div className="w-7 shrink-0" />}
+                        </div>
+                      )
+                      return
+                    }
+
+                    // ── Message normal ──
                     items.push(
                       <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                         {!isMe && (
