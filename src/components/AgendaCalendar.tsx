@@ -1452,23 +1452,37 @@ export default function AgendaCalendar({
           ) : (
             <div className="space-y-2">
               {selectedEvents.map(e => (
-                <div key={e.id} className="flex items-start gap-2 rounded-xl bg-white/5 p-2.5">
-                  <span className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${categoryColor(e.category)}`} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{e.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      {!e.allDay && (
-                        <span className="flex items-center gap-1 text-[11px] text-white/40">
-                          <Clock className="h-3 w-3" />{formatHour(e.start)}{e.end ? ` – ${formatHour(e.end)}` : ''}
-                        </span>
-                      )}
-                      {e.lieu && (
-                        <span className="flex items-center gap-1 text-[11px] text-white/40">
-                          <MapPin className="h-3 w-3" />{e.lieu}
-                        </span>
-                      )}
+                <div key={e.id} className="rounded-xl bg-white/5 p-2.5">
+                  <div className="flex items-start gap-2">
+                    <span className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${categoryColor(e.category)}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-white truncate">{e.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {!e.allDay && (
+                          <span className="flex items-center gap-1 text-[11px] text-white/40">
+                            <Clock className="h-3 w-3" />{formatHour(e.start)}{e.end ? ` – ${formatHour(e.end)}` : ''}
+                          </span>
+                        )}
+                        {e.lieu && (
+                          <span className="flex items-center gap-1 text-[11px] text-white/40">
+                            <MapPin className="h-3 w-3" />{e.lieu}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  {isOwner && (
+                    <button
+                      onClick={() => {
+                        setShowPanel(false)
+                        setShowEventPanel(true)
+                        openEventDetail(e.id)
+                      }}
+                      className="mt-2 w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 text-xs font-medium transition"
+                    >
+                      Gérer l&apos;événement →
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
