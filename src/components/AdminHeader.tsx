@@ -54,7 +54,15 @@ export default function AdminHeader() {
 
     fetchUnread()
     const interval = setInterval(fetchUnread, 60_000) // rafraîchit toutes les minutes
-    return () => clearInterval(interval)
+
+    // Mise à jour immédiate quand un message est lu depuis la page messages
+    const onRead = () => setUnread(u => Math.max(0, u - 1))
+    window.addEventListener('contact-read', onRead)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('contact-read', onRead)
+    }
   }, [])
 
   return (

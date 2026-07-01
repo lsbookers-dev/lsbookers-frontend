@@ -57,7 +57,10 @@ export default function AdminMessagesPage() {
         method: 'PATCH', headers: getAuthHeaders(),
       })
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isRead: true } : m))
+      setSelected(prev => prev?.id === msg.id ? { ...prev, isRead: true } : prev)
       setUnread(u => Math.max(0, u - 1))
+      // Notifie le AdminHeader de mettre à jour son badge immédiatement
+      window.dispatchEvent(new CustomEvent('contact-read'))
     } catch { /* ignore */ }
   }
 

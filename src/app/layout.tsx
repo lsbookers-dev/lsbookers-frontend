@@ -17,7 +17,6 @@ function LayoutContent({ children }: { children: ReactNode }) {
     '/register',
     '/forgot-password',
     '/reset-password',
-    '/contact',
   ]
 
   const isPublicPage =
