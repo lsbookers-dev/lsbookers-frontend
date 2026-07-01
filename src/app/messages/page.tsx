@@ -314,7 +314,7 @@ function BookingRequestCard({
           <p className="text-sm text-white/80">💶 {Number(br.fee).toLocaleString('fr-FR')} €</p>
         )}
         {br.message && (
-          <p className="text-sm text-white/55 italic border-l-2 border-violet-500/40 pl-3">"{br.message}"</p>
+          <p className="text-sm text-white/55 italic border-l-2 border-violet-500/40 pl-3">&ldquo;{br.message}&rdquo;</p>
         )}
       </div>
 
