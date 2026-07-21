@@ -82,6 +82,23 @@ type BookingItem2 = {
   target?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null } | null
 }
 
+type DocumentItem = {
+  id: number
+  name: string
+  url: string
+  fileType: string
+  createdAt: string
+}
+
+type LinkedBooking = {
+  id: number
+  startDate: string
+  fee?: number | null
+  paymentStatus?: string | null
+  status: string
+  requester?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
+}
+
 type EventDetail = {
   id: number
   title: string
@@ -99,6 +116,7 @@ type EventDetail = {
   staff: StaffItem[]
   expenses: ExpenseItem[]
   purchases: PurchaseItem[]
+  documents: DocumentItem[]
   bookingRequests: BookingItem2[]
 }
 
@@ -116,9 +134,52 @@ function BkStatusBadge({ status }: { status: string }) {
 }
 
 function PayBadge({ status }: { status?: string | null }) {
-  if (status === 'PAID')    return <span className="text-[10px] text-green-400">💳 Payé</span>
-  if (status === 'DEPOSIT') return <span className="text-[10px] text-amber-400">💳 Acompte reçu</span>
-  return <span className="text-[10px] text-white/30">💳 Non payé</span>
+  if (status === 'PAID')    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300">💳 Booking payé</span>
+  if (status === 'DEPOSIT') return <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">💳 Acompte payé</span>
+  if (status === 'DIRECT')  return <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">💵 Paiement en direct</span>
+  return <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/30">⏳ Non payé</span>
+}
+
+/* ── DocumentsSection — helper composant pour onglets Contrat / Transports (artiste) ── */
+function DocumentsSection({
+  docs, docType, label, uploadingDoc, docError, addDocument, deleteDocument
+}: {
+  docs: DocumentItem[]
+  docType: string
+  label: string
+  uploadingDoc: boolean
+  docError: string
+  addDocument: (file: File, type: string) => void
+  deleteDocument: (id: number) => void
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-white/40 uppercase tracking-wide">{label}</p>
+      <div className="space-y-1.5">
+        {docs.map(d => (
+          <div key={d.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+            <a href={d.url} target="_blank" rel="noreferrer" className="flex-1 min-w-0">
+              <p className="text-xs text-violet-300 hover:text-violet-200 truncate">📎 {d.name}</p>
+            </a>
+            <button onClick={() => deleteDocument(d.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
+          </div>
+        ))}
+        {docs.length === 0 && <p className="text-xs text-white/20 italic">Aucun document</p>}
+      </div>
+      <label className={`w-full py-2 rounded-xl text-xs font-medium text-center cursor-pointer transition block border ${
+        uploadingDoc ? 'bg-white/5 border-white/10 text-white/30' : 'bg-violet-600/20 border-violet-500/30 text-violet-300 hover:bg-violet-600/30'
+      }`}>
+        {uploadingDoc ? 'Upload en cours…' : `📎 Ajouter ${label.toLowerCase()}`}
+        <input type="file" className="hidden" disabled={uploadingDoc}
+          onChange={e => {
+            const f = e.target.files?.[0]
+            if (f) addDocument(f, docType)
+            e.target.value = ''
+          }} />
+      </label>
+      {docError && <p className="text-xs text-red-400">{docError}</p>}
+    </div>
+  )
 }
 
 interface Props {
@@ -247,10 +308,50 @@ export default function AgendaCalendar({
   const [newExpenseAmount, setNewExpenseAmount] = useState('')
   const [newExpenseCategory, setNewExpenseCategory] = useState('')
   const [addingExpense, setAddingExpense] = useState(false)
+  const [expenseError, setExpenseError] = useState('')
   const [newPurchaseItem, setNewPurchaseItem] = useState('')
   const [newPurchaseQty, setNewPurchaseQty] = useState('')
   const [newPurchasePrice, setNewPurchasePrice] = useState('')
   const [addingPurchase, setAddingPurchase] = useState(false)
+
+  // Édition des détails
+  const [editMode, setEditMode] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editLieu, setEditLieu] = useState('')
+  const [editCategory, setEditCategory] = useState('')
+  const [editBudget, setEditBudget] = useState('')
+  const [editStatus, setEditStatus] = useState('')
+  const [editCapacity, setEditCapacity] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editStart, setEditStart] = useState('')
+  const [editStartTime, setEditStartTime] = useState('')
+  const [editEnd, setEditEnd] = useState('')
+  const [editEndTime, setEditEndTime] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  // Personnel
+  const [newStaffRole, setNewStaffRole] = useState('')
+  const [newStaffFee, setNewStaffFee] = useState('')
+  const [newStaffNotes, setNewStaffNotes] = useState('')
+  const [addingStaff, setAddingStaff] = useState(false)
+  const [staffError, setStaffError] = useState('')
+  const [deletingStaffId, setDeletingStaffId] = useState<number | null>(null)
+  const [staffSearchQ, setStaffSearchQ] = useState('')
+  const [staffSearchResults, setStaffSearchResults] = useState<{id:number;avatar?:string|null;user?:{pseudo?:string|null;firstName?:string|null;lastName?:string|null;role?:string|null}}[]>([])
+  const [staffSearchLoading, setStaffSearchLoading] = useState(false)
+  const [staffAddMode, setStaffAddMode] = useState<'manual' | 'pseudo'>('manual')
+
+  // Documents
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [docError, setDocError] = useState('')
+  const [docFilter, setDocFilter] = useState<'ALL'|'CONTRACT'|'TRANSPORT'|'HOTEL'|'OTHER'>('ALL')
+
+  // Booking qui a engendré cet événement (vue artiste/prestataire)
+  const [linkedBooking, setLinkedBooking] = useState<LinkedBooking | null>(null)
+
+  // Mise à jour statut paiement
+  const [updatingPayment, setUpdatingPayment] = useState<number | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -357,7 +458,25 @@ export default function AgendaCalendar({
       if (res.ok) {
         const d = await res.json()
         setEventDetail(d.event)
+        setLinkedBooking(d.linkedBooking || null)
         setNotesText(d.event.notes || '')
+        // Initialiser les champs d'édition
+        const ev = d.event
+        setEditTitle(ev.title || '')
+        setEditLieu(ev.lieu || '')
+        setEditCategory(ev.category || '')
+        setEditBudget(ev.budget != null ? String(ev.budget) : '')
+        setEditStatus(ev.status || 'DRAFT')
+        setEditCapacity(ev.maxCapacity != null ? String(ev.maxCapacity) : '')
+        setEditDescription(ev.description || '')
+        const startDate = new Date(ev.start)
+        setEditStart(`${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-${String(startDate.getDate()).padStart(2,'0')}`)
+        setEditStartTime(`${String(startDate.getHours()).padStart(2,'0')}:${String(startDate.getMinutes()).padStart(2,'0')}`)
+        if (ev.end) {
+          const endDate = new Date(ev.end)
+          setEditEnd(`${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`)
+          setEditEndTime(`${String(endDate.getHours()).padStart(2,'0')}:${String(endDate.getMinutes()).padStart(2,'0')}`)
+        } else { setEditEnd(''); setEditEndTime('') }
       } else {
         setEventDetailError(true)
       }
@@ -382,6 +501,12 @@ export default function AgendaCalendar({
     setDetailTab('details')
     setEventDetail(null)
     setEventDetailError(false)
+    setLinkedBooking(null)
+    setEditMode(false)
+    setEditError('')
+    setStaffError('')
+    setExpenseError('')
+    setDocError('')
     fetchEventDetail(id)
   }, [fetchEventDetail])
 
@@ -468,6 +593,7 @@ export default function AgendaCalendar({
   const addExpense = useCallback(async () => {
     if (!newExpenseLabel.trim() || !selectedEventId) return
     setAddingExpense(true)
+    setExpenseError('')
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`${API}/api/events/${selectedEventId}/expenses`, {
@@ -479,8 +605,14 @@ export default function AgendaCalendar({
         const d = await res.json()
         setEventDetail(prev => prev ? { ...prev, expenses: [...prev.expenses, d.expense] } : prev)
         setNewExpenseLabel(''); setNewExpenseAmount(''); setNewExpenseCategory('')
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setExpenseError(err.error || `Erreur ${res.status}`)
       }
-    } catch {}
+    } catch (err) {
+      console.error('addExpense:', err)
+      setExpenseError('Erreur réseau')
+    }
     finally { setAddingExpense(false) }
   }, [API, selectedEventId, newExpenseLabel, newExpenseAmount, newExpenseCategory])
 
@@ -552,6 +684,174 @@ export default function AgendaCalendar({
       setEventDetail(prev => prev ? { ...prev, purchases: prev.purchases.filter(p => p.id !== purchaseId) } : prev)
     } catch {}
   }, [API, selectedEventId])
+
+  const saveEventDetails = useCallback(async () => {
+    if (!selectedEventId || !editTitle.trim()) return
+    setEditSaving(true)
+    setEditError('')
+    try {
+      const token = localStorage.getItem('token')
+      const startISO = editStartTime ? `${editStart}T${editStartTime}:00` : `${editStart}T12:00:00`
+      const endISO = editEnd ? (editEndTime ? `${editEnd}T${editEndTime}:00` : `${editEnd}T23:59:00`) : null
+      const res = await fetch(`${API}/api/events/${selectedEventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          lieu: editLieu.trim() || null,
+          category: editCategory || null,
+          budget: editBudget ? parseFloat(editBudget) : null,
+          status: editStatus,
+          maxCapacity: editCapacity ? parseInt(editCapacity) : null,
+          description: editDescription.trim() || null,
+          start: startISO,
+          end: endISO,
+        }),
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setEventDetail(prev => prev ? { ...prev, ...d.event } : prev)
+        setEditMode(false)
+        await fetchAllEvents()
+        fetchData()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setEditError(err.error || 'Erreur lors de la sauvegarde')
+      }
+    } catch {
+      setEditError('Erreur réseau')
+    }
+    finally { setEditSaving(false) }
+  }, [API, selectedEventId, editTitle, editLieu, editCategory, editBudget, editStatus, editCapacity, editDescription, editStart, editStartTime, editEnd, editEndTime, fetchAllEvents, fetchData])
+
+  const addStaff = useCallback(async (staffProfileId?: number) => {
+    if (!newStaffRole.trim() || !selectedEventId) return
+    setAddingStaff(true)
+    setStaffError('')
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/events/${selectedEventId}/staff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          role: newStaffRole.trim(),
+          fee: newStaffFee ? parseFloat(newStaffFee) : null,
+          notes: newStaffNotes.trim() || null,
+          profileId: staffProfileId || null,
+        }),
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setEventDetail(prev => prev ? { ...prev, staff: [...prev.staff, d.staff] } : prev)
+        setNewStaffRole(''); setNewStaffFee(''); setNewStaffNotes('')
+        setStaffSearchQ(''); setStaffSearchResults([])
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setStaffError(err.error || 'Erreur')
+      }
+    } catch {
+      setStaffError('Erreur réseau')
+    }
+    finally { setAddingStaff(false) }
+  }, [API, selectedEventId, newStaffRole, newStaffFee, newStaffNotes])
+
+  const deleteStaff = useCallback(async (staffId: number) => {
+    if (!selectedEventId) return
+    setDeletingStaffId(staffId)
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`${API}/api/events/${selectedEventId}/staff/${staffId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setEventDetail(prev => prev ? { ...prev, staff: prev.staff.filter(s => s.id !== staffId) } : prev)
+    } catch {}
+    finally { setDeletingStaffId(null) }
+  }, [API, selectedEventId])
+
+  const searchStaff = useCallback(async (q: string) => {
+    setStaffSearchQ(q)
+    if (!q.trim() || q.trim().length < 2) { setStaffSearchResults([]); return }
+    setStaffSearchLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/search?q=${encodeURIComponent(q.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setStaffSearchResults((d.results || d.profiles || []).slice(0, 5))
+      }
+    } catch {}
+    finally { setStaffSearchLoading(false) }
+  }, [API])
+
+  const addDocument = useCallback(async (file: File, docType: string) => {
+    if (!selectedEventId) return
+    setUploadingDoc(true)
+    setDocError('')
+    try {
+      const token = localStorage.getItem('token')
+      // Upload vers Cloudinary via l'API
+      const formData = new FormData()
+      formData.append('file', file)
+      const uploadRes = await fetch(`${API}/api/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      if (!uploadRes.ok) { setDocError("Erreur d'upload"); return }
+      const uploadData = await uploadRes.json()
+      const url = uploadData.url || uploadData.secure_url
+      if (!url) { setDocError("URL manquante après upload"); return }
+
+      // Sauvegarder en base
+      const res = await fetch(`${API}/api/events/${selectedEventId}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: file.name, url, fileType: docType }),
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setEventDetail(prev => prev ? { ...prev, documents: [...(prev.documents || []), d.document] } : prev)
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setDocError(err.error || 'Erreur lors de la sauvegarde')
+      }
+    } catch {
+      setDocError('Erreur réseau')
+    }
+    finally { setUploadingDoc(false) }
+  }, [API, selectedEventId])
+
+  const deleteDocument = useCallback(async (docId: number) => {
+    if (!selectedEventId) return
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`${API}/api/events/${selectedEventId}/documents/${docId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setEventDetail(prev => prev ? { ...prev, documents: prev.documents.filter(d => d.id !== docId) } : prev)
+    } catch {}
+  }, [API, selectedEventId])
+
+  const updatePaymentStatus = useCallback(async (bookingId: number, paymentStatus: string) => {
+    setUpdatingPayment(bookingId)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/events/booking-request/${bookingId}/payment-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paymentStatus }),
+      })
+      if (res.ok) {
+        // Rafraîchir les données du panneau bookings
+        await refreshPanel()
+      }
+    } catch {}
+    finally { setUpdatingPayment(null) }
+  }, [API, refreshPanel])
 
   /* Réinitialiser le formulaire de booking quand on change de jour */
   useEffect(() => {
@@ -835,7 +1135,33 @@ export default function AgendaCalendar({
                             <BkStatusBadge status={b.status} />
                           </div>
 
-                          {b.status === 'ACCEPTED' && <PayBadge status={b.paymentStatus} />}
+                          {b.status === 'ACCEPTED' && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <PayBadge status={b.paymentStatus} />
+                              {/* Boutons de changement de statut paiement — organisateur seulement */}
+                              {b.direction === 'sent' && (
+                                <div className="flex gap-1 flex-wrap">
+                                  {[
+                                    { key: 'UNPAID',  label: 'Non payé',      cls: 'bg-white/5 text-white/40' },
+                                    { key: 'DEPOSIT', label: 'Acompte',        cls: 'bg-amber-600/20 text-amber-300' },
+                                    { key: 'PAID',    label: 'Payé',           cls: 'bg-green-600/20 text-green-300' },
+                                    { key: 'DIRECT',  label: 'En direct',      cls: 'bg-blue-600/20 text-blue-300' },
+                                  ].map(opt => (
+                                    <button
+                                      key={opt.key}
+                                      onClick={() => updatePaymentStatus(b.id, opt.key)}
+                                      disabled={updatingPayment === b.id || b.paymentStatus === opt.key}
+                                      className={`text-[9px] px-1.5 py-0.5 rounded-full border border-white/10 transition disabled:opacity-40 ${
+                                        b.paymentStatus === opt.key ? 'opacity-40 cursor-default' : 'hover:brightness-125'
+                                      } ${opt.cls}`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {/* Lien conversation */}
                           {b.conversationId && (
@@ -1049,16 +1375,28 @@ export default function AgendaCalendar({
             )
           }
 
-          const DETAIL_TABS = [
-            { key: 'details'   as const, label: 'Détails' },
+          // Détecter si c'est un événement "booké" (artiste/prestataire) ou un événement "organisateur"
+          const isBookedEvent = !!linkedBooking
+
+          const ORGANIZER_TABS = [
+            { key: 'details'   as const, label: 'Détail' },
             { key: 'staff'     as const, label: 'Personnel' },
             { key: 'notes'     as const, label: 'Notes & Frais' },
             { key: 'purchases' as const, label: 'Achats' },
             { key: 'bookings'  as const, label: 'Bookings' },
           ]
+          const BOOKED_TABS = [
+            { key: 'details'   as const, label: 'Détails' },
+            { key: 'staff'     as const, label: 'Matériel' },
+            { key: 'notes'     as const, label: 'Contrat' },
+            { key: 'purchases' as const, label: 'Transports' },
+            { key: 'bookings'  as const, label: 'Paiement' },
+          ]
+          const DETAIL_TABS = isBookedEvent ? BOOKED_TABS : ORGANIZER_TABS
 
           const totalExpenses = eventDetail.expenses.reduce((s, e) => s + (e.amount || 0), 0)
           const paidExpenses  = eventDetail.expenses.filter(e => e.paid).reduce((s, e) => s + (e.amount || 0), 0)
+          const totalStaffFee = eventDetail.staff.reduce((s, st) => s + (st.fee || 0), 0)
 
           const personName = (p: StaffItem['profile']) => {
             if (!p) return 'Non assigné'
@@ -1068,6 +1406,10 @@ export default function AgendaCalendar({
           const bookingStatusCls: Record<string, string> = {
             PENDING: 'text-yellow-300', ACCEPTED: 'text-green-300', DECLINED: 'text-red-300', CANCELLED: 'text-white/30',
           }
+
+          // Documents filtrés
+          const allDocs = eventDetail.documents || []
+          const filteredDocs = docFilter === 'ALL' ? allDocs : allDocs.filter(d => d.fileType === docFilter)
 
           return (
             <div className="max-h-[600px] overflow-y-auto">
@@ -1100,232 +1442,522 @@ export default function AgendaCalendar({
                 {/* ── DÉTAILS ── */}
                 {detailTab === 'details' && (
                   <div className="space-y-3">
-                    {[
-                      { label: 'Titre', value: eventDetail.title },
-                      { label: 'Lieu', value: eventDetail.lieu || '—' },
-                      { label: 'Catégorie', value: eventDetail.category || '—' },
-                      { label: 'Budget', value: eventDetail.budget ? `${Number(eventDetail.budget).toLocaleString('fr-FR')} €` : '—' },
-                      { label: 'Statut', value: statusLabel[eventDetail.status] || eventDetail.status },
-                      { label: 'Capacité max', value: eventDetail.maxCapacity?.toString() || '—' },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="flex items-start justify-between gap-4">
-                        <span className="text-xs text-white/40 shrink-0">{label}</span>
-                        <span className="text-xs text-white text-right">{value}</span>
-                      </div>
-                    ))}
-                    {eventDetail.description && (
-                      <div>
-                        <p className="text-xs text-white/40 mb-1">Description</p>
-                        <p className="text-xs text-white/70">{eventDetail.description}</p>
-                      </div>
-                    )}
-
-                    {/* Zone suppression */}
-                    <div className="pt-3 border-t border-white/8 mt-3">
-                      {!confirmDelete ? (
-                        <button
-                          onClick={() => setConfirmDelete(true)}
-                          className="w-full py-2 rounded-xl border border-red-500/30 text-red-400 text-xs hover:bg-red-500/10 transition"
-                        >
-                          🗑 Supprimer l&apos;événement
-                        </button>
-                      ) : (
-                        <div className="space-y-2">
-                          <p className="text-xs text-red-400 text-center">Supprimer définitivement ?</p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setConfirmDelete(false)}
-                              className="flex-1 py-2 rounded-xl bg-white/10 text-white/60 text-xs hover:bg-white/15 transition"
-                            >
-                              Annuler
-                            </button>
-                            <button
-                              onClick={deleteEvent}
-                              disabled={deletingEvent}
-                              className="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-500 disabled:opacity-50 transition"
-                            >
-                              {deletingEvent ? 'Suppression…' : 'Confirmer'}
-                            </button>
-                          </div>
+                    {/* Vue artiste bookée — lecture seule */}
+                    {isBookedEvent ? (
+                      <>
+                        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-3 space-y-1.5">
+                          <p className="text-[10px] text-violet-300 font-medium uppercase tracking-wide">Organisateur</p>
+                          <p className="text-sm font-medium text-white">
+                            {linkedBooking?.requester?.user?.pseudo || [linkedBooking?.requester?.user?.firstName, linkedBooking?.requester?.user?.lastName].filter(Boolean).join(' ') || '?'}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── PERSONNEL ── */}
-                {detailTab === 'staff' && (
-                  <div className="space-y-2">
-                    {eventDetail.staff.length === 0 ? (
-                      <p className="text-xs text-white/25 italic text-center py-4">Aucun personnel assigné</p>
-                    ) : (
-                      eventDetail.staff.map(s => (
-                        <div key={s.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="text-sm font-medium text-white">{s.role}</p>
-                              <p className="text-xs text-white/50 mt-0.5">{personName(s.profile)}</p>
-                              {s.fee && <p className="text-xs text-white/40">{Number(s.fee).toLocaleString('fr-FR')} €</p>}
-                            </div>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${s.status === 'BOOKED' ? 'bg-green-500/20 text-green-300' : s.status === 'NEEDED' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
-                              {s.status === 'BOOKED' ? 'Confirmé' : s.status === 'NEEDED' ? 'À pourvoir' : 'Annulé'}
-                            </span>
-                          </div>
-                          {s.notes && <p className="text-xs text-white/40 mt-1 italic">{s.notes}</p>}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {/* ── NOTES & FRAIS ── */}
-                {detailTab === 'notes' && (
-                  <div className="space-y-4">
-                    {/* Notes privées */}
-                    <div>
-                      <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Notes privées</p>
-                      <textarea
-                        value={notesText}
-                        onChange={e => setNotesText(e.target.value)}
-                        placeholder="Vos notes pour cet événement…"
-                        rows={4}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
-                      />
-                      <button
-                        onClick={saveNotes}
-                        disabled={notesSaving}
-                        className="mt-1.5 px-4 py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition"
-                      >
-                        {notesSaving ? 'Sauvegarde…' : 'Sauvegarder'}
-                      </button>
-                    </div>
-
-                    {/* Dépenses */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs text-white/40 uppercase tracking-wide">Frais</p>
-                        <p className="text-xs text-white/50">{paidExpenses.toLocaleString('fr-FR')} € / {totalExpenses.toLocaleString('fr-FR')} € payés</p>
-                      </div>
-                      <div className="space-y-1.5 mb-3">
-                        {eventDetail.expenses.map(e => (
-                          <div key={e.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
-                            <input
-                              type="checkbox" checked={e.paid}
-                              onChange={ev => toggleExpensePaid(e.id, ev.target.checked)}
-                              className="accent-violet-500 w-3.5 h-3.5 shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-xs ${e.paid ? 'line-through text-white/30' : 'text-white'}`}>{e.label}</p>
-                              {e.category && <p className="text-[10px] text-white/30">{e.category}</p>}
-                            </div>
-                            {e.amount != null && (
-                              <span className="text-xs text-white/60 shrink-0">{Number(e.amount).toLocaleString('fr-FR')} €</span>
-                            )}
-                            <button onClick={() => deleteExpense(e.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
+                        {[
+                          { label: 'Titre', value: eventDetail.title },
+                          { label: 'Date', value: new Date(eventDetail.start).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
+                          { label: 'Lieu', value: eventDetail.lieu || '—' },
+                          { label: 'Catégorie', value: eventDetail.category || '—' },
+                          { label: 'Cachet', value: linkedBooking?.fee ? `${Number(linkedBooking.fee).toLocaleString('fr-FR')} €` : '—' },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-start justify-between gap-4">
+                            <span className="text-xs text-white/40 shrink-0">{label}</span>
+                            <span className="text-xs text-white text-right">{value}</span>
                           </div>
                         ))}
-                        {eventDetail.expenses.length === 0 && (
-                          <p className="text-xs text-white/20 italic">Aucune dépense enregistrée</p>
-                        )}
-                      </div>
-                      {/* Formulaire ajout dépense */}
-                      <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
-                        <input type="text" value={newExpenseLabel} onChange={e => setNewExpenseLabel(e.target.value)}
-                          placeholder="Libellé *"
-                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                        <div className="flex gap-2">
-                          <input type="number" value={newExpenseAmount} onChange={e => setNewExpenseAmount(e.target.value)}
-                            placeholder="Montant (€)"
-                            className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                          <select value={newExpenseCategory} onChange={e => setNewExpenseCategory(e.target.value)}
-                            className="flex-1 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
+                      </>
+                    ) : editMode ? (
+                      /* Mode édition — organisateur */
+                      <div className="space-y-2">
+                        <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)}
+                          placeholder="Titre *"
+                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-[10px] text-white/35 mb-1">Date début *</p>
+                            <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-white/35 mb-1">Heure début</p>
+                            <input type="time" value={editStartTime} onChange={e => setEditStartTime(e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-white/35 mb-1">Date fin</p>
+                            <input type="date" value={editEnd} onChange={e => setEditEnd(e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-white/35 mb-1">Heure fin</p>
+                            <input type="time" value={editEndTime} onChange={e => setEditEndTime(e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
+                          </div>
+                        </div>
+                        <input type="text" value={editLieu} onChange={e => setEditLieu(e.target.value)}
+                          placeholder="Lieu"
+                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <select value={editCategory} onChange={e => setEditCategory(e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none">
                             <option value="">Catégorie…</option>
-                            {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          <select value={editStatus} onChange={e => setEditStatus(e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none">
+                            <option value="DRAFT">Brouillon</option>
+                            <option value="PUBLISHED">Publié</option>
+                            <option value="COMPLETED">Terminé</option>
+                            <option value="CANCELLED">Annulé</option>
                           </select>
                         </div>
-                        <button onClick={addExpense} disabled={addingExpense || !newExpenseLabel.trim()}
-                          className="w-full py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition">
-                          {addingExpense ? 'Ajout…' : '+ Ajouter une dépense'}
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="number" value={editBudget} onChange={e => setEditBudget(e.target.value)}
+                            placeholder="Budget (€)"
+                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none" />
+                          <input type="number" value={editCapacity} onChange={e => setEditCapacity(e.target.value)}
+                            placeholder="Capacité max"
+                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none" />
+                        </div>
+                        <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)}
+                          placeholder="Description…" rows={3}
+                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none" />
+                        {editError && <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{editError}</p>}
+                        <div className="flex gap-2">
+                          <button onClick={() => { setEditMode(false); setEditError('') }}
+                            className="flex-1 py-2 rounded-xl bg-white/10 text-white/60 text-xs hover:bg-white/15 transition">
+                            Annuler
+                          </button>
+                          <button onClick={saveEventDetails} disabled={editSaving || !editTitle.trim() || !editStart}
+                            className="flex-1 py-2 rounded-xl bg-violet-600 text-white text-xs font-medium hover:bg-violet-500 disabled:opacity-40 transition">
+                            {editSaving ? 'Sauvegarde…' : 'Sauvegarder'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Mode lecture — organisateur */
+                      <>
+                        {[
+                          { label: 'Titre', value: eventDetail.title },
+                          { label: 'Date', value: new Date(eventDetail.start).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (eventDetail.end ? ` → ${new Date(eventDetail.end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}` : '') },
+                          { label: 'Lieu', value: eventDetail.lieu || '—' },
+                          { label: 'Catégorie', value: eventDetail.category || '—' },
+                          { label: 'Budget', value: eventDetail.budget ? `${Number(eventDetail.budget).toLocaleString('fr-FR')} €` : '—' },
+                          { label: 'Statut', value: statusLabel[eventDetail.status] || eventDetail.status },
+                          { label: 'Capacité max', value: eventDetail.maxCapacity?.toString() || '—' },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-start justify-between gap-4">
+                            <span className="text-xs text-white/40 shrink-0">{label}</span>
+                            <span className="text-xs text-white text-right">{value}</span>
+                          </div>
+                        ))}
+                        {eventDetail.description && (
+                          <div>
+                            <p className="text-xs text-white/40 mb-1">Description</p>
+                            <p className="text-xs text-white/70">{eventDetail.description}</p>
+                          </div>
+                        )}
+                        <button onClick={() => setEditMode(true)}
+                          className="w-full py-2 rounded-xl border border-white/15 text-white/60 text-xs hover:bg-white/8 transition mt-1">
+                          ✏️ Modifier les informations
+                        </button>
+                      </>
+                    )}
+
+                    {/* Zone suppression — organisateur seulement */}
+                    {!isBookedEvent && (
+                      <div className="pt-3 border-t border-white/8 mt-3">
+                        {!confirmDelete ? (
+                          <button
+                            onClick={() => setConfirmDelete(true)}
+                            className="w-full py-2 rounded-xl border border-red-500/30 text-red-400 text-xs hover:bg-red-500/10 transition"
+                          >
+                            🗑 Supprimer l&apos;événement
+                          </button>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-xs text-red-400 text-center">Supprimer définitivement ?</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => setConfirmDelete(false)}
+                                className="flex-1 py-2 rounded-xl bg-white/10 text-white/60 text-xs hover:bg-white/15 transition">
+                                Annuler
+                              </button>
+                              <button onClick={deleteEvent} disabled={deletingEvent}
+                                className="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-500 disabled:opacity-50 transition">
+                                {deletingEvent ? 'Suppression…' : 'Confirmer'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── PERSONNEL (organisateur) / MATÉRIEL (artiste) ── */}
+                {detailTab === 'staff' && (
+                  <div className="space-y-3">
+                    {isBookedEvent ? (
+                      /* Artiste — notes matériel/technique */
+                      <div>
+                        <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Notes matériel / technique</p>
+                        <textarea
+                          value={notesText}
+                          onChange={e => setNotesText(e.target.value)}
+                          placeholder="Rider technique, matériel nécessaire, demandes spéciales…"
+                          rows={5}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
+                        />
+                        <button onClick={saveNotes} disabled={notesSaving}
+                          className="mt-1.5 px-4 py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition">
+                          {notesSaving ? 'Sauvegarde…' : 'Sauvegarder'}
+                        </button>
+                      </div>
+                    ) : (
+                      /* Organisateur — liste du personnel + formulaire d'ajout */
+                      <>
+                        {/* Liste */}
+                        {eventDetail.staff.length === 0 ? (
+                          <p className="text-xs text-white/25 italic text-center py-2">Aucun personnel assigné</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {eventDetail.staff.map(s => (
+                              <div key={s.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <p className="text-sm font-medium text-white">{s.role}</p>
+                                    <p className="text-xs text-white/50 mt-0.5">{personName(s.profile)}</p>
+                                    {s.fee && <p className="text-xs text-white/40">{Number(s.fee).toLocaleString('fr-FR')} €</p>}
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${s.status === 'BOOKED' ? 'bg-green-500/20 text-green-300' : s.status === 'NEEDED' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
+                                      {s.status === 'BOOKED' ? 'Confirmé' : s.status === 'NEEDED' ? 'À pourvoir' : 'Annulé'}
+                                    </span>
+                                    <button onClick={() => deleteStaff(s.id)} disabled={deletingStaffId === s.id}
+                                      className="text-white/20 hover:text-red-400 transition text-xs disabled:opacity-40">✕</button>
+                                  </div>
+                                </div>
+                                {s.notes && <p className="text-xs text-white/40 mt-1 italic">{s.notes}</p>}
+                              </div>
+                            ))}
+                            {/* Total salaires */}
+                            {totalStaffFee > 0 && (
+                              <div className="flex items-center justify-between px-3 py-2 bg-white/[0.03] rounded-xl border border-white/8">
+                                <span className="text-xs text-white/40">Total salaires</span>
+                                <span className="text-xs font-semibold text-white">{totalStaffFee.toLocaleString('fr-FR')} €</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Formulaire d'ajout */}
+                        <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
+                          <div className="flex gap-1 mb-2">
+                            <button onClick={() => setStaffAddMode('manual')}
+                              className={`flex-1 py-1 rounded-lg text-xs font-medium transition ${staffAddMode === 'manual' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                              Manuel
+                            </button>
+                            <button onClick={() => setStaffAddMode('pseudo')}
+                              className={`flex-1 py-1 rounded-lg text-xs font-medium transition ${staffAddMode === 'pseudo' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                              @Pseudo
+                            </button>
+                          </div>
+
+                          <input type="text" value={newStaffRole} onChange={e => setNewStaffRole(e.target.value)}
+                            placeholder="Rôle / Poste *" className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                          <div className="flex gap-2">
+                            <input type="number" value={newStaffFee} onChange={e => setNewStaffFee(e.target.value)}
+                              placeholder="Salaire (€)" className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                            <input type="text" value={newStaffNotes} onChange={e => setNewStaffNotes(e.target.value)}
+                              placeholder="Notes" className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                          </div>
+
+                          {staffAddMode === 'pseudo' && (
+                            <div className="relative">
+                              <input type="text" value={staffSearchQ} onChange={e => searchStaff(e.target.value)}
+                                placeholder="Rechercher par @pseudo…"
+                                className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                              {staffSearchLoading && <p className="text-[10px] text-white/30 mt-1">Recherche…</p>}
+                              {staffSearchResults.length > 0 && (
+                                <div className="mt-1 bg-neutral-800 border border-white/10 rounded-xl overflow-hidden">
+                                  {staffSearchResults.map((r: {id:number;avatar?:string|null;user?:{pseudo?:string|null;firstName?:string|null;lastName?:string|null;role?:string|null}}) => (
+                                    <button key={r.id} type="button"
+                                      onClick={() => { addStaff(r.id); setStaffSearchResults([]) }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition text-left">
+                                      {r.avatar && <img src={r.avatar} className="h-6 w-6 rounded-full object-cover shrink-0" alt="" />}
+                                      <div>
+                                        <p className="text-xs text-white">{r.user?.pseudo || [r.user?.firstName, r.user?.lastName].filter(Boolean).join(' ')}</p>
+                                        <p className="text-[10px] text-white/30">{r.user?.role}</p>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {staffError && <p className="text-xs text-red-400">{staffError}</p>}
+
+                          {staffAddMode === 'manual' && (
+                            <button onClick={() => addStaff()} disabled={addingStaff || !newStaffRole.trim()}
+                              className="w-full py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition">
+                              {addingStaff ? 'Ajout…' : '+ Ajouter'}
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* ── NOTES & FRAIS (organisateur) / CONTRAT (artiste) ── */}
+                {detailTab === 'notes' && (
+                  isBookedEvent ? (
+                    /* Artiste — onglet Contrat */
+                    <DocumentsSection
+                      docs={allDocs.filter(d => d.fileType === 'CONTRACT')}
+                      docType="CONTRACT"
+                      label="Contrat"
+                      uploadingDoc={uploadingDoc}
+                      docError={docError}
+                      addDocument={addDocument}
+                      deleteDocument={deleteDocument}
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Notes privées */}
+                      <div>
+                        <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Notes privées</p>
+                        <textarea
+                          value={notesText}
+                          onChange={e => setNotesText(e.target.value)}
+                          placeholder="Vos notes pour cet événement…"
+                          rows={4}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
+                        />
+                        <button
+                          onClick={saveNotes}
+                          disabled={notesSaving}
+                          className="mt-1.5 px-4 py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition"
+                        >
+                          {notesSaving ? 'Sauvegarde…' : 'Sauvegarder'}
+                        </button>
+                      </div>
+
+                      {/* Dépenses */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs text-white/40 uppercase tracking-wide">Frais</p>
+                          <p className="text-xs text-white/50">{paidExpenses.toLocaleString('fr-FR')} € / {totalExpenses.toLocaleString('fr-FR')} € payés</p>
+                        </div>
+                        <div className="space-y-1.5 mb-3">
+                          {eventDetail.expenses.map(e => (
+                            <div key={e.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                              <input
+                                type="checkbox" checked={e.paid}
+                                onChange={ev => toggleExpensePaid(e.id, ev.target.checked)}
+                                className="accent-violet-500 w-3.5 h-3.5 shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-xs ${e.paid ? 'line-through text-white/30' : 'text-white'}`}>{e.label}</p>
+                                {e.category && <p className="text-[10px] text-white/30">{e.category}</p>}
+                              </div>
+                              {e.amount != null && (
+                                <span className="text-xs text-white/60 shrink-0">{Number(e.amount).toLocaleString('fr-FR')} €</span>
+                              )}
+                              <button onClick={() => deleteExpense(e.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
+                            </div>
+                          ))}
+                          {eventDetail.expenses.length === 0 && (
+                            <p className="text-xs text-white/20 italic">Aucune dépense enregistrée</p>
+                          )}
+                        </div>
+                        {/* Formulaire ajout dépense */}
+                        <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
+                          <input type="text" value={newExpenseLabel} onChange={e => setNewExpenseLabel(e.target.value)}
+                            placeholder="Libellé *"
+                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                          <div className="flex gap-2">
+                            <input type="number" value={newExpenseAmount} onChange={e => setNewExpenseAmount(e.target.value)}
+                              placeholder="Montant (€)"
+                              className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                            <select value={newExpenseCategory} onChange={e => setNewExpenseCategory(e.target.value)}
+                              className="flex-1 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
+                              <option value="">Catégorie…</option>
+                              {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </div>
+                          {expenseError && <p className="text-xs text-red-400">{expenseError}</p>}
+                          <button onClick={addExpense} disabled={addingExpense || !newExpenseLabel.trim()}
+                            className="w-full py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition">
+                            {addingExpense ? 'Ajout…' : '+ Ajouter une dépense'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* ── ACHATS (organisateur) / TRANSPORTS & LOGEMENTS (artiste) ── */}
+                {detailTab === 'purchases' && (
+                  isBookedEvent ? (
+                    <DocumentsSection
+                      docs={allDocs.filter(d => d.fileType === 'TRANSPORT' || d.fileType === 'HOTEL')}
+                      docType="TRANSPORT"
+                      label="Transport / Logement"
+                      uploadingDoc={uploadingDoc}
+                      docError={docError}
+                      addDocument={addDocument}
+                      deleteDocument={deleteDocument}
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        {eventDetail.purchases.map(p => (
+                          <div key={p.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                            <input
+                              type="checkbox" checked={p.done}
+                              onChange={ev => togglePurchaseDone(p.id, ev.target.checked)}
+                              className="accent-green-500 w-3.5 h-3.5 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs ${p.done ? 'line-through text-white/30' : 'text-white'}`}>{p.item}</p>
+                              {(p.quantity || p.price) && (
+                                <p className="text-[10px] text-white/30">
+                                  {p.quantity ? `x${p.quantity}` : ''}{p.quantity && p.price ? ' · ' : ''}{p.price ? `${Number(p.price).toLocaleString('fr-FR')} €` : ''}
+                                </p>
+                              )}
+                            </div>
+                            <button onClick={() => deletePurchase(p.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
+                          </div>
+                        ))}
+                        {eventDetail.purchases.length === 0 && (
+                          <p className="text-xs text-white/20 italic">Liste vide</p>
+                        )}
+                      </div>
+                      {/* Formulaire ajout achat */}
+                      <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
+                        <input type="text" value={newPurchaseItem} onChange={e => setNewPurchaseItem(e.target.value)}
+                          placeholder="Article *"
+                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                        <div className="flex gap-2">
+                          <input type="number" value={newPurchaseQty} onChange={e => setNewPurchaseQty(e.target.value)}
+                            placeholder="Qté" className="w-20 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                          <input type="number" value={newPurchasePrice} onChange={e => setNewPurchasePrice(e.target.value)}
+                            placeholder="Prix unitaire (€)" className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
+                        </div>
+                        <button onClick={addPurchase} disabled={addingPurchase || !newPurchaseItem.trim()}
+                          className="w-full py-1.5 rounded-lg bg-green-600/60 hover:bg-green-600 text-white text-xs font-medium disabled:opacity-40 transition">
+                          {addingPurchase ? 'Ajout…' : '+ Ajouter un article'}
                         </button>
                       </div>
                     </div>
-                  </div>
+                  )
                 )}
 
-                {/* ── ACHATS ── */}
-                {detailTab === 'purchases' && (
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      {eventDetail.purchases.map(p => (
-                        <div key={p.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
-                          <input
-                            type="checkbox" checked={p.done}
-                            onChange={ev => togglePurchaseDone(p.id, ev.target.checked)}
-                            className="accent-green-500 w-3.5 h-3.5 shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-xs ${p.done ? 'line-through text-white/30' : 'text-white'}`}>{p.item}</p>
-                            {(p.quantity || p.price) && (
-                              <p className="text-[10px] text-white/30">
-                                {p.quantity ? `x${p.quantity}` : ''}{p.quantity && p.price ? ' · ' : ''}{p.price ? `${Number(p.price).toLocaleString('fr-FR')} €` : ''}
-                              </p>
-                            )}
-                          </div>
-                          <button onClick={() => deletePurchase(p.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
-                        </div>
-                      ))}
-                      {eventDetail.purchases.length === 0 && (
-                        <p className="text-xs text-white/20 italic">Liste vide</p>
-                      )}
-                    </div>
-                    {/* Formulaire ajout achat */}
-                    <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
-                      <input type="text" value={newPurchaseItem} onChange={e => setNewPurchaseItem(e.target.value)}
-                        placeholder="Article *"
-                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                      <div className="flex gap-2">
-                        <input type="number" value={newPurchaseQty} onChange={e => setNewPurchaseQty(e.target.value)}
-                          placeholder="Qté" className="w-20 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                        <input type="number" value={newPurchasePrice} onChange={e => setNewPurchasePrice(e.target.value)}
-                          placeholder="Prix unitaire (€)" className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                      </div>
-                      <button onClick={addPurchase} disabled={addingPurchase || !newPurchaseItem.trim()}
-                        className="w-full py-1.5 rounded-lg bg-green-600/60 hover:bg-green-600 text-white text-xs font-medium disabled:opacity-40 transition">
-                        {addingPurchase ? 'Ajout…' : '+ Ajouter un article'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── BOOKINGS ── */}
+                {/* ── BOOKINGS (organisateur) / PAIEMENT (artiste) ── */}
                 {detailTab === 'bookings' && (
-                  <div className="space-y-2">
-                    {eventDetail.bookingRequests.length === 0 ? (
-                      <p className="text-xs text-white/25 italic text-center py-4">Aucune demande de booking liée à cet événement</p>
-                    ) : (
-                      eventDetail.bookingRequests.map(b => {
-                        const name = b.target?.user?.pseudo || [b.target?.user?.firstName, b.target?.user?.lastName].filter(Boolean).join(' ') || '?'
-                        return (
-                          <div key={b.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <p className="text-sm font-medium text-white">{name}</p>
-                                <p className="text-xs text-white/40 mt-0.5">
-                                  📅 {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                  {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
-                                </p>
+                  isBookedEvent ? (
+                    /* Artiste — vue paiement */
+                    <div className="space-y-4">
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/8 space-y-3">
+                        <p className="text-xs text-white/40 uppercase tracking-wide">Informations paiement</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-white/50">Cachet convenu</span>
+                          <span className="text-sm font-semibold text-white">
+                            {linkedBooking?.fee ? `${Number(linkedBooking.fee).toLocaleString('fr-FR')} €` : '—'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-white/50">Statut</span>
+                          <PayBadge status={linkedBooking?.paymentStatus} />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-white/25 text-center">Le statut de paiement est géré par l&apos;organisateur.</p>
+                    </div>
+                  ) : (
+                    /* Organisateur — liste des bookings + documents */
+                    <div className="space-y-4">
+                      {/* Bookings liés */}
+                      <div className="space-y-2">
+                        {eventDetail.bookingRequests.length === 0 ? (
+                          <p className="text-xs text-white/25 italic text-center py-2">Aucune demande de booking liée à cet événement</p>
+                        ) : (
+                          eventDetail.bookingRequests.map(b => {
+                            const name = b.target?.user?.pseudo || [b.target?.user?.firstName, b.target?.user?.lastName].filter(Boolean).join(' ') || '?'
+                            return (
+                              <div key={b.id} className="bg-white/5 rounded-xl p-3 border border-white/8 space-y-1.5">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <p className="text-sm font-medium text-white">{name}</p>
+                                    <p className="text-xs text-white/40 mt-0.5">
+                                      📅 {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                      {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
+                                    </p>
+                                  </div>
+                                  <span className={`text-xs font-medium ${bookingStatusCls[b.status] || 'text-white/40'}`}>{b.status}</span>
+                                </div>
+                                {b.message && <p className="text-xs text-white/40 italic">&ldquo;{b.message}&rdquo;</p>}
                               </div>
-                              <span className={`text-xs font-medium ${bookingStatusCls[b.status] || 'text-white/40'}`}>{b.status}</span>
+                            )
+                          })
+                        )}
+                        <p className="text-[10px] text-white/25 text-center">
+                          Pour envoyer une offre, utilisez le profil de l&apos;artiste ou prestataire.
+                        </p>
+                      </div>
+
+                      {/* Documents de l'événement */}
+                      <div>
+                        <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Documents</p>
+                        {/* Filtres */}
+                        <div className="flex gap-1 mb-2 flex-wrap">
+                          {(['ALL','CONTRACT','TRANSPORT','HOTEL','OTHER'] as const).map(f => (
+                            <button key={f} onClick={() => setDocFilter(f)}
+                              className={`text-[10px] px-2 py-0.5 rounded-full border transition ${
+                                docFilter === f ? 'bg-violet-600 border-violet-500 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                              }`}>
+                              {{ ALL: 'Tous', CONTRACT: 'Contrats', TRANSPORT: 'Transport', HOTEL: 'Logement', OTHER: 'Autres' }[f]}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Liste */}
+                        <div className="space-y-1.5 mb-2">
+                          {filteredDocs.map(d => (
+                            <div key={d.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                              <a href={d.url} target="_blank" rel="noreferrer" className="flex-1 min-w-0">
+                                <p className="text-xs text-violet-300 hover:text-violet-200 truncate">📎 {d.name}</p>
+                                <p className="text-[10px] text-white/30">{{ CONTRACT: 'Contrat', TRANSPORT: 'Transport', HOTEL: 'Logement', OTHER: 'Autre' }[d.fileType] || d.fileType}</p>
+                              </a>
+                              <button onClick={() => deleteDocument(d.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
                             </div>
-                            {b.message && <p className="text-xs text-white/40 mt-1 italic">&ldquo;{b.message}&rdquo;</p>}
-                          </div>
-                        )
-                      })
-                    )}
-                    <p className="text-[10px] text-white/25 text-center mt-2">
-                      Pour envoyer une offre, utilisez le profil de l&apos;artiste ou prestataire.
-                    </p>
-                  </div>
+                          ))}
+                          {filteredDocs.length === 0 && <p className="text-xs text-white/20 italic">Aucun document</p>}
+                        </div>
+                        {/* Upload */}
+                        <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
+                          <select defaultValue="CONTRACT" id="docTypeSelect"
+                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
+                            <option value="CONTRACT">Contrat</option>
+                            <option value="TRANSPORT">Billet de transport</option>
+                            <option value="HOTEL">Réservation hôtel</option>
+                            <option value="OTHER">Autre</option>
+                          </select>
+                          <label className={`w-full py-1.5 rounded-lg text-xs font-medium text-center cursor-pointer transition block ${
+                            uploadingDoc ? 'bg-white/10 text-white/30' : 'bg-violet-600/60 hover:bg-violet-600 text-white'
+                          }`}>
+                            {uploadingDoc ? 'Upload en cours…' : '📎 Joindre un fichier'}
+                            <input type="file" className="hidden" disabled={uploadingDoc}
+                              onChange={e => {
+                                const f = e.target.files?.[0]
+                                const sel = document.getElementById('docTypeSelect') as HTMLSelectElement
+                                if (f) addDocument(f, sel?.value || 'OTHER')
+                                e.target.value = ''
+                              }} />
+                          </label>
+                          {docError && <p className="text-xs text-red-400">{docError}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
               </div>
