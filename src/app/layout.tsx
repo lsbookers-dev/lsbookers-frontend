@@ -34,7 +34,7 @@ function LayoutContent({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-black text-white">
       {!isPublicPage && !isAdminPage && user && <Header />}
-      <main className="flex-grow pb-16 md:pb-0">{children}</main>
+      <main className="flex-grow pb-safe-nav md:pb-0">{children}</main>
       {!isPublicPage && !isAdminPage && user && <Footer />}
     </div>
   )

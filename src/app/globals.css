@@ -24,4 +24,91 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Empêche le scroll horizontal parasite sur tous les appareils */
+  overflow-x: hidden;
+  max-width: 100%;
+  /* Lissage des polices (Mac + iOS) */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CORRECTIFS CROSS-NAVIGATEUR & CROSS-APPAREIL
+   Safari iOS · Chrome Windows · Edge · Firefox
+═══════════════════════════════════════════════════════════ */
+
+/* 1. Supprime le flash bleu/gris au tap sur iOS et Android Chrome */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+/* Rétablit la sélection de texte sur les éléments de contenu */
+p, span, h1, h2, h3, h4, h5, h6, li, td, th, label {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 2. Zones de sécurité iPhone (encoche haut + barre d'accueil bas) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* 3. Padding bas du contenu principal : nav fixe (64px) + zone safe iPhone */
+.pb-safe-nav {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* 4. Hauteur 100vh corrigée pour iOS Safari
+      (la barre d'adresse réduit dynamiquement la hauteur disponible) */
+@supports (min-height: 100dvh) {
+  .min-h-screen { min-height: 100dvh; }
+  .h-screen     { height: 100dvh;     }
+}
+
+/* 5. Scroll fluide sur iOS (momentum scrolling) */
+html {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 6. Scrollbar fine et discrète — Chrome Windows, Edge
+      (la scrollbar native Windows fait ~17px et casse les layouts) */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 transparent;
+}
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: #3f3f46; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover  { background: #52525b; }
+
+/* 7. Empêche le zoom automatique sur les champs de saisie sur iOS
+      (iOS zoome sur les inputs dont la font-size est < 16px) */
+@supports (-webkit-touch-callout: none) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* 8. Rendu images cohérent cross-navigateur */
+img {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* 9. Fix outline focus visible (Chrome Windows affiche un contour bleu sur les boutons) */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
 }

@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
+import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
@@ -170,14 +170,12 @@ export default function ArtistPublicProfilePage() {
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
-        <Image src={bannerUrl} alt="Bannière" fill priority className="object-cover opacity-90" />
+        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-90" />
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black">
-            <Image src={avatarUrl} alt="Avatar" fill className="object-cover" />
-          </div>
+          <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-4 ring-black" />
 
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">{name}</h1>

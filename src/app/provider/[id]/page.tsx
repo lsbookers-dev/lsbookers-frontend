@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
+import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
@@ -179,15 +179,7 @@ export default function ProviderPublicProfilePage() {
       {/* ===== Bannière ===== */}
 
       <div className="relative h-48 sm:h-56 md:h-64 lg:h-72">
-
-        <Image
-          src={bannerUrl}
-          alt="Bannière"
-          fill
-          priority
-          className="object-cover opacity-90"
-        />
-
+        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-90" />
       </div>
 
       <div className="max-w-6xl mx-auto px-4">
@@ -198,11 +190,7 @@ export default function ProviderPublicProfilePage() {
 
           <div className="flex items-center gap-4">
 
-            <div className="relative h-20 w-20 rounded-full overflow-hidden ring-2 ring-white/10 shrink-0">
-
-              <Image src={avatarUrl} alt={name} fill className="object-cover" />
-
-            </div>
+            <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-2 ring-white/10 shrink-0" />
 
             <div className="min-w-0">
 
