@@ -115,27 +115,39 @@ function offerTypeLabel(type: string): string {
 ───────────────────────────────────────────────────────────── */
 function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
   const [idx, setIdx] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Détecte si on est sur mobile (< 768px)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => { setIsMobile(e.matches); setIdx(0) }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  const itemsPerSlide = isMobile ? 1 : 2
+  const slidesCount = Math.ceil(items.length / itemsPerSlide)
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
-      setIdx(prev => (prev + 1) % Math.ceil(items.length / 2))
+      setIdx(prev => (prev + 1) % slidesCount)
     }, 4000)
-  }, [items.length])
+  }, [slidesCount])
 
   useEffect(() => {
     startTimer()
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [startTimer])
 
-  const slidesCount = Math.ceil(items.length / 2)
   const prev = () => { setIdx(p => (p - 1 + slidesCount) % slidesCount); startTimer() }
   const next = () => { setIdx(p => (p + 1) % slidesCount); startTimer() }
 
   if (items.length === 0) return null
 
-  const pair = items.slice(idx * 2, idx * 2 + 2)
+  const visibleItems = items.slice(idx * itemsPerSlide, idx * itemsPerSlide + itemsPerSlide)
 
   return (
     <div className="relative mb-8">
@@ -148,8 +160,8 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
       </div>
 
       {/* Slides */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {pair.map(p => (
+      <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+        {visibleItems.map(p => (
           <Link key={p.id} href={p.profileUrl} className="group relative h-44 md:h-52 rounded-2xl overflow-hidden block border border-white/10">
             {/* Background : bannière ou dégradé */}
             {p.banner ? (
