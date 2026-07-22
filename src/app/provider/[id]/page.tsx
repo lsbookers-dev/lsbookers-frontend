@@ -188,33 +188,20 @@ export default function ProviderPublicProfilePage() {
 
         <section className="relative -mt-10 rounded-2xl border border-white/10 bg-neutral-900/60 p-4 md:p-5 backdrop-blur">
 
-          <div className="flex items-center gap-4">
-
-            <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-2 ring-white/10 shrink-0" />
-
-            <div className="min-w-0">
-
-              <h1 className="text-xl md:text-2xl font-bold truncate">
-
-                {name}
-
-              </h1>
-
-              <p className="text-sm text-white/60">
-
-                {role}{etab ? ` • ${etab}` : ''}
-
-              </p>
-
-              <p className="text-xs text-white/50 mt-1">
-
-                {location}{country ? `, ${country}` : ''}{radius ? ` • Rayon ${radius} km` : ''}
-
-              </p>
-
+          {/* Ligne 1 : avatar + nom + boutons (responsive) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-2 ring-white/10 shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-xl md:text-2xl font-bold truncate">{name}</h1>
+                <p className="text-sm text-white/60">{role}{etab ? ` • ${etab}` : ''}</p>
+                <p className="text-xs text-white/50 mt-1">
+                  {location}{country ? `, ${country}` : ''}{radius ? ` • Rayon ${radius} km` : ''}
+                </p>
+              </div>
             </div>
 
-            <div className="ml-auto flex flex-col items-end gap-2">
+            <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 sm:ml-auto flex-wrap">
               <div className="flex items-center gap-2">
                 <FollowButton
                   targetUserId={profile.userId}
@@ -222,7 +209,7 @@ export default function ProviderPublicProfilePage() {
                 />
                 <button
                   onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
-                  className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
+                  className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
                 >
                   <MessageCircle size={16} />
                   Contacter
@@ -233,7 +220,6 @@ export default function ProviderPublicProfilePage() {
                 <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnements</span>
               </div>
             </div>
-
           </div>
 
           {specialties.length > 0 && (
