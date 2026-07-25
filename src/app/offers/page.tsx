@@ -1,152 +1,298 @@
 'use client'
-import { useEffect, useState } from 'react'
 
-/* ================= Types ================= */
-type Job = {
+import { useCallback, useEffect, useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+
+/* ─── Types ─────────────────────────────────────────────── */
+type Offer = {
   id: number
   title: string
   description: string
   type: 'ARTIST' | 'PROVIDER' | 'ALL'
-  specialty?: string
+  specialty?: string | null
+  date: string
   location: string
   country: string
-  date: string
-  budget?: string
+  fee?: number | null
   createdAt: string
-  organizer: { user: { name: string } }
+  organizerId: number
+  organizer: {
+    id: number
+    userId: number
+    avatar: string | null
+    name: string
+  }
 }
 
-/* ============== Page ============== */
-export default function OffersPage() {
-  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-  // États pour les offres et les filtres
-  const [offers, setOffers] = useState<Job[]>([])
-  const [loading, setLoading] = useState(false)
-  const [filters, setFilters] = useState({
-    type: '', // Vide par défaut pour montrer toutes les offres
-    specialty: '',
-    location: '',
-    country: '',
-    date: ''
+const TYPE_LABELS: Record<string, string> = {
+  ARTIST:   'Artiste',
+  PROVIDER: 'Prestataire',
+  ALL:      'Tous profils',
+}
+
+const TYPE_COLORS: Record<string, string> = {
+  ARTIST:   'bg-pink-500/15 text-pink-300 border-pink-500/20',
+  PROVIDER: 'bg-blue-500/15 text-blue-300 border-blue-500/20',
+  ALL:      'bg-purple-500/15 text-purple-300 border-purple-500/20',
+}
+
+/* ─── Carte d'offre ─────────────────────────────────────── */
+function OfferCard({
+  offer,
+  canApply,
+  onApply,
+}: {
+  offer: Offer
+  canApply: boolean
+  onApply: (offer: Offer) => void
+}) {
+  const date = new Date(offer.date)
+  const dateStr = date.toLocaleDateString('fr-FR', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+  const timeStr = date.toLocaleTimeString('fr-FR', {
+    hour: '2-digit', minute: '2-digit',
   })
 
-  // Charger les offres avec filtres
-  useEffect(() => {
-    const loadOffers = async () => {
-      setLoading(true)
-      try {
-        // Construire les paramètres de requête, sans inclure "type" si vide
-        const params: Record<string, string> = {}
-        if (filters.type) params.type = filters.type
-        if (filters.specialty) params.specialty = filters.specialty
-        if (filters.location) params.location = filters.location
-        if (filters.country) params.country = filters.country
-        if (filters.date) params.date = filters.date
-
-        const query = new URLSearchParams(params).toString()
-        const res = await fetch(`${API_BASE}/api/offers${query ? `?${query}` : ''}`)
-        if (res.ok) {
-          const data: Job[] = await res.json()
-          setOffers(data)
-        } else {
-          alert('Erreur lors du chargement des offres.')
-        }
-      } catch (err) {
-        console.error('Erreur chargement offres:', err)
-        alert('Erreur lors du chargement des offres.')
-      }
-      setLoading(false)
-    }
-    loadOffers()
-  }, [API_BASE, filters])
-
-  // Gérer les changements de filtres
-  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }))
-  }
-
-  /* ================= Render ================= */
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* ===== Entête ===== */}
-        <h1 className="text-3xl md:text-4xl font-bold mb-6">Offres d’emploi</h1>
+    <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5 flex flex-col gap-4 hover:border-white/20 transition-colors">
 
-        {/* ===== Filtres ===== */}
-        <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-          <h2 className="text-lg font-semibold mb-3">Filtres</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <select
-              name="type"
-              value={filters.type}
-              onChange={handleFilterChange}
-              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-            >
-              <option value="">Tous</option>
-              <option value="ARTIST">Artiste</option>
-              <option value="PROVIDER">Prestataire</option>
-            </select>
-            <input
-              name="specialty"
-              value={filters.specialty}
-              onChange={handleFilterChange}
-              placeholder="Spécialité (ex: DJ, Lumière)"
-              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-            />
-            <input
-              name="location"
-              value={filters.location}
-              onChange={handleFilterChange}
-              placeholder="Ville"
-              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-            />
-            <input
-              name="country"
-              value={filters.country}
-              onChange={handleFilterChange}
-              placeholder="Pays"
-              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-            />
-            <input
-              type="date"
-              name="date"
-              value={filters.date}
-              onChange={handleFilterChange}
-              className="bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-            />
+      {/* Organisateur + badge type */}
+      <div className="flex items-start justify-between gap-3">
+        <Link href={`/organizer/${offer.organizer.userId}`} className="flex items-center gap-3 min-w-0 group">
+          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/10 flex-shrink-0">
+            {offer.organizer.avatar ? (
+              <Image
+                src={offer.organizer.avatar}
+                alt={offer.organizer.name}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white/50 text-sm font-bold">
+                {offer.organizer.name[0]?.toUpperCase()}
+              </div>
+            )}
           </div>
-        </section>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white group-hover:text-purple-300 transition-colors truncate">
+              {offer.organizer.name}
+            </p>
+            <p className="text-xs text-white/40">Organisateur</p>
+          </div>
+        </Link>
 
-        {/* ===== Liste des offres ===== */}
-        <section className="mt-6">
-          {loading ? (
-            <p className="text-sm text-neutral-400">Chargement...</p>
-          ) : offers.length === 0 ? (
-            <p className="text-sm text-neutral-400">Aucune offre disponible.</p>
-          ) : (
-            <ul className="space-y-3">
-              {offers.map(offer => (
-                <li key={offer.id} className="rounded-xl border border-white/10 bg-black/30 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">{offer.title}</p>
-                      <p className="text-xs text-neutral-400 mt-0.5">
-                        Par {offer.organizer.user.name} · {offer.date} · {offer.location}, {offer.country}
-                        {offer.budget ? ` · ${offer.budget}` : ''}
-                      </p>
-                      <p className="text-sm text-neutral-200 mt-1">{offer.description}</p>
-                      <p className="text-xs text-neutral-400 mt-1">
-                        Type: {offer.type} {offer.specialty ? ` · Spécialité: ${offer.specialty}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <span className={`text-xs px-2.5 py-1 rounded-full border font-medium flex-shrink-0 ${TYPE_COLORS[offer.type]}`}>
+          {TYPE_LABELS[offer.type]}
+        </span>
+      </div>
+
+      {/* Titre + spécialité */}
+      <div>
+        <h3 className="font-semibold text-white leading-snug">{offer.title}</h3>
+        {offer.specialty && (
+          <span className="inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60">
+            {offer.specialty}
+          </span>
+        )}
+      </div>
+
+      {/* Description */}
+      <p className="text-sm text-white/60 leading-relaxed line-clamp-3 flex-1">
+        {offer.description}
+      </p>
+
+      {/* Infos : date, lieu, tarif */}
+      <div className="flex flex-wrap gap-3 text-xs text-white/50">
+        <span className="flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+          {dateStr} à {timeStr}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+          {offer.location}, {offer.country}
+        </span>
+        {offer.fee != null && (
+          <span className="flex items-center gap-1.5 text-green-400/80 font-medium">
+            <Euro className="w-3.5 h-3.5 flex-shrink-0" />
+            {offer.fee.toLocaleString('fr-FR')} €
+          </span>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3 pt-3 border-t border-white/5">
+        <Link
+          href={`/organizer/${offer.organizer.userId}`}
+          className="text-xs text-white/40 hover:text-white/70 transition-colors"
+        >
+          Voir le profil →
+        </Link>
+        {canApply && (
+          <button
+            onClick={() => onApply(offer)}
+            className="ml-auto bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-semibold px-5 py-2 rounded-full transition-all"
+          >
+            Postuler
+          </button>
+        )}
       </div>
     </div>
+  )
+}
+
+/* ─── Page principale ───────────────────────────────────── */
+export default function OffersPage() {
+  const { user } = useAuth() as { user: { role: string } | null }
+  const router = useRouter()
+
+  const [offers, setOffers]   = useState<Offer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filters, setFilters] = useState({
+    type: '', specialty: '', location: '', country: '',
+  })
+
+  const canApply = user?.role === 'ARTIST' || user?.role === 'PROVIDER'
+
+  const loadOffers = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (filters.type)      params.set('type',      filters.type)
+      if (filters.specialty) params.set('specialty', filters.specialty)
+      if (filters.location)  params.set('location',  filters.location)
+      if (filters.country)   params.set('country',   filters.country)
+
+      const res = await fetch(`${API_BASE}/api/offers?${params}`)
+      if (res.ok) setOffers(await res.json())
+    } catch (err) {
+      console.error('Erreur chargement offres:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [filters])
+
+  // Debounce : attend 400ms après le dernier changement de filtre
+  useEffect(() => {
+    const t = setTimeout(loadOffers, 400)
+    return () => clearTimeout(t)
+  }, [loadOffers])
+
+  const handleApply = (offer: Offer) => {
+    router.push(
+      `/messages/new?to=${offer.organizer.userId}&subject=${encodeURIComponent(`Candidature : ${offer.title}`)}`
+    )
+  }
+
+  return (
+    <main className="min-h-screen bg-black text-white">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+
+        {/* ── En-tête ── */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-1">
+            <Briefcase className="w-5 h-5 text-purple-400" />
+            <h1 className="text-2xl md:text-3xl font-bold">Offres</h1>
+          </div>
+          <p className="text-white/40 text-sm">
+            Opportunités publiées par les organisateurs
+          </p>
+        </div>
+
+        {/* ── Filtres ── */}
+        <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <SlidersHorizontal className="w-4 h-4 text-white/40" />
+            <span className="text-sm font-medium text-white/60">Filtrer les offres</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Type */}
+            <select
+              value={filters.type}
+              onChange={e => setFilters(p => ({ ...p, type: e.target.value }))}
+              className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-purple-500/50"
+            >
+              <option value="">Tous les types</option>
+              <option value="ARTIST">Artiste</option>
+              <option value="PROVIDER">Prestataire</option>
+              <option value="ALL">Tous profils</option>
+            </select>
+
+            {/* Spécialité */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+              <input
+                value={filters.specialty}
+                onChange={e => setFilters(p => ({ ...p, specialty: e.target.value }))}
+                placeholder="Spécialité (DJ, Photo…)"
+                className="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:outline-none focus:border-purple-500/50"
+              />
+            </div>
+
+            {/* Ville */}
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+              <input
+                value={filters.location}
+                onChange={e => setFilters(p => ({ ...p, location: e.target.value }))}
+                placeholder="Ville"
+                className="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:outline-none focus:border-purple-500/50"
+              />
+            </div>
+
+            {/* Pays */}
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+              <input
+                value={filters.country}
+                onChange={e => setFilters(p => ({ ...p, country: e.target.value }))}
+                placeholder="Pays"
+                className="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:outline-none focus:border-purple-500/50"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Liste ── */}
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : offers.length === 0 ? (
+          <div className="text-center py-20 text-white/30">
+            <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Aucune offre disponible pour le moment</p>
+            {Object.values(filters).some(Boolean) && (
+              <button
+                onClick={() => setFilters({ type: '', specialty: '', location: '', country: '' })}
+                className="mt-3 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+              >
+                Réinitialiser les filtres
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-white/30 mb-4">{offers.length} offre{offers.length > 1 ? 's' : ''}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {offers.map(offer => (
+                <OfferCard
+                  key={offer.id}
+                  offer={offer}
+                  canApply={canApply}
+                  onApply={handleApply}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </main>
   )
 }
