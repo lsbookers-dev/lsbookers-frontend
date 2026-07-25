@@ -299,7 +299,15 @@ export default function AgendaCalendar({
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null)
   const [eventDetailLoading, setEventDetailLoading] = useState(false)
   const [eventDetailError, setEventDetailError] = useState(false)
-  const [detailTab, setDetailTab] = useState<'details' | 'staff' | 'notes' | 'purchases' | 'bookings'>('details')
+  const [detailTab, setDetailTab] = useState<'details' | 'staff' | 'notes' | 'purchases' | 'bookings' | 'offers'>('details')
+
+  // Offres liées à l'événement (onglet Offres — organisateur)
+  type EventOffer = { id: number; title: string; description: string; type: string; specialty?: string | null; date: string; location: string; country: string; fee?: number | null }
+  const [eventOffers, setEventOffers] = useState<EventOffer[]>([])
+  const [showEventOfferForm, setShowEventOfferForm] = useState(false)
+  const [submittingEventOffer, setSubmittingEventOffer] = useState(false)
+  const [eventOfferError, setEventOfferError] = useState<string | null>(null)
+  const [eventOfferForm, setEventOfferForm] = useState({ title: '', description: '', type: 'ARTIST' as 'ARTIST' | 'PROVIDER' | 'ALL', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
 
   // Formulaires inline dans le détail
   const [notesText, setNotesText] = useState('')
@@ -501,6 +509,13 @@ export default function AgendaCalendar({
     setDetailTab('details')
     setEventDetail(null)
     setEventDetailError(false)
+    setEventOffers([])
+    setShowEventOfferForm(false)
+    // Charger les offres liées à cet événement
+    fetch(`${API}/api/offers?eventId=${id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setEventOffers(data) })
+      .catch(() => {})
     setLinkedBooking(null)
     setEditMode(false)
     setEditError('')
@@ -1384,6 +1399,7 @@ export default function AgendaCalendar({
             { key: 'notes'     as const, label: 'Notes & Frais' },
             { key: 'purchases' as const, label: 'Achats' },
             { key: 'bookings'  as const, label: 'Bookings' },
+            { key: 'offers'    as const, label: 'Offres' },
           ]
           const BOOKED_TABS = [
             { key: 'details'   as const, label: 'Détails' },
@@ -1958,6 +1974,150 @@ export default function AgendaCalendar({
                       </div>
                     </div>
                   )
+                )}
+
+                {/* ── OFFRES (organisateur uniquement) ── */}
+                {detailTab === 'offers' && !isBookedEvent && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-white/40">Offres liées à cet événement</p>
+                      <button
+                        onClick={() => setShowEventOfferForm(v => !v)}
+                        className="flex items-center gap-1 text-[11px] bg-violet-600 hover:bg-violet-500 text-white px-2.5 py-1 rounded-full transition-colors"
+                      >
+                        + Publier une offre
+                      </button>
+                    </div>
+
+                    {showEventOfferForm && (
+                      <form
+                        onSubmit={async (e) => {
+                          e.preventDefault()
+                          setEventOfferError(null)
+                          if (!eventOfferForm.title || !eventOfferForm.description || !eventOfferForm.date || !eventOfferForm.location || !eventOfferForm.country) {
+                            setEventOfferError('Remplis tous les champs obligatoires.')
+                            return
+                          }
+                          setSubmittingEventOffer(true)
+                          try {
+                            const token = localStorage.getItem('token')
+                            const res = await fetch(`${API}/api/offers`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({
+                                title:       eventOfferForm.title,
+                                description: eventOfferForm.description,
+                                type:        eventOfferForm.type,
+                                specialty:   eventOfferForm.specialty || null,
+                                date:        `${eventOfferForm.date}T${eventOfferForm.time || '00:00'}:00`,
+                                location:    eventOfferForm.location,
+                                country:     eventOfferForm.country,
+                                fee:         eventOfferForm.fee ? parseFloat(eventOfferForm.fee) : null,
+                                eventId:     selectedEventId,
+                              }),
+                            })
+                            if (!res.ok) throw new Error((await res.json()).error || 'Erreur')
+                            const created = await res.json()
+                            setEventOffers(prev => [created, ...prev])
+                            setShowEventOfferForm(false)
+                            setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
+                          } catch (err: unknown) {
+                            setEventOfferError(err instanceof Error ? err.message : 'Erreur')
+                          } finally {
+                            setSubmittingEventOffer(false)
+                          }
+                        }}
+                        className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 space-y-2"
+                      >
+                        <input required value={eventOfferForm.title}
+                          onChange={e => setEventOfferForm(p => ({ ...p, title: e.target.value }))}
+                          placeholder="Titre de l'offre *"
+                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40"
+                        />
+                        <textarea required rows={2} value={eventOfferForm.description}
+                          onChange={e => setEventOfferForm(p => ({ ...p, description: e.target.value }))}
+                          placeholder="Description *"
+                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
+                        />
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <select value={eventOfferForm.type}
+                            onChange={e => setEventOfferForm(p => ({ ...p, type: e.target.value as typeof eventOfferForm.type }))}
+                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
+                          >
+                            <option value="ARTIST">Artiste</option>
+                            <option value="PROVIDER">Prestataire</option>
+                            <option value="ALL">Tous profils</option>
+                          </select>
+                          <input value={eventOfferForm.specialty}
+                            onChange={e => setEventOfferForm(p => ({ ...p, specialty: e.target.value }))}
+                            placeholder="Spécialité"
+                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
+                          />
+                          <input required type="date" value={eventOfferForm.date}
+                            onChange={e => setEventOfferForm(p => ({ ...p, date: e.target.value }))}
+                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
+                          />
+                          <input type="time" value={eventOfferForm.time}
+                            onChange={e => setEventOfferForm(p => ({ ...p, time: e.target.value }))}
+                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
+                          />
+                          <input required value={eventOfferForm.location}
+                            onChange={e => setEventOfferForm(p => ({ ...p, location: e.target.value }))}
+                            placeholder="Ville *"
+                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
+                          />
+                          <input required value={eventOfferForm.country}
+                            onChange={e => setEventOfferForm(p => ({ ...p, country: e.target.value }))}
+                            placeholder="Pays *"
+                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
+                          />
+                        </div>
+                        <input type="number" min="0" step="0.01" value={eventOfferForm.fee}
+                          onChange={e => setEventOfferForm(p => ({ ...p, fee: e.target.value }))}
+                          placeholder="Tarif proposé (optionnel)"
+                          className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
+                        />
+                        {eventOfferError && <p className="text-xs text-red-400">{eventOfferError}</p>}
+                        <button type="submit" disabled={submittingEventOffer}
+                          className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-semibold py-2 rounded-lg transition-colors"
+                        >
+                          {submittingEventOffer ? 'Publication…' : 'Publier'}
+                        </button>
+                      </form>
+                    )}
+
+                    {/* Liste des offres de cet événement */}
+                    {eventOffers.length === 0 ? (
+                      <p className="text-xs text-white/25 italic text-center py-3">Aucune offre publiée pour cet événement</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {eventOffers.map(o => (
+                          <div key={o.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-semibold text-white truncate">{o.title}</p>
+                                <p className="text-[10px] text-white/40 mt-0.5">
+                                  {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  {' · '}{o.location}
+                                  {o.fee != null ? ` · ${Number(o.fee).toLocaleString('fr-FR')} €` : ''}
+                                </p>
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm('Supprimer cette offre ?')) return
+                                  const token = localStorage.getItem('token')
+                                  await fetch(`${API}/api/offers/${o.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+                                  setEventOffers(prev => prev.filter(x => x.id !== o.id))
+                                }}
+                                className="text-white/20 hover:text-red-400 transition text-xs flex-shrink-0"
+                              >✕</button>
+                            </div>
+                            <p className="text-[10px] text-white/50 mt-1 line-clamp-2">{o.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
 
               </div>

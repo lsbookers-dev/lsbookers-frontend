@@ -7,7 +7,8 @@ import { useAuth } from '@/context/AuthContext'
 import CropModal from '@/components/CropModal'
 import {
   Camera, Save, ArrowLeft, Music, MapPin, User, Briefcase,
-  CheckCircle, XCircle, ShieldOff, ShieldAlert
+  CheckCircle, XCircle, ShieldOff, ShieldAlert,
+  Plus, X, Calendar, Euro
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────
@@ -176,6 +177,21 @@ export default function ProfileSettings() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([])
   const [unblockingId, setUnblockingId] = useState<number | null>(null)
 
+  // ── Offres (organisateurs uniquement)
+  type OfferItem = {
+    id: number; title: string; description: string
+    type: string; specialty?: string | null; date: string
+    location: string; country: string; fee?: number | null
+  }
+  const [offers, setOffers] = useState<OfferItem[]>([])
+  const [showOfferForm, setShowOfferForm] = useState(false)
+  const [submittingOffer, setSubmittingOffer] = useState(false)
+  const [offerFormError, setOfferFormError] = useState<string | null>(null)
+  const [offerForm, setOfferForm] = useState({
+    title: '', description: '', type: 'ARTIST' as 'ARTIST' | 'PROVIDER' | 'ALL',
+    specialty: '', date: '', time: '20:00', location: '', country: '', fee: '',
+  })
+
   const avatarRef = useRef<HTMLInputElement>(null)
   const bannerRef = useRef<HTMLInputElement>(null)
 
@@ -212,6 +228,19 @@ export default function ProfileSettings() {
       .then(r => r.ok ? r.json() : { blocked: [] })
       .then(d => setBlockedUsers(d.blocked || []))
       .catch(() => {})
+
+    // Charger les offres (organisateurs)
+    if (user?.role === 'ORGANIZER') {
+      fetch(`${API}/api/profile/user/${userId}`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(({ profile: p }) => {
+          if (!p?.id) return
+          return fetch(`${API}/api/offers?organizerId=${p.id}`)
+        })
+        .then(r => r?.json())
+        .then(data => { if (Array.isArray(data)) setOffers(data) })
+        .catch(() => {})
+    }
   }, [user])
 
   // ── Débloquer un utilisateur
@@ -320,6 +349,49 @@ export default function ProfileSettings() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handlePublishOffer = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setOfferFormError(null)
+    if (!offerForm.title || !offerForm.description || !offerForm.date || !offerForm.location || !offerForm.country) {
+      setOfferFormError('Remplis tous les champs obligatoires.')
+      return
+    }
+    setSubmittingOffer(true)
+    try {
+      const res = await fetch(`${API}/api/offers`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:       offerForm.title,
+          description: offerForm.description,
+          type:        offerForm.type,
+          specialty:   offerForm.specialty || null,
+          date:        `${offerForm.date}T${offerForm.time || '00:00'}:00`,
+          location:    offerForm.location,
+          country:     offerForm.country,
+          fee:         offerForm.fee ? parseFloat(offerForm.fee) : null,
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || 'Erreur')
+      const created = await res.json()
+      setOffers(prev => [created, ...prev])
+      setShowOfferForm(false)
+      setOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
+    } catch (err: unknown) {
+      setOfferFormError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setSubmittingOffer(false)
+    }
+  }
+
+  const handleDeleteOffer = async (offerId: number) => {
+    if (!confirm('Supprimer cette offre ?')) return
+    try {
+      await fetch(`${API}/api/offers/${offerId}`, { method: 'DELETE', headers: getAuthHeaders() })
+      setOffers(prev => prev.filter(o => o.id !== offerId))
+    } catch { /* silently */ }
   }
 
   if (loading) {
@@ -548,6 +620,135 @@ export default function ProfileSettings() {
                 />
               </div>
             </div>
+          </Section>
+        )}
+
+        {/* ── SECTION : Mes offres (Organisateurs uniquement) ── */}
+        {role === 'ORGANIZER' && (
+          <Section title="Mes offres" icon={<Briefcase size={18} />}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-white/40">Offres publiées sur la plateforme</p>
+              <button
+                type="button"
+                onClick={() => setShowOfferForm(v => !v)}
+                className="flex items-center gap-1.5 text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-full transition-colors"
+              >
+                <Plus size={13} />
+                Publier une offre
+              </button>
+            </div>
+
+            {/* Formulaire */}
+            {showOfferForm && (
+              <form onSubmit={handlePublishOffer} className="mb-4 rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-purple-300">Nouvelle offre</p>
+                  <button type="button" onClick={() => setShowOfferForm(false)}>
+                    <X size={16} className="text-white/30 hover:text-white/60" />
+                  </button>
+                </div>
+
+                <input required value={offerForm.title}
+                  onChange={e => setOfferForm(p => ({ ...p, title: e.target.value }))}
+                  placeholder="Titre *"
+                  className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                />
+                <textarea required rows={3} value={offerForm.description}
+                  onChange={e => setOfferForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Description *"
+                  className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50 resize-none"
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={offerForm.type}
+                    onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as typeof offerForm.type }))}
+                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                  >
+                    <option value="ARTIST">Artiste</option>
+                    <option value="PROVIDER">Prestataire</option>
+                    <option value="ALL">Tous profils</option>
+                  </select>
+                  <input value={offerForm.specialty}
+                    onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
+                    placeholder="Spécialité (DJ, Photo…)"
+                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <input required type="date" value={offerForm.date}
+                      onChange={e => setOfferForm(p => ({ ...p, date: e.target.value }))}
+                      className="w-full rounded-xl bg-white/5 pl-8 pr-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                    />
+                  </div>
+                  <input type="time" value={offerForm.time}
+                    onChange={e => setOfferForm(p => ({ ...p, time: e.target.value }))}
+                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <input required value={offerForm.location}
+                      onChange={e => setOfferForm(p => ({ ...p, location: e.target.value }))}
+                      placeholder="Ville *"
+                      className="w-full rounded-xl bg-white/5 pl-8 pr-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                    />
+                  </div>
+                  <input required value={offerForm.country}
+                    onChange={e => setOfferForm(p => ({ ...p, country: e.target.value }))}
+                    placeholder="Pays *"
+                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                  />
+                </div>
+
+                <div className="relative">
+                  <Euro size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                  <input type="number" min="0" step="0.01" value={offerForm.fee}
+                    onChange={e => setOfferForm(p => ({ ...p, fee: e.target.value }))}
+                    placeholder="Tarif proposé (optionnel)"
+                    className="w-full rounded-xl bg-white/5 pl-8 pr-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                  />
+                </div>
+
+                {offerFormError && <p className="text-xs text-red-400">{offerFormError}</p>}
+
+                <button type="submit" disabled={submittingOffer}
+                  className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  {submittingOffer ? 'Publication…' : 'Publier'}
+                </button>
+              </form>
+            )}
+
+            {/* Liste des offres */}
+            {offers.length === 0 ? (
+              <p className="text-sm text-white/30 text-center py-4">Aucune offre publiée</p>
+            ) : (
+              <div className="space-y-3">
+                {offers.map(o => (
+                  <div key={o.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white truncate">{o.title}</p>
+                        <p className="text-xs text-white/40 mt-0.5">
+                          {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          {' · '}{o.location}, {o.country}
+                          {o.fee != null ? ` · ${o.fee.toLocaleString('fr-FR')} €` : ''}
+                        </p>
+                      </div>
+                      <button onClick={() => handleDeleteOffer(o.id)} className="text-white/20 hover:text-red-400 transition flex-shrink-0">
+                        <X size={15} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-white/50 mt-2 line-clamp-2">{o.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </Section>
         )}
 
