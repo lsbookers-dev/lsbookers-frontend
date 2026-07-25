@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { MessageCircle, Plus, X, Calendar, MapPin, Euro, Briefcase } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
