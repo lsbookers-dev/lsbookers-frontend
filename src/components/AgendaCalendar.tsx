@@ -511,6 +511,7 @@ export default function AgendaCalendar({
     setEventDetailError(false)
     setEventOffers([])
     setShowEventOfferForm(false)
+    setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
     // Charger les offres liées à cet événement
     fetch(`${API}/api/offers?eventId=${id}`)
       .then(r => r.ok ? r.json() : [])
@@ -1982,7 +1983,20 @@ export default function AgendaCalendar({
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-white/40">Offres liées à cet événement</p>
                       <button
-                        onClick={() => setShowEventOfferForm(v => !v)}
+                        onClick={() => {
+                          if (!showEventOfferForm && eventDetail) {
+                            const d = new Date(eventDetail.start)
+                            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                            const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+                            setEventOfferForm(prev => ({
+                              ...prev,
+                              date: dateStr,
+                              time: timeStr,
+                              location: eventDetail.lieu || prev.location,
+                            }))
+                          }
+                          setShowEventOfferForm(v => !v)
+                        }}
                         className="flex items-center gap-1 text-[11px] bg-violet-600 hover:bg-violet-500 text-white px-2.5 py-1 rounded-full transition-colors"
                       >
                         + Publier une offre
