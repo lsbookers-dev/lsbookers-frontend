@@ -76,6 +76,7 @@ export default function ArtistPublicProfilePage() {
   const router = useRouter()
   const userId = params?.id
   const { user: viewer } = useAuth()
+  const isOwner = viewer && userId ? Number(viewer.id) === Number(userId) : false
 
   const [profile, setProfile] = useState<ApiProfile | null>(null)
   const [publications, setPublications] = useState<Publication[]>([])
@@ -206,17 +207,21 @@ export default function ArtistPublicProfilePage() {
 
         <div className="flex flex-col items-end gap-3">
           <div className="flex items-center gap-3">
-            <FollowButton
-              targetUserId={profile.userId}
-              onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
-            />
-            <button
-              onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
-              className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
-            >
-              <MessageCircle size={16} />
-              Contacter
-            </button>
+            {!isOwner && (
+              <FollowButton
+                targetUserId={profile.userId}
+                onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
+              />
+            )}
+            {!isOwner && (
+              <button
+                onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
+                className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
+              >
+                <MessageCircle size={16} />
+                Contacter
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-4 text-sm text-white/50">
             <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>

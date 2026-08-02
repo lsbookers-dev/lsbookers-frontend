@@ -64,6 +64,7 @@ export default function ProviderPublicProfilePage() {
   const router = useRouter()
   const userId = params?.id
   const { user: viewer } = useAuth()
+  const isOwner = viewer && userId ? Number(viewer.id) === Number(userId) : false
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -203,17 +204,21 @@ export default function ProviderPublicProfilePage() {
 
             <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 sm:ml-auto flex-wrap">
               <div className="flex items-center gap-2">
-                <FollowButton
-                  targetUserId={profile.userId}
-                  onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
-                />
-                <button
-                  onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
-                  className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
-                >
-                  <MessageCircle size={16} />
-                  Contacter
-                </button>
+                {!isOwner && (
+                  <FollowButton
+                    targetUserId={profile.userId}
+                    onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
+                  />
+                )}
+                {!isOwner && (
+                  <button
+                    onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
+                    className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
+                  >
+                    <MessageCircle size={16} />
+                    Contacter
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-4 text-xs text-white/50">
                 <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>

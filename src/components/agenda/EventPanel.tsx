@@ -855,6 +855,7 @@ export default function EventPanel(p: EventPanelProps) {
                       date: dateStr,
                       time: timeStr,
                       location: eventDetail.lieu || prev.location,
+                      // country is already pre-set from defaultCountry via AgendaCalendar
                     }))
                   }
                   setShowEventOfferForm(!showEventOfferForm)

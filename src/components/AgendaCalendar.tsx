@@ -22,6 +22,7 @@ interface Props {
   viewerRole?: string | null
   viewerProfileId?: number | null
   ownerRole?: string | null
+  defaultCountry?: string | null
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ export default function AgendaCalendar({
   viewerRole = null,
   viewerProfileId = null,
   ownerRole = null,
+  defaultCountry = null,
 }: Props) {
   void ownerRole
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -288,7 +290,7 @@ export default function AgendaCalendar({
     setSelectedEventId(id); setEventMode('detail')
     setDetailTab('details'); setEventDetail(null); setEventDetailError(false)
     setEventOffers([]); setShowEventOfferForm(false)
-    setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
+    setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: defaultCountry || '', fee: '' })
     fetch(`${API}/api/offers?eventId=${id}`)
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setEventOffers(data) })
@@ -638,7 +640,7 @@ export default function AgendaCalendar({
       const created = await res.json()
       setEventOffers(prev => [created, ...prev])
       setShowEventOfferForm(false)
-      setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
+      setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: defaultCountry || '', fee: '' })
     } catch (err: unknown) {
       setEventOfferError(err instanceof Error ? err.message : 'Erreur')
     } finally {

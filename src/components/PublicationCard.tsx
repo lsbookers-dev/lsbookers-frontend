@@ -23,6 +23,8 @@ export default function PublicationCard({ pub, onClick, showTitle = false }: Pro
   const likes    = pub._count?.likes    ?? 0
   const comments = pub._count?.comments ?? 0
 
+  const isImage = pub.mediaType?.toLowerCase() === 'image'
+
   return (
     <div
       onClick={() => onClick(pub)}
@@ -30,11 +32,12 @@ export default function PublicationCard({ pub, onClick, showTitle = false }: Pro
     >
       {/* ── Média ── */}
       <div className="relative w-full aspect-square">
-        {pub.mediaType === 'image' ? (
+        {isImage ? (
           <Image
             src={pub.media}
             alt={pub.title}
             fill
+            unoptimized
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (

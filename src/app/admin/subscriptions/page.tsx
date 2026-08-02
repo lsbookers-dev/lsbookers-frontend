@@ -69,12 +69,17 @@ export default function AdminSubscriptionsPage() {
 
       // Plans
       const r1 = await fetch(`${API_BASE}/api/admin/plans`, authed())
+      if (r1.status === 404 || r1.status === 405) {
+        // Route inexistante = Stripe non configuré
+        return
+      }
       if (!r1.ok) throw new Error('HTTP ' + r1.status)
       const p = await r1.json() as { plans?: Plan[] } | Plan[]
       setPlans(Array.isArray(p) ? p : (p.plans || []))
 
       // Souscriptions
       const r2 = await fetch(`${API_BASE}/api/admin/subscriptions`, authed())
+      if (r2.status === 404 || r2.status === 405) return
       if (!r2.ok) throw new Error('HTTP ' + r2.status)
       const s = await r2.json() as { subscriptions?: Subscription[] } | Subscription[]
       setSubs(Array.isArray(s) ? s : (s.subscriptions || []))
@@ -169,6 +174,14 @@ export default function AdminSubscriptionsPage() {
       <h1 className="text-3xl font-bold mb-6">Abonnements & Plans</h1>
 
       {error && <p className="mb-4 text-red-400">{error}</p>}
+
+      {/* Banner Stripe non configuré */}
+      {plans.length === 0 && subs.length === 0 && !error && (
+        <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-amber-300 text-sm">
+          <p className="font-semibold mb-1">⚠ Stripe non configuré</p>
+          <p className="text-amber-300/70">Les paiements et abonnements seront disponibles une fois Stripe connecté. Vous pouvez préparer vos plans ci-dessous — ils seront activés dès la configuration.</p>
+        </div>
+      )}
 
       {/* ============ Plans ============ */}
       <section className="mb-10 rounded-2xl border border-white/10 bg-[#0f0f0f] p-5">

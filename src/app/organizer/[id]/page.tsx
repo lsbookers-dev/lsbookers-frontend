@@ -314,13 +314,15 @@ export default function OrganizerPublicProfilePage() {
                   targetUserId={profile.userId}
                   onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
                 />
-                <button
-                  onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
-                  className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
-                >
-                  <MessageCircle size={16} />
-                  Contacter
-                </button>
+                {!isOwner && (
+                  <button
+                    onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
+                    className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
+                  >
+                    <MessageCircle size={16} />
+                    Contacter
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-4 text-xs text-white/50">
                 <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>
@@ -363,7 +365,7 @@ export default function OrganizerPublicProfilePage() {
                 />
               </div>
               <div className="p-3 text-xs text-neutral-400">
-                {lat != null && lng != null ? `Lat ${lat} · Lng ${lng}` : 'Localisation approximative.'}
+                {location ? `${location}${country ? `, ${country}` : ''}` : (lat != null && lng != null ? 'Localisation disponible' : 'Localisation non renseignée.')}
               </div>
             </section>
 
@@ -377,7 +379,18 @@ export default function OrganizerPublicProfilePage() {
                 </div>
                 {isOwner && (
                   <button
-                    onClick={() => setShowForm(v => !v)}
+                    onClick={() => {
+                      setShowForm(v => {
+                        if (!v && profile) {
+                          setForm(f => ({
+                            ...f,
+                            location: f.location || profile.location || '',
+                            country: f.country || profile.country || '',
+                          }))
+                        }
+                        return !v
+                      })
+                    }}
                     className="flex items-center gap-1.5 text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-full transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -562,26 +575,13 @@ export default function OrganizerPublicProfilePage() {
 
           <aside className="space-y-6">
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold">Réseaux & contacts</h2>
-              <p className="text-neutral-400 text-sm mt-3">
-                Cette section sera branchée une fois la V2 backend des réseaux finalisée.
-              </p>
+              <h2 className="text-lg font-semibold">Avis</h2>
+              <p className="text-neutral-400 text-sm mt-3">Aucun avis pour le moment.</p>
             </section>
 
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Avis</h2>
-                <span className="text-xs text-white/40">À venir</span>
-              </div>
-              <p className="text-neutral-400 text-sm mt-3">Les avis réels seront ajoutés plus tard.</p>
-            </section>
-
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Tarifs</h2>
-                <span className="text-xs text-white/40">À venir</span>
-              </div>
-              <p className="text-neutral-400 text-sm mt-3">Les tarifs réels seront ajoutés plus tard.</p>
+              <h2 className="text-lg font-semibold">Tarifs</h2>
+              <p className="text-neutral-400 text-sm mt-3">Tarifs non renseignés.</p>
             </section>
           </aside>
         </div>

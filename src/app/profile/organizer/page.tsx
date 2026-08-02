@@ -286,6 +286,7 @@ export default function OrganizerProfilePage() {
               profileId={profile.id}
               isOwner={true}
               showAvailability={false}
+              defaultCountry={profile.country ?? null}
             />
           )}
 
