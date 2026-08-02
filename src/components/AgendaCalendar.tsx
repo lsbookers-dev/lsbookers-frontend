@@ -1,234 +1,28 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, MapPin, Clock, Send, X, BookOpen, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, BookOpen, Plus, X } from 'lucide-react'
+
+import {
+  CalEvent, AvailDay, BookingItem, EventSummary, EventDetail,
+  EventOffer, EventOfferForm, LinkedBooking, EventMode,
+} from './agenda/types'
+import { MONTHS_FR, isSameDay } from './agenda/helpers'
+import BookingsPanel  from './agenda/BookingsPanel'
+import EventPanel     from './agenda/EventPanel'
+import CalendarGrid   from './agenda/CalendarGrid'
 
 /* ─────────────────────────────────────────────────────────
-   TYPES
+   PROPS
 ───────────────────────────────────────────────────────── */
-type CalEvent = {
-  id: number
-  title: string
-  start: string
-  end?: string | null
-  allDay: boolean
-  lieu?: string | null
-  category?: string | null
-  status: string
-}
-
-type AvailDay = {
-  date: string
-  status: 'AVAILABLE' | 'UNAVAILABLE' | 'BOOKED' | 'TENTATIVE'
-  note?: string | null
-}
-
-type BookingItem = {
-  id: number
-  startDate: string
-  fee?: number | null
-  status: string
-  paymentStatus?: string | null
-  message?: string | null
-  conversationId?: number | null
-  cancellationRequestedBy?: number | null
-  requester?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
-  target?:    { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
-}
-
-type EventSummary = {
-  id: number
-  title: string
-  start: string
-  end?: string | null
-  lieu?: string | null
-  category?: string | null
-  status: string
-  isPrivate: boolean
-  budget?: number | null
-}
-
-type StaffItem = {
-  id: number
-  role: string
-  fee?: number | null
-  status: string
-  notes?: string | null
-  profile?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null } | null
-}
-
-type ExpenseItem = {
-  id: number
-  label: string
-  amount?: number | null
-  category?: string | null
-  paid: boolean
-}
-
-type PurchaseItem = {
-  id: number
-  item: string
-  quantity?: number | null
-  price?: number | null
-  done: boolean
-}
-
-type BookingItem2 = {
-  id: number
-  startDate: string
-  fee?: number | null
-  status: string
-  message?: string | null
-  target?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null } | null
-}
-
-type DocumentItem = {
-  id: number
-  name: string
-  url: string
-  fileType: string
-  createdAt: string
-}
-
-type LinkedBooking = {
-  id: number
-  startDate: string
-  fee?: number | null
-  paymentStatus?: string | null
-  status: string
-  requester?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
-}
-
-type EventDetail = {
-  id: number
-  title: string
-  description?: string | null
-  notes?: string | null
-  start: string
-  end?: string | null
-  allDay: boolean
-  lieu?: string | null
-  category?: string | null
-  isPrivate: boolean
-  budget?: number | null
-  maxCapacity?: number | null
-  status: string
-  staff: StaffItem[]
-  expenses: ExpenseItem[]
-  purchases: PurchaseItem[]
-  documents: DocumentItem[]
-  bookingRequests: BookingItem2[]
-}
-
-/* ── Badges ── */
-function BkStatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    PENDING:   { label: 'En attente',     cls: 'bg-yellow-500/20 text-yellow-300' },
-    ACCEPTED:  { label: 'Accepté',        cls: 'bg-green-500/20 text-green-300' },
-    DECLINED:  { label: 'Refusé',         cls: 'bg-red-500/20 text-red-300' },
-    CANCELLED: { label: 'Annulé',         cls: 'bg-white/10 text-white/40' },
-    COMPLETED: { label: 'Terminé',        cls: 'bg-blue-500/20 text-blue-300' },
-  }
-  const s = map[status] || map.PENDING
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${s.cls}`}>{s.label}</span>
-}
-
-function PayBadge({ status }: { status?: string | null }) {
-  if (status === 'PAID')    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300">💳 Booking payé</span>
-  if (status === 'DEPOSIT') return <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">💳 Acompte payé</span>
-  if (status === 'DIRECT')  return <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">💵 Paiement en direct</span>
-  return <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/30">⏳ Non payé</span>
-}
-
-/* ── DocumentsSection — helper composant pour onglets Contrat / Transports (artiste) ── */
-function DocumentsSection({
-  docs, docType, label, uploadingDoc, docError, addDocument, deleteDocument
-}: {
-  docs: DocumentItem[]
-  docType: string
-  label: string
-  uploadingDoc: boolean
-  docError: string
-  addDocument: (file: File, type: string) => void
-  deleteDocument: (id: number) => void
-}) {
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-white/40 uppercase tracking-wide">{label}</p>
-      <div className="space-y-1.5">
-        {docs.map(d => (
-          <div key={d.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
-            <a href={d.url} target="_blank" rel="noreferrer" className="flex-1 min-w-0">
-              <p className="text-xs text-violet-300 hover:text-violet-200 truncate">📎 {d.name}</p>
-            </a>
-            <button onClick={() => deleteDocument(d.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
-          </div>
-        ))}
-        {docs.length === 0 && <p className="text-xs text-white/20 italic">Aucun document</p>}
-      </div>
-      <label className={`w-full py-2 rounded-xl text-xs font-medium text-center cursor-pointer transition block border ${
-        uploadingDoc ? 'bg-white/5 border-white/10 text-white/30' : 'bg-violet-600/20 border-violet-500/30 text-violet-300 hover:bg-violet-600/30'
-      }`}>
-        {uploadingDoc ? 'Upload en cours…' : `📎 Ajouter ${label.toLowerCase()}`}
-        <input type="file" className="hidden" disabled={uploadingDoc}
-          onChange={e => {
-            const f = e.target.files?.[0]
-            if (f) addDocument(f, docType)
-            e.target.value = ''
-          }} />
-      </label>
-      {docError && <p className="text-xs text-red-400">{docError}</p>}
-    </div>
-  )
-}
-
 interface Props {
   profileId: number
   isOwner?: boolean
   showAvailability?: boolean
-  viewerRole?: string | null        // rôle du visiteur connecté
-  viewerProfileId?: number | null   // profileId du visiteur (pour envoyer une demande)
-  ownerRole?: string | null         // rôle du propriétaire du profil
+  viewerRole?: string | null
+  viewerProfileId?: number | null
+  ownerRole?: string | null
 }
-
-/* ─────────────────────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────────────────────── */
-const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-const DAYS_FR   = ['L','M','M','J','V','S','D']
-
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() &&
-         a.getMonth()    === b.getMonth()    &&
-         a.getDate()     === b.getDate()
-}
-
-function formatHour(iso: string) {
-  const d = new Date(iso)
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-}
-
-function categoryColor(cat?: string | null) {
-  const map: Record<string, string> = {
-    Club: 'bg-purple-500', Mariage: 'bg-pink-400', Corporate: 'bg-blue-400',
-    Festival: 'bg-amber-400', Concert: 'bg-green-400', Privé: 'bg-rose-400',
-  }
-  return cat && map[cat] ? map[cat] : 'bg-purple-400'
-}
-
-function availBg(status?: string) {
-  if (status === 'AVAILABLE')   return 'bg-green-500/20 ring-1 ring-green-500/30'
-  if (status === 'UNAVAILABLE') return 'bg-red-500/20   ring-1 ring-red-500/30'
-  if (status === 'TENTATIVE')   return 'bg-orange-500/20 ring-1 ring-orange-500/30'
-  if (status === 'BOOKED')      return 'bg-amber-500/20  ring-1 ring-amber-500/30'
-  return ''
-}
-
-const AVAIL_OPTIONS = [
-  { status: 'AVAILABLE',   label: 'Disponible',       color: 'bg-green-500',  ring: 'ring-green-500/50',  text: 'text-green-400'  },
-  { status: 'TENTATIVE',   label: 'Booking en cours', color: 'bg-orange-500', ring: 'ring-orange-500/50', text: 'text-orange-400' },
-  { status: 'UNAVAILABLE', label: 'Indisponible',     color: 'bg-red-500',    ring: 'ring-red-500/50',    text: 'text-red-400'    },
-]
 
 /* ─────────────────────────────────────────────────────────
    COMPOSANT
@@ -241,7 +35,6 @@ export default function AgendaCalendar({
   viewerProfileId = null,
   ownerRole = null,
 }: Props) {
-  // ownerRole is available for future use (e.g. restrict event panel to ORGANIZER role)
   void ownerRole
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -272,7 +65,6 @@ export default function AgendaCalendar({
   const [cancelRequestingId, setCancelRequestingId] = useState<number | null>(null)
 
   // Panel événements
-  type EventMode = 'list' | 'create' | 'detail'
   const [showEventPanel, setShowEventPanel] = useState(false)
   const [eventMode, setEventMode] = useState<EventMode>('list')
   const [allEvents, setAllEvents] = useState<EventSummary[]>([])
@@ -301,13 +93,14 @@ export default function AgendaCalendar({
   const [eventDetailError, setEventDetailError] = useState(false)
   const [detailTab, setDetailTab] = useState<'details' | 'staff' | 'notes' | 'purchases' | 'bookings' | 'offers'>('details')
 
-  // Offres liées à l'événement (onglet Offres — organisateur)
-  type EventOffer = { id: number; title: string; description: string; type: string; specialty?: string | null; date: string; location: string; country: string; fee?: number | null }
+  // Offres liées à l'événement
   const [eventOffers, setEventOffers] = useState<EventOffer[]>([])
   const [showEventOfferForm, setShowEventOfferForm] = useState(false)
   const [submittingEventOffer, setSubmittingEventOffer] = useState(false)
   const [eventOfferError, setEventOfferError] = useState<string | null>(null)
-  const [eventOfferForm, setEventOfferForm] = useState({ title: '', description: '', type: 'ARTIST' as 'ARTIST' | 'PROVIDER' | 'ALL', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
+  const [eventOfferForm, setEventOfferForm] = useState<EventOfferForm>({
+    title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '',
+  })
 
   // Formulaires inline dans le détail
   const [notesText, setNotesText] = useState('')
@@ -355,12 +148,13 @@ export default function AgendaCalendar({
   const [docError, setDocError] = useState('')
   const [docFilter, setDocFilter] = useState<'ALL'|'CONTRACT'|'TRANSPORT'|'HOTEL'|'OTHER'>('ALL')
 
-  // Booking qui a engendré cet événement (vue artiste/prestataire)
+  // Booking lié (vue artiste/prestataire)
   const [linkedBooking, setLinkedBooking] = useState<LinkedBooking | null>(null)
 
   // Mise à jour statut paiement
   const [updatingPayment, setUpdatingPayment] = useState<number | null>(null)
 
+  /* ── fetchData ── */
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
@@ -379,20 +173,15 @@ export default function AgendaCalendar({
           : Promise.resolve(null),
       ])
 
-      if (evRes.ok) {
-        const d = await evRes.json()
-        setEvents(d.events || [])
-      }
-      if (avRes?.ok) {
-        const d = await avRes.json()
-        setAvailability(d.availability || [])
-      }
+      if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []) }
+      if (avRes?.ok) { const d = await avRes.json(); setAvailability(d.availability || []) }
     } catch { /* silencieux */ }
     finally { setLoading(false) }
   }, [API, profileId, isOwner, showAvailability, month, year])
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  /* ── refreshPanel ── */
   const refreshPanel = useCallback(async () => {
     const token = localStorage.getItem('token')
     const res = await fetch(`${API}/api/events/booking-requests`, {
@@ -401,16 +190,16 @@ export default function AgendaCalendar({
     if (res.ok) setPanelData(await res.json())
   }, [API])
 
+  /* ── openPanel ── */
   const openPanel = useCallback(async () => {
     setShowPanel(true)
-    if (panelData) return // déjà chargé
+    if (panelData) return
     setPanelLoading(true)
-    try {
-      await refreshPanel()
-    } catch {}
+    try { await refreshPanel() } catch {}
     finally { setPanelLoading(false) }
   }, [panelData, refreshPanel])
 
+  /* ── cancelBooking ── */
   const cancelBooking = useCallback(async (id: number) => {
     setCancelingId(id)
     try {
@@ -425,6 +214,7 @@ export default function AgendaCalendar({
     finally { setCancelingId(null) }
   }, [API, refreshPanel])
 
+  /* ── requestCancellation ── */
   const requestCancellation = useCallback(async (id: number) => {
     setCancelRequestingId(id)
     try {
@@ -435,31 +225,28 @@ export default function AgendaCalendar({
         body: JSON.stringify({ note: cancelNoteText.trim() || undefined }),
       })
       if (res.ok) {
-        setCancelNoteFor(null)
-        setCancelNoteText('')
+        setCancelNoteFor(null); setCancelNoteText('')
         await refreshPanel()
       }
     } catch {}
     finally { setCancelRequestingId(null) }
   }, [API, cancelNoteText, refreshPanel])
 
+  /* ── fetchAllEvents ── */
   const fetchAllEvents = useCallback(async () => {
-    setEventsLoading(true)
-    setEventsError(false)
+    setEventsLoading(true); setEventsError(false)
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`${API}/api/events/all`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) { const d = await res.json(); setAllEvents(d.events || []) }
       else setEventsError(true)
-    } catch {
-      setEventsError(true)
-    }
+    } catch { setEventsError(true) }
     finally { setEventsLoading(false) }
   }, [API])
 
+  /* ── fetchEventDetail ── */
   const fetchEventDetail = useCallback(async (id: number) => {
-    setEventDetailLoading(true)
-    setEventDetailError(false)
+    setEventDetailLoading(true); setEventDetailError(false)
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`${API}/api/events/${id}/detail`, { headers: { Authorization: `Bearer ${token}` } })
@@ -468,7 +255,6 @@ export default function AgendaCalendar({
         setEventDetail(d.event)
         setLinkedBooking(d.linkedBooking || null)
         setNotesText(d.event.notes || '')
-        // Initialiser les champs d'édition
         const ev = d.event
         setEditTitle(ev.title || '')
         setEditLieu(ev.lieu || '')
@@ -485,72 +271,55 @@ export default function AgendaCalendar({
           setEditEnd(`${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`)
           setEditEndTime(`${String(endDate.getHours()).padStart(2,'0')}:${String(endDate.getMinutes()).padStart(2,'0')}`)
         } else { setEditEnd(''); setEditEndTime('') }
-      } else {
-        setEventDetailError(true)
-      }
-    } catch {
-      setEventDetailError(true)
-    }
+      } else { setEventDetailError(true) }
+    } catch { setEventDetailError(true) }
     finally { setEventDetailLoading(false) }
   }, [API])
 
+  /* ── openEventPanel ── */
   const openEventPanel = useCallback(() => {
-    setShowEventPanel(true)
-    setShowPanel(false)
-    setEventMode('list')
-    setSelectedEventId(null)
-    setEventDetail(null)
+    setShowEventPanel(true); setShowPanel(false)
+    setEventMode('list'); setSelectedEventId(null); setEventDetail(null)
     fetchAllEvents()
   }, [fetchAllEvents])
 
+  /* ── openEventDetail ── */
   const openEventDetail = useCallback((id: number) => {
-    setSelectedEventId(id)
-    setEventMode('detail')
-    setDetailTab('details')
-    setEventDetail(null)
-    setEventDetailError(false)
-    setEventOffers([])
-    setShowEventOfferForm(false)
+    setSelectedEventId(id); setEventMode('detail')
+    setDetailTab('details'); setEventDetail(null); setEventDetailError(false)
+    setEventOffers([]); setShowEventOfferForm(false)
     setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
-    // Charger les offres liées à cet événement
     fetch(`${API}/api/offers?eventId=${id}`)
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setEventOffers(data) })
       .catch(() => {})
-    setLinkedBooking(null)
-    setEditMode(false)
-    setEditError('')
-    setStaffError('')
-    setExpenseError('')
-    setDocError('')
+    setLinkedBooking(null); setEditMode(false); setEditError('')
+    setStaffError(''); setExpenseError(''); setDocError('')
     fetchEventDetail(id)
-  }, [fetchEventDetail])
+  }, [API, fetchEventDetail])
 
+  /* ── openEventFromCalendar (pour CalendarGrid) ── */
+  const openEventFromCalendar = useCallback((id: number) => {
+    setShowPanel(false); setShowEventPanel(true)
+    openEventDetail(id)
+  }, [openEventDetail])
+
+  /* ── createEvent ── */
   const createEvent = useCallback(async () => {
     if (!createTitle.trim() || !createDate) return
-    setCreating(true)
-    setCreateError('')
+    setCreating(true); setCreateError('')
     try {
       const token = localStorage.getItem('token')
-      // Construire la date en heure locale pour éviter le décalage UTC
-      const startISO = createStartTime
-        ? `${createDate}T${createStartTime}:00`
-        : `${createDate}T12:00:00`
-      const endISO = createEndDate
-        ? (createEndTime ? `${createEndDate}T${createEndTime}:00` : `${createEndDate}T23:59:00`)
-        : null
+      const startISO = createStartTime ? `${createDate}T${createStartTime}:00` : `${createDate}T12:00:00`
+      const endISO   = createEndDate ? (createEndTime ? `${createEndDate}T${createEndTime}:00` : `${createEndDate}T23:59:00`) : null
       const res = await fetch(`${API}/api/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title: createTitle.trim(),
-          start: startISO,
-          end: endISO,
-          lieu: createLieu.trim() || null,
-          category: createCategory || null,
+          title: createTitle.trim(), start: startISO, end: endISO,
+          lieu: createLieu.trim() || null, category: createCategory || null,
           budget: createBudget ? parseFloat(createBudget) : null,
-          isPrivate: true,
-          status: 'DRAFT',
+          isPrivate: true, status: 'DRAFT',
         }),
       })
       if (res.ok) {
@@ -558,40 +327,34 @@ export default function AgendaCalendar({
         setCreateTitle(''); setCreateDate(''); setCreateEndDate(''); setCreateStartTime('')
         setCreateEndTime(''); setCreateLieu(''); setCreateCategory(''); setCreateBudget('')
         setLastCreatedId(d.event.id)
-        await fetchAllEvents()
-        fetchData() // rafraîchir le calendrier
+        await fetchAllEvents(); fetchData()
       } else {
         const err = await res.json().catch(() => ({}))
         setCreateError(err.error || 'Erreur lors de la création')
       }
-    } catch {
-      setCreateError('Impossible de joindre le serveur')
-    }
+    } catch { setCreateError('Impossible de joindre le serveur') }
     finally { setCreating(false) }
   }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, fetchAllEvents, fetchData])
 
+  /* ── deleteEvent ── */
   const deleteEvent = useCallback(async () => {
     if (!selectedEventId) return
     setDeletingEvent(true)
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`${API}/api/events/${selectedEventId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
-        setShowEventPanel(false)
-        setEventMode('list')
-        setSelectedEventId(null)
-        setEventDetail(null)
-        setConfirmDelete(false)
-        await fetchAllEvents()
-        fetchData()
+        setShowEventPanel(false); setEventMode('list'); setSelectedEventId(null)
+        setEventDetail(null); setConfirmDelete(false)
+        await fetchAllEvents(); fetchData()
       }
     } catch {}
     finally { setDeletingEvent(false) }
   }, [API, selectedEventId, fetchAllEvents, fetchData])
 
+  /* ── saveNotes ── */
   const saveNotes = useCallback(async () => {
     if (!selectedEventId) return
     setNotesSaving(true)
@@ -606,10 +369,10 @@ export default function AgendaCalendar({
     finally { setNotesSaving(false) }
   }, [API, selectedEventId, notesText])
 
+  /* ── addExpense ── */
   const addExpense = useCallback(async () => {
     if (!newExpenseLabel.trim() || !selectedEventId) return
-    setAddingExpense(true)
-    setExpenseError('')
+    setAddingExpense(true); setExpenseError('')
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`${API}/api/events/${selectedEventId}/expenses`, {
@@ -625,13 +388,11 @@ export default function AgendaCalendar({
         const err = await res.json().catch(() => ({}))
         setExpenseError(err.error || `Erreur ${res.status}`)
       }
-    } catch (err) {
-      console.error('addExpense:', err)
-      setExpenseError('Erreur réseau')
-    }
+    } catch { setExpenseError('Erreur réseau') }
     finally { setAddingExpense(false) }
   }, [API, selectedEventId, newExpenseLabel, newExpenseAmount, newExpenseCategory])
 
+  /* ── toggleExpensePaid ── */
   const toggleExpensePaid = useCallback(async (expenseId: number, paid: boolean) => {
     if (!selectedEventId) return
     try {
@@ -645,18 +406,19 @@ export default function AgendaCalendar({
     } catch {}
   }, [API, selectedEventId])
 
+  /* ── deleteExpense ── */
   const deleteExpense = useCallback(async (expenseId: number) => {
     if (!selectedEventId) return
     try {
       const token = localStorage.getItem('token')
       await fetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
       setEventDetail(prev => prev ? { ...prev, expenses: prev.expenses.filter(e => e.id !== expenseId) } : prev)
     } catch {}
   }, [API, selectedEventId])
 
+  /* ── addPurchase ── */
   const addPurchase = useCallback(async () => {
     if (!newPurchaseItem.trim() || !selectedEventId) return
     setAddingPurchase(true)
@@ -676,6 +438,7 @@ export default function AgendaCalendar({
     finally { setAddingPurchase(false) }
   }, [API, selectedEventId, newPurchaseItem, newPurchaseQty, newPurchasePrice])
 
+  /* ── togglePurchaseDone ── */
   const togglePurchaseDone = useCallback(async (purchaseId: number, done: boolean) => {
     if (!selectedEventId) return
     try {
@@ -689,71 +452,61 @@ export default function AgendaCalendar({
     } catch {}
   }, [API, selectedEventId])
 
+  /* ── deletePurchase ── */
   const deletePurchase = useCallback(async (purchaseId: number) => {
     if (!selectedEventId) return
     try {
       const token = localStorage.getItem('token')
       await fetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
       setEventDetail(prev => prev ? { ...prev, purchases: prev.purchases.filter(p => p.id !== purchaseId) } : prev)
     } catch {}
   }, [API, selectedEventId])
 
+  /* ── saveEventDetails ── */
   const saveEventDetails = useCallback(async () => {
     if (!selectedEventId || !editTitle.trim()) return
-    setEditSaving(true)
-    setEditError('')
+    setEditSaving(true); setEditError('')
     try {
       const token = localStorage.getItem('token')
       const startISO = editStartTime ? `${editStart}T${editStartTime}:00` : `${editStart}T12:00:00`
-      const endISO = editEnd ? (editEndTime ? `${editEnd}T${editEndTime}:00` : `${editEnd}T23:59:00`) : null
+      const endISO   = editEnd ? (editEndTime ? `${editEnd}T${editEndTime}:00` : `${editEnd}T23:59:00`) : null
       const res = await fetch(`${API}/api/events/${selectedEventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title: editTitle.trim(),
-          lieu: editLieu.trim() || null,
-          category: editCategory || null,
-          budget: editBudget ? parseFloat(editBudget) : null,
-          status: editStatus,
+          title: editTitle.trim(), lieu: editLieu.trim() || null, category: editCategory || null,
+          budget: editBudget ? parseFloat(editBudget) : null, status: editStatus,
           maxCapacity: editCapacity ? parseInt(editCapacity) : null,
-          description: editDescription.trim() || null,
-          start: startISO,
-          end: endISO,
+          description: editDescription.trim() || null, start: startISO, end: endISO,
         }),
       })
       if (res.ok) {
         const d = await res.json()
         setEventDetail(prev => prev ? { ...prev, ...d.event } : prev)
         setEditMode(false)
-        await fetchAllEvents()
-        fetchData()
+        await fetchAllEvents(); fetchData()
       } else {
         const err = await res.json().catch(() => ({}))
         setEditError(err.error || 'Erreur lors de la sauvegarde')
       }
-    } catch {
-      setEditError('Erreur réseau')
-    }
+    } catch { setEditError('Erreur réseau') }
     finally { setEditSaving(false) }
   }, [API, selectedEventId, editTitle, editLieu, editCategory, editBudget, editStatus, editCapacity, editDescription, editStart, editStartTime, editEnd, editEndTime, fetchAllEvents, fetchData])
 
+  /* ── addStaff ── */
   const addStaff = useCallback(async (staffProfileId?: number) => {
     if (!newStaffRole.trim() || !selectedEventId) return
-    setAddingStaff(true)
-    setStaffError('')
+    setAddingStaff(true); setStaffError('')
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`${API}/api/events/${selectedEventId}/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          role: newStaffRole.trim(),
-          fee: newStaffFee ? parseFloat(newStaffFee) : null,
-          notes: newStaffNotes.trim() || null,
-          profileId: staffProfileId || null,
+          role: newStaffRole.trim(), fee: newStaffFee ? parseFloat(newStaffFee) : null,
+          notes: newStaffNotes.trim() || null, profileId: staffProfileId || null,
         }),
       })
       if (res.ok) {
@@ -765,26 +518,25 @@ export default function AgendaCalendar({
         const err = await res.json().catch(() => ({}))
         setStaffError(err.error || 'Erreur')
       }
-    } catch {
-      setStaffError('Erreur réseau')
-    }
+    } catch { setStaffError('Erreur réseau') }
     finally { setAddingStaff(false) }
   }, [API, selectedEventId, newStaffRole, newStaffFee, newStaffNotes])
 
+  /* ── deleteStaff ── */
   const deleteStaff = useCallback(async (staffId: number) => {
     if (!selectedEventId) return
     setDeletingStaffId(staffId)
     try {
       const token = localStorage.getItem('token')
       await fetch(`${API}/api/events/${selectedEventId}/staff/${staffId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
       setEventDetail(prev => prev ? { ...prev, staff: prev.staff.filter(s => s.id !== staffId) } : prev)
     } catch {}
     finally { setDeletingStaffId(null) }
   }, [API, selectedEventId])
 
+  /* ── searchStaff ── */
   const searchStaff = useCallback(async (q: string) => {
     setStaffSearchQ(q)
     if (!q.trim() || q.trim().length < 2) { setStaffSearchResults([]); return }
@@ -802,26 +554,21 @@ export default function AgendaCalendar({
     finally { setStaffSearchLoading(false) }
   }, [API])
 
+  /* ── addDocument ── */
   const addDocument = useCallback(async (file: File, docType: string) => {
     if (!selectedEventId) return
-    setUploadingDoc(true)
-    setDocError('')
+    setUploadingDoc(true); setDocError('')
     try {
       const token = localStorage.getItem('token')
-      // Upload vers Cloudinary via l'API
       const formData = new FormData()
       formData.append('file', file)
       const uploadRes = await fetch(`${API}/api/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
       })
       if (!uploadRes.ok) { setDocError("Erreur d'upload"); return }
       const uploadData = await uploadRes.json()
       const url = uploadData.url || uploadData.secure_url
       if (!url) { setDocError("URL manquante après upload"); return }
-
-      // Sauvegarder en base
       const res = await fetch(`${API}/api/events/${selectedEventId}/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -834,24 +581,23 @@ export default function AgendaCalendar({
         const err = await res.json().catch(() => ({}))
         setDocError(err.error || 'Erreur lors de la sauvegarde')
       }
-    } catch {
-      setDocError('Erreur réseau')
-    }
+    } catch { setDocError('Erreur réseau') }
     finally { setUploadingDoc(false) }
   }, [API, selectedEventId])
 
+  /* ── deleteDocument ── */
   const deleteDocument = useCallback(async (docId: number) => {
     if (!selectedEventId) return
     try {
       const token = localStorage.getItem('token')
       await fetch(`${API}/api/events/${selectedEventId}/documents/${docId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
       setEventDetail(prev => prev ? { ...prev, documents: prev.documents.filter(d => d.id !== docId) } : prev)
     } catch {}
   }, [API, selectedEventId])
 
+  /* ── updatePaymentStatus ── */
   const updatePaymentStatus = useCallback(async (bookingId: number, paymentStatus: string) => {
     setUpdatingPayment(bookingId)
     try {
@@ -861,69 +607,84 @@ export default function AgendaCalendar({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ paymentStatus }),
       })
-      if (res.ok) {
-        // Rafraîchir les données du panneau bookings
-        await refreshPanel()
-      }
+      if (res.ok) await refreshPanel()
     } catch {}
     finally { setUpdatingPayment(null) }
   }, [API, refreshPanel])
 
-  /* Réinitialiser le formulaire de booking quand on change de jour */
+  /* ── submitEventOffer (extrait de l'inline JSX) ── */
+  const submitEventOffer = useCallback(async (form: EventOfferForm) => {
+    setEventOfferError(null)
+    if (!form.title || !form.description || !form.date || !form.location || !form.country) {
+      setEventOfferError('Remplis tous les champs obligatoires.')
+      return
+    }
+    setSubmittingEventOffer(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${API}/api/offers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: form.title, description: form.description, type: form.type,
+          specialty: form.specialty || null,
+          date: `${form.date}T${form.time || '00:00'}:00`,
+          location: form.location, country: form.country,
+          fee: form.fee ? parseFloat(form.fee) : null,
+          eventId: selectedEventId,
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || 'Erreur')
+      const created = await res.json()
+      setEventOffers(prev => [created, ...prev])
+      setShowEventOfferForm(false)
+      setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
+    } catch (err: unknown) {
+      setEventOfferError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setSubmittingEventOffer(false)
+    }
+  }, [API, selectedEventId])
+
+  /* ── deleteEventOffer (extrait de l'inline JSX) ── */
+  const deleteEventOffer = useCallback(async (offerId: number) => {
+    const token = localStorage.getItem('token')
+    await fetch(`${API}/api/offers/${offerId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    setEventOffers(prev => prev.filter(x => x.id !== offerId))
+  }, [API])
+
+  /* ── Reset form booking quand on change de jour ── */
   useEffect(() => {
-    setShowBookingForm(false)
-    setBookingMsg('')
-    setBookingFee('')
-    setBookingSent(false)
+    setShowBookingForm(false); setBookingMsg(''); setBookingFee(''); setBookingSent(false)
   }, [selected])
 
-  /* Construire la grille du mois */
+  /* ── Grille du mois ── */
   const firstDay  = new Date(year, month - 1, 1)
   const lastDay   = new Date(year, month, 0)
   const startDow  = (firstDay.getDay() + 6) % 7
   const totalDays = lastDay.getDate()
-
   const cells: (Date | null)[] = [
     ...Array(startDow).fill(null),
     ...Array.from({ length: totalDays }, (_, i) => new Date(year, month - 1, i + 1)),
   ]
   while (cells.length % 7 !== 0) cells.push(null)
 
-  const selectedEvents = selected
-    ? events.filter(e => isSameDay(new Date(e.start), selected))
-    : []
+  const selectedEvents = selected ? events.filter(e => isSameDay(new Date(e.start), selected)) : []
+  const selectedAvail  = selected ? availability.find(a => isSameDay(new Date(a.date), selected)) : undefined
+  const canBook        = !isOwner && viewerRole === 'ORGANIZER' && selectedAvail?.status === 'AVAILABLE'
 
-  const selectedAvail = selected
-    ? availability.find(a => isSameDay(new Date(a.date), selected))
-    : undefined
+  /* ── Navigation mois ── */
+  const prevMonth = () => { if (month === 1) { setMonth(12); setYear(y => y - 1) } else setMonth(m => m - 1); setSelected(null) }
+  const nextMonth = () => { if (month === 12) { setMonth(1); setYear(y => y + 1) } else setMonth(m => m + 1); setSelected(null) }
 
-  /* Navigation */
-  const prevMonth = () => {
-    if (month === 1) { setMonth(12); setYear(y => y - 1) } else setMonth(m => m - 1)
-    setSelected(null)
-  }
-  const nextMonth = () => {
-    if (month === 12) { setMonth(1); setYear(y => y + 1) } else setMonth(m => m + 1)
-    setSelected(null)
-  }
-
-  function dayInfo(date: Date) {
-    const dayEvents = events.filter(e => isSameDay(new Date(e.start), date))
-    const avail     = availability.find(a => isSameDay(new Date(a.date), date))
-    return { dayEvents, avail }
-  }
-
-  /* Sauvegarder une dispo (propriétaire) */
+  /* ── Sauvegarder disponibilité ── */
   const saveAvailability = async (status: string) => {
     if (!selected || !isOwner) return
     setSavingAvail(true)
     try {
       const token = localStorage.getItem('token')
-
-      // Normaliser la date à minuit UTC pour éviter les décalages de fuseau
       const d = selected
       const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T00:00:00.000Z`
-
       const res = await fetch(`${API}/api/events/availability`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -936,11 +697,11 @@ export default function AgendaCalendar({
           return [...filtered, d2.availability]
         })
       }
-    } catch { /* silencieux */ }
+    } catch {}
     finally { setSavingAvail(false) }
   }
 
-  /* Envoyer une demande de booking (organisateur) */
+  /* ── Envoyer demande de booking ── */
   const sendBookingRequest = async () => {
     if (!selected || !viewerProfileId) return
     setBookingSending(true)
@@ -948,32 +709,29 @@ export default function AgendaCalendar({
       const token = localStorage.getItem('token')
       const d = selected
       const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T00:00:00.000Z`
-
       const res = await fetch(`${API}/api/events/booking-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          targetProfileId: profileId,
-          date: dateStr,
+          targetProfileId: profileId, date: dateStr,
           message: bookingMsg.trim() || null,
           fee: bookingFee ? parseFloat(bookingFee) : null,
         }),
       })
       if (res.ok) {
-        setBookingSent(true)
-        setShowBookingForm(false)
-        // Marquer la dispo comme TENTATIVE localement
+        setBookingSent(true); setShowBookingForm(false)
         setAvailability(prev => {
           const filtered = prev.filter(a => !isSameDay(new Date(a.date), selected))
           return [...filtered, { date: dateStr, status: 'TENTATIVE' }]
         })
       }
-    } catch { /* silencieux */ }
+    } catch {}
     finally { setBookingSending(false) }
   }
 
-  const canBook  = !isOwner && viewerRole === 'ORGANIZER' && selectedAvail?.status === 'AVAILABLE'
-
+  /* ─────────────────────────────────────────────────────────
+     RENDU
+  ───────────────────────────────────────────────────────── */
   return (
     <div className="rounded-2xl border border-white/10 bg-neutral-900/60 overflow-hidden">
 
@@ -1015,8 +773,7 @@ export default function AgendaCalendar({
                 onClick={openPanel}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs hover:bg-purple-600/30 transition mr-2"
               >
-                <BookOpen className="h-3 w-3" />
-                Mes bookings
+                <BookOpen className="h-3 w-3" /> Mes bookings
               </button>
             )}
             <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-white/8 transition text-white/50 hover:text-white">
@@ -1034,1323 +791,157 @@ export default function AgendaCalendar({
             onClick={() => setShowPanel(false)}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 text-xs hover:bg-white/10 transition"
           >
-            <X className="h-3 w-3" />
-            Fermer
+            <X className="h-3 w-3" /> Fermer
           </button>
         )}
       </div>
 
-      {/* ─── Panneau "Mes Bookings" ─── */}
-      {showPanel && (() => {
-        const received = (panelData?.received || []) as BookingItem[]
-        const sent     = (panelData?.sent     || []) as BookingItem[]
-        const now2     = new Date()
-
-        type CombinedItem = BookingItem & { direction: 'received' | 'sent' }
-        const allItems: CombinedItem[] = [
-          ...received.map(b => ({ ...b, direction: 'received' as const })),
-          ...sent.map(b =>     ({ ...b, direction: 'sent'     as const })),
-        ].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-
-        const tabItems = {
-          pending:   allItems.filter(b => b.status === 'PENDING'),
-          upcoming:  allItems.filter(b => b.status === 'ACCEPTED' && new Date(b.startDate) > now2),
-          past:      allItems.filter(b => b.status === 'ACCEPTED' && new Date(b.startDate) <= now2),
-          cancelled: allItems.filter(b => ['CANCELLED', 'DECLINED'].includes(b.status)),
-        }
-
-        const TABS = [
-          { key: 'pending'   as const, label: 'Offres', count: tabItems.pending.length },
-          { key: 'upcoming'  as const, label: 'À venir',  count: tabItems.upcoming.length },
-          { key: 'past'      as const, label: 'Passés',   count: tabItems.past.length },
-          { key: 'cancelled' as const, label: 'Annulés',  count: tabItems.cancelled.length },
-        ]
-
-        const fmt = (n: number) => n === 0 ? '—' : `${n.toLocaleString('fr-FR')} €`
-        const personName = (b: BookingItem, side: 'requester' | 'target') => {
-          const p = b[side]
-          return p?.user?.pseudo || [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ') || '?'
-        }
-
-        const acceptedReceived = received.filter(b => b.status === 'ACCEPTED')
-        const totalEarnings     = acceptedReceived.reduce((s, b) => s + (b.fee || 0), 0)
-        const thisYearEarnings  = acceptedReceived.filter(b => new Date(b.startDate).getFullYear() === now2.getFullYear()).reduce((s, b) => s + (b.fee || 0), 0)
-        const thisMonthEarnings = acceptedReceived.filter(b => new Date(b.startDate).getFullYear() === now2.getFullYear() && new Date(b.startDate).getMonth() === now2.getMonth()).reduce((s, b) => s + (b.fee || 0), 0)
-
-        const currentItems = tabItems[panelTab]
-
-        return (
-          <div className="p-4 max-h-[580px] overflow-y-auto space-y-4">
-            {panelLoading ? (
-              <p className="text-center text-white/30 text-sm py-8">Chargement…</p>
-            ) : (
-              <>
-                {/* Stats financières */}
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'Ce mois',     value: fmt(thisMonthEarnings) },
-                    { label: 'Cette année', value: fmt(thisYearEarnings)  },
-                    { label: 'Total',       value: fmt(totalEarnings)     },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="bg-white/5 rounded-xl p-3 text-center">
-                      <p className="text-[10px] text-white/40 mb-1">{label}</p>
-                      <p className="text-sm font-bold text-white">{value}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Sous-onglets */}
-                <div className="grid grid-cols-4 gap-1 bg-white/5 rounded-xl p-1">
-                  {TABS.map(tab => (
-                    <button
-                      key={tab.key}
-                      onClick={() => setPanelTab(tab.key)}
-                      className={`flex flex-col items-center py-1.5 px-1 rounded-lg text-[10px] font-medium transition ${
-                        panelTab === tab.key ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white/70'
-                      }`}
-                    >
-                      <span className="truncate w-full text-center">{tab.label}</span>
-                      {tab.count > 0 && (
-                        <span className={`mt-0.5 text-[9px] ${panelTab === tab.key ? 'text-white/70' : 'text-white/30'}`}>
-                          {tab.count}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Liste de la tab active */}
-                {currentItems.length === 0 ? (
-                  <p className="text-xs text-white/25 italic text-center py-4">Aucun booking dans cette catégorie</p>
-                ) : (
-                  <div className="space-y-2">
-                    {currentItems.map(b => {
-                      const isSent   = b.direction === 'sent'
-                      const name     = personName(b, isSent ? 'target' : 'requester')
-                      const isFuture = new Date(b.startDate) > now2
-                      const hasCancelRequest = !!b.cancellationRequestedBy
-                      const isMyCancel       = hasCancelRequest && b.cancellationRequestedBy === profileId
-                      const showCancelNoteForm = cancelNoteFor === b.id
-
-                      return (
-                        <div key={`${b.direction}-${b.id}`} className="bg-white/5 rounded-xl p-3 border border-white/8 space-y-2">
-                          {/* Entête */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${isSent ? 'bg-blue-500/20 text-blue-300' : 'bg-violet-500/20 text-violet-300'}`}>
-                                  {isSent ? 'Envoyé' : 'Reçu'}
-                                </span>
-                                <p className="text-sm font-medium text-white truncate">{name}</p>
-                              </div>
-                              <p className="text-xs text-white/50">
-                                📅 {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
-                              </p>
-                            </div>
-                            <BkStatusBadge status={b.status} />
-                          </div>
-
-                          {b.status === 'ACCEPTED' && (
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <PayBadge status={b.paymentStatus} />
-                              {/* Boutons de changement de statut paiement — organisateur seulement */}
-                              {b.direction === 'sent' && (
-                                <div className="flex gap-1 flex-wrap">
-                                  {[
-                                    { key: 'UNPAID',  label: 'Non payé',      cls: 'bg-white/5 text-white/40' },
-                                    { key: 'DEPOSIT', label: 'Acompte',        cls: 'bg-amber-600/20 text-amber-300' },
-                                    { key: 'PAID',    label: 'Payé',           cls: 'bg-green-600/20 text-green-300' },
-                                    { key: 'DIRECT',  label: 'En direct',      cls: 'bg-blue-600/20 text-blue-300' },
-                                  ].map(opt => (
-                                    <button
-                                      key={opt.key}
-                                      onClick={() => updatePaymentStatus(b.id, opt.key)}
-                                      disabled={updatingPayment === b.id || b.paymentStatus === opt.key}
-                                      className={`text-[9px] px-1.5 py-0.5 rounded-full border border-white/10 transition disabled:opacity-40 ${
-                                        b.paymentStatus === opt.key ? 'opacity-40 cursor-default' : 'hover:brightness-125'
-                                      } ${opt.cls}`}
-                                    >
-                                      {opt.label}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Lien conversation */}
-                          {b.conversationId && (
-                            <a href={`/messages?c=${b.conversationId}`} className="text-[10px] text-violet-400 hover:text-violet-300 transition block">
-                              → Voir la conversation
-                            </a>
-                          )}
-
-                          {/* Annuler une demande PENDING envoyée */}
-                          {b.status === 'PENDING' && isSent && (
-                            <button
-                              onClick={() => cancelBooking(b.id)}
-                              disabled={cancelingId === b.id}
-                              className="text-xs px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500/20 text-red-400 hover:bg-red-600/30 disabled:opacity-40 transition w-full"
-                            >
-                              {cancelingId === b.id ? 'Annulation…' : 'Annuler ma demande'}
-                            </button>
-                          )}
-
-                          {/* Demander l'annulation d'un booking ACCEPTED futur */}
-                          {b.status === 'ACCEPTED' && isFuture && !showCancelNoteForm && (
-                            hasCancelRequest ? (
-                              <p className={`text-[10px] ${isMyCancel ? 'text-white/30' : 'text-orange-400'}`}>
-                                {isMyCancel
-                                  ? '🔄 Annulation demandée — en attente de l\'autre partie'
-                                  : '🔔 Annulation demandée — voir la conversation'}
-                              </p>
-                            ) : (
-                              <button
-                                onClick={() => { setCancelNoteFor(b.id); setCancelNoteText('') }}
-                                className="text-[10px] text-white/35 hover:text-orange-400 transition block"
-                              >
-                                Demander l&apos;annulation…
-                              </button>
-                            )
-                          )}
-
-                          {/* Formulaire note d'annulation */}
-                          {showCancelNoteForm && (
-                            <div className="space-y-2">
-                              <textarea
-                                value={cancelNoteText}
-                                onChange={e => setCancelNoteText(e.target.value)}
-                                placeholder="Raison (optionnel)…"
-                                rows={2}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-orange-500/40 resize-none"
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => requestCancellation(b.id)}
-                                  disabled={cancelRequestingId === b.id}
-                                  className="flex-1 py-1.5 rounded-lg bg-orange-600/80 text-white text-xs font-medium hover:bg-orange-500/80 disabled:opacity-40 transition"
-                                >
-                                  {cancelRequestingId === b.id ? 'Envoi…' : 'Envoyer la demande'}
-                                </button>
-                                <button
-                                  onClick={() => { setCancelNoteFor(null); setCancelNoteText('') }}
-                                  className="px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs hover:bg-white/10 transition"
-                                >
-                                  Annuler
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )
-      })()}
-
-      {/* ─── Panneau "Événements" ─── */}
-      {showEventPanel && (() => {
-        const statusLabel: Record<string, string> = { DRAFT: 'Brouillon', PUBLISHED: 'Publié', CANCELLED: 'Annulé', COMPLETED: 'Terminé' }
-        const statusCls: Record<string, string> = {
-          DRAFT: 'bg-white/10 text-white/40', PUBLISHED: 'bg-green-500/20 text-green-300',
-          CANCELLED: 'bg-red-500/20 text-red-300', COMPLETED: 'bg-blue-500/20 text-blue-300',
-        }
-        const CATEGORIES = ['Club', 'Mariage', 'Corporate', 'Festival', 'Concert', 'Privé', 'Autre']
-        const EXPENSE_CATEGORIES = ['Technique', 'Catering', 'Décor', 'Communication', 'Personnel', 'Autre']
-
-        // ── LIST MODE ──
-        if (eventMode === 'list') {
-          return (
-            <div className="p-4 max-h-[580px] overflow-y-auto space-y-3">
-              {/* Formulaire de création */}
-              <div className="bg-white/5 rounded-xl border border-white/10 p-3 space-y-2">
-                <p className="text-xs font-semibold text-white/60 uppercase tracking-wide">Nouvel événement</p>
-                <input
-                  type="text" value={createTitle} onChange={e => setCreateTitle(e.target.value)}
-                  placeholder="Titre de l'événement *"
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-[10px] text-white/35 mb-1">Date début *</p>
-                    <input type="date" value={createDate} onChange={e => setCreateDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-white/35 mb-1">Heure début</p>
-                    <input type="time" value={createStartTime} onChange={e => setCreateStartTime(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-white/35 mb-1">Date fin</p>
-                    <input type="date" value={createEndDate} onChange={e => setCreateEndDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-white/35 mb-1">Heure fin</p>
-                    <input type="time" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
-                  </div>
-                </div>
-                <input type="text" value={createLieu} onChange={e => setCreateLieu(e.target.value)}
-                  placeholder="Lieu (optionnel)"
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40" />
-                <div className="flex gap-2">
-                  <select value={createCategory} onChange={e => setCreateCategory(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40">
-                    <option value="">Catégorie…</option>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <input type="number" value={createBudget} onChange={e => setCreateBudget(e.target.value)}
-                    placeholder="Budget (€)"
-                    className="w-28 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40" />
-                </div>
-                {createError && (
-                  <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{createError}</p>
-                )}
-                <button
-                  onClick={createEvent}
-                  disabled={creating || !createTitle.trim() || !createDate}
-                  className="w-full py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium disabled:opacity-40 transition"
-                >
-                  {creating ? 'Création…' : '+ Créer l\'événement'}
-                </button>
-              </div>
-
-              {/* Liste des événements existants */}
-              {eventsLoading ? (
-                <p className="text-center text-white/30 text-sm py-4">Chargement…</p>
-              ) : eventsError ? (
-                <div className="text-center py-4 space-y-2">
-                  <p className="text-xs text-red-400/70">Impossible de charger les événements.</p>
-                  <button onClick={fetchAllEvents} className="text-xs text-white/50 underline">Réessayer</button>
-                </div>
-              ) : allEvents.length === 0 ? (
-                <p className="text-xs text-white/25 italic text-center py-2">Aucun événement créé</p>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-[11px] text-white/40 uppercase tracking-wide font-medium">Événements existants ({allEvents.length})</p>
-                  {allEvents.map(ev => (
-                    <div
-                      key={ev.id}
-                      className={`rounded-xl border overflow-hidden ${
-                        ev.id === lastCreatedId
-                          ? 'bg-green-500/10 border-green-500/30'
-                          : 'bg-white/5 border-white/10'
-                      }`}
-                    >
-                      <div className="p-3">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{ev.title}</p>
-                            <p className="text-xs text-white/40 mt-0.5">
-                              📅 {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              {ev.lieu ? ` · ${ev.lieu}` : ''}
-                            </p>
-                          </div>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${statusCls[ev.status] || 'bg-white/10 text-white/40'}`}>
-                            {statusLabel[ev.status] || ev.status}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => openEventDetail(ev.id)}
-                          className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-xs font-medium transition flex items-center justify-center gap-1"
-                        >
-                          Gérer l&apos;événement →
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        }
-
-        // ── DETAIL MODE ──
-        if (eventMode === 'detail') {
-          if (eventDetailLoading) {
-            return <div className="p-8 text-center text-white/30 text-sm">Chargement…</div>
-          }
-          if (eventDetailError || !eventDetail) {
-            return (
-              <div className="p-8 text-center space-y-3">
-                <p className="text-red-400/80 text-sm">Impossible de charger l&apos;événement.</p>
-                <button
-                  onClick={() => selectedEventId && fetchEventDetail(selectedEventId)}
-                  className="text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-white/70"
-                >
-                  Réessayer
-                </button>
-              </div>
-            )
-          }
-
-          // Détecter si c'est un événement "booké" (artiste/prestataire) ou un événement "organisateur"
-          const isBookedEvent = !!linkedBooking
-
-          const ORGANIZER_TABS = [
-            { key: 'details'   as const, label: 'Détail' },
-            { key: 'staff'     as const, label: 'Personnel' },
-            { key: 'notes'     as const, label: 'Notes & Frais' },
-            { key: 'purchases' as const, label: 'Achats' },
-            { key: 'bookings'  as const, label: 'Bookings' },
-            { key: 'offers'    as const, label: 'Offres' },
-          ]
-          const BOOKED_TABS = [
-            { key: 'details'   as const, label: 'Détails' },
-            { key: 'staff'     as const, label: 'Matériel' },
-            { key: 'notes'     as const, label: 'Contrat' },
-            { key: 'purchases' as const, label: 'Transports' },
-            { key: 'bookings'  as const, label: 'Paiement' },
-          ]
-          const DETAIL_TABS = isBookedEvent ? BOOKED_TABS : ORGANIZER_TABS
-
-          const totalExpenses = eventDetail.expenses.reduce((s, e) => s + (e.amount || 0), 0)
-          const paidExpenses  = eventDetail.expenses.filter(e => e.paid).reduce((s, e) => s + (e.amount || 0), 0)
-          const totalStaffFee = eventDetail.staff.reduce((s, st) => s + (st.fee || 0), 0)
-
-          const personName = (p: StaffItem['profile']) => {
-            if (!p) return 'Non assigné'
-            return p.user?.pseudo || [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ') || '?'
-          }
-
-          const bookingStatusCls: Record<string, string> = {
-            PENDING: 'text-yellow-300', ACCEPTED: 'text-green-300', DECLINED: 'text-red-300', CANCELLED: 'text-white/30',
-          }
-
-          // Documents filtrés
-          const allDocs = eventDetail.documents || []
-          const filteredDocs = docFilter === 'ALL' ? allDocs : allDocs.filter(d => d.fileType === docFilter)
-
-          return (
-            <div className="max-h-[600px] overflow-y-auto">
-              {/* En-tête événement */}
-              <div className="px-4 pt-3 pb-2 border-b border-white/8">
-                <p className="text-sm font-semibold text-white truncate">{eventDetail.title}</p>
-                <p className="text-xs text-white/40 mt-0.5">
-                  📅 {new Date(eventDetail.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  {eventDetail.lieu ? ` · ${eventDetail.lieu}` : ''}
-                </p>
-              </div>
-
-              {/* Onglets */}
-              <div className="flex border-b border-white/8 overflow-x-auto">
-                {DETAIL_TABS.map(tab => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setDetailTab(tab.key)}
-                    className={`px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition ${
-                      detailTab === tab.key ? 'border-violet-500 text-violet-300' : 'border-transparent text-white/40 hover:text-white/70'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="p-4 space-y-3">
-
-                {/* ── DÉTAILS ── */}
-                {detailTab === 'details' && (
-                  <div className="space-y-3">
-                    {/* Vue artiste bookée — lecture seule */}
-                    {isBookedEvent ? (
-                      <>
-                        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-3 space-y-1.5">
-                          <p className="text-[10px] text-violet-300 font-medium uppercase tracking-wide">Organisateur</p>
-                          <p className="text-sm font-medium text-white">
-                            {linkedBooking?.requester?.user?.pseudo || [linkedBooking?.requester?.user?.firstName, linkedBooking?.requester?.user?.lastName].filter(Boolean).join(' ') || '?'}
-                          </p>
-                        </div>
-                        {[
-                          { label: 'Titre', value: eventDetail.title },
-                          { label: 'Date', value: new Date(eventDetail.start).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
-                          { label: 'Lieu', value: eventDetail.lieu || '—' },
-                          { label: 'Catégorie', value: eventDetail.category || '—' },
-                          { label: 'Cachet', value: linkedBooking?.fee ? `${Number(linkedBooking.fee).toLocaleString('fr-FR')} €` : '—' },
-                        ].map(({ label, value }) => (
-                          <div key={label} className="flex items-start justify-between gap-4">
-                            <span className="text-xs text-white/40 shrink-0">{label}</span>
-                            <span className="text-xs text-white text-right">{value}</span>
-                          </div>
-                        ))}
-                      </>
-                    ) : editMode ? (
-                      /* Mode édition — organisateur */
-                      <div className="space-y-2">
-                        <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)}
-                          placeholder="Titre *"
-                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40" />
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <p className="text-[10px] text-white/35 mb-1">Date début *</p>
-                            <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/35 mb-1">Heure début</p>
-                            <input type="time" value={editStartTime} onChange={e => setEditStartTime(e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/35 mb-1">Date fin</p>
-                            <input type="date" value={editEnd} onChange={e => setEditEnd(e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/35 mb-1">Heure fin</p>
-                            <input type="time" value={editEndTime} onChange={e => setEditEndTime(e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
-                          </div>
-                        </div>
-                        <input type="text" value={editLieu} onChange={e => setEditLieu(e.target.value)}
-                          placeholder="Lieu"
-                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40" />
-                        <div className="grid grid-cols-2 gap-2">
-                          <select value={editCategory} onChange={e => setEditCategory(e.target.value)}
-                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none">
-                            <option value="">Catégorie…</option>
-                            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                          <select value={editStatus} onChange={e => setEditStatus(e.target.value)}
-                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none">
-                            <option value="DRAFT">Brouillon</option>
-                            <option value="PUBLISHED">Publié</option>
-                            <option value="COMPLETED">Terminé</option>
-                            <option value="CANCELLED">Annulé</option>
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input type="number" value={editBudget} onChange={e => setEditBudget(e.target.value)}
-                            placeholder="Budget (€)"
-                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none" />
-                          <input type="number" value={editCapacity} onChange={e => setEditCapacity(e.target.value)}
-                            placeholder="Capacité max"
-                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none" />
-                        </div>
-                        <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)}
-                          placeholder="Description…" rows={3}
-                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none" />
-                        {editError && <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{editError}</p>}
-                        <div className="flex gap-2">
-                          <button onClick={() => { setEditMode(false); setEditError('') }}
-                            className="flex-1 py-2 rounded-xl bg-white/10 text-white/60 text-xs hover:bg-white/15 transition">
-                            Annuler
-                          </button>
-                          <button onClick={saveEventDetails} disabled={editSaving || !editTitle.trim() || !editStart}
-                            className="flex-1 py-2 rounded-xl bg-violet-600 text-white text-xs font-medium hover:bg-violet-500 disabled:opacity-40 transition">
-                            {editSaving ? 'Sauvegarde…' : 'Sauvegarder'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Mode lecture — organisateur */
-                      <>
-                        {[
-                          { label: 'Titre', value: eventDetail.title },
-                          { label: 'Date', value: new Date(eventDetail.start).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (eventDetail.end ? ` → ${new Date(eventDetail.end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}` : '') },
-                          { label: 'Lieu', value: eventDetail.lieu || '—' },
-                          { label: 'Catégorie', value: eventDetail.category || '—' },
-                          { label: 'Budget', value: eventDetail.budget ? `${Number(eventDetail.budget).toLocaleString('fr-FR')} €` : '—' },
-                          { label: 'Statut', value: statusLabel[eventDetail.status] || eventDetail.status },
-                          { label: 'Capacité max', value: eventDetail.maxCapacity?.toString() || '—' },
-                        ].map(({ label, value }) => (
-                          <div key={label} className="flex items-start justify-between gap-4">
-                            <span className="text-xs text-white/40 shrink-0">{label}</span>
-                            <span className="text-xs text-white text-right">{value}</span>
-                          </div>
-                        ))}
-                        {eventDetail.description && (
-                          <div>
-                            <p className="text-xs text-white/40 mb-1">Description</p>
-                            <p className="text-xs text-white/70">{eventDetail.description}</p>
-                          </div>
-                        )}
-                        <button onClick={() => setEditMode(true)}
-                          className="w-full py-2 rounded-xl border border-white/15 text-white/60 text-xs hover:bg-white/8 transition mt-1">
-                          ✏️ Modifier les informations
-                        </button>
-                      </>
-                    )}
-
-                    {/* Zone suppression — organisateur seulement */}
-                    {!isBookedEvent && (
-                      <div className="pt-3 border-t border-white/8 mt-3">
-                        {!confirmDelete ? (
-                          <button
-                            onClick={() => setConfirmDelete(true)}
-                            className="w-full py-2 rounded-xl border border-red-500/30 text-red-400 text-xs hover:bg-red-500/10 transition"
-                          >
-                            🗑 Supprimer l&apos;événement
-                          </button>
-                        ) : (
-                          <div className="space-y-2">
-                            <p className="text-xs text-red-400 text-center">Supprimer définitivement ?</p>
-                            <div className="flex gap-2">
-                              <button onClick={() => setConfirmDelete(false)}
-                                className="flex-1 py-2 rounded-xl bg-white/10 text-white/60 text-xs hover:bg-white/15 transition">
-                                Annuler
-                              </button>
-                              <button onClick={deleteEvent} disabled={deletingEvent}
-                                className="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-500 disabled:opacity-50 transition">
-                                {deletingEvent ? 'Suppression…' : 'Confirmer'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ── PERSONNEL (organisateur) / MATÉRIEL (artiste) ── */}
-                {detailTab === 'staff' && (
-                  <div className="space-y-3">
-                    {isBookedEvent ? (
-                      /* Artiste — notes matériel/technique */
-                      <div>
-                        <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Notes matériel / technique</p>
-                        <textarea
-                          value={notesText}
-                          onChange={e => setNotesText(e.target.value)}
-                          placeholder="Rider technique, matériel nécessaire, demandes spéciales…"
-                          rows={5}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
-                        />
-                        <button onClick={saveNotes} disabled={notesSaving}
-                          className="mt-1.5 px-4 py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition">
-                          {notesSaving ? 'Sauvegarde…' : 'Sauvegarder'}
-                        </button>
-                      </div>
-                    ) : (
-                      /* Organisateur — liste du personnel + formulaire d'ajout */
-                      <>
-                        {/* Liste */}
-                        {eventDetail.staff.length === 0 ? (
-                          <p className="text-xs text-white/25 italic text-center py-2">Aucun personnel assigné</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {eventDetail.staff.map(s => (
-                              <div key={s.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <p className="text-sm font-medium text-white">{s.role}</p>
-                                    <p className="text-xs text-white/50 mt-0.5">{personName(s.profile)}</p>
-                                    {s.fee && <p className="text-xs text-white/40">{Number(s.fee).toLocaleString('fr-FR')} €</p>}
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${s.status === 'BOOKED' ? 'bg-green-500/20 text-green-300' : s.status === 'NEEDED' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
-                                      {s.status === 'BOOKED' ? 'Confirmé' : s.status === 'NEEDED' ? 'À pourvoir' : 'Annulé'}
-                                    </span>
-                                    <button onClick={() => deleteStaff(s.id)} disabled={deletingStaffId === s.id}
-                                      className="text-white/20 hover:text-red-400 transition text-xs disabled:opacity-40">✕</button>
-                                  </div>
-                                </div>
-                                {s.notes && <p className="text-xs text-white/40 mt-1 italic">{s.notes}</p>}
-                              </div>
-                            ))}
-                            {/* Total salaires */}
-                            {totalStaffFee > 0 && (
-                              <div className="flex items-center justify-between px-3 py-2 bg-white/[0.03] rounded-xl border border-white/8">
-                                <span className="text-xs text-white/40">Total salaires</span>
-                                <span className="text-xs font-semibold text-white">{totalStaffFee.toLocaleString('fr-FR')} €</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Formulaire d'ajout */}
-                        <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
-                          <div className="flex gap-1 mb-2">
-                            <button onClick={() => setStaffAddMode('manual')}
-                              className={`flex-1 py-1 rounded-lg text-xs font-medium transition ${staffAddMode === 'manual' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                              Manuel
-                            </button>
-                            <button onClick={() => setStaffAddMode('pseudo')}
-                              className={`flex-1 py-1 rounded-lg text-xs font-medium transition ${staffAddMode === 'pseudo' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                              @Pseudo
-                            </button>
-                          </div>
-
-                          <input type="text" value={newStaffRole} onChange={e => setNewStaffRole(e.target.value)}
-                            placeholder="Rôle / Poste *" className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                          <div className="flex gap-2">
-                            <input type="number" value={newStaffFee} onChange={e => setNewStaffFee(e.target.value)}
-                              placeholder="Salaire (€)" className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                            <input type="text" value={newStaffNotes} onChange={e => setNewStaffNotes(e.target.value)}
-                              placeholder="Notes" className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                          </div>
-
-                          {staffAddMode === 'pseudo' && (
-                            <div className="relative">
-                              <input type="text" value={staffSearchQ} onChange={e => searchStaff(e.target.value)}
-                                placeholder="Rechercher par @pseudo…"
-                                className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                              {staffSearchLoading && <p className="text-[10px] text-white/30 mt-1">Recherche…</p>}
-                              {staffSearchResults.length > 0 && (
-                                <div className="mt-1 bg-neutral-800 border border-white/10 rounded-xl overflow-hidden">
-                                  {staffSearchResults.map((r: {id:number;avatar?:string|null;user?:{pseudo?:string|null;firstName?:string|null;lastName?:string|null;role?:string|null}}) => (
-                                    <button key={r.id} type="button"
-                                      onClick={() => { addStaff(r.id); setStaffSearchResults([]) }}
-                                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition text-left">
-                                      {r.avatar && <img src={r.avatar} className="h-6 w-6 rounded-full object-cover shrink-0" alt="" />}
-                                      <div>
-                                        <p className="text-xs text-white">{r.user?.pseudo || [r.user?.firstName, r.user?.lastName].filter(Boolean).join(' ')}</p>
-                                        <p className="text-[10px] text-white/30">{r.user?.role}</p>
-                                      </div>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {staffError && <p className="text-xs text-red-400">{staffError}</p>}
-
-                          {staffAddMode === 'manual' && (
-                            <button onClick={() => addStaff()} disabled={addingStaff || !newStaffRole.trim()}
-                              className="w-full py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition">
-                              {addingStaff ? 'Ajout…' : '+ Ajouter'}
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* ── NOTES & FRAIS (organisateur) / CONTRAT (artiste) ── */}
-                {detailTab === 'notes' && (
-                  isBookedEvent ? (
-                    /* Artiste — onglet Contrat */
-                    <DocumentsSection
-                      docs={allDocs.filter(d => d.fileType === 'CONTRACT')}
-                      docType="CONTRACT"
-                      label="Contrat"
-                      uploadingDoc={uploadingDoc}
-                      docError={docError}
-                      addDocument={addDocument}
-                      deleteDocument={deleteDocument}
-                    />
-                  ) : (
-                    <div className="space-y-4">
-                      {/* Notes privées */}
-                      <div>
-                        <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Notes privées</p>
-                        <textarea
-                          value={notesText}
-                          onChange={e => setNotesText(e.target.value)}
-                          placeholder="Vos notes pour cet événement…"
-                          rows={4}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
-                        />
-                        <button
-                          onClick={saveNotes}
-                          disabled={notesSaving}
-                          className="mt-1.5 px-4 py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition"
-                        >
-                          {notesSaving ? 'Sauvegarde…' : 'Sauvegarder'}
-                        </button>
-                      </div>
-
-                      {/* Dépenses */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs text-white/40 uppercase tracking-wide">Frais</p>
-                          <p className="text-xs text-white/50">{paidExpenses.toLocaleString('fr-FR')} € / {totalExpenses.toLocaleString('fr-FR')} € payés</p>
-                        </div>
-                        <div className="space-y-1.5 mb-3">
-                          {eventDetail.expenses.map(e => (
-                            <div key={e.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
-                              <input
-                                type="checkbox" checked={e.paid}
-                                onChange={ev => toggleExpensePaid(e.id, ev.target.checked)}
-                                className="accent-violet-500 w-3.5 h-3.5 shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-xs ${e.paid ? 'line-through text-white/30' : 'text-white'}`}>{e.label}</p>
-                                {e.category && <p className="text-[10px] text-white/30">{e.category}</p>}
-                              </div>
-                              {e.amount != null && (
-                                <span className="text-xs text-white/60 shrink-0">{Number(e.amount).toLocaleString('fr-FR')} €</span>
-                              )}
-                              <button onClick={() => deleteExpense(e.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
-                            </div>
-                          ))}
-                          {eventDetail.expenses.length === 0 && (
-                            <p className="text-xs text-white/20 italic">Aucune dépense enregistrée</p>
-                          )}
-                        </div>
-                        {/* Formulaire ajout dépense */}
-                        <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
-                          <input type="text" value={newExpenseLabel} onChange={e => setNewExpenseLabel(e.target.value)}
-                            placeholder="Libellé *"
-                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                          <div className="flex gap-2">
-                            <input type="number" value={newExpenseAmount} onChange={e => setNewExpenseAmount(e.target.value)}
-                              placeholder="Montant (€)"
-                              className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                            <select value={newExpenseCategory} onChange={e => setNewExpenseCategory(e.target.value)}
-                              className="flex-1 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
-                              <option value="">Catégorie…</option>
-                              {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                          </div>
-                          {expenseError && <p className="text-xs text-red-400">{expenseError}</p>}
-                          <button onClick={addExpense} disabled={addingExpense || !newExpenseLabel.trim()}
-                            className="w-full py-1.5 rounded-lg bg-violet-600/60 hover:bg-violet-600 text-white text-xs font-medium disabled:opacity-40 transition">
-                            {addingExpense ? 'Ajout…' : '+ Ajouter une dépense'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                )}
-
-                {/* ── ACHATS (organisateur) / TRANSPORTS & LOGEMENTS (artiste) ── */}
-                {detailTab === 'purchases' && (
-                  isBookedEvent ? (
-                    <DocumentsSection
-                      docs={allDocs.filter(d => d.fileType === 'TRANSPORT' || d.fileType === 'HOTEL')}
-                      docType="TRANSPORT"
-                      label="Transport / Logement"
-                      uploadingDoc={uploadingDoc}
-                      docError={docError}
-                      addDocument={addDocument}
-                      deleteDocument={deleteDocument}
-                    />
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        {eventDetail.purchases.map(p => (
-                          <div key={p.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
-                            <input
-                              type="checkbox" checked={p.done}
-                              onChange={ev => togglePurchaseDone(p.id, ev.target.checked)}
-                              className="accent-green-500 w-3.5 h-3.5 shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-xs ${p.done ? 'line-through text-white/30' : 'text-white'}`}>{p.item}</p>
-                              {(p.quantity || p.price) && (
-                                <p className="text-[10px] text-white/30">
-                                  {p.quantity ? `x${p.quantity}` : ''}{p.quantity && p.price ? ' · ' : ''}{p.price ? `${Number(p.price).toLocaleString('fr-FR')} €` : ''}
-                                </p>
-                              )}
-                            </div>
-                            <button onClick={() => deletePurchase(p.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
-                          </div>
-                        ))}
-                        {eventDetail.purchases.length === 0 && (
-                          <p className="text-xs text-white/20 italic">Liste vide</p>
-                        )}
-                      </div>
-                      {/* Formulaire ajout achat */}
-                      <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
-                        <input type="text" value={newPurchaseItem} onChange={e => setNewPurchaseItem(e.target.value)}
-                          placeholder="Article *"
-                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                        <div className="flex gap-2">
-                          <input type="number" value={newPurchaseQty} onChange={e => setNewPurchaseQty(e.target.value)}
-                            placeholder="Qté" className="w-20 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                          <input type="number" value={newPurchasePrice} onChange={e => setNewPurchasePrice(e.target.value)}
-                            placeholder="Prix unitaire (€)" className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none" />
-                        </div>
-                        <button onClick={addPurchase} disabled={addingPurchase || !newPurchaseItem.trim()}
-                          className="w-full py-1.5 rounded-lg bg-green-600/60 hover:bg-green-600 text-white text-xs font-medium disabled:opacity-40 transition">
-                          {addingPurchase ? 'Ajout…' : '+ Ajouter un article'}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                )}
-
-                {/* ── BOOKINGS (organisateur) / PAIEMENT (artiste) ── */}
-                {detailTab === 'bookings' && (
-                  isBookedEvent ? (
-                    /* Artiste — vue paiement */
-                    <div className="space-y-4">
-                      <div className="bg-white/5 rounded-xl p-4 border border-white/8 space-y-3">
-                        <p className="text-xs text-white/40 uppercase tracking-wide">Informations paiement</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-white/50">Cachet convenu</span>
-                          <span className="text-sm font-semibold text-white">
-                            {linkedBooking?.fee ? `${Number(linkedBooking.fee).toLocaleString('fr-FR')} €` : '—'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-white/50">Statut</span>
-                          <PayBadge status={linkedBooking?.paymentStatus} />
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-white/25 text-center">Le statut de paiement est géré par l&apos;organisateur.</p>
-                    </div>
-                  ) : (
-                    /* Organisateur — liste des bookings + documents */
-                    <div className="space-y-4">
-                      {/* Bookings liés */}
-                      <div className="space-y-2">
-                        {eventDetail.bookingRequests.length === 0 ? (
-                          <p className="text-xs text-white/25 italic text-center py-2">Aucune demande de booking liée à cet événement</p>
-                        ) : (
-                          eventDetail.bookingRequests.map(b => {
-                            const name = b.target?.user?.pseudo || [b.target?.user?.firstName, b.target?.user?.lastName].filter(Boolean).join(' ') || '?'
-                            return (
-                              <div key={b.id} className="bg-white/5 rounded-xl p-3 border border-white/8 space-y-1.5">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <p className="text-sm font-medium text-white">{name}</p>
-                                    <p className="text-xs text-white/40 mt-0.5">
-                                      📅 {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                      {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
-                                    </p>
-                                  </div>
-                                  <span className={`text-xs font-medium ${bookingStatusCls[b.status] || 'text-white/40'}`}>{b.status}</span>
-                                </div>
-                                {b.message && <p className="text-xs text-white/40 italic">&ldquo;{b.message}&rdquo;</p>}
-                              </div>
-                            )
-                          })
-                        )}
-                        <p className="text-[10px] text-white/25 text-center">
-                          Pour envoyer une offre, utilisez le profil de l&apos;artiste ou prestataire.
-                        </p>
-                      </div>
-
-                      {/* Documents de l'événement */}
-                      <div>
-                        <p className="text-xs text-white/40 uppercase tracking-wide mb-2">Documents</p>
-                        {/* Filtres */}
-                        <div className="flex gap-1 mb-2 flex-wrap">
-                          {(['ALL','CONTRACT','TRANSPORT','HOTEL','OTHER'] as const).map(f => (
-                            <button key={f} onClick={() => setDocFilter(f)}
-                              className={`text-[10px] px-2 py-0.5 rounded-full border transition ${
-                                docFilter === f ? 'bg-violet-600 border-violet-500 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
-                              }`}>
-                              {{ ALL: 'Tous', CONTRACT: 'Contrats', TRANSPORT: 'Transport', HOTEL: 'Logement', OTHER: 'Autres' }[f]}
-                            </button>
-                          ))}
-                        </div>
-                        {/* Liste */}
-                        <div className="space-y-1.5 mb-2">
-                          {filteredDocs.map(d => (
-                            <div key={d.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
-                              <a href={d.url} target="_blank" rel="noreferrer" className="flex-1 min-w-0">
-                                <p className="text-xs text-violet-300 hover:text-violet-200 truncate">📎 {d.name}</p>
-                                <p className="text-[10px] text-white/30">{{ CONTRACT: 'Contrat', TRANSPORT: 'Transport', HOTEL: 'Logement', OTHER: 'Autre' }[d.fileType] || d.fileType}</p>
-                              </a>
-                              <button onClick={() => deleteDocument(d.id)} className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
-                            </div>
-                          ))}
-                          {filteredDocs.length === 0 && <p className="text-xs text-white/20 italic">Aucun document</p>}
-                        </div>
-                        {/* Upload */}
-                        <div className="bg-white/[0.03] rounded-xl border border-white/8 p-3 space-y-2">
-                          <select defaultValue="CONTRACT" id="docTypeSelect"
-                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
-                            <option value="CONTRACT">Contrat</option>
-                            <option value="TRANSPORT">Billet de transport</option>
-                            <option value="HOTEL">Réservation hôtel</option>
-                            <option value="OTHER">Autre</option>
-                          </select>
-                          <label className={`w-full py-1.5 rounded-lg text-xs font-medium text-center cursor-pointer transition block ${
-                            uploadingDoc ? 'bg-white/10 text-white/30' : 'bg-violet-600/60 hover:bg-violet-600 text-white'
-                          }`}>
-                            {uploadingDoc ? 'Upload en cours…' : '📎 Joindre un fichier'}
-                            <input type="file" className="hidden" disabled={uploadingDoc}
-                              onChange={e => {
-                                const f = e.target.files?.[0]
-                                const sel = document.getElementById('docTypeSelect') as HTMLSelectElement
-                                if (f) addDocument(f, sel?.value || 'OTHER')
-                                e.target.value = ''
-                              }} />
-                          </label>
-                          {docError && <p className="text-xs text-red-400">{docError}</p>}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                )}
-
-                {/* ── OFFRES (organisateur uniquement) ── */}
-                {detailTab === 'offers' && !isBookedEvent && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-white/40">Offres liées à cet événement</p>
-                      <button
-                        onClick={() => {
-                          if (!showEventOfferForm && eventDetail) {
-                            const d = new Date(eventDetail.start)
-                            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-                            const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-                            setEventOfferForm(prev => ({
-                              ...prev,
-                              date: dateStr,
-                              time: timeStr,
-                              location: eventDetail.lieu || prev.location,
-                            }))
-                          }
-                          setShowEventOfferForm(v => !v)
-                        }}
-                        className="flex items-center gap-1 text-[11px] bg-violet-600 hover:bg-violet-500 text-white px-2.5 py-1 rounded-full transition-colors"
-                      >
-                        + Publier une offre
-                      </button>
-                    </div>
-
-                    {showEventOfferForm && (
-                      <form
-                        onSubmit={async (e) => {
-                          e.preventDefault()
-                          setEventOfferError(null)
-                          if (!eventOfferForm.title || !eventOfferForm.description || !eventOfferForm.date || !eventOfferForm.location || !eventOfferForm.country) {
-                            setEventOfferError('Remplis tous les champs obligatoires.')
-                            return
-                          }
-                          setSubmittingEventOffer(true)
-                          try {
-                            const token = localStorage.getItem('token')
-                            const res = await fetch(`${API}/api/offers`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({
-                                title:       eventOfferForm.title,
-                                description: eventOfferForm.description,
-                                type:        eventOfferForm.type,
-                                specialty:   eventOfferForm.specialty || null,
-                                date:        `${eventOfferForm.date}T${eventOfferForm.time || '00:00'}:00`,
-                                location:    eventOfferForm.location,
-                                country:     eventOfferForm.country,
-                                fee:         eventOfferForm.fee ? parseFloat(eventOfferForm.fee) : null,
-                                eventId:     selectedEventId,
-                              }),
-                            })
-                            if (!res.ok) throw new Error((await res.json()).error || 'Erreur')
-                            const created = await res.json()
-                            setEventOffers(prev => [created, ...prev])
-                            setShowEventOfferForm(false)
-                            setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '' })
-                          } catch (err: unknown) {
-                            setEventOfferError(err instanceof Error ? err.message : 'Erreur')
-                          } finally {
-                            setSubmittingEventOffer(false)
-                          }
-                        }}
-                        className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 space-y-2"
-                      >
-                        <input required value={eventOfferForm.title}
-                          onChange={e => setEventOfferForm(p => ({ ...p, title: e.target.value }))}
-                          placeholder="Titre de l'offre *"
-                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40"
-                        />
-                        <textarea required rows={2} value={eventOfferForm.description}
-                          onChange={e => setEventOfferForm(p => ({ ...p, description: e.target.value }))}
-                          placeholder="Description *"
-                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
-                        />
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <select value={eventOfferForm.type}
-                            onChange={e => setEventOfferForm(p => ({ ...p, type: e.target.value as typeof eventOfferForm.type }))}
-                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
-                          >
-                            <option value="ARTIST">Artiste</option>
-                            <option value="PROVIDER">Prestataire</option>
-                            <option value="ALL">Tous profils</option>
-                          </select>
-                          <input value={eventOfferForm.specialty}
-                            onChange={e => setEventOfferForm(p => ({ ...p, specialty: e.target.value }))}
-                            placeholder="Spécialité"
-                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
-                          />
-                          <input required type="date" value={eventOfferForm.date}
-                            onChange={e => setEventOfferForm(p => ({ ...p, date: e.target.value }))}
-                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
-                          />
-                          <input type="time" value={eventOfferForm.time}
-                            onChange={e => setEventOfferForm(p => ({ ...p, time: e.target.value }))}
-                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
-                          />
-                          <input required value={eventOfferForm.location}
-                            onChange={e => setEventOfferForm(p => ({ ...p, location: e.target.value }))}
-                            placeholder="Ville *"
-                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
-                          />
-                          <input required value={eventOfferForm.country}
-                            onChange={e => setEventOfferForm(p => ({ ...p, country: e.target.value }))}
-                            placeholder="Pays *"
-                            className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
-                          />
-                        </div>
-                        <input type="number" min="0" step="0.01" value={eventOfferForm.fee}
-                          onChange={e => setEventOfferForm(p => ({ ...p, fee: e.target.value }))}
-                          placeholder="Tarif proposé (optionnel)"
-                          className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
-                        />
-                        {eventOfferError && <p className="text-xs text-red-400">{eventOfferError}</p>}
-                        <button type="submit" disabled={submittingEventOffer}
-                          className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-semibold py-2 rounded-lg transition-colors"
-                        >
-                          {submittingEventOffer ? 'Publication…' : 'Publier'}
-                        </button>
-                      </form>
-                    )}
-
-                    {/* Liste des offres de cet événement */}
-                    {eventOffers.length === 0 ? (
-                      <p className="text-xs text-white/25 italic text-center py-3">Aucune offre publiée pour cet événement</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {eventOffers.map(o => (
-                          <div key={o.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-semibold text-white truncate">{o.title}</p>
-                                <p className="text-[10px] text-white/40 mt-0.5">
-                                  {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                  {' · '}{o.location}
-                                  {o.fee != null ? ` · ${Number(o.fee).toLocaleString('fr-FR')} €` : ''}
-                                </p>
-                              </div>
-                              <button
-                                onClick={async () => {
-                                  if (!confirm('Supprimer cette offre ?')) return
-                                  const token = localStorage.getItem('token')
-                                  await fetch(`${API}/api/offers/${o.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-                                  setEventOffers(prev => prev.filter(x => x.id !== o.id))
-                                }}
-                                className="text-white/20 hover:text-red-400 transition text-xs flex-shrink-0"
-                              >✕</button>
-                            </div>
-                            <p className="text-[10px] text-white/50 mt-1 line-clamp-2">{o.description}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-              </div>
-            </div>
-          )
-        }
-
-        return null
-      })()}
-
-      {/* Grille + sections calendrier (masquées quand le panneau bookings est ouvert) */}
-      {!showPanel && !showEventPanel && (<><div className="p-4">
-        <div className="grid grid-cols-7 mb-1">
-          {DAYS_FR.map((d, i) => (
-            <div key={i} className="text-center text-[11px] text-white/30 font-medium py-1">{d}</div>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="h-48 flex items-center justify-center text-white/30 text-sm">Chargement…</div>
-        ) : (
-          <div className="grid grid-cols-7 gap-0.5">
-            {cells.map((date, i) => {
-              if (!date) return <div key={i} />
-              const { dayEvents, avail } = dayInfo(date)
-              const isToday    = isSameDay(date, now)
-              const isSelected = selected && isSameDay(date, selected)
-              const isPast     = date < now && !isToday
-
-              return (
-                <button
-                  key={i}
-                  onClick={() => setSelected(isSelected ? null : date)}
-                  className={`relative flex flex-col items-center py-1.5 rounded-lg transition-all text-sm
-                    ${isSelected ? 'bg-purple-600 text-white ring-2 ring-purple-400' : ''}
-                    ${!isSelected && isToday ? 'ring-1 ring-purple-500 text-white' : ''}
-                    ${!isSelected && !isToday && isPast ? 'text-white/25' : ''}
-                    ${!isSelected && !isToday && !isPast ? 'text-white/70 hover:bg-white/8' : ''}
-                    ${!isSelected && avail ? availBg(avail.status) : ''}
-                  `}
-                >
-                  <span className="font-medium leading-none">{date.getDate()}</span>
-                  {dayEvents.length > 0 && (
-                    <div className="flex gap-0.5 mt-0.5">
-                      {dayEvents.slice(0, 3).map((e, j) => (
-                        <span key={j} className={`h-1 w-1 rounded-full ${isSelected ? 'bg-white' : categoryColor(e.category)}`} />
-                      ))}
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Légende */}
-        {showAvailability && (
-          <div className="flex items-center gap-3 mt-3 text-[10px] text-white/35 flex-wrap">
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded bg-green-500/60" />Disponible</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded bg-orange-500/60" />Booking en cours</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded bg-red-500/60" />Indisponible</span>
-          </div>
-        )}
-      </div>
-
-      {/* ─── Panneau jour sélectionné ─── */}
-      {selected && (
-        <div className="border-t border-white/8 px-4 pb-4 pt-3">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-white/50 font-medium">
-              {selected.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            <button onClick={() => setSelected(null)} className="text-white/30 hover:text-white">
-              <X size={14} />
-            </button>
-          </div>
-
-          {/* ── PROPRIÉTAIRE : gestion des dispos ── */}
-          {isOwner && showAvailability && (
-            <div className="mb-3">
-              <p className="text-[11px] text-white/40 mb-2">Définir ma disponibilité :</p>
-              <div className="flex gap-2 flex-wrap">
-                {AVAIL_OPTIONS.map(opt => (
-                  <button
-                    key={opt.status}
-                    onClick={() => saveAvailability(opt.status)}
-                    disabled={savingAvail}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition
-                      ${selectedAvail?.status === opt.status
-                        ? `${opt.color} text-white border-transparent`
-                        : `bg-white/5 border-white/10 ${opt.text} hover:bg-white/10`
-                      }
-                      disabled:opacity-50`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${opt.color}`} />
-                    {opt.label}
-                    {selectedAvail?.status === opt.status && ' ✓'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── ORGANISATEUR sur dispo verte : proposer un booking ── */}
-          {canBook && !bookingSent && (
-            <div className="mb-3">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                <p className="text-xs text-green-400 font-medium">Ce créneau est disponible</p>
-              </div>
-              {!showBookingForm ? (
-                <button
-                  onClick={() => setShowBookingForm(true)}
-                  className="w-full py-2 rounded-xl bg-green-600/20 border border-green-500/30 text-green-400 text-sm font-medium hover:bg-green-600/30 transition"
-                >
-                  Proposer un booking
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  <textarea
-                    value={bookingMsg}
-                    onChange={e => setBookingMsg(e.target.value)}
-                    placeholder="Votre message (type d'événement, lieu, horaires…)"
-                    rows={3}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
-                  />
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={bookingFee}
-                      onChange={e => setBookingFee(e.target.value)}
-                      placeholder="Budget proposé (€)"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40"
-                    />
-                    <button
-                      onClick={sendBookingRequest}
-                      disabled={bookingSending}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-sm font-medium disabled:opacity-50 transition"
-                    >
-                      <Send size={13} />
-                      {bookingSending ? 'Envoi…' : 'Envoyer'}
-                    </button>
-                    <button
-                      onClick={() => setShowBookingForm(false)}
-                      className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 text-sm"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Confirmation booking envoyé */}
-          {bookingSent && (
-            <div className="mb-3 bg-green-600/10 border border-green-500/20 rounded-xl px-3 py-2 text-xs text-green-400">
-              ✓ Demande de booking envoyée avec succès !
-            </div>
-          )}
-
-          {/* Statut actuel si pas propriétaire */}
-          {!isOwner && selectedAvail && selectedAvail.status !== 'AVAILABLE' && (
-            <div className={`mb-3 rounded-xl px-3 py-2 text-xs font-medium ${
-              selectedAvail.status === 'UNAVAILABLE' ? 'bg-red-500/10 border border-red-500/20 text-red-400' :
-              selectedAvail.status === 'TENTATIVE'   ? 'bg-orange-500/10 border border-orange-500/20 text-orange-400' :
-              'bg-amber-500/10 border border-amber-500/20 text-amber-400'
-            }`}>
-              {selectedAvail.status === 'UNAVAILABLE' ? '🔴 Indisponible ce jour' :
-               selectedAvail.status === 'TENTATIVE'   ? '🟠 Booking en cours de confirmation' :
-               '🟡 Déjà booké'}
-            </div>
-          )}
-
-          {/* Événements du jour */}
-          {selectedEvents.length === 0 ? (
-            <p className="text-xs text-white/25 italic">Aucun événement ce jour</p>
-          ) : (
-            <div className="space-y-2">
-              {selectedEvents.map(e => (
-                <div key={e.id} className="rounded-xl bg-white/5 p-2.5">
-                  <div className="flex items-start gap-2">
-                    <span className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${categoryColor(e.category)}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-white truncate">{e.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {!e.allDay && (
-                          <span className="flex items-center gap-1 text-[11px] text-white/40">
-                            <Clock className="h-3 w-3" />{formatHour(e.start)}{e.end ? ` – ${formatHour(e.end)}` : ''}
-                          </span>
-                        )}
-                        {e.lieu && (
-                          <span className="flex items-center gap-1 text-[11px] text-white/40">
-                            <MapPin className="h-3 w-3" />{e.lieu}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {isOwner && (
-                    <button
-                      onClick={() => {
-                        setShowPanel(false)
-                        setShowEventPanel(true)
-                        openEventDetail(e.id)
-                      }}
-                      className="mt-2 w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 text-xs font-medium transition"
-                    >
-                      Gérer l&apos;événement →
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Panneau "Mes Bookings" */}
+      {showPanel && (
+        <BookingsPanel
+          panelData={panelData}
+          panelLoading={panelLoading}
+          panelTab={panelTab}
+          profileId={profileId}
+          cancelingId={cancelingId}
+          cancelNoteFor={cancelNoteFor}
+          cancelNoteText={cancelNoteText}
+          cancelRequestingId={cancelRequestingId}
+          updatingPayment={updatingPayment}
+          setPanelTab={setPanelTab}
+          setCancelNoteFor={setCancelNoteFor}
+          setCancelNoteText={setCancelNoteText}
+          cancelBooking={cancelBooking}
+          requestCancellation={requestCancellation}
+          updatePaymentStatus={updatePaymentStatus}
+        />
       )}
 
-      </>)}
+      {/* Panneau "Événements" */}
+      {showEventPanel && (
+        <EventPanel
+          eventMode={eventMode}
+          allEvents={allEvents}
+          eventsLoading={eventsLoading}
+          eventsError={eventsError}
+          lastCreatedId={lastCreatedId}
+          createTitle={createTitle}     setCreateTitle={setCreateTitle}
+          createDate={createDate}       setCreateDate={setCreateDate}
+          createEndDate={createEndDate} setCreateEndDate={setCreateEndDate}
+          createStartTime={createStartTime} setCreateStartTime={setCreateStartTime}
+          createEndTime={createEndTime}     setCreateEndTime={setCreateEndTime}
+          createLieu={createLieu}       setCreateLieu={setCreateLieu}
+          createCategory={createCategory} setCreateCategory={setCreateCategory}
+          createBudget={createBudget}   setCreateBudget={setCreateBudget}
+          creating={creating}
+          createError={createError}
+          selectedEventId={selectedEventId}
+          eventDetail={eventDetail}
+          eventDetailLoading={eventDetailLoading}
+          eventDetailError={eventDetailError}
+          linkedBooking={linkedBooking}
+          detailTab={detailTab}         setDetailTab={setDetailTab}
+          editMode={editMode}           setEditMode={setEditMode}
+          editTitle={editTitle}         setEditTitle={setEditTitle}
+          editLieu={editLieu}           setEditLieu={setEditLieu}
+          editCategory={editCategory}   setEditCategory={setEditCategory}
+          editBudget={editBudget}       setEditBudget={setEditBudget}
+          editStatus={editStatus}       setEditStatus={setEditStatus}
+          editCapacity={editCapacity}   setEditCapacity={setEditCapacity}
+          editDescription={editDescription} setEditDescription={setEditDescription}
+          editStart={editStart}         setEditStart={setEditStart}
+          editStartTime={editStartTime} setEditStartTime={setEditStartTime}
+          editEnd={editEnd}             setEditEnd={setEditEnd}
+          editEndTime={editEndTime}     setEditEndTime={setEditEndTime}
+          editSaving={editSaving}
+          editError={editError}         setEditError={setEditError}
+          confirmDelete={confirmDelete} setConfirmDelete={setConfirmDelete}
+          deletingEvent={deletingEvent}
+          notesText={notesText}         setNotesText={setNotesText}
+          notesSaving={notesSaving}
+          newExpenseLabel={newExpenseLabel}       setNewExpenseLabel={setNewExpenseLabel}
+          newExpenseAmount={newExpenseAmount}     setNewExpenseAmount={setNewExpenseAmount}
+          newExpenseCategory={newExpenseCategory} setNewExpenseCategory={setNewExpenseCategory}
+          addingExpense={addingExpense}
+          expenseError={expenseError}
+          newPurchaseItem={newPurchaseItem}   setNewPurchaseItem={setNewPurchaseItem}
+          newPurchaseQty={newPurchaseQty}     setNewPurchaseQty={setNewPurchaseQty}
+          newPurchasePrice={newPurchasePrice} setNewPurchasePrice={setNewPurchasePrice}
+          addingPurchase={addingPurchase}
+          newStaffRole={newStaffRole}   setNewStaffRole={setNewStaffRole}
+          newStaffFee={newStaffFee}     setNewStaffFee={setNewStaffFee}
+          newStaffNotes={newStaffNotes} setNewStaffNotes={setNewStaffNotes}
+          addingStaff={addingStaff}
+          staffError={staffError}
+          deletingStaffId={deletingStaffId}
+          staffSearchQ={staffSearchQ}
+          staffSearchResults={staffSearchResults}
+          staffSearchLoading={staffSearchLoading}
+          staffAddMode={staffAddMode}   setStaffAddMode={setStaffAddMode}
+          uploadingDoc={uploadingDoc}
+          docError={docError}
+          docFilter={docFilter}         setDocFilter={setDocFilter}
+          eventOffers={eventOffers}     setEventOffers={setEventOffers}
+          showEventOfferForm={showEventOfferForm} setShowEventOfferForm={setShowEventOfferForm}
+          submittingEventOffer={submittingEventOffer}
+          eventOfferError={eventOfferError}       setEventOfferError={setEventOfferError}
+          eventOfferForm={eventOfferForm}         setEventOfferForm={setEventOfferForm}
+          fetchAllEvents={fetchAllEvents}
+          openEventDetail={openEventDetail}
+          createEvent={createEvent}
+          deleteEvent={deleteEvent}
+          saveNotes={saveNotes}
+          addExpense={addExpense}
+          toggleExpensePaid={toggleExpensePaid}
+          deleteExpense={deleteExpense}
+          addPurchase={addPurchase}
+          togglePurchaseDone={togglePurchaseDone}
+          deletePurchase={deletePurchase}
+          saveEventDetails={saveEventDetails}
+          addStaff={addStaff}
+          deleteStaff={deleteStaff}
+          searchStaff={searchStaff}
+          addDocument={addDocument}
+          deleteDocument={deleteDocument}
+          fetchEventDetail={fetchEventDetail}
+          setEventMode={setEventMode}
+          setSelectedEventId={setSelectedEventId}
+          setEventDetail={setEventDetail}
+          submitEventOffer={submitEventOffer}
+          deleteEventOffer={deleteEventOffer}
+        />
+      )}
+
+      {/* Grille calendrier + panneau jour (masqués quand un panneau est ouvert) */}
+      {!showPanel && !showEventPanel && (
+        <CalendarGrid
+          cells={cells}
+          events={events}
+          availability={availability}
+          selected={selected}
+          loading={loading}
+          now={now}
+          isOwner={isOwner}
+          showAvailability={showAvailability}
+          savingAvail={savingAvail}
+          selectedEvents={selectedEvents}
+          selectedAvail={selectedAvail}
+          canBook={canBook}
+          bookingSent={bookingSent}
+          showBookingForm={showBookingForm}
+          bookingMsg={bookingMsg}
+          bookingFee={bookingFee}
+          bookingSending={bookingSending}
+          setSelected={setSelected}
+          setShowBookingForm={setShowBookingForm}
+          setBookingMsg={setBookingMsg}
+          setBookingFee={setBookingFee}
+          saveAvailability={saveAvailability}
+          sendBookingRequest={sendBookingRequest}
+          openEventFromCalendar={openEventFromCalendar}
+        />
+      )}
+
     </div>
   )
 }
