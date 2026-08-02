@@ -904,9 +904,6 @@ export default function AgendaCalendar({
           addDocument={addDocument}
           deleteDocument={deleteDocument}
           fetchEventDetail={fetchEventDetail}
-          setEventMode={setEventMode}
-          setSelectedEventId={setSelectedEventId}
-          setEventDetail={setEventDetail}
           submitEventOffer={submitEventOffer}
           deleteEventOffer={deleteEventOffer}
         />

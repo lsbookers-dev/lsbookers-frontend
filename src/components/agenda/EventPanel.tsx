@@ -115,9 +115,6 @@ interface EventPanelProps {
   addDocument: (file: File, type: string) => void
   deleteDocument: (id: number) => void
   fetchEventDetail: (id: number) => void
-  setEventMode: (mode: EventMode) => void
-  setSelectedEventId: (id: number | null) => void
-  setEventDetail: (d: EventDetail | null) => void
   submitEventOffer: (form: EventOfferForm) => Promise<void>
   deleteEventOffer: (offerId: number) => Promise<void>
 }
@@ -155,7 +152,6 @@ export default function EventPanel(p: EventPanelProps) {
     addPurchase, togglePurchaseDone, deletePurchase,
     saveEventDetails, addStaff, deleteStaff, searchStaff,
     addDocument, deleteDocument, fetchEventDetail,
-    setEventMode, setSelectedEventId, setEventDetail,
     submitEventOffer, deleteEventOffer,
   } = p
 
