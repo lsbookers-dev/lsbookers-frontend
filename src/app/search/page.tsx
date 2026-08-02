@@ -21,9 +21,46 @@ interface User {
   }
 }
 
-const SPECIALTIES     = ['DJ', 'Chanteur', 'Saxophoniste', 'Danseur', 'Guitariste']
-const PROVIDER_TYPES  = ['Traiteur', 'Photobooth', 'Artificier', 'Photographe', 'Décorateur']
-const ESTABLISHMENT_TYPES = ['Club', 'Bar', 'Rooftop', 'Soirée privée', 'Autre']
+const SPECIALTIES = [
+  'Acrobate', 'Accordéoniste', 'Animateur', 'Artiste de cirque',
+  'Bassiste', 'Batteur', 'Chanteur(se)', 'Chorale', 'Clown', 'Comédien',
+  'Cracheur de feu', 'Danseur LED', 'Danseur(se)', 'DJ', 'Échassier',
+  'Fanfare', 'Graffeur', 'Groupe', 'Groupe de danse', 'Guitariste',
+  'Humoriste', 'Hypnotiseur', 'Imitateur', 'Influenceur / Créateur de contenu',
+  'Jongleur', 'Magicien', 'Maître de cérémonie', 'Mentaliste', 'Mime',
+  'Orchestre', 'Peintre Live', 'Percussionniste', 'Performer', 'Pianiste',
+  'Présentateur', 'Saxophoniste', 'Sculpteur Live', 'Speed Painter',
+  'Stand-upper', 'Streamer', 'Trompettiste', 'Violoncelliste', 'Violoniste',
+]
+const PROVIDER_TYPES = [
+  'Arche de cérémonie', 'Baby-sitter événementielle', 'Ballons', 'Barman',
+  'Borne 360°', 'Cake Designer', 'Chauffeur privé', 'Chef à domicile',
+  'Coiffeur', 'Contrôle d\'accès', 'Costumier', 'Décorateur',
+  'Designer événementiel', 'DJ Tech', 'Drone', 'Éclairagiste',
+  'Effets spéciaux', 'Fleuriste', 'Food Truck', 'Glacier',
+  'Hôtesse d\'accueil', 'Location de matériel', 'Location de sonorisation',
+  'Location limousine', 'Location lumière', 'Location mobilier',
+  'Location scène', 'Location vaisselle', 'Location véhicules',
+  'Maquilleur', 'Monteur vidéo', 'Nettoyage', 'Pâtissier',
+  'Photographe', 'Photobooth', 'Pyrotechnicien', 'Régisseur',
+  'Régisseur général', 'Régisseur plateau', 'Retouche photo',
+  'Scène', 'Sécurité', 'Serveur', 'Serveuse', 'Signalétique',
+  'Sommelier', 'Sonorisateur', 'Structure', 'Styliste',
+  'Technicien audiovisuel', 'Technicien lumière', 'Technicien son',
+  'Traiteur', 'Transport de matériel', 'Vidéaste', 'Vidéoprojection', 'Voiturier',
+]
+const ESTABLISHMENT_TYPES = [
+  'Agence événementielle', 'Anniversaire', 'Arena', 'Association',
+  'Baptême', 'Bar', 'Beach Club', 'Camping', 'Casino',
+  'Centre commercial', 'Centre culturel', 'Château', 'Collectivité',
+  'Comité des fêtes', 'Congrès', 'Discothèque / Club', 'Domaine',
+  'Entreprise / CE', 'Événement sportif', 'Festival', 'Gala', 'Hôtel',
+  'Lancement de produit', 'Mairie', 'Mariage', 'Organisateur de soirées',
+  'Palais des congrès', 'Parc d\'attractions', 'Plage privée', 'Pub',
+  'Restaurant', 'Rooftop', 'Salle de réception', 'Salle de spectacle',
+  'Salle des fêtes', 'Salon professionnel', 'Séminaire', 'Soirée étudiante',
+  'Soirée privée', 'Théâtre', 'Village vacances', 'Wedding Planner', 'Zénith',
+]
 const COUNTRIES = [
   'France', 'Belgium', 'Canada', 'United States',
   'United Kingdom', 'Spain', 'Germany', 'Italy', 'Portugal', 'Switzerland',
