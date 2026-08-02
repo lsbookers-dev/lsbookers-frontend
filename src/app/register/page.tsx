@@ -57,6 +57,81 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement> & { options
   )
 }
 
+// ─────────────────────────────────────────────
+// Spécialités par rôle
+// ─────────────────────────────────────────────
+const SPECIALTIES_BY_ROLE: Record<string, string[]> = {
+  ARTIST: [
+    'Acrobate', 'Accordéoniste', 'Animateur', 'Artiste de cirque',
+    'Bassiste', 'Batteur', 'Chanteur(se)', 'Chorale', 'Clown', 'Comédien',
+    'Cracheur de feu', 'Danseur LED', 'Danseur(se)', 'DJ', 'Échassier',
+    'Fanfare', 'Graffeur', 'Groupe', 'Groupe de danse', 'Guitariste',
+    'Humoriste', 'Hypnotiseur', 'Imitateur', 'Influenceur / Créateur de contenu',
+    'Jongleur', 'Magicien', 'Maître de cérémonie', 'Mentaliste', 'Mime',
+    'Orchestre', 'Peintre Live', 'Percussionniste', 'Performer', 'Pianiste',
+    'Présentateur', 'Saxophoniste', 'Sculpteur Live', 'Speed Painter',
+    'Stand-upper', 'Streamer', 'Trompettiste', 'Violoncelliste', 'Violoniste',
+  ],
+  ORGANIZER: [
+    'Agence événementielle', 'Anniversaire', 'Arena', 'Association',
+    'Baptême', 'Bar', 'Beach Club', 'Camping', 'Casino',
+    'Centre commercial', 'Centre culturel', 'Château', 'Collectivité',
+    'Comité des fêtes', 'Congrès', 'Discothèque / Club', 'Domaine',
+    'Entreprise / CE', 'Événement sportif', 'Festival', 'Gala', 'Hôtel',
+    'Lancement de produit', 'Mairie', 'Mariage', 'Organisateur de soirées',
+    'Palais des congrès', "Parc d'attractions", 'Plage privée', 'Pub',
+    'Restaurant', 'Rooftop', 'Salle de réception', 'Salle de spectacle',
+    'Salle des fêtes', 'Salon professionnel', 'Séminaire', 'Soirée étudiante',
+    'Soirée privée', 'Théâtre', 'Village vacances', 'Wedding Planner', 'Zénith',
+  ],
+  PROVIDER: [
+    'Arche de cérémonie', 'Baby-sitter événementielle', 'Ballons', 'Barman',
+    'Borne 360°', 'Cake Designer', 'Chauffeur privé', 'Chef à domicile',
+    'Coiffeur', "Contrôle d'accès", 'Costumier', 'Décorateur',
+    'Designer événementiel', 'DJ Tech', 'Drone', 'Éclairagiste',
+    'Effets spéciaux', 'Fleuriste', 'Food Truck', 'Glacier',
+    "Hôtesse d'accueil", 'Location de matériel', 'Location de sonorisation',
+    'Location limousine', 'Location lumière', 'Location mobilier',
+    'Location scène', 'Location vaisselle', 'Location véhicules',
+    'Maquilleur', 'Monteur vidéo', 'Nettoyage', 'Pâtissier',
+    'Photographe', 'Photobooth', 'Pyrotechnicien', 'Régisseur',
+    'Régisseur général', 'Régisseur plateau', 'Retouche photo',
+    'Scène', 'Sécurité', 'Serveur', 'Serveuse', 'Signalétique',
+    'Sommelier', 'Sonorisateur', 'Structure', 'Styliste',
+    'Technicien audiovisuel', 'Technicien lumière', 'Technicien son',
+    'Traiteur', 'Transport de matériel', 'Vidéaste', 'Vidéoprojection', 'Voiturier',
+  ],
+}
+
+// ─────────────────────────────────────────────
+// Composant Tag sélectionnable
+// ─────────────────────────────────────────────
+function TagSelector({ options, selected, onChange }: {
+  options: string[]
+  selected: string[]
+  onChange: (v: string[]) => void
+}) {
+  const toggle = (tag: string) =>
+    onChange(selected.includes(tag) ? selected.filter(t => t !== tag) : [...selected, tag])
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(tag => (
+        <button
+          key={tag}
+          type="button"
+          onClick={() => toggle(tag)}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-all border
+            ${selected.includes(tag)
+              ? 'bg-purple-600 border-purple-500 text-white'
+              : 'bg-white/5 border-white/10 text-white/55 hover:border-white/30 hover:text-white/80'}`}
+        >
+          {tag}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function ErrorBox({ message }: { message: string }) {
   return (
     <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -237,6 +312,7 @@ export default function RegisterPage() {
   const [dateOfBirth, setDateOfBirth]             = useState('')
   const [phone, setPhone]                         = useState('')
   const [countryOfResidence, setCountryOfResidence] = useState('France')
+  const [specialties, setSpecialties]             = useState<string[]>([])
 
   // Étape 3
   const [legalStatus, setLegalStatus]           = useState<LegalStatus>('INDIVIDUAL')
@@ -279,6 +355,7 @@ export default function RegisterPage() {
           typeEtablissement: (role === 'ORGANIZER' && organizerType === 'PROFESSIONAL') ? typeEtablissement || undefined : undefined,
           siret: legalStatus !== 'INDIVIDUAL' ? siret || undefined : undefined,
           city: city || undefined,
+          specialties: specialties.length > 0 ? specialties : undefined,
         },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       )
@@ -373,7 +450,7 @@ export default function RegisterPage() {
                         <button
                           key={opt.value}
                           type="button"
-                          onClick={() => setRole(opt.value)}
+                          onClick={() => { setRole(opt.value); setSpecialties([]) }}
                           className={`flex flex-col items-center gap-2 rounded-xl border p-3.5 text-center text-xs transition
                             ${role === opt.value
                               ? 'border-purple-500 bg-purple-500/15 text-white'
@@ -496,6 +573,16 @@ export default function RegisterPage() {
                       { value: 'Canada', label: 'Canada' },
                       { value: 'Autre', label: 'Autre' },
                     ]} />
+                  </Field>
+
+                  <Field label="Tes spécialités (optionnel)" hint="Sélectionne tout ce qui te correspond — tu pourras modifier ça plus tard.">
+                    <div className="mt-2">
+                      <TagSelector
+                        options={SPECIALTIES_BY_ROLE[role] || []}
+                        selected={specialties}
+                        onChange={setSpecialties}
+                      />
+                    </div>
                   </Field>
 
                   <div className="flex gap-3">
