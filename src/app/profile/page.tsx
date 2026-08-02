@@ -15,6 +15,8 @@ export default function ProfileRedirectPage() {
       router.push('/profile/artist')
     } else if (user.role === 'ORGANIZER') {
       router.push('/profile/organizer')
+    } else if (user.role === 'PROVIDER') {
+      router.push('/profile/provider')
     } else {
       router.push('/home')
     }
