@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { Trash2, Search, RefreshCw, Eye, X, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { getAuthToken } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const t = typeof window !== 'undefined' ? getAuthToken() : null
   return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
 }
 

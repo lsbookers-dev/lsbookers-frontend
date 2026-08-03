@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
+import { getAuthToken } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -90,7 +91,7 @@ const buildSoundcloudEmbed = (url: string) => {
 // Page
 // ─────────────────────────────────────────────
 function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const t = typeof window !== 'undefined' ? getAuthToken() : null
   return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
 }
 

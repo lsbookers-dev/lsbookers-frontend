@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { getAuthToken } from '@/utils/auth'
 
 type Summary = {
   usersTotal: number
@@ -28,7 +29,7 @@ export default function AdminDashboard() {
 
   const tokenRef = React.useRef<string | null>(null)
   React.useEffect(() => {
-    tokenRef.current = localStorage.getItem('token')
+    tokenRef.current = getAuthToken()
   }, [])
 
   const authed = React.useCallback((init?: RequestInit) => ({

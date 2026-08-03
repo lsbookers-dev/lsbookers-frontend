@@ -10,6 +10,7 @@ import {
   CheckCircle, XCircle, ShieldOff, ShieldAlert,
   Plus, X, Calendar, Euro
 } from 'lucide-react'
+import { getAuthToken } from '@/utils/auth'
 
 // ─────────────────────────────────────────────
 // Config
@@ -170,7 +171,7 @@ function Section({ title, icon, children }: {
 // ─────────────────────────────────────────────
 // Lit le token fraîchement depuis localStorage à chaque appel (fiable sur tous les navigateurs)
 function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const t = typeof window !== 'undefined' ? getAuthToken() : null
   return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
 }
 

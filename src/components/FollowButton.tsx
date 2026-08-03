@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { UserPlus, UserMinus, UserX, ShieldOff } from 'lucide-react'
+import { getAuthToken } from '@/utils/auth'
 
 interface Props {
   targetUserId: number
@@ -11,14 +12,14 @@ interface Props {
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 function authHeaders(): Record<string, string> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const token = typeof window !== 'undefined' ? getAuthToken() : null
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 /** Décode le payload d'un JWT sans vérification (client-side only) */
 function getTokenUserId(): number | null {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const token = typeof window !== 'undefined' ? getAuthToken() : null
     if (!token) return null
     const payload = JSON.parse(atob(token.split('.')[1]))
     return payload.id ?? null

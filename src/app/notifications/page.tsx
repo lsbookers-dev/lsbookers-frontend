@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
+import { getAuthToken } from '@/utils/auth'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ export default function NotificationsPage() {
     setLoading(true)
     setError(false)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -96,7 +97,7 @@ export default function NotificationsPage() {
 
   const markAsRead = async (id: number) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API_BASE}/api/notifications/${id}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
@@ -108,7 +109,7 @@ export default function NotificationsPage() {
   const markAllAsRead = async () => {
     setMarkingAll(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API_BASE}/api/notifications/mark-all-read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },

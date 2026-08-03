@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { getAuthToken } from '@/utils/auth'
 
 /* ===================== Types ===================== */
 
@@ -90,7 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // On lit le token depuis localStorage (fallback pour Safari qui bloque les cookies cross-origin)
-    const storedToken = localStorage.getItem('token')
+    const storedToken = getAuthToken()
     const storedUser = localStorage.getItem('user')
 
     if (storedUser) {

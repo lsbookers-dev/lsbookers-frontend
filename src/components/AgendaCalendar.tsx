@@ -11,6 +11,7 @@ import { MONTHS_FR, isSameDay } from './agenda/helpers'
 import BookingsPanel  from './agenda/BookingsPanel'
 import EventPanel     from './agenda/EventPanel'
 import CalendarGrid   from './agenda/CalendarGrid'
+import { getAuthToken } from '@/utils/auth'
 
 /* ─────────────────────────────────────────────────────────
    PROPS
@@ -160,7 +161,7 @@ export default function AgendaCalendar({
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const headers: Record<string, string> = {}
       if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -185,7 +186,7 @@ export default function AgendaCalendar({
 
   /* ── refreshPanel ── */
   const refreshPanel = useCallback(async () => {
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     const res = await fetch(`${API}/api/events/booking-requests`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -205,7 +206,7 @@ export default function AgendaCalendar({
   const cancelBooking = useCallback(async (id: number) => {
     setCancelingId(id)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/booking-request/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -220,7 +221,7 @@ export default function AgendaCalendar({
   const requestCancellation = useCallback(async (id: number) => {
     setCancelRequestingId(id)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/booking-request/${id}/cancel-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -238,7 +239,7 @@ export default function AgendaCalendar({
   const fetchAllEvents = useCallback(async () => {
     setEventsLoading(true); setEventsError(false)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/all`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) { const d = await res.json(); setAllEvents(d.events || []) }
       else setEventsError(true)
@@ -250,7 +251,7 @@ export default function AgendaCalendar({
   const fetchEventDetail = useCallback(async (id: number) => {
     setEventDetailLoading(true); setEventDetailError(false)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/${id}/detail`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) {
         const d = await res.json()
@@ -311,7 +312,7 @@ export default function AgendaCalendar({
     if (!createTitle.trim() || !createDate) return
     setCreating(true); setCreateError('')
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const startISO = createStartTime ? `${createDate}T${createStartTime}:00` : `${createDate}T12:00:00`
       const endISO   = createEndDate ? (createEndTime ? `${createEndDate}T${createEndTime}:00` : `${createEndDate}T23:59:00`) : null
       const res = await fetch(`${API}/api/events`, {
@@ -343,7 +344,7 @@ export default function AgendaCalendar({
     if (!selectedEventId) return
     setDeletingEvent(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/${selectedEventId}`, {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
@@ -361,7 +362,7 @@ export default function AgendaCalendar({
     if (!selectedEventId) return
     setNotesSaving(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API}/api/events/${selectedEventId}/notes`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -376,7 +377,7 @@ export default function AgendaCalendar({
     if (!newExpenseLabel.trim() || !selectedEventId) return
     setAddingExpense(true); setExpenseError('')
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/${selectedEventId}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -398,7 +399,7 @@ export default function AgendaCalendar({
   const toggleExpensePaid = useCallback(async (expenseId: number, paid: boolean) => {
     if (!selectedEventId) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -412,7 +413,7 @@ export default function AgendaCalendar({
   const deleteExpense = useCallback(async (expenseId: number) => {
     if (!selectedEventId) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
@@ -425,7 +426,7 @@ export default function AgendaCalendar({
     if (!newPurchaseItem.trim() || !selectedEventId) return
     setAddingPurchase(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/${selectedEventId}/purchases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -444,7 +445,7 @@ export default function AgendaCalendar({
   const togglePurchaseDone = useCallback(async (purchaseId: number, done: boolean) => {
     if (!selectedEventId) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -458,7 +459,7 @@ export default function AgendaCalendar({
   const deletePurchase = useCallback(async (purchaseId: number) => {
     if (!selectedEventId) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
@@ -471,7 +472,7 @@ export default function AgendaCalendar({
     if (!selectedEventId || !editTitle.trim()) return
     setEditSaving(true); setEditError('')
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const startISO = editStartTime ? `${editStart}T${editStartTime}:00` : `${editStart}T12:00:00`
       const endISO   = editEnd ? (editEndTime ? `${editEnd}T${editEndTime}:00` : `${editEnd}T23:59:00`) : null
       const res = await fetch(`${API}/api/events/${selectedEventId}`, {
@@ -502,7 +503,7 @@ export default function AgendaCalendar({
     if (!newStaffRole.trim() || !selectedEventId) return
     setAddingStaff(true); setStaffError('')
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/${selectedEventId}/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -529,7 +530,7 @@ export default function AgendaCalendar({
     if (!selectedEventId) return
     setDeletingStaffId(staffId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API}/api/events/${selectedEventId}/staff/${staffId}`, {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
@@ -544,7 +545,7 @@ export default function AgendaCalendar({
     if (!q.trim() || q.trim().length < 2) { setStaffSearchResults([]); return }
     setStaffSearchLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/search?q=${encodeURIComponent(q.trim())}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -561,7 +562,7 @@ export default function AgendaCalendar({
     if (!selectedEventId) return
     setUploadingDoc(true); setDocError('')
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const formData = new FormData()
       formData.append('file', file)
       const uploadRes = await fetch(`${API}/api/upload`, {
@@ -591,7 +592,7 @@ export default function AgendaCalendar({
   const deleteDocument = useCallback(async (docId: number) => {
     if (!selectedEventId) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API}/api/events/${selectedEventId}/documents/${docId}`, {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
@@ -603,7 +604,7 @@ export default function AgendaCalendar({
   const updatePaymentStatus = useCallback(async (bookingId: number, paymentStatus: string) => {
     setUpdatingPayment(bookingId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/events/booking-request/${bookingId}/payment-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -623,7 +624,7 @@ export default function AgendaCalendar({
     }
     setSubmittingEventOffer(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`${API}/api/offers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -650,7 +651,7 @@ export default function AgendaCalendar({
 
   /* ── deleteEventOffer (extrait de l'inline JSX) ── */
   const deleteEventOffer = useCallback(async (offerId: number) => {
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     await fetch(`${API}/api/offers/${offerId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
     setEventOffers(prev => prev.filter(x => x.id !== offerId))
   }, [API])
@@ -688,7 +689,7 @@ export default function AgendaCalendar({
     if (!selected || !isOwner) return
     setSavingAvail(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const d = selected
       const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T00:00:00.000Z`
       const res = await fetch(`${API}/api/events/availability`, {
@@ -712,7 +713,7 @@ export default function AgendaCalendar({
     if (!selected || !viewerProfileId) return
     setBookingSending(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const d = selected
       const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T00:00:00.000Z`
       const res = await fetch(`${API}/api/events/booking-request`, {

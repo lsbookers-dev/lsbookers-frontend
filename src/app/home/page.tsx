@@ -9,6 +9,7 @@ import {
   Briefcase, Loader2, UserPlus, Flame, MessageCircle
 } from 'lucide-react'
 import PublicationModal from '@/components/PublicationModal'
+import { getAuthToken } from '@/utils/auth'
 
 /* ─────────────────────────────────────────────────────────────
    TYPES
@@ -407,7 +408,7 @@ function SuggestedProfiles({ items }: { items: SuggestedProfile[] }) {
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   const follow = async (userId: number) => {
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     try {
       await fetch(`${API_BASE}/api/follow/${userId}`, {
         method: 'POST',
@@ -574,7 +575,7 @@ export default function HomePage() {
 
   // ── Chargement initial ──────────────────────────────────
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     const headers: Record<string, string> = {}
     if (token) headers.Authorization = `Bearer ${token}`
 
@@ -605,7 +606,7 @@ export default function HomePage() {
   // ── Toggle like ─────────────────────────────────────────
   const handleLike = async (postId: number) => {
     if (!user) return
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
 
     // Optimistic
     setPosts(prev => prev.map(p =>

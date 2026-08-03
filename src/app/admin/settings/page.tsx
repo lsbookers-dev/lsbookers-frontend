@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import CropModal from '@/components/CropModal'
+import { getAuthToken } from '@/utils/auth'
 
 type AdminSettings = {
   welcomeText: string
@@ -29,7 +30,7 @@ export default function AdminSettingsPage() {
   const [notice, setNotice] = useState('')
 
   const token =
-    typeof window !== 'undefined' ? window.localStorage.getItem('token') : null
+    getAuthToken()
 
   const show = (msg: string) => {
     setNotice(msg)

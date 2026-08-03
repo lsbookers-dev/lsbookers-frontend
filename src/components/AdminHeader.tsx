@@ -6,11 +6,12 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { getAuthToken } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 function getAuthHeaders(): Record<string, string> {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const t = typeof window !== 'undefined' ? getAuthToken() : null
   return t ? { Authorization: `Bearer ${t}` } : {}
 }
 

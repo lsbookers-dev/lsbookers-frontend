@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { X, Heart, Send, Trash2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import type { PubCardData } from './PublicationCard'
+import { getAuthToken } from '@/utils/auth'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -102,7 +103,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
   /* ── Like ── */
   const handleLike = async () => {
     if (!user || likeLoading) return
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     if (!token) return
 
     setLikeLoading(true)
@@ -129,7 +130,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
     e.preventDefault()
     if (!newComment.trim() || submitting || !user) return
 
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     if (!token) return
 
     setSubmitting(true)
@@ -159,7 +160,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
 
   /* ── Supprimer un commentaire ── */
   const handleDeleteComment = async (commentId: number) => {
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     if (!token) return
 
     try {

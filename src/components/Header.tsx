@@ -9,6 +9,7 @@ import {
   Bell, Home, LogOut, Mail, Search,
   Settings, UserRound, Briefcase, ChevronDown,
 } from 'lucide-react'
+import { getAuthToken } from '@/utils/auth'
 
 /* ─────────────────────────────────────────────────────────
    TYPES
@@ -102,7 +103,7 @@ export default function Header() {
   /* ── Compteurs non lus ─────────────────────────────── */
   const fetchCounts = useCallback(async () => {
     if (!user?.id || !API_BASE) return
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     if (!token) return
     const headers = { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' }
 

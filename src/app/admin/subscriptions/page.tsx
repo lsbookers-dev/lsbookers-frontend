@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { getAuthToken } from '@/utils/auth'
 
 /** ===== Types ===== */
 type Plan = {
@@ -51,7 +52,7 @@ export default function AdminSubscriptionsPage() {
   const [status, setStatus] = React.useState<string>('')
 
   const tokenRef = React.useRef<string | null>(null)
-  React.useEffect(() => { tokenRef.current = localStorage.getItem('token') || null }, [])
+  React.useEffect(() => { tokenRef.current = getAuthToken() || null }, [])
 
   const authed = React.useCallback((init?: RequestInit) => ({
     ...(init || {}),

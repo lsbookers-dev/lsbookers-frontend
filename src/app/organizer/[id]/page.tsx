@@ -7,6 +7,7 @@ import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import PublicationsSection from '@/components/PublicationsSection'
 import { useAuth } from '@/context/AuthContext'
+import { getAuthToken } from '@/utils/auth'
 
 /* =============== Types =============== */
 type PublicUser = {
@@ -241,7 +242,7 @@ export default function OrganizerPublicProfilePage() {
     }
     setSubmitting(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const datetime = `${form.date}T${form.time || '00:00'}:00`
       const res = await fetch(`${API_BASE}/api/offers`, {
         method: 'POST',
@@ -275,7 +276,7 @@ export default function OrganizerPublicProfilePage() {
   const handleDeleteOffer = async (offerId: number) => {
     if (!confirm('Supprimer cette offre ?')) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`${API_BASE}/api/offers/${offerId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
