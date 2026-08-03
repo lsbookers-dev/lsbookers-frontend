@@ -44,7 +44,7 @@ interface MessageThreadProps {
 export default function MessageThread({
   activeConv, activeConvId, messages, currentUserId, loadingMsgs,
   token, mobileView, content, file, filePreviewUrl, sending,
-  lightbox, setLightbox, setMobileView, setFile, setContent, setMessages,
+  setLightbox, setMobileView, setFile, setMessages,
   handleSend, handleMessagesScroll, handleTextareaChange,
   messagesContainerRef, messagesEndRef, fileInputRef, textareaRef,
 }: MessageThreadProps) {

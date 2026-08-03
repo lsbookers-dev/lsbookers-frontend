@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import Image from 'next/image'
 import { FileText, ZoomIn, Download } from 'lucide-react'
-import { toAbs, API_BASE } from './_helpers'
+import { toAbs } from "./_helpers"
 import type { Message } from './types'
 
 /* ── Avatar ──────────────────────────────────────────────── */
