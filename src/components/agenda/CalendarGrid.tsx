@@ -141,44 +141,59 @@ export default function CalendarGrid({
             </div>
           )}
 
-          {/* Organisateur sur dispo verte : proposer un booking */}
+          {/* Badge disponibilité (visiteur) */}
+          {!isOwner && selectedAvail && (
+            <div className={`mb-3 rounded-xl px-3 py-2 text-xs font-medium ${
+              selectedAvail.status === 'AVAILABLE'   ? 'bg-green-500/10 border border-green-500/20 text-green-400' :
+              selectedAvail.status === 'UNAVAILABLE' ? 'bg-red-500/10 border border-red-500/20 text-red-400' :
+              selectedAvail.status === 'TENTATIVE'   ? 'bg-orange-500/10 border border-orange-500/20 text-orange-400' :
+              'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+            }`}>
+              {selectedAvail.status === 'AVAILABLE'   ? '🟢 Disponible' :
+               selectedAvail.status === 'UNAVAILABLE' ? '🔴 Indisponible ce jour' :
+               selectedAvail.status === 'TENTATIVE'   ? '🟠 Booking en cours de confirmation' :
+               '🟡 Déjà booké'}
+            </div>
+          )}
+
+          {/* Organisateur : proposer un booking (tout jour non-bloqué) */}
           {canBook && !bookingSent && (
             <div className="mb-3">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                <p className="text-xs text-green-400 font-medium">Ce créneau est disponible</p>
-              </div>
+              {!selectedAvail && (
+                <p className="text-[11px] text-white/30 mb-2">📅 Aucune disponibilité renseignée — vous pouvez tout de même envoyer une demande.</p>
+              )}
               {!showBookingForm ? (
                 <button
                   onClick={() => setShowBookingForm(true)}
-                  className="w-full py-2 rounded-xl bg-green-600/20 border border-green-500/30 text-green-400 text-sm font-medium hover:bg-green-600/30 transition"
+                  className="w-full py-2 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 text-sm font-medium hover:bg-violet-600/30 transition"
                 >
-                  Proposer un booking
+                  📩 Proposer un booking
                 </button>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 bg-white/[0.03] border border-white/10 rounded-xl p-3">
+                  <p className="text-[11px] text-white/40 font-medium uppercase tracking-wide">Demande de booking</p>
                   <textarea
                     value={bookingMsg}
                     onChange={e => setBookingMsg(e.target.value)}
-                    placeholder="Votre message (type d'événement, lieu, horaires…)"
+                    placeholder="Type d'événement, lieu, horaires, demandes particulières…"
                     rows={3}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
+                  />
+                  <input
+                    type="number"
+                    value={bookingFee}
+                    onChange={e => setBookingFee(e.target.value)}
+                    placeholder="Cachet proposé (€) — optionnel"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40"
                   />
                   <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={bookingFee}
-                      onChange={e => setBookingFee(e.target.value)}
-                      placeholder="Budget proposé (€)"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40"
-                    />
                     <button
                       onClick={sendBookingRequest}
                       disabled={bookingSending}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-sm font-medium disabled:opacity-50 transition"
+                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-medium disabled:opacity-50 transition"
                     >
                       <Send size={13} />
-                      {bookingSending ? 'Envoi…' : 'Envoyer'}
+                      {bookingSending ? 'Envoi…' : 'Envoyer la demande'}
                     </button>
                     <button
                       onClick={() => setShowBookingForm(false)}
@@ -196,19 +211,6 @@ export default function CalendarGrid({
           {bookingSent && (
             <div className="mb-3 bg-green-600/10 border border-green-500/20 rounded-xl px-3 py-2 text-xs text-green-400">
               ✓ Demande de booking envoyée avec succès !
-            </div>
-          )}
-
-          {/* Statut actuel si pas propriétaire */}
-          {!isOwner && selectedAvail && selectedAvail.status !== 'AVAILABLE' && (
-            <div className={`mb-3 rounded-xl px-3 py-2 text-xs font-medium ${
-              selectedAvail.status === 'UNAVAILABLE' ? 'bg-red-500/10 border border-red-500/20 text-red-400' :
-              selectedAvail.status === 'TENTATIVE'   ? 'bg-orange-500/10 border border-orange-500/20 text-orange-400' :
-              'bg-amber-500/10 border border-amber-500/20 text-amber-400'
-            }`}>
-              {selectedAvail.status === 'UNAVAILABLE' ? '🔴 Indisponible ce jour' :
-               selectedAvail.status === 'TENTATIVE'   ? '🟠 Booking en cours de confirmation' :
-               '🟡 Déjà booké'}
             </div>
           )}
 

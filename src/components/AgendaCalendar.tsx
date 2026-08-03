@@ -673,7 +673,11 @@ export default function AgendaCalendar({
 
   const selectedEvents = selected ? events.filter(e => isSameDay(new Date(e.start), selected)) : []
   const selectedAvail  = selected ? availability.find(a => isSameDay(new Date(a.date), selected)) : undefined
-  const canBook        = !isOwner && viewerRole === 'ORGANIZER' && selectedAvail?.status === 'AVAILABLE'
+  // Un organisateur peut proposer un booking sur tout jour qui n'est pas explicitement bloqué
+  const canBook = !isOwner && viewerRole === 'ORGANIZER'
+    && selected !== null
+    && selectedAvail?.status !== 'UNAVAILABLE'
+    && selectedAvail?.status !== 'BOOKED'
 
   /* ── Navigation mois ── */
   const prevMonth = () => { if (month === 1) { setMonth(12); setYear(y => y - 1) } else setMonth(m => m - 1); setSelected(null) }
@@ -770,7 +774,7 @@ export default function AgendaCalendar({
                 <Plus className="h-3 w-3" /> Événement
               </button>
             )}
-            {isOwner && (
+            {(isOwner || viewerRole === 'ORGANIZER') && (
               <button
                 onClick={openPanel}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs hover:bg-purple-600/30 transition mr-2"
