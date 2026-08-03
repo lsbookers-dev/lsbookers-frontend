@@ -12,7 +12,7 @@ type Notif = {
   content: string
   read: boolean
   createdAt: string
-  actor?: { id: number; name?: string | null; avatar?: string | null } | null
+  actor?: { id: number; name?: string | null; avatar?: string | null; role?: string | null } | null
   conversationId?: number | null
   offerId?: number | null
 }
@@ -23,14 +23,14 @@ type TypeConfig = { icon: string; color: string; label: string }
 
 const TYPE_CONFIG: Record<string, TypeConfig> = {
   // Messages
-  NEW_MESSAGE:           { icon: '💬', color: 'bg-blue-500/15 text-blue-300',   label: 'Message' },
+  NEW_MESSAGE:           { icon: '💬', color: 'bg-blue-500/15 text-blue-300',    label: 'Message' },
   // Bookings
   BOOKING_REQUEST:       { icon: '📩', color: 'bg-violet-500/15 text-violet-300', label: 'Demande booking' },
   BOOKING_ACCEPTED:      { icon: '✅', color: 'bg-green-500/15 text-green-300',   label: 'Booking accepté' },
   BOOKING_DECLINED:      { icon: '❌', color: 'bg-red-500/15 text-red-300',       label: 'Booking refusé' },
   BOOKING_CANCELLED:     { icon: '🚫', color: 'bg-red-500/15 text-red-300',       label: 'Booking annulé' },
-  CANCELLATION_REQUEST:  { icon: '⚠️', color: 'bg-orange-500/15 text-orange-300', label: 'Demande annulation' },
-  CANCELLATION_ACCEPTED: { icon: '✅', color: 'bg-green-500/15 text-green-300',   label: 'Annulation acceptée' },
+  CANCELLATION_REQUEST:  { icon: '⚠️', color: 'bg-orange-500/15 text-orange-300', label: "Demande d'annulation" },
+  CANCELLATION_ACCEPTED: { icon: '✅', color: 'bg-green-500/15 text-green-300',   label: 'Annulation confirmée' },
   CANCELLATION_DECLINED: { icon: '❌', color: 'bg-red-500/15 text-red-300',       label: 'Annulation refusée' },
   PAYMENT_RECEIVED:      { icon: '💳', color: 'bg-green-500/15 text-green-300',   label: 'Paiement reçu' },
   // Offres
@@ -50,6 +50,12 @@ function getConfig(type: string): TypeConfig {
 function getLink(notif: Notif): string | null {
   if (notif.conversationId) return `/messages?conv=${notif.conversationId}`
   if (notif.offerId) return `/offers`
+  if (notif.actor?.id) {
+    const role = notif.actor.role?.toLowerCase()
+    if (role === 'artist')    return `/artist/${notif.actor.id}`
+    if (role === 'organizer') return `/organizer/${notif.actor.id}`
+    if (role === 'provider')  return `/provider/${notif.actor.id}`
+  }
   return null
 }
 
