@@ -775,7 +775,7 @@ export default function AgendaCalendar({
                 <Plus className="h-3 w-3" /> Événement
               </button>
             )}
-            {(isOwner || viewerRole === 'ORGANIZER') && (
+            {isOwner && (
               <button
                 onClick={openPanel}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs hover:bg-purple-600/30 transition mr-2"
