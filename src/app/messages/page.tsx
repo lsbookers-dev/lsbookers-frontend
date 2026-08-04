@@ -46,6 +46,7 @@ function MessagesContent() {
   const isNearBottomRef = useRef(true)
 
   const currentUserId = user?.id ? Number(user.id) : null
+  const isOrganizer = user?.role === 'ORGANIZER'
 
   /* ── Preview fichier sélectionné ── */
   useEffect(() => {
@@ -330,6 +331,7 @@ function MessagesContent() {
         activeConvId={activeConvId}
         messages={messages}
         currentUserId={currentUserId}
+        isOrganizer={isOrganizer}
         loadingMsgs={loadingMsgs}
         token={token}
         mobileView={mobileView}
@@ -350,6 +352,7 @@ function MessagesContent() {
         messagesEndRef={messagesEndRef}
         fileInputRef={fileInputRef}
         textareaRef={textareaRef}
+        fetchMessages={fetchMessages}
       />
     </div>
   )

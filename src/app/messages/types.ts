@@ -10,6 +10,7 @@ export interface Participant {
   lastName?: string | null
   role: Role
   profile?: { avatar?: string | null } | null
+  profileId?: number | null
 }
 
 export interface Conversation {

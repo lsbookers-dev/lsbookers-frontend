@@ -2,17 +2,17 @@
 
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, MessageCircle, Loader2,
-  CheckCheck, Check, Paperclip, Send, FileText, X, ExternalLink,
+  CheckCheck, Check, Paperclip, Send, FileText, X, ExternalLink, CalendarPlus,
 } from 'lucide-react'
 import { Avatar, AttachmentBubble } from './MessageUI'
 import { BookingRequestCard, CancellationRequestCard } from './BookingCards'
-import { ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatMessageTime } from './_helpers'
+import { API_BASE, ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatMessageTime } from './_helpers'
 import type { Conversation, Message, BookingRequestData } from './types'
 
 interface MessageThreadProps {
@@ -20,6 +20,7 @@ interface MessageThreadProps {
   activeConvId: number | null
   messages: Message[]
   currentUserId: number | null
+  isOrganizer: boolean
   loadingMsgs: boolean
   token: string | null
   mobileView: 'list' | 'chat'
@@ -40,16 +41,66 @@ interface MessageThreadProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   fileInputRef: React.RefObject<HTMLInputElement | null>
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  fetchMessages: (convId: number, silent?: boolean) => Promise<void>
 }
 
 export default function MessageThread({
-  activeConv, activeConvId, messages, currentUserId, loadingMsgs,
+  activeConv, activeConvId, messages, currentUserId, isOrganizer, loadingMsgs,
   token, mobileView, content, file, filePreviewUrl, sending,
   setLightbox, setMobileView, setFile, setMessages,
   handleSend, handleMessagesScroll, handleTextareaChange,
   messagesContainerRef, messagesEndRef, fileInputRef, textareaRef,
+  fetchMessages,
 }: MessageThreadProps) {
   const router = useRouter()
+
+  // ── Formulaire de proposition de booking ──────────────────
+  const [showBookingForm, setShowBookingForm] = useState(false)
+  const [bookingDate, setBookingDate]   = useState('')
+  const [bookingFee, setBookingFee]     = useState('')
+  const [bookingMsg, setBookingMsg]     = useState('')
+  const [bookingSending, setBookingSending] = useState(false)
+  const [bookingError, setBookingError] = useState('')
+
+  const submitBooking = async () => {
+    if (!token || !activeConvId || !bookingDate || bookingSending) return
+    const other = activeConv?.participants.find(p => p.id !== currentUserId)
+    if (!other?.profileId) {
+      setBookingError('Profil de l\'interlocuteur introuvable.')
+      return
+    }
+    setBookingSending(true)
+    setBookingError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/events/booking-request`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetProfileId: other.profileId,
+          conversationId: activeConvId,
+          date: bookingDate,
+          fee: bookingFee ? parseFloat(bookingFee) : undefined,
+          message: bookingMsg.trim() || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setBookingError(err?.error || 'Erreur lors de l\'envoi.')
+        return
+      }
+      // Reset et fermer le formulaire
+      setBookingDate('')
+      setBookingFee('')
+      setBookingMsg('')
+      setShowBookingForm(false)
+      // Rafraîchir les messages pour afficher la carte booking
+      await fetchMessages(activeConvId)
+    } catch {
+      setBookingError('Erreur réseau.')
+    } finally {
+      setBookingSending(false)
+    }
+  }
 
   // Lien vers le profil de l'interlocuteur
   const getProfileLink = (role: string, id: number) => {
@@ -134,7 +185,94 @@ export default function MessageThread({
             ? <Link href={profileLink} className="flex-1 min-w-0">{inner}</Link>
             : <div className="flex-1 min-w-0">{inner}</div>
         })()}
+
+        {/* Bouton proposer un booking — organisateurs seulement */}
+        {isOrganizer && other && (
+          <button
+            onClick={() => { setShowBookingForm(v => !v); setBookingError('') }}
+            title="Proposer un booking"
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+              showBookingForm
+                ? 'bg-violet-600 text-white shadow-sm shadow-violet-900/40'
+                : 'bg-white/[0.05] border border-white/[0.08] text-white/50 hover:bg-violet-500/20 hover:text-violet-300 hover:border-violet-500/30'
+            }`}
+          >
+            <CalendarPlus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Booking</span>
+          </button>
+        )}
       </div>
+
+      {/* Formulaire de proposition de booking (slide-down) */}
+      {isOrganizer && showBookingForm && (
+        <div className="border-b border-white/[0.05] bg-gradient-to-b from-[#0f0f1e] to-[#0d0d1a] px-4 py-4 shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                <CalendarPlus className="w-3.5 h-3.5 text-violet-400" />
+              </div>
+              <p className="text-sm font-semibold text-white/80">Proposer un booking</p>
+            </div>
+            <button onClick={() => { setShowBookingForm(false); setBookingError('') }}
+              className="p-1 rounded-lg text-white/25 hover:text-white/60 hover:bg-white/5 transition">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-[11px] text-white/35 mb-1 block">Date *</label>
+              <input
+                type="date"
+                value={bookingDate}
+                onChange={e => setBookingDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07] transition-all"
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-[11px] text-white/35 mb-1 block">Cachet proposé (€)</label>
+              <input
+                type="number"
+                value={bookingFee}
+                onChange={e => setBookingFee(e.target.value)}
+                placeholder="Ex : 500"
+                min="0"
+                className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07] transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <label className="text-[11px] text-white/35 mb-1 block">Message (optionnel)</label>
+            <textarea
+              value={bookingMsg}
+              onChange={e => setBookingMsg(e.target.value)}
+              placeholder="Décris la prestation, le lieu, les horaires…"
+              rows={2}
+              className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07] transition-all resize-none"
+            />
+          </div>
+
+          {bookingError && (
+            <p className="text-xs text-red-400/80 mb-2">{bookingError}</p>
+          )}
+
+          <button
+            onClick={submitBooking}
+            disabled={!bookingDate || bookingSending}
+            className="w-full py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 text-white text-sm font-semibold hover:from-violet-400 hover:to-purple-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm shadow-violet-900/40"
+          >
+            {bookingSending ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" /> Envoi…
+              </span>
+            ) : (
+              '📅 Envoyer la proposition'
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Messages */}
       <div
