@@ -52,15 +52,6 @@ export default function PublicationsSection({
     )
   }, [])
 
-  if (sorted.length === 0) {
-    return (
-      <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-neutral-400 text-sm mt-3">Aucune publication pour le moment.</p>
-      </section>
-    )
-  }
-
   return (
     <>
       <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
@@ -80,22 +71,26 @@ export default function PublicationsSection({
           </div>
         </div>
 
-        {/* ── Grille ── */}
-        <div className="grid grid-cols-3 gap-1.5">
-          {preview.map(p => (
-            <div key={p.id} className="relative">
-              <PublicationCard pub={p} onClick={setSelected} />
-              {isOwner && onDelete && (
-                <button
-                  onClick={e => { e.stopPropagation(); onDelete(p.id) }}
-                  className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full transition z-10"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+        {/* ── Grille ou état vide ── */}
+        {sorted.length === 0 ? (
+          <p className="text-neutral-400 text-sm">Aucune publication pour le moment.</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
+            {preview.map(p => (
+              <div key={p.id} className="relative">
+                <PublicationCard pub={p} onClick={setSelected} />
+                {isOwner && onDelete && (
+                  <button
+                    onClick={e => { e.stopPropagation(); onDelete(p.id) }}
+                    className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full transition z-10"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── Modale détail ── */}
