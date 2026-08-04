@@ -142,6 +142,7 @@ export default function ProviderProfilePage() {
       const uploadRes = await fetch(`${API}/api/upload`, {
         method: 'POST',
         credentials: 'include',
+        headers: getAuthHeaders(),
         body: fd,
       })
       if (!uploadRes.ok) throw new Error('Upload échoué')
