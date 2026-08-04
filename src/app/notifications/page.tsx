@@ -48,7 +48,7 @@ function getConfig(type: string): TypeConfig {
 }
 
 function getLink(notif: Notif): string | null {
-  if (notif.conversationId) return `/messages?conv=${notif.conversationId}`
+  if (notif.conversationId) return `/messages?c=${notif.conversationId}`
   if (notif.offerId) return `/offers`
   if (notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()

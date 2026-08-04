@@ -225,31 +225,56 @@ function MessagesContent() {
     } catch (err) { console.error('startConversation:', err) }
   }, [token, conversations, selectConv, router])
 
-  /* ── Envoyer un message ── */
+  /* ── Envoyer un message (optimistic) ── */
   const handleSend = useCallback(async () => {
     if (!activeConvId || !token || sending) return
     if (!content.trim() && !file) return
     setSending(true)
+
+    // Optimistic : afficher le message immédiatement
+    const optimisticText = content.trim()
+    const tempId = `temp-${Date.now()}`
+    if (optimisticText && !file && currentUserId) {
+      const tempMsg: Message = {
+        id: tempId,
+        content: optimisticText,
+        type: 'TEXT',
+        createdAt: new Date().toISOString(),
+        seen: false,
+        sender: { id: currentUserId, name: user?.name || 'Moi' },
+      }
+      setMessages(prev => [...prev, tempMsg])
+    }
+
+    // Vider l'input immédiatement
+    setContent('')
+    setFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+
     try {
       const fd = new FormData()
       fd.append('conversationId', String(activeConvId))
-      if (content.trim()) fd.append('content', content.trim())
+      if (optimisticText) fd.append('content', optimisticText)
       if (file) fd.append('file', file)
       const res = await fetch(`${API_BASE}/api/messages/send-file`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
       })
-      if (!res.ok) return
-      setContent('')
-      setFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      if (textareaRef.current) textareaRef.current.style.height = 'auto'
+      if (!res.ok) {
+        // Rollback si erreur
+        if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
+        return
+      }
       await fetchMessages(activeConvId)
       await fetchConversations()
-    } catch (err) { console.error('handleSend:', err) }
+    } catch (err) {
+      console.error('handleSend:', err)
+      if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
+    }
     finally { setSending(false) }
-  }, [activeConvId, token, content, file, sending, fetchMessages, fetchConversations])
+  }, [activeConvId, token, content, file, sending, currentUserId, user, fetchMessages, fetchConversations])
 
   /* ── Supprimer une conversation ── */
   const deleteConversation = useCallback(async (convId: number, e: React.MouseEvent) => {
