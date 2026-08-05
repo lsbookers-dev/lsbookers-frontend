@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles, Plus, X } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
+import { getSpecialtiesForOfferType } from '@/constants/specialties'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type Offer = {
@@ -29,19 +30,25 @@ type Offer = {
   }
 }
 
+type OfferForm = {
+  title: string; description: string
+  type: 'ARTIST' | 'PROVIDER' | 'ALL'; specialty: string
+  date: string; time: string; location: string; country: string; fee: string
+}
+
+const EMPTY_FORM: OfferForm = {
+  title: '', description: '', type: 'ARTIST', specialty: '',
+  date: '', time: '', location: '', country: '', fee: '',
+}
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-const TYPE_LABELS: Record<string, string> = {
-  ARTIST:   'Artiste',
-  PROVIDER: 'Prestataire',
-  ALL:      'Tous profils',
-}
-
-const TYPE_COLORS: Record<string, string> = {
-  ARTIST:   'bg-pink-500/15 text-pink-300 border-pink-500/20',
-  PROVIDER: 'bg-blue-500/15 text-blue-300 border-blue-500/20',
-  ALL:      'bg-purple-500/15 text-purple-300 border-purple-500/20',
-}
+/* ─── Config couleurs par type d'offre ──────────────────── */
+const TYPE_CONFIG = {
+  ARTIST:   { label: 'Artiste',      gradient: 'from-pink-500 to-rose-600',     border: 'border-pink-500/25',   badge: 'bg-pink-500/15 text-pink-300 border-pink-500/25',   apply: 'from-pink-600 to-rose-600' },
+  PROVIDER: { label: 'Prestataire',  gradient: 'from-violet-500 to-purple-600', border: 'border-violet-500/25', badge: 'bg-violet-500/15 text-violet-300 border-violet-500/25', apply: 'from-violet-600 to-purple-600' },
+  ALL:      { label: 'Tous profils', gradient: 'from-purple-500 to-indigo-600', border: 'border-purple-500/25', badge: 'bg-purple-500/15 text-purple-300 border-purple-500/25', apply: 'from-purple-600 to-indigo-600' },
+} as const
 
 /* ─── Carte d'offre ─────────────────────────────────────── */
 function OfferCard({
@@ -53,96 +60,94 @@ function OfferCard({
   canApply: boolean
   onApply: (offer: Offer) => void
 }) {
+  const cfg = TYPE_CONFIG[offer.type]
   const date = new Date(offer.date)
-  const dateStr = date.toLocaleDateString('fr-FR', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
-  const timeStr = date.toLocaleTimeString('fr-FR', {
-    hour: '2-digit', minute: '2-digit',
-  })
+  const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5 flex flex-col gap-4 hover:border-white/20 transition-colors">
+    <div className={`group relative rounded-2xl border ${cfg.border} bg-white/[0.03] hover:bg-white/[0.05] transition-all duration-200 overflow-hidden flex flex-col`}>
 
-      {/* Organisateur + badge type */}
-      <div className="flex items-start justify-between gap-3">
-        <Link href={`/organizer/${offer.organizer.userId}`} className="flex items-center gap-3 min-w-0 group">
-          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/10 flex-shrink-0">
-            {offer.organizer.avatar ? (
-              <Image
-                src={offer.organizer.avatar}
-                alt={offer.organizer.name}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-white/50 text-sm font-bold">
-                {offer.organizer.name[0]?.toUpperCase()}
+      {/* Trait couleur en haut — identique aux cartes de recherche */}
+      <div className={`absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r ${cfg.gradient} opacity-60 group-hover:opacity-100 transition-opacity`} />
+
+      <div className="p-5 flex flex-col gap-4 flex-1">
+
+        {/* Organisateur + badge type */}
+        <div className="flex items-start justify-between gap-3">
+          <Link href={`/organizer/${offer.organizer.userId}`} className="flex items-center gap-3 min-w-0 group/link">
+            <div className="relative flex-shrink-0">
+              <div className={`absolute -inset-0.5 rounded-full bg-gradient-to-br ${cfg.gradient} opacity-0 group-hover:opacity-30 transition-opacity blur-sm`} />
+              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/10">
+                {offer.organizer.avatar ? (
+                  <Image src={offer.organizer.avatar} alt={offer.organizer.name} fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white/50 text-sm font-bold">
+                    {offer.organizer.name[0]?.toUpperCase()}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white group-hover:text-purple-300 transition-colors truncate">
-              {offer.organizer.name}
-            </p>
-            <p className="text-xs text-white/40">Organisateur</p>
-          </div>
-        </Link>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white group-hover/link:text-white/80 transition-colors truncate">
+                {offer.organizer.name}
+              </p>
+              <p className="text-xs text-white/40">Organisateur</p>
+            </div>
+          </Link>
 
-        <span className={`text-xs px-2.5 py-1 rounded-full border font-medium flex-shrink-0 ${TYPE_COLORS[offer.type]}`}>
-          {TYPE_LABELS[offer.type]}
-        </span>
-      </div>
-
-      {/* Titre + spécialité */}
-      <div>
-        <h3 className="font-semibold text-white leading-snug">{offer.title}</h3>
-        {offer.specialty && (
-          <span className="inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60">
-            {offer.specialty}
+          <span className={`text-xs px-2.5 py-1 rounded-full border font-medium flex-shrink-0 ${cfg.badge}`}>
+            {cfg.label}
           </span>
-        )}
-      </div>
+        </div>
 
-      {/* Description */}
-      <p className="text-sm text-white/60 leading-relaxed line-clamp-3 flex-1">
-        {offer.description}
-      </p>
+        {/* Titre + spécialité */}
+        <div>
+          <h3 className="font-semibold text-white leading-snug">{offer.title}</h3>
+          {offer.specialty && (
+            <span className={`inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full border ${cfg.badge}`}>
+              {offer.specialty}
+            </span>
+          )}
+        </div>
 
-      {/* Infos : date, lieu, tarif */}
-      <div className="flex flex-wrap gap-3 text-xs text-white/50">
-        <span className="flex items-center gap-1.5">
-          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-          {dateStr} à {timeStr}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-          {offer.location}, {offer.country}
-        </span>
-        {offer.fee != null && (
-          <span className="flex items-center gap-1.5 text-green-400/80 font-medium">
-            <Euro className="w-3.5 h-3.5 flex-shrink-0" />
-            {offer.fee.toLocaleString('fr-FR')} €
+        {/* Description */}
+        <p className="text-sm text-white/60 leading-relaxed line-clamp-3 flex-1">
+          {offer.description}
+        </p>
+
+        {/* Infos : date, lieu, tarif */}
+        <div className="flex flex-wrap gap-3 text-xs text-white/50">
+          <span className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+            {dateStr} à {timeStr}
           </span>
-        )}
-      </div>
+          <span className="flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+            {offer.location}, {offer.country}
+          </span>
+          {offer.fee != null && (
+            <span className="flex items-center gap-1.5 text-green-400/80 font-medium">
+              <Euro className="w-3.5 h-3.5 flex-shrink-0" />
+              {offer.fee.toLocaleString('fr-FR')} €
+            </span>
+          )}
+        </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-3 pt-3 border-t border-white/5">
-        <Link
-          href={`/organizer/${offer.organizer.userId}`}
-          className="text-xs text-white/40 hover:text-white/70 transition-colors"
-        >
-          Voir le profil →
-        </Link>
-        {canApply && (
-          <button
-            onClick={() => onApply(offer)}
-            className="ml-auto bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-semibold px-5 py-2 rounded-full transition-all"
-          >
-            Postuler
-          </button>
-        )}
+        {/* Actions */}
+        <div className="flex items-center gap-3 pt-3 border-t border-white/5">
+          <Link href={`/organizer/${offer.organizer.userId}`} className="text-xs text-white/40 hover:text-white/70 transition-colors">
+            Voir le profil →
+          </Link>
+          {canApply && (
+            <button
+              onClick={() => onApply(offer)}
+              className={`ml-auto text-xs font-semibold px-5 py-2 rounded-full transition-all active:scale-95 bg-gradient-to-r ${cfg.apply} hover:opacity-90 text-white`}
+            >
+              Postuler
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -161,7 +166,14 @@ export default function OffersPage() {
   const [forMe, setForMe]               = useState(false)
   const [userSpecialties, setUserSpec]  = useState<string[]>([])
 
-  const canApply = user?.role === 'ARTIST' || user?.role === 'PROVIDER'
+  const canApply    = user?.role === 'ARTIST' || user?.role === 'PROVIDER'
+  const isOrganizer = user?.role === 'ORGANIZER'
+
+  // Modal publication (organisateurs)
+  const [showPublish, setShowPublish]     = useState(false)
+  const [pubForm, setPubForm]             = useState<OfferForm>(EMPTY_FORM)
+  const [pubSubmitting, setPubSubmitting] = useState(false)
+  const [pubError, setPubError]           = useState<string | null>(null)
 
   // Charger les spécialités du profil connecté
   useEffect(() => {
@@ -221,19 +233,63 @@ export default function OffersPage() {
     )
   }
 
+  const submitPublish = async () => {
+    if (!pubForm.title.trim() || !pubForm.description.trim() || !pubForm.date || !pubForm.location.trim() || !pubForm.country.trim()) {
+      setPubError('Veuillez remplir tous les champs obligatoires.')
+      return
+    }
+    setPubError(null)
+    setPubSubmitting(true)
+    try {
+      const token = getAuthToken()
+      const dateTime = pubForm.time ? `${pubForm.date}T${pubForm.time}:00` : `${pubForm.date}T00:00:00`
+      const res = await fetch(`${API_BASE}/api/offers`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          title: pubForm.title.trim(), description: pubForm.description.trim(),
+          type: pubForm.type, specialty: pubForm.specialty || null,
+          date: dateTime, location: pubForm.location.trim(),
+          country: pubForm.country.trim(), fee: pubForm.fee ? parseFloat(pubForm.fee) : null,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const saved = await res.json()
+      setOffers(prev => [saved, ...prev])
+      setPubForm(EMPTY_FORM)
+      setShowPublish(false)
+    } catch {
+      setPubError('Échec de la publication. Réessayez.')
+    } finally {
+      setPubSubmitting(false)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-5xl mx-auto px-4 py-8">
 
         {/* ── En-tête ── */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-1">
-            <Briefcase className="w-5 h-5 text-purple-400" />
-            <h1 className="text-2xl md:text-3xl font-bold">Offres</h1>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Briefcase className="w-5 h-5 text-purple-400" />
+              <h1 className="text-2xl md:text-3xl font-bold">Offres</h1>
+            </div>
+            <p className="text-white/40 text-sm">
+              Opportunités publiées par les organisateurs
+            </p>
           </div>
-          <p className="text-white/40 text-sm">
-            Opportunités publiées par les organisateurs
-          </p>
+          {isOrganizer && (
+            <button
+              onClick={() => { setPubForm(EMPTY_FORM); setPubError(null); setShowPublish(true) }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-medium transition flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              Publier une offre
+            </button>
+          )}
         </div>
 
         {/* ── Filtres ── */}
@@ -341,6 +397,66 @@ export default function OffersPage() {
           </>
         )}
       </div>
+
+      {/* ── Modal : publier une offre (organisateurs) ── */}
+      {showPublish && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowPublish(false)}>
+          <div className="max-w-lg w-full bg-neutral-950 border border-white/10 rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Publier une offre</h3>
+              <button onClick={() => setShowPublish(false)} className="text-neutral-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <input required value={pubForm.title} onChange={e => setPubForm(p => ({ ...p, title: e.target.value }))}
+                placeholder="Titre *"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
+              />
+              <textarea required rows={3} value={pubForm.description} onChange={e => setPubForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Description *"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40 resize-none"
+              />
+              <select value={pubForm.type} onChange={e => setPubForm(p => ({ ...p, type: e.target.value as OfferForm['type'], specialty: '' }))}
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40">
+                <option value="ARTIST">Artiste</option>
+                <option value="PROVIDER">Prestataire</option>
+                <option value="ALL">Tous profils</option>
+              </select>
+              <select value={pubForm.specialty} onChange={e => setPubForm(p => ({ ...p, specialty: e.target.value }))}
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40">
+                <option value="">Spécialité</option>
+                {getSpecialtiesForOfferType(pubForm.type).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <input required type="date" value={pubForm.date} onChange={e => setPubForm(p => ({ ...p, date: e.target.value }))}
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
+                />
+                <input type="time" value={pubForm.time} onChange={e => setPubForm(p => ({ ...p, time: e.target.value }))}
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input required value={pubForm.location} onChange={e => setPubForm(p => ({ ...p, location: e.target.value }))}
+                  placeholder="Ville *"
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
+                />
+                <input required value={pubForm.country} onChange={e => setPubForm(p => ({ ...p, country: e.target.value }))}
+                  placeholder="Pays *"
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
+                />
+              </div>
+              <input type="number" min="0" step="0.01" value={pubForm.fee} onChange={e => setPubForm(p => ({ ...p, fee: e.target.value }))}
+                placeholder="Tarif proposé (optionnel)"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
+              />
+              {pubError && <p className="text-xs text-red-400">{pubError}</p>}
+              <button onClick={submitPublish} disabled={pubSubmitting}
+                className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition">
+                {pubSubmitting ? 'Publication…' : 'Publier'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

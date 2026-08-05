@@ -698,25 +698,23 @@ export default function ProfileSettings() {
                   className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50 resize-none"
                 />
 
-                <div className="grid grid-cols-2 gap-2">
-                  <select value={offerForm.type}
-                    onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as typeof offerForm.type, specialty: '' }))}
-                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
-                  >
-                    <option value="ARTIST">Artiste</option>
-                    <option value="PROVIDER">Prestataire</option>
-                    <option value="ALL">Tous profils</option>
-                  </select>
-                  <select value={offerForm.specialty}
-                    onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
-                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
-                  >
-                    <option value="">Spécialité (optionnel)</option>
-                    {getSpecialtiesForOfferType(offerForm.type as 'ARTIST' | 'PROVIDER' | 'ALL').map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+                <select value={offerForm.type}
+                  onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as typeof offerForm.type, specialty: '' }))}
+                  className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                >
+                  <option value="ARTIST">Artiste</option>
+                  <option value="PROVIDER">Prestataire</option>
+                  <option value="ALL">Tous profils</option>
+                </select>
+                <select value={offerForm.specialty}
+                  onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                >
+                  <option value="">Spécialité</option>
+                  {getSpecialtiesForOfferType(offerForm.type as 'ARTIST' | 'PROVIDER' | 'ALL').map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
