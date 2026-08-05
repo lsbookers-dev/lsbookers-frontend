@@ -421,7 +421,7 @@ export default function OrganizerProfilePage() {
                 )}
               </div>
               <button
-                onClick={() => { setOfferForm(EMPTY_OFFER_FORM); setOfferError(null); setShowOfferModal(true) }}
+                onClick={() => { setOfferForm({ ...EMPTY_OFFER_FORM, location: profile?.location ?? '', country: profile?.country ?? '' }); setOfferError(null); setShowOfferModal(true) }}
                 className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
               >
                 <Plus size={13} /> Publier une offre

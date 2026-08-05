@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles, Plus, X } from 'lucide-react'
+import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles, Plus, X, Users } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
@@ -22,6 +22,7 @@ type Offer = {
   fee?: number | null
   createdAt: string
   organizerId: number
+  applicantCount?: number
   organizer: {
     id: number
     userId: number
@@ -132,6 +133,12 @@ function OfferCard({
               {offer.fee.toLocaleString('fr-FR')} €
             </span>
           )}
+          {(offer.applicantCount ?? 0) > 0 && (
+            <span className="flex items-center gap-1.5 text-white/35">
+              <Users className="w-3.5 h-3.5 flex-shrink-0" />
+              {offer.applicantCount} candidat{offer.applicantCount! > 1 ? 's' : ''}
+            </span>
+          )}
         </div>
 
         {/* Actions */}
@@ -175,18 +182,31 @@ export default function OffersPage() {
   const [pubSubmitting, setPubSubmitting] = useState(false)
   const [pubError, setPubError]           = useState<string | null>(null)
 
-  // Charger les spécialités du profil connecté
+  // Auto-fill ville/pays depuis le profil (organisateurs)
+  const [userLocation, setUserLocation] = useState('')
+  const [userCountry, setUserCountry]   = useState('')
+
+  // Modal candidature (artistes / prestataires)
+  const [applyOffer, setApplyOffer]         = useState<Offer | null>(null)
+  const [applyMessage, setApplyMessage]     = useState('')
+  const [applySubmitting, setApplySubmit]   = useState(false)
+  const [applyError, setApplyError]         = useState<string | null>(null)
+
+  // Charger les données du profil connecté (spécialités + ville/pays)
   useEffect(() => {
-    if (!user?.id || !canApply) return
+    if (!user?.id) return
     const token = getAuthToken()
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
     fetch(`${API_BASE}/api/profile/user/${user.id}`, { credentials: 'include', headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.profile?.specialties) setUserSpec(data.profile.specialties)
+        if (!data?.profile) return
+        if (data.profile.specialties) setUserSpec(data.profile.specialties)
+        if (data.profile.location)    setUserLocation(data.profile.location)
+        if (data.profile.country)     setUserCountry(data.profile.country)
       })
       .catch(() => {})
-  }, [user?.id, canApply])
+  }, [user?.id])
 
   // Filtrage "Pour moi" côté client
   const visibleOffers = forMe && user
@@ -228,9 +248,37 @@ export default function OffersPage() {
   }, [loadOffers])
 
   const handleApply = (offer: Offer) => {
-    router.push(
-      `/messages/new?to=${offer.organizer.userId}&subject=${encodeURIComponent(`Candidature : ${offer.title}`)}`
-    )
+    const prefilled = `Bonjour, je souhaite postuler pour l'offre "${offer.title}" que vous venez de publier. Je me tiens à votre disposition.`
+    setApplyMessage(prefilled)
+    setApplyError(null)
+    setApplyOffer(offer)
+  }
+
+  const submitApply = async () => {
+    if (!applyOffer) return
+    setApplySubmit(true)
+    setApplyError(null)
+    try {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE}/api/offers/${applyOffer.id}/apply`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ message: applyMessage }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur')
+      // Mise à jour locale du compteur
+      setOffers(prev => prev.map(o =>
+        o.id === applyOffer.id ? { ...o, applicantCount: (o.applicantCount ?? 0) + 1 } : o
+      ))
+      setApplyOffer(null)
+      router.push(`/messages?conversation=${data.conversationId}`)
+    } catch (err: unknown) {
+      setApplyError(err instanceof Error ? err.message : 'Erreur lors de la candidature.')
+    } finally {
+      setApplySubmit(false)
+    }
   }
 
   const submitPublish = async () => {
@@ -287,7 +335,7 @@ export default function OffersPage() {
           </div>
           {isOrganizer && (
             <button
-              onClick={() => { setPubForm(EMPTY_FORM); setPubError(null); setShowPublish(true) }}
+              onClick={() => { setPubForm({ ...EMPTY_FORM, location: userLocation, country: userCountry }); setPubError(null); setShowPublish(true) }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-medium transition flex-shrink-0"
             >
               <Plus className="w-4 h-4" />
@@ -401,6 +449,40 @@ export default function OffersPage() {
           </>
         )}
       </div>
+
+      {/* ── Modal : postuler à une offre ── */}
+      {applyOffer && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setApplyOffer(null)}>
+          <div className="max-w-lg w-full bg-neutral-950 border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Postuler</h3>
+                <p className="text-xs text-white/40 mt-0.5 truncate max-w-xs">"{applyOffer.title}"</p>
+              </div>
+              <button onClick={() => setApplyOffer(null)} className="text-neutral-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-white/50 mb-1.5 block">Votre message</label>
+                <textarea
+                  rows={5}
+                  value={applyMessage}
+                  onChange={e => setApplyMessage(e.target.value)}
+                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40 resize-none"
+                />
+              </div>
+              {applyError && <p className="text-xs text-red-400">{applyError}</p>}
+              <button
+                onClick={submitApply}
+                disabled={applySubmitting || !applyMessage.trim()}
+                className={`w-full bg-gradient-to-r ${TYPE_CONFIG[applyOffer.type].apply} hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition`}
+              >
+                {applySubmitting ? 'Envoi…' : 'Envoyer ma candidature'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal : publier une offre (organisateurs) ── */}
       {showPublish && (

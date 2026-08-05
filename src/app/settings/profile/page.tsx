@@ -75,6 +75,7 @@ type Profile = {
   id: number
   bio: string
   location: string
+  country: string
   specialties: string[]
   styles: string[]
   radiusKm: number | null
@@ -185,6 +186,7 @@ export default function ProfileSettings() {
     id: 0,
     bio: '',
     location: '',
+    country: '',
     specialties: [],
     styles: [],
     radiusKm: null,
@@ -247,6 +249,7 @@ export default function ProfileSettings() {
           id: p.id,
           bio: p.bio || '',
           location: p.location || '',
+          country: p.country || '',
           specialties: p.specialties || [],
           styles: p.styles || [],
           radiusKm: p.radiusKm ?? null,
@@ -673,7 +676,7 @@ export default function ProfileSettings() {
               <p className="text-xs text-white/40">Offres publiées sur la plateforme</p>
               <button
                 type="button"
-                onClick={() => setShowOfferForm(v => !v)}
+                onClick={() => { setShowOfferForm(v => !v); setOfferForm(p => ({ ...p, location: profile.location, country: profile.country })) }}
                 className="flex items-center gap-1.5 text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-full transition-colors"
               >
                 <Plus size={13} />
