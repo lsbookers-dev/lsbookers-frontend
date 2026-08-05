@@ -582,72 +582,66 @@ export default function OrganizerProfilePage() {
                 className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40 resize-none"
               />
 
-              <select
-                value={offerForm.type}
-                onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as OfferForm['type'], specialty: '' }))}
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
-              >
-                <option value="ARTIST">Artiste</option>
-                <option value="PROVIDER">Prestataire</option>
-                <option value="ALL">Tous profils</option>
-              </select>
-              <select
-                value={offerForm.specialty}
-                onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
-              >
-                <option value="">Spécialité</option>
-                {getSpecialtiesForOfferType(offerForm.type).map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={offerForm.type}
+                  onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as OfferForm['type'], specialty: '' }))}
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                >
+                  <option value="ARTIST">Artiste</option>
+                  <option value="PROVIDER">Prestataire</option>
+                  <option value="ALL">Tous profils</option>
+                </select>
+                <select
+                  value={offerForm.specialty}
+                  onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                >
+                  <option value="">Spécialité</option>
+                  {getSpecialtiesForOfferType(offerForm.type).map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="relative">
                   <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
                   <input
-                    required
-                    type="date"
-                    value={offerForm.date}
+                    required type="date" value={offerForm.date}
                     onChange={e => setOfferForm(p => ({ ...p, date: e.target.value }))}
-                    className="w-full bg-black/30 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl pl-8 pr-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                   />
                 </div>
                 <input
-                  type="time"
-                  value={offerForm.time}
+                  type="time" value={offerForm.time}
                   onChange={e => setOfferForm(p => ({ ...p, time: e.target.value }))}
-                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <input
-                  required
-                  value={offerForm.location}
+                  required value={offerForm.location}
                   onChange={e => setOfferForm(p => ({ ...p, location: e.target.value }))}
                   placeholder="Ville *"
-                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
                 <input
-                  required
-                  value={offerForm.country}
+                  required value={offerForm.country}
                   onChange={e => setOfferForm(p => ({ ...p, country: e.target.value }))}
                   placeholder="Pays *"
-                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
               </div>
 
               <div className="relative">
                 <Euro size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={offerForm.fee}
+                  type="number" min="0" step="0.01" value={offerForm.fee}
                   onChange={e => setOfferForm(p => ({ ...p, fee: e.target.value }))}
                   placeholder="Tarif proposé (optionnel)"
-                  className="w-full bg-black/30 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 w-full bg-black/30 border border-white/10 rounded-xl pl-8 pr-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
               </div>
 

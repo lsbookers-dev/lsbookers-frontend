@@ -698,35 +698,37 @@ export default function ProfileSettings() {
                   className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50 resize-none"
                 />
 
-                <select value={offerForm.type}
-                  onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as typeof offerForm.type, specialty: '' }))}
-                  className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
-                >
-                  <option value="ARTIST">Artiste</option>
-                  <option value="PROVIDER">Prestataire</option>
-                  <option value="ALL">Tous profils</option>
-                </select>
-                <select value={offerForm.specialty}
-                  onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
-                  className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
-                >
-                  <option value="">Spécialité</option>
-                  {getSpecialtiesForOfferType(offerForm.type as 'ARTIST' | 'PROVIDER' | 'ALL').map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={offerForm.type}
+                    onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as typeof offerForm.type, specialty: '' }))}
+                    className="h-10 rounded-xl bg-white/5 px-3 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                  >
+                    <option value="ARTIST">Artiste</option>
+                    <option value="PROVIDER">Prestataire</option>
+                    <option value="ALL">Tous profils</option>
+                  </select>
+                  <select value={offerForm.specialty}
+                    onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
+                    className="h-10 rounded-xl bg-white/5 px-3 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                  >
+                    <option value="">Spécialité</option>
+                    {getSpecialtiesForOfferType(offerForm.type as 'ARTIST' | 'PROVIDER' | 'ALL').map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
                     <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
                     <input required type="date" value={offerForm.date}
                       onChange={e => setOfferForm(p => ({ ...p, date: e.target.value }))}
-                      className="w-full rounded-xl bg-white/5 pl-8 pr-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                      className="h-10 w-full rounded-xl bg-white/5 pl-8 pr-3 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
                     />
                   </div>
                   <input type="time" value={offerForm.time}
                     onChange={e => setOfferForm(p => ({ ...p, time: e.target.value }))}
-                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                    className="h-10 rounded-xl bg-white/5 px-3 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
                   />
                 </div>
 
@@ -736,13 +738,13 @@ export default function ProfileSettings() {
                     <input required value={offerForm.location}
                       onChange={e => setOfferForm(p => ({ ...p, location: e.target.value }))}
                       placeholder="Ville *"
-                      className="w-full rounded-xl bg-white/5 pl-8 pr-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                      className="h-10 w-full rounded-xl bg-white/5 pl-8 pr-3 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
                     />
                   </div>
                   <input required value={offerForm.country}
                     onChange={e => setOfferForm(p => ({ ...p, country: e.target.value }))}
                     placeholder="Pays *"
-                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                    className="h-10 rounded-xl bg-white/5 px-3 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
                   />
                 </div>
 
@@ -751,7 +753,7 @@ export default function ProfileSettings() {
                   <input type="number" min="0" step="0.01" value={offerForm.fee}
                     onChange={e => setOfferForm(p => ({ ...p, fee: e.target.value }))}
                     placeholder="Tarif proposé (optionnel)"
-                    className="w-full rounded-xl bg-white/5 pl-8 pr-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                    className="h-10 w-full rounded-xl bg-white/5 pl-8 pr-3 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
                   />
                 </div>
 

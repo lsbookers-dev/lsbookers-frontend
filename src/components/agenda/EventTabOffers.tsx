@@ -59,49 +59,51 @@ export default function EventTabOffers(p: Props) {
             placeholder="Description *"
             className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
           />
-          <select value={p.eventOfferForm.type}
-            onChange={e => p.setEventOfferForm(prev => ({
-              ...prev,
-              type: e.target.value as EventOfferForm['type'],
-              specialty: '',
-            }))}
-            className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
-            <option value="ARTIST">Artiste</option>
-            <option value="PROVIDER">Prestataire</option>
-            <option value="ALL">Tous profils</option>
-          </select>
-          <select value={p.eventOfferForm.specialty}
-            onChange={e => p.setEventOfferForm(prev => ({ ...prev, specialty: e.target.value }))}
-            className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
-            <option value="">Spécialité</option>
-            {getSpecialtiesForOfferType(p.eventOfferForm.type).map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          <div className="grid grid-cols-2 gap-1.5">
+            <select value={p.eventOfferForm.type}
+              onChange={e => p.setEventOfferForm(prev => ({
+                ...prev,
+                type: e.target.value as EventOfferForm['type'],
+                specialty: '',
+              }))}
+              className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
+              <option value="ARTIST">Artiste</option>
+              <option value="PROVIDER">Prestataire</option>
+              <option value="ALL">Tous profils</option>
+            </select>
+            <select value={p.eventOfferForm.specialty}
+              onChange={e => p.setEventOfferForm(prev => ({ ...prev, specialty: e.target.value }))}
+              className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
+              <option value="">Spécialité</option>
+              {getSpecialtiesForOfferType(p.eventOfferForm.type).map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-1.5">
             <input required type="date" value={p.eventOfferForm.date}
               onChange={e => p.setEventOfferForm(prev => ({ ...prev, date: e.target.value }))}
-              className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
+              className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
             />
             <input type="time" value={p.eventOfferForm.time}
               onChange={e => p.setEventOfferForm(prev => ({ ...prev, time: e.target.value }))}
-              className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
+              className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
             />
             <input required value={p.eventOfferForm.location}
               onChange={e => p.setEventOfferForm(prev => ({ ...prev, location: e.target.value }))}
               placeholder="Ville *"
-              className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
+              className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
             />
             <input required value={p.eventOfferForm.country}
               onChange={e => p.setEventOfferForm(prev => ({ ...prev, country: e.target.value }))}
               placeholder="Pays *"
-              className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
+              className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
             />
           </div>
           <input type="number" min="0" step="0.01" value={p.eventOfferForm.fee}
             onChange={e => p.setEventOfferForm(prev => ({ ...prev, fee: e.target.value }))}
             placeholder="Tarif proposé (optionnel)"
-            className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
+            className="h-8 w-full px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
           />
           {p.eventOfferError && <p className="text-xs text-red-400">{p.eventOfferError}</p>}
           <button type="submit" disabled={p.submittingEventOffer}

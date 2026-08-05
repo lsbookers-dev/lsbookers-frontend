@@ -415,38 +415,40 @@ export default function OffersPage() {
                 placeholder="Description *"
                 className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40 resize-none"
               />
-              <select value={pubForm.type} onChange={e => setPubForm(p => ({ ...p, type: e.target.value as OfferForm['type'], specialty: '' }))}
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40">
-                <option value="ARTIST">Artiste</option>
-                <option value="PROVIDER">Prestataire</option>
-                <option value="ALL">Tous profils</option>
-              </select>
-              <select value={pubForm.specialty} onChange={e => setPubForm(p => ({ ...p, specialty: e.target.value }))}
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40">
-                <option value="">Spécialité</option>
-                {getSpecialtiesForOfferType(pubForm.type).map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <select value={pubForm.type} onChange={e => setPubForm(p => ({ ...p, type: e.target.value as OfferForm['type'], specialty: '' }))}
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40">
+                  <option value="ARTIST">Artiste</option>
+                  <option value="PROVIDER">Prestataire</option>
+                  <option value="ALL">Tous profils</option>
+                </select>
+                <select value={pubForm.specialty} onChange={e => setPubForm(p => ({ ...p, specialty: e.target.value }))}
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40">
+                  <option value="">Spécialité</option>
+                  {getSpecialtiesForOfferType(pubForm.type).map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <input required type="date" value={pubForm.date} onChange={e => setPubForm(p => ({ ...p, date: e.target.value }))}
-                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
                 />
                 <input type="time" value={pubForm.time} onChange={e => setPubForm(p => ({ ...p, time: e.target.value }))}
-                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <input required value={pubForm.location} onChange={e => setPubForm(p => ({ ...p, location: e.target.value }))}
                   placeholder="Ville *"
-                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
                 />
                 <input required value={pubForm.country} onChange={e => setPubForm(p => ({ ...p, country: e.target.value }))}
                   placeholder="Pays *"
-                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
+                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
                 />
               </div>
               <input type="number" min="0" step="0.01" value={pubForm.fee} onChange={e => setPubForm(p => ({ ...p, fee: e.target.value }))}
                 placeholder="Tarif proposé (optionnel)"
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
+                className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
               />
               {pubError && <p className="text-xs text-red-400">{pubError}</p>}
               <button onClick={submitPublish} disabled={pubSubmitting}
