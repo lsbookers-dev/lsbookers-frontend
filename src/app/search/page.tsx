@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { Search, MapPin, Globe, Sliders, X, Music2, Building2, Wrench, ChevronDown } from 'lucide-react'
+import { Search, MapPin, Globe, Sliders, X, Music2, Building2, Wrench, ChevronDown, Calendar, ArrowDownAZ, Clock } from 'lucide-react'
 
 interface User {
   id: number
@@ -12,10 +12,12 @@ interface User {
   firstName?: string | null
   lastName?: string | null
   role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
+  createdAt?: string
   profile: {
     location?: string
     country?: string
     specialties?: string[]
+    styles?: string[]
     typeEtablissement?: string
     avatar?: string | null
   }
@@ -66,6 +68,11 @@ const COUNTRIES = [
   'United Kingdom', 'Spain', 'Germany', 'Italy', 'Portugal', 'Switzerland',
 ]
 const RADIUS_OPTIONS = ['50', '100', '200', '500', '1000']
+const STYLES = [
+  'Electro', 'House', 'Techno', 'Deep House', 'RNB', 'Hip-Hop', 'Rap', 'Trap',
+  'Reggaeton', 'Afrobeats', 'Dancehall', 'Jazz', 'Blues', 'Soul', 'Funk',
+  'Pop', 'Rock', 'Latino', 'Salsa', 'Bachata', 'Kizomba', 'Gospel', 'Classique',
+]
 
 const ROLE_CONFIG = {
   ARTIST:    { label: 'Artistes',       color: 'pink',   icon: Music2,    gradient: 'from-pink-500 to-rose-600',    bg: 'bg-pink-500/10 border-pink-500/30 text-pink-300' },
@@ -197,6 +204,9 @@ export default function SearchPage() {
   const [searchTerm, setSearchTerm]   = useState('')
   const [typeFilter, setTypeFilter]   = useState<'ARTIST' | 'ORGANIZER' | 'PROVIDER' | ''>('')
   const [typeFilters, setTypeFilters] = useState<string[]>([])
+  const [styleFilters, setStyleFilters] = useState<string[]>([])
+  const [dateFilter, setDateFilter]   = useState('')
+  const [sortOrder, setSortOrder]     = useState<'recent' | 'alpha'>('recent')
   const [zone, setZone]               = useState('')
   const [country, setCountry]         = useState('')
   const [radiusKm, setRadiusKm]       = useState('')
@@ -217,8 +227,9 @@ export default function SearchPage() {
       params.append('zone', zone.trim())
       params.append('location', zone.trim())
     }
-    if (country.trim())  params.append('country', country.trim())
-    if (radiusKm.trim()) params.append('radius', radiusKm.trim())
+    if (country.trim())    params.append('country', country.trim())
+    if (radiusKm.trim())   params.append('radius', radiusKm.trim())
+    if (dateFilter.trim()) params.append('date', dateFilter.trim())
 
     fetch(`${API_BASE}/api/search?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -244,17 +255,36 @@ export default function SearchPage() {
           })
         }
 
+        // Filtre styles musicaux (artistes uniquement)
+        if (styleFilters.length > 0) {
+          const selectedStyles = new Set(styleFilters.map(s => s.toLowerCase().trim()))
+          list = list.filter(u => {
+            if (u.role !== 'ARTIST') return true
+            return (u.profile?.styles || []).some(s => selectedStyles.has(String(s).toLowerCase().trim()))
+          })
+        }
+
+        // Tri
+        if (sortOrder === 'alpha') {
+          list = [...list].sort((a, b) => {
+            const na = (a.pseudo || [a.firstName, a.lastName].filter(Boolean).join(' ') || '').toLowerCase()
+            const nb = (b.pseudo || [b.firstName, b.lastName].filter(Boolean).join(' ') || '').toLowerCase()
+            return na.localeCompare(nb, 'fr')
+          })
+        }
+
         setUsers(list)
       })
       .catch(err => { console.error('Erreur recherche :', err); setUsers([]) })
       .finally(() => setLoading(false))
-  }, [token, searchTerm, typeFilter, typeFilters, zone, country, radiusKm])
+  }, [token, searchTerm, typeFilter, typeFilters, styleFilters, dateFilter, sortOrder, zone, country, radiusKm])
 
   // Chargement initial
   useEffect(() => { if (token) handleSearch() }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReset = () => {
     setSearchTerm(''); setTypeFilter(''); setTypeFilters([])
+    setStyleFilters([]); setDateFilter(''); setSortOrder('recent')
     setZone(''); setCountry(''); setRadiusKm('')
   }
 
@@ -271,7 +301,7 @@ export default function SearchPage() {
     typeFilter === 'PROVIDER'  ? PROVIDER_TYPES :
     typeFilter === 'ORGANIZER' ? ESTABLISHMENT_TYPES : []
 
-  const hasActiveFilters = !!(typeFilter || typeFilters.length || zone || country || radiusKm)
+  const hasActiveFilters = !!(typeFilter || typeFilters.length || styleFilters.length || dateFilter || sortOrder !== 'recent' || zone || country || radiusKm)
 
   /* Répartition par rôle pour les stats */
   const counts = { ARTIST: 0, ORGANIZER: 0, PROVIDER: 0 }
@@ -390,6 +420,65 @@ export default function SearchPage() {
                   />
                 </div>
               )}
+
+              {/* Styles musicaux (artistes uniquement) */}
+              {typeFilter === 'ARTIST' && (
+                <div>
+                  <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Styles musicaux</p>
+                  <MultiSelectDropdown
+                    options={STYLES}
+                    values={styleFilters}
+                    onChange={setStyleFilters}
+                    placeholder="Tous les styles"
+                  />
+                </div>
+              )}
+
+              {/* Disponibilité à une date */}
+              <div>
+                <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Disponibilité</p>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <input
+                    type="date"
+                    value={dateFilter}
+                    onChange={e => setDateFilter(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full pl-9 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-white/25 transition text-sm"
+                  />
+                  {dateFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setDateFilter('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tri */}
+              <div>
+                <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Trier par</p>
+                <div className="flex gap-2">
+                  {([['recent', 'Plus récents', Clock], ['alpha', 'Alphabétique', ArrowDownAZ]] as const).map(([val, lbl, Icon]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setSortOrder(val)}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition ${
+                        sortOrder === val
+                          ? 'bg-white/10 border-white/25 text-white'
+                          : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/15'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Localisation */}
               <div>
