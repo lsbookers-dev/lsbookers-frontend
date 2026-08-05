@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal } from 'lucide-react'
+import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { getAuthToken } from '@/utils/auth'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type Offer = {
@@ -149,16 +150,46 @@ function OfferCard({
 
 /* ─── Page principale ───────────────────────────────────── */
 export default function OffersPage() {
-  const { user } = useAuth() as { user: { role: string } | null }
+  const { user } = useAuth() as { user: { id: number | string; role: string } | null }
   const router = useRouter()
 
-  const [offers, setOffers]   = useState<Offer[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({
+  const [offers, setOffers]             = useState<Offer[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [filters, setFilters]           = useState({
     type: '', specialty: '', location: '', country: '',
   })
+  const [forMe, setForMe]               = useState(false)
+  const [userSpecialties, setUserSpec]  = useState<string[]>([])
 
   const canApply = user?.role === 'ARTIST' || user?.role === 'PROVIDER'
+
+  // Charger les spécialités du profil connecté
+  useEffect(() => {
+    if (!user?.id || !canApply) return
+    const token = getAuthToken()
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    fetch(`${API_BASE}/api/profile/user/${user.id}`, { credentials: 'include', headers })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.profile?.specialties) setUserSpec(data.profile.specialties)
+      })
+      .catch(() => {})
+  }, [user?.id, canApply])
+
+  // Filtrage "Pour moi" côté client
+  const visibleOffers = forMe && user
+    ? offers.filter(o => {
+        // L'offre doit cibler le rôle de l'utilisateur ou "ALL"
+        const roleMatch = o.type === user.role || o.type === 'ALL'
+        if (!roleMatch) return false
+        // Si l'offre précise une spécialité, vérifier qu'elle correspond
+        if (o.specialty) {
+          const sp = o.specialty.toLowerCase().trim()
+          return userSpecialties.some(s => s.toLowerCase().trim() === sp)
+        }
+        return true
+      })
+    : offers
 
   const loadOffers = useCallback(async () => {
     setLoading(true)
@@ -207,9 +238,24 @@ export default function OffersPage() {
 
         {/* ── Filtres ── */}
         <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <SlidersHorizontal className="w-4 h-4 text-white/40" />
-            <span className="text-sm font-medium text-white/60">Filtrer les offres</span>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 text-white/40" />
+              <span className="text-sm font-medium text-white/60">Filtrer les offres</span>
+            </div>
+            {canApply && (
+              <button
+                onClick={() => setForMe(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  forMe
+                    ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
+                    : 'border-white/10 text-white/40 hover:text-white/70 hover:border-white/20'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Offres qui me concernent
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Type */}
@@ -264,13 +310,15 @@ export default function OffersPage() {
           <div className="flex justify-center py-20">
             <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : offers.length === 0 ? (
+        ) : visibleOffers.length === 0 ? (
           <div className="text-center py-20 text-white/30">
             <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Aucune offre disponible pour le moment</p>
-            {Object.values(filters).some(Boolean) && (
+            <p className="text-sm">
+              {forMe ? 'Aucune offre ne correspond à votre profil pour le moment' : 'Aucune offre disponible pour le moment'}
+            </p>
+            {(Object.values(filters).some(Boolean) || forMe) && (
               <button
-                onClick={() => setFilters({ type: '', specialty: '', location: '', country: '' })}
+                onClick={() => { setFilters({ type: '', specialty: '', location: '', country: '' }); setForMe(false) }}
                 className="mt-3 text-xs text-purple-400 hover:text-purple-300 transition-colors"
               >
                 Réinitialiser les filtres
@@ -279,9 +327,9 @@ export default function OffersPage() {
           </div>
         ) : (
           <>
-            <p className="text-xs text-white/30 mb-4">{offers.length} offre{offers.length > 1 ? 's' : ''}</p>
+            <p className="text-xs text-white/30 mb-4">{visibleOffers.length} offre{visibleOffers.length > 1 ? 's' : ''}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {offers.map(offer => (
+              {visibleOffers.map(offer => (
                 <OfferCard
                   key={offer.id}
                   offer={offer}
