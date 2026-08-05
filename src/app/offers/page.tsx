@@ -238,6 +238,10 @@ export default function OffersPage() {
       setPubError('Veuillez remplir tous les champs obligatoires.')
       return
     }
+    if (!pubForm.specialty) {
+      setPubError('Veuillez sélectionner une spécialité.')
+      return
+    }
     setPubError(null)
     setPubSubmitting(true)
     try {
@@ -424,7 +428,7 @@ export default function OffersPage() {
                 </select>
                 <select value={pubForm.specialty} onChange={e => setPubForm(p => ({ ...p, specialty: e.target.value }))}
                   className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40">
-                  <option value="">Spécialité</option>
+                  <option value="">Spécialité *</option>
                   {getSpecialtiesForOfferType(pubForm.type).map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>

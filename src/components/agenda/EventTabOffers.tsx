@@ -71,10 +71,10 @@ export default function EventTabOffers(p: Props) {
               <option value="PROVIDER">Prestataire</option>
               <option value="ALL">Tous profils</option>
             </select>
-            <select value={p.eventOfferForm.specialty}
+            <select required value={p.eventOfferForm.specialty}
               onChange={e => p.setEventOfferForm(prev => ({ ...prev, specialty: e.target.value }))}
               className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none">
-              <option value="">Spécialité</option>
+              <option value="">Spécialité *</option>
               {getSpecialtiesForOfferType(p.eventOfferForm.type).map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}

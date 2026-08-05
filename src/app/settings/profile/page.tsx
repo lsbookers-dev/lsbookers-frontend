@@ -397,6 +397,10 @@ export default function ProfileSettings() {
       setOfferFormError('Remplis tous les champs obligatoires.')
       return
     }
+    if (!offerForm.specialty) {
+      setOfferFormError('Veuillez sélectionner une spécialité.')
+      return
+    }
     setSubmittingOffer(true)
     try {
       const res = await fetch(`${API}/api/offers`, {
@@ -406,7 +410,7 @@ export default function ProfileSettings() {
           title:       offerForm.title,
           description: offerForm.description,
           type:        offerForm.type,
-          specialty:   offerForm.specialty || null,
+          specialty:   offerForm.specialty,
           date:        `${offerForm.date}T${offerForm.time || '00:00'}:00`,
           location:    offerForm.location,
           country:     offerForm.country,
@@ -711,7 +715,7 @@ export default function ProfileSettings() {
                     onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
                     className="h-10 rounded-xl bg-white/5 px-3 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
                   >
-                    <option value="">Spécialité</option>
+                    <option value="">Spécialité *</option>
                     {getSpecialtiesForOfferType(offerForm.type as 'ARTIST' | 'PROVIDER' | 'ALL').map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}

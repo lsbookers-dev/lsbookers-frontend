@@ -253,6 +253,10 @@ export default function OrganizerProfilePage() {
       setOfferError('Veuillez remplir tous les champs obligatoires.')
       return
     }
+    if (!offerForm.specialty) {
+      setOfferError('Veuillez sélectionner une spécialité.')
+      return
+    }
     setOfferError(null)
     setOfferSubmitting(true)
     try {
@@ -266,7 +270,7 @@ export default function OrganizerProfilePage() {
           title: offerForm.title.trim(),
           description: offerForm.description.trim(),
           type: offerForm.type,
-          specialty: offerForm.specialty || null,
+          specialty: offerForm.specialty,
           date: dateTime,
           location: offerForm.location.trim(),
           country: offerForm.country.trim(),
@@ -597,7 +601,7 @@ export default function OrganizerProfilePage() {
                   onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
                   className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                 >
-                  <option value="">Spécialité</option>
+                  <option value="">Spécialité *</option>
                   {getSpecialtiesForOfferType(offerForm.type).map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
