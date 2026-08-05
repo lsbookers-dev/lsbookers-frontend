@@ -11,6 +11,7 @@ import {
   Plus, X, Calendar, Euro
 } from 'lucide-react'
 import { getAuthToken } from '@/utils/auth'
+import { getSpecialtiesForOfferType } from '@/constants/specialties'
 
 // ─────────────────────────────────────────────
 // Config
@@ -699,18 +700,22 @@ export default function ProfileSettings() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <select value={offerForm.type}
-                    onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as typeof offerForm.type }))}
+                    onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as typeof offerForm.type, specialty: '' }))}
                     className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
                   >
                     <option value="ARTIST">Artiste</option>
                     <option value="PROVIDER">Prestataire</option>
                     <option value="ALL">Tous profils</option>
                   </select>
-                  <input value={offerForm.specialty}
+                  <select value={offerForm.specialty}
                     onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
-                    placeholder="Spécialité (DJ, Photo…)"
-                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
-                  />
+                    className="rounded-xl bg-white/5 px-3 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                  >
+                    <option value="">Spécialité (optionnel)</option>
+                    {getSpecialtiesForOfferType(offerForm.type as 'ARTIST' | 'PROVIDER' | 'ALL').map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">

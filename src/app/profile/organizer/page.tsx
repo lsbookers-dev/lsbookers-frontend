@@ -5,13 +5,50 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Settings2, MessageCircle, Star, Plus, MapPin,
+  Settings2, MessageCircle, Star, Plus, MapPin, Briefcase,
+  Calendar, Euro, ChevronLeft, ChevronRight, X,
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
 import { getAuthToken } from '@/utils/auth'
+import { getSpecialtiesForOfferType } from '@/constants/specialties'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
+// ─────────────────────────────────────────────
+// Types offres
+// ─────────────────────────────────────────────
+type Offer = {
+  id: number
+  title: string
+  description: string
+  type: 'ARTIST' | 'PROVIDER' | 'ALL'
+  specialty?: string | null
+  date: string
+  location: string
+  country: string
+  fee?: number | null
+  status: string
+}
+
+type OfferForm = {
+  title: string
+  description: string
+  type: 'ARTIST' | 'PROVIDER' | 'ALL'
+  specialty: string
+  date: string
+  time: string
+  location: string
+  country: string
+  fee: string
+}
+
+const EMPTY_OFFER_FORM: OfferForm = {
+  title: '', description: '', type: 'ARTIST', specialty: '',
+  date: '', time: '', location: '', country: '', fee: '',
+}
+
+const OFFERS_PER_PAGE = 3
 
 // ─────────────────────────────────────────────
 // Types
@@ -91,6 +128,14 @@ export default function OrganizerProfilePage() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Offres
+  const [myOffers, setMyOffers]         = useState<Offer[]>([])
+  const [offerPage, setOfferPage]       = useState(0)
+  const [showOfferModal, setShowOfferModal] = useState(false)
+  const [offerForm, setOfferForm]       = useState<OfferForm>(EMPTY_OFFER_FORM)
+  const [offerSubmitting, setOfferSubmitting] = useState(false)
+  const [offerError, setOfferError]     = useState<string | null>(null)
+
   // Publication modal
   const [showAddPub, setShowAddPub] = useState(false)
   const [pubTitle, setPubTitle] = useState('')
@@ -122,6 +167,12 @@ export default function OrganizerProfilePage() {
             .then(d => setReviews(d.reviews || []))
             .catch(() => {})
         }
+
+        // Charger les offres publiées par cet organisateur
+        fetch(`${API}/api/offers?organizerId=${p.id}`)
+          .then(r => r.json())
+          .then(d => setMyOffers(Array.isArray(d) ? d : []))
+          .catch(() => {})
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -193,6 +244,61 @@ export default function OrganizerProfilePage() {
     } catch (err) {
       console.error(err)
       alert('Échec de la suppression.')
+    }
+  }
+
+  // ── Publier une offre (sans événement)
+  const submitOffer = async () => {
+    if (!offerForm.title.trim() || !offerForm.description.trim() || !offerForm.date || !offerForm.location.trim() || !offerForm.country.trim()) {
+      setOfferError('Veuillez remplir tous les champs obligatoires.')
+      return
+    }
+    setOfferError(null)
+    setOfferSubmitting(true)
+    try {
+      const token = getAuthToken()
+      const dateTime = offerForm.time ? `${offerForm.date}T${offerForm.time}:00` : `${offerForm.date}T00:00:00`
+      const res = await fetch(`${API}/api/offers`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          title: offerForm.title.trim(),
+          description: offerForm.description.trim(),
+          type: offerForm.type,
+          specialty: offerForm.specialty || null,
+          date: dateTime,
+          location: offerForm.location.trim(),
+          country: offerForm.country.trim(),
+          fee: offerForm.fee ? parseFloat(offerForm.fee) : null,
+        }),
+      })
+      if (!res.ok) throw new Error('Erreur serveur')
+      const saved = await res.json()
+      setMyOffers(prev => [saved, ...prev])
+      setOfferForm(EMPTY_OFFER_FORM)
+      setShowOfferModal(false)
+      setOfferPage(0)
+    } catch {
+      setOfferError('Échec de la publication. Réessayez.')
+    } finally {
+      setOfferSubmitting(false)
+    }
+  }
+
+  // ── Supprimer une offre
+  const deleteOffer = async (id: number) => {
+    if (!confirm('Supprimer cette offre ?')) return
+    try {
+      const token = getAuthToken()
+      await fetch(`${API}/api/offers/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      setMyOffers(prev => prev.filter(o => o.id !== id))
+    } catch {
+      alert('Erreur lors de la suppression.')
     }
   }
 
@@ -300,6 +406,80 @@ export default function OrganizerProfilePage() {
             </section>
           )}
 
+          {/* ── Mes offres ── */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Briefcase size={16} className="text-pink-400" />
+                <h2 className="text-lg font-semibold">Mes offres</h2>
+                {myOffers.length > 0 && (
+                  <span className="text-xs text-neutral-500">({myOffers.length})</span>
+                )}
+              </div>
+              <button
+                onClick={() => { setOfferForm(EMPTY_OFFER_FORM); setOfferError(null); setShowOfferModal(true) }}
+                className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
+              >
+                <Plus size={13} /> Publier une offre
+              </button>
+            </div>
+
+            {myOffers.length === 0 ? (
+              <p className="text-sm text-neutral-500">Aucune offre publiée pour le moment.</p>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {myOffers.slice(offerPage * OFFERS_PER_PAGE, (offerPage + 1) * OFFERS_PER_PAGE).map(o => {
+                    const dateStr = new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+                    return (
+                      <div key={o.id} className="rounded-xl border border-white/8 bg-black/30 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{o.title}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-neutral-500">
+                              <span className="flex items-center gap-1"><Calendar size={11} />{dateStr}</span>
+                              <span className="flex items-center gap-1"><MapPin size={11} />{o.location}</span>
+                              {o.fee != null && <span className="flex items-center gap-1 text-green-400/80"><Euro size={11} />{Number(o.fee).toLocaleString('fr-FR')} €</span>}
+                              {o.specialty && <span className="px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10">{o.specialty}</span>}
+                            </div>
+                            <p className="text-xs text-neutral-400 mt-1.5 line-clamp-2">{o.description}</p>
+                          </div>
+                          <button
+                            onClick={() => deleteOffer(o.id)}
+                            className="text-neutral-600 hover:text-red-400 transition text-xs flex-shrink-0"
+                          >✕</button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Pagination */}
+                {myOffers.length > OFFERS_PER_PAGE && (
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                    <button
+                      onClick={() => setOfferPage(p => Math.max(0, p - 1))}
+                      disabled={offerPage === 0}
+                      className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30 transition"
+                    >
+                      <ChevronLeft size={14} /> Précédent
+                    </button>
+                    <span className="text-xs text-neutral-600">
+                      {offerPage + 1} / {Math.ceil(myOffers.length / OFFERS_PER_PAGE)}
+                    </span>
+                    <button
+                      onClick={() => setOfferPage(p => Math.min(Math.ceil(myOffers.length / OFFERS_PER_PAGE) - 1, p + 1))}
+                      disabled={(offerPage + 1) * OFFERS_PER_PAGE >= myOffers.length}
+                      className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30 transition"
+                    >
+                      Suivant <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+
           {/* Publications */}
           <PublicationsSection
             publications={publications}
@@ -367,6 +547,125 @@ export default function OrganizerProfilePage() {
 
         </aside>
       </div>
+
+      {/* ── Modal : publier une offre */}
+      {showOfferModal && (
+        <div
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowOfferModal(false)}
+        >
+          <div
+            className="max-w-lg w-full bg-neutral-950 border border-white/10 rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Publier une offre</h3>
+              <button onClick={() => setShowOfferModal(false)} className="text-neutral-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <input
+                required
+                value={offerForm.title}
+                onChange={e => setOfferForm(p => ({ ...p, title: e.target.value }))}
+                placeholder="Titre de l'offre *"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+              />
+              <textarea
+                required
+                rows={3}
+                value={offerForm.description}
+                onChange={e => setOfferForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Description *"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40 resize-none"
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={offerForm.type}
+                  onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as OfferForm['type'], specialty: '' }))}
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                >
+                  <option value="ARTIST">Artiste</option>
+                  <option value="PROVIDER">Prestataire</option>
+                  <option value="ALL">Tous profils</option>
+                </select>
+                <select
+                  value={offerForm.specialty}
+                  onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                >
+                  <option value="">Spécialité (optionnel)</option>
+                  {getSpecialtiesForOfferType(offerForm.type).map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative">
+                  <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                  <input
+                    required
+                    type="date"
+                    value={offerForm.date}
+                    onChange={e => setOfferForm(p => ({ ...p, date: e.target.value }))}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                  />
+                </div>
+                <input
+                  type="time"
+                  value={offerForm.time}
+                  onChange={e => setOfferForm(p => ({ ...p, time: e.target.value }))}
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  required
+                  value={offerForm.location}
+                  onChange={e => setOfferForm(p => ({ ...p, location: e.target.value }))}
+                  placeholder="Ville *"
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                />
+                <input
+                  required
+                  value={offerForm.country}
+                  onChange={e => setOfferForm(p => ({ ...p, country: e.target.value }))}
+                  placeholder="Pays *"
+                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                />
+              </div>
+
+              <div className="relative">
+                <Euro size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={offerForm.fee}
+                  onChange={e => setOfferForm(p => ({ ...p, fee: e.target.value }))}
+                  placeholder="Tarif proposé (optionnel)"
+                  className="w-full bg-black/30 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                />
+              </div>
+
+              {offerError && <p className="text-xs text-red-400">{offerError}</p>}
+
+              <button
+                onClick={submitOffer}
+                disabled={offerSubmitting}
+                className="w-full text-sm px-3 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 disabled:opacity-50 font-semibold transition"
+              >
+                {offerSubmitting ? 'Publication…' : 'Publier'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal : ajouter une publication */}
       {showAddPub && (
