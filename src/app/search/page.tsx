@@ -386,24 +386,46 @@ export default function SearchPage() {
           {/* Filtres avancés */}
           {showFilters && (
             <div className="mt-3 p-4 rounded-xl border border-white/8 bg-white/[0.02] space-y-4">
-              {/* Type */}
-              <div>
-                <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Type de compte</p>
-                <div className="flex gap-2 flex-wrap">
-                  {([['', 'Tous'], ['ARTIST', 'Artistes'], ['PROVIDER', 'Prestataires'], ['ORGANIZER', 'Organisateurs']] as const).map(([val, lbl]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => { setTypeFilter(val); setTypeFilters([]) }}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
-                        typeFilter === val
-                          ? 'bg-white/10 border-white/25 text-white'
-                          : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/15'
-                      }`}
-                    >
-                      {lbl}
-                    </button>
-                  ))}
+              {/* Type + Tri sur la même ligne */}
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Type de compte</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {([['', 'Tous'], ['ARTIST', 'Artistes'], ['PROVIDER', 'Prestataires'], ['ORGANIZER', 'Organisateurs']] as const).map(([val, lbl]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => { setTypeFilter(val); setTypeFilters([]) }}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
+                          typeFilter === val
+                            ? 'bg-white/10 border-white/25 text-white'
+                            : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/15'
+                        }`}
+                      >
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Trier par</p>
+                  <div className="flex gap-2">
+                    {([['recent', 'Plus récents', Clock], ['alpha', 'Alphabétique', ArrowDownAZ]] as const).map(([val, lbl, Icon]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setSortOrder(val)}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition ${
+                          sortOrder === val
+                            ? 'bg-white/10 border-white/25 text-white'
+                            : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/15'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -461,28 +483,6 @@ export default function SearchPage() {
                 )}
               </div>
 
-              {/* Tri */}
-              <div>
-                <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Trier par</p>
-                <div className="flex gap-2">
-                  {([['recent', 'Plus récents', Clock], ['alpha', 'Alphabétique', ArrowDownAZ]] as const).map(([val, lbl, Icon]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setSortOrder(val)}
-                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition ${
-                        sortOrder === val
-                          ? 'bg-white/10 border-white/25 text-white'
-                          : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/15'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {lbl}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Localisation */}
               <div>
                 <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Localisation</p>
@@ -502,7 +502,7 @@ export default function SearchPage() {
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                     <input
                       type="text"
-                      placeholder="Ville ou zone"
+                      placeholder="Ville"
                       className="w-full pl-9 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-white/25 transition text-sm"
                       value={zone}
                       onChange={e => setZone(e.target.value)}
@@ -514,7 +514,7 @@ export default function SearchPage() {
                     onChange={e => setRadiusKm(e.target.value)}
                     disabled={!zone.trim()}
                   >
-                    <option value="">Rayon (si ville)</option>
+                    <option value="">Rayon</option>
                     {RADIUS_OPTIONS.map(r => <option key={r} value={r}>{r} km</option>)}
                   </select>
                 </div>
