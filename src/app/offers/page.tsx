@@ -457,7 +457,7 @@ export default function OffersPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold">Postuler</h3>
-                <p className="text-xs text-white/40 mt-0.5 truncate max-w-xs">"{applyOffer.title}"</p>
+                <p className="text-xs text-white/40 mt-0.5 truncate max-w-xs">&ldquo;{applyOffer.title}&rdquo;</p>
               </div>
               <button onClick={() => setApplyOffer(null)} className="text-neutral-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
