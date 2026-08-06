@@ -740,66 +740,95 @@ export default function AgendaCalendar({
      RENDU
   ───────────────────────────────────────────────────────── */
   return (
-    <div className="rounded-2xl border border-white/10 bg-neutral-900/60 overflow-hidden">
+    <div className="rounded-2xl overflow-hidden" style={{ border: '0.5px solid #1c2030', background: '#0c0f18' }}>
 
       {/* En-tête */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-purple-400" />
-          <span className="font-semibold text-sm">Agenda</span>
-        </div>
+      <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '0.5px solid #1c2030', background: '#111318' }}>
         {showEventPanel ? (
-          <div className="flex items-center gap-2">
-            {eventMode === 'detail' && (
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" style={{ color: '#6366f1' }} />
+              <span className="font-medium text-sm" style={{ color: '#d0daf0' }}>Mes événements</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {eventMode === 'detail' && (
+                <button
+                  onClick={() => { setEventMode('list'); setSelectedEventId(null); setEventDetail(null) }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition hover:opacity-80"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '0.5px solid #2a3050', color: '#8891b0' }}
+                >
+                  ← Retour
+                </button>
+              )}
               <button
-                onClick={() => { setEventMode('list'); setSelectedEventId(null); setEventDetail(null) }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 text-xs hover:bg-white/10 transition"
+                onClick={() => { setShowEventPanel(false); setEventMode('list') }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition hover:opacity-80"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '0.5px solid #2a3050', color: '#8891b0' }}
               >
-                ← Retour
+                <X className="h-3 w-3" /> Fermer
               </button>
-            )}
+            </div>
+          </div>
+        ) : showPanel ? (
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" style={{ color: '#6366f1' }} />
+              <span className="font-medium text-sm" style={{ color: '#d0daf0' }}>Mes bookings</span>
+            </div>
             <button
-              onClick={() => { setShowEventPanel(false); setEventMode('list') }}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 text-xs hover:bg-white/10 transition"
+              onClick={() => setShowPanel(false)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition hover:opacity-80"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '0.5px solid #2a3050', color: '#8891b0' }}
             >
               <X className="h-3 w-3" /> Fermer
             </button>
           </div>
-        ) : !showPanel ? (
-          <div className="flex items-center gap-1">
-            {isOwner && (
-              <button
-                onClick={openEventPanel}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-600/20 border border-green-500/30 text-green-300 text-xs hover:bg-green-600/30 transition mr-1"
-              >
-                <Plus className="h-3 w-3" /> Événement
-              </button>
-            )}
-            {isOwner && (
-              <button
-                onClick={openPanel}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs hover:bg-purple-600/30 transition mr-2"
-              >
-                <BookOpen className="h-3 w-3" /> Mes bookings
-              </button>
-            )}
-            <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-white/8 transition text-white/50 hover:text-white">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="text-sm font-medium w-36 text-center">
-              {MONTHS_FR[month - 1]} {year}
-            </span>
-            <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-white/8 transition text-white/50 hover:text-white">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
         ) : (
-          <button
-            onClick={() => setShowPanel(false)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 text-xs hover:bg-white/10 transition"
-          >
-            <X className="h-3 w-3" /> Fermer
-          </button>
+          <>
+            <div className="flex items-center gap-2.5">
+              <span className="font-medium" style={{ fontSize: 16, color: '#d0daf0' }}>
+                {MONTHS_FR[month - 1]} {year}
+              </span>
+              {events.length > 0 && (
+                <span style={{ fontSize: 11, color: '#485272' }}>
+                  {events.length} événement{events.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {isOwner && (
+                <button
+                  onClick={openEventPanel}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition hover:opacity-80"
+                  style={{ background: 'rgba(99,102,241,0.12)', border: '0.5px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}
+                >
+                  <Plus className="h-3 w-3" /> Événement
+                </button>
+              )}
+              {isOwner && (
+                <button
+                  onClick={openPanel}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition hover:opacity-80"
+                  style={{ background: 'rgba(99,102,241,0.12)', border: '0.5px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}
+                >
+                  <BookOpen className="h-3 w-3" /> Bookings
+                </button>
+              )}
+              <div style={{ width: '0.5px', height: 16, background: '#1c2030', margin: '0 2px' }} />
+              <button
+                onClick={prevMonth}
+                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#485272', cursor: 'pointer' }}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={nextMonth}
+                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#485272', cursor: 'pointer' }}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </>
         )}
       </div>
 

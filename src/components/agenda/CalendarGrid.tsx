@@ -1,8 +1,8 @@
-// agenda/CalendarGrid.tsx — Grille du calendrier et panneau du jour sélectionné
+// agenda/CalendarGrid.tsx — Grille calendrier (layout B+C : côté à côte + palette slate/indigo)
 
 import { Send, X, Clock, MapPin } from 'lucide-react'
 import { CalEvent, AvailDay } from './types'
-import { DAYS_FR, AVAIL_OPTIONS, isSameDay, formatHour, categoryColor, availBg } from './helpers'
+import { DAYS_FR, AVAIL_OPTIONS, isSameDay, formatHour, categoryColor } from './helpers'
 
 interface CalendarGridProps {
   cells: (Date | null)[]
@@ -31,6 +31,32 @@ interface CalendarGridProps {
   openEventFromCalendar: (id: number) => void
 }
 
+/* ── Couleur de la barre de disponibilité ── */
+function availBarColor(status?: string) {
+  if (status === 'AVAILABLE')   return '#4ade80'
+  if (status === 'UNAVAILABLE') return '#f87171'
+  if (status === 'TENTATIVE')   return '#fb923c'
+  if (status === 'BOOKED')      return '#fbbf24'
+  return 'transparent'
+}
+
+function availBgClass(status?: string) {
+  if (status === 'AVAILABLE')   return 'bg-green-500/[0.06] border border-green-500/[0.15]'
+  if (status === 'UNAVAILABLE') return 'bg-red-500/[0.06] border border-red-500/[0.12]'
+  if (status === 'TENTATIVE')   return 'bg-orange-500/[0.06] border border-orange-500/[0.12]'
+  if (status === 'BOOKED')      return 'bg-amber-500/[0.06] border border-amber-500/[0.12]'
+  return ''
+}
+
+/* ── Couleur de barre verticale pour les événements ── */
+function eventBarColor(cat?: string | null) {
+  const map: Record<string, string> = {
+    Club: '#a78bfa', Mariage: '#f472b6', Corporate: '#60a5fa',
+    Festival: '#fbbf24', Concert: '#4ade80', Privé: '#fb7185',
+  }
+  return cat && map[cat] ? map[cat] : '#818cf8'
+}
+
 export default function CalendarGrid({
   cells, events, availability, selected, loading, now,
   isOwner, showAvailability,
@@ -46,18 +72,28 @@ export default function CalendarGrid({
     return { dayEvents, avail }
   }
 
+  const totalEvents = events.length
+
   return (
-    <>
-      {/* Grille calendrier */}
-      <div className="p-4">
-        <div className="grid grid-cols-7 mb-1">
+    <div className="flex min-h-0" style={{ minHeight: 320 }}>
+
+      {/* ── Grille gauche ── */}
+      <div className="flex-1 min-w-0 p-4" style={{ borderRight: '0.5px solid #1c2030' }}>
+
+        {/* Jours de la semaine */}
+        <div className="grid grid-cols-7 mb-2">
           {DAYS_FR.map((d, i) => (
-            <div key={i} className="text-center text-[11px] text-white/30 font-medium py-1">{d}</div>
+            <div key={i} className="text-center font-medium py-1" style={{ fontSize: 10, color: '#2d3554', letterSpacing: '0.05em' }}>
+              {d}
+            </div>
           ))}
         </div>
 
+        {/* Cellules */}
         {loading ? (
-          <div className="h-48 flex items-center justify-center text-white/30 text-sm">Chargement…</div>
+          <div className="h-40 flex items-center justify-center" style={{ color: '#2d3554', fontSize: 13 }}>
+            Chargement…
+          </div>
         ) : (
           <div className="grid grid-cols-7 gap-0.5">
             {cells.map((date, i) => {
@@ -67,25 +103,59 @@ export default function CalendarGrid({
               const isSelected = selected && isSameDay(date, selected)
               const isPast     = date < now && !isToday
 
+              let cellStyle: React.CSSProperties = {}
+              let numColor = '#3a4060'
+
+              if (isSelected) {
+                cellStyle = { background: '#4f46e5', outline: '2px solid #6366f1', outlineOffset: 1, borderRadius: 10 }
+                numColor = '#ffffff'
+              } else if (isToday) {
+                cellStyle = { background: 'rgba(79,70,229,0.12)', border: '1px solid #4f46e5', borderRadius: 10 }
+                numColor = '#a5b4fc'
+              } else if (avail) {
+                cellStyle = { borderRadius: 10 }
+                numColor = isPast ? '#3a4060' : '#d0daf0'
+              } else {
+                numColor = isPast ? '#272f45' : '#3a4060'
+              }
+
               return (
                 <button
                   key={i}
                   onClick={() => setSelected(isSelected ? null : date)}
-                  className={`relative flex flex-col items-center py-1.5 rounded-lg transition-all text-sm
-                    ${isSelected ? 'bg-purple-600 text-white ring-2 ring-purple-400' : ''}
-                    ${!isSelected && isToday ? 'ring-1 ring-purple-500 text-white' : ''}
-                    ${!isSelected && !isToday && isPast ? 'text-white/25' : ''}
-                    ${!isSelected && !isToday && !isPast ? 'text-white/70 hover:bg-white/8' : ''}
-                    ${!isSelected && avail ? availBg(avail.status) : ''}
-                  `}
+                  className={`relative flex flex-col items-center transition-all ${!isSelected && avail ? availBgClass(avail.status) : ''}`}
+                  style={{ padding: '7px 2px 5px', borderRadius: isSelected || isToday ? undefined : 10, ...cellStyle }}
                 >
-                  <span className="font-medium leading-none">{date.getDate()}</span>
+                  <span style={{ fontSize: 12, fontWeight: isSelected || isToday ? 600 : 500, color: numColor, lineHeight: 1 }}>
+                    {date.getDate()}
+                  </span>
+
+                  {/* Points d'événements */}
                   {dayEvents.length > 0 && (
-                    <div className="flex gap-0.5 mt-0.5">
+                    <div className="flex gap-0.5 mt-1">
                       {dayEvents.slice(0, 3).map((e, j) => (
-                        <span key={j} className={`h-1 w-1 rounded-full ${isSelected ? 'bg-white' : categoryColor(e.category)}`} />
+                        <span
+                          key={j}
+                          style={{
+                            width: 3, height: 3, borderRadius: '50%',
+                            background: isSelected ? 'rgba(255,255,255,0.7)' : isToday ? '#a5b4fc' : eventBarColor(e.category),
+                          }}
+                        />
                       ))}
                     </div>
+                  )}
+
+                  {/* Barre de disponibilité en bas */}
+                  {!isSelected && avail && (
+                    <span
+                      style={{
+                        position: 'absolute', bottom: 3, left: '50%', transform: 'translateX(-50%)',
+                        width: 14, height: 2, borderRadius: 1,
+                        background: availBarColor(avail.status),
+                        opacity: 0.8,
+                        display: dayEvents.length > 0 ? 'none' : 'block',
+                      }}
+                    />
                   )}
                 </button>
               )
@@ -93,166 +163,212 @@ export default function CalendarGrid({
           </div>
         )}
 
-        {/* Légende disponibilité */}
-        {showAvailability && (
-          <div className="flex items-center gap-3 mt-3 text-[10px] text-white/35 flex-wrap">
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded bg-green-500/60" />Disponible</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded bg-orange-500/60" />Booking en cours</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded bg-red-500/60" />Indisponible</span>
-          </div>
-        )}
+        {/* Légende */}
+        <div className="flex items-center gap-4 mt-3 pt-3 flex-wrap" style={{ borderTop: '0.5px solid #1c2030' }}>
+          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#2d3554' }}>
+            <span style={{ display: 'inline-block', width: 12, height: 2, background: '#4ade80', borderRadius: 1 }} />
+            Disponible
+          </span>
+          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#2d3554' }}>
+            <span style={{ display: 'inline-block', width: 12, height: 2, background: '#fb923c', borderRadius: 1 }} />
+            En discussion
+          </span>
+          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#2d3554' }}>
+            <span style={{ display: 'inline-block', width: 12, height: 2, background: '#f87171', borderRadius: 1 }} />
+            Indisponible
+          </span>
+          {totalEvents > 0 && (
+            <span className="ml-auto" style={{ fontSize: 10, color: '#2d3554' }}>
+              {totalEvents} événement{totalEvents > 1 ? 's' : ''} ce mois
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Panneau jour sélectionné */}
-      {selected && (
-        <div className="border-t border-white/8 px-4 pb-4 pt-3">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-white/50 font-medium">
-              {selected.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            <button onClick={() => setSelected(null)} className="text-white/30 hover:text-white">
-              <X size={14} />
-            </button>
-          </div>
+      {/* ── Panneau droit — détail du jour ── */}
+      <div className="flex flex-col" style={{ width: 210, minWidth: 180, background: '#0d1020', padding: '14px 14px' }}>
 
-          {/* Propriétaire : gestion des dispos */}
-          {isOwner && showAvailability && (
-            <div className="mb-3">
-              <p className="text-[11px] text-white/40 mb-2">Définir ma disponibilité :</p>
-              <div className="flex gap-2 flex-wrap">
-                {AVAIL_OPTIONS.map(opt => (
-                  <button
-                    key={opt.status}
-                    onClick={() => saveAvailability(opt.status)}
-                    disabled={savingAvail}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition
-                      ${selectedAvail?.status === opt.status
-                        ? `${opt.color} text-white border-transparent`
-                        : `bg-white/5 border-white/10 ${opt.text} hover:bg-white/10`
-                      }
-                      disabled:opacity-50`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${opt.color}`} />
-                    {opt.label}
-                    {selectedAvail?.status === opt.status && ' ✓'}
-                  </button>
-                ))}
+        {selected ? (
+          <>
+            {/* En-tête */}
+            <div className="flex items-center justify-between mb-3">
+              <p style={{ fontSize: 11, color: '#485272', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                {selected.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </p>
+              <button onClick={() => setSelected(null)} style={{ color: '#2d3554', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1 }}>
+                <X size={13} />
+              </button>
+            </div>
+
+            {/* Statut dispo (visiteur) */}
+            {!isOwner && selectedAvail && (
+              <div className="mb-3 rounded-lg px-2.5 py-1.5" style={{
+                fontSize: 11, fontWeight: 500,
+                background: selectedAvail.status === 'AVAILABLE' ? 'rgba(74,222,128,0.08)' : selectedAvail.status === 'UNAVAILABLE' ? 'rgba(248,113,113,0.08)' : 'rgba(251,146,60,0.08)',
+                border: `0.5px solid ${selectedAvail.status === 'AVAILABLE' ? 'rgba(74,222,128,0.2)' : selectedAvail.status === 'UNAVAILABLE' ? 'rgba(248,113,113,0.2)' : 'rgba(251,146,60,0.2)'}`,
+                color: selectedAvail.status === 'AVAILABLE' ? '#4ade80' : selectedAvail.status === 'UNAVAILABLE' ? '#f87171' : '#fb923c',
+              }}>
+                {selectedAvail.status === 'AVAILABLE' ? '● Disponible' :
+                 selectedAvail.status === 'UNAVAILABLE' ? '● Indisponible' :
+                 selectedAvail.status === 'TENTATIVE' ? '● En discussion' : '● Booké'}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Badge disponibilité (visiteur) */}
-          {!isOwner && selectedAvail && (
-            <div className={`mb-3 rounded-xl px-3 py-2 text-xs font-medium ${
-              selectedAvail.status === 'AVAILABLE'   ? 'bg-green-500/10 border border-green-500/20 text-green-400' :
-              selectedAvail.status === 'UNAVAILABLE' ? 'bg-red-500/10 border border-red-500/20 text-red-400' :
-              selectedAvail.status === 'TENTATIVE'   ? 'bg-orange-500/10 border border-orange-500/20 text-orange-400' :
-              'bg-amber-500/10 border border-amber-500/20 text-amber-400'
-            }`}>
-              {selectedAvail.status === 'AVAILABLE'   ? '🟢 Disponible' :
-               selectedAvail.status === 'UNAVAILABLE' ? '🔴 Indisponible ce jour' :
-               selectedAvail.status === 'TENTATIVE'   ? '🟠 Booking en cours de confirmation' :
-               '🟡 Déjà booké'}
-            </div>
-          )}
-
-          {/* Organisateur : proposer un booking (tout jour non-bloqué) */}
-          {canBook && !bookingSent && (
-            <div className="mb-3">
-              {!selectedAvail && (
-                <p className="text-[11px] text-white/30 mb-2">📅 Aucune disponibilité renseignée — vous pouvez tout de même envoyer une demande.</p>
-              )}
-              {!showBookingForm ? (
-                <button
-                  onClick={() => setShowBookingForm(true)}
-                  className="w-full py-2 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 text-sm font-medium hover:bg-violet-600/30 transition"
-                >
-                  📩 Proposer un booking
-                </button>
-              ) : (
-                <div className="space-y-2 bg-white/[0.03] border border-white/10 rounded-xl p-3">
-                  <p className="text-[11px] text-white/40 font-medium uppercase tracking-wide">Demande de booking</p>
-                  <textarea
-                    value={bookingMsg}
-                    onChange={e => setBookingMsg(e.target.value)}
-                    placeholder="Type d'événement, lieu, horaires, demandes particulières…"
-                    rows={3}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none"
-                  />
-                  <input
-                    type="number"
-                    value={bookingFee}
-                    onChange={e => setBookingFee(e.target.value)}
-                    placeholder="Cachet proposé (€) — optionnel"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40"
-                  />
-                  <div className="flex gap-2">
+            {/* Propriétaire : gestion des dispos */}
+            {isOwner && showAvailability && (
+              <div className="mb-3">
+                <p style={{ fontSize: 10, color: '#485272', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ma disponibilité</p>
+                <div className="flex flex-col gap-1.5">
+                  {AVAIL_OPTIONS.map(opt => (
                     <button
-                      onClick={sendBookingRequest}
-                      disabled={bookingSending}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-medium disabled:opacity-50 transition"
+                      key={opt.status}
+                      onClick={() => saveAvailability(opt.status)}
+                      disabled={savingAvail}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 7,
+                        padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500,
+                        cursor: 'pointer', transition: 'all .15s',
+                        background: selectedAvail?.status === opt.status ? 'rgba(255,255,255,0.08)' : 'transparent',
+                        border: selectedAvail?.status === opt.status ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid transparent',
+                        color: opt.status === 'AVAILABLE' ? '#4ade80' : opt.status === 'UNAVAILABLE' ? '#f87171' : '#fb923c',
+                      }}
                     >
-                      <Send size={13} />
-                      {bookingSending ? 'Envoi…' : 'Envoyer la demande'}
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: availBarColor(opt.status), flexShrink: 0 }} />
+                      {opt.label}
+                      {selectedAvail?.status === opt.status && <span style={{ marginLeft: 'auto', opacity: 0.5 }}>✓</span>}
                     </button>
-                    <button
-                      onClick={() => setShowBookingForm(false)}
-                      className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 text-sm"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Confirmation booking envoyé */}
-          {bookingSent && (
-            <div className="mb-3 bg-green-600/10 border border-green-500/20 rounded-xl px-3 py-2 text-xs text-green-400">
-              ✓ Demande de booking envoyée avec succès !
-            </div>
-          )}
+            {/* Booking (organisateur visiteur) */}
+            {canBook && !bookingSent && (
+              <div className="mb-3">
+                {!showBookingForm ? (
+                  <button
+                    onClick={() => setShowBookingForm(true)}
+                    style={{
+                      width: '100%', padding: '6px 0', borderRadius: 8, fontSize: 11, fontWeight: 500,
+                      background: 'rgba(99,102,241,0.12)', border: '0.5px solid rgba(99,102,241,0.3)',
+                      color: '#a5b4fc', cursor: 'pointer',
+                    }}
+                  >
+                    Proposer un booking
+                  </button>
+                ) : (
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid #1c2030', borderRadius: 10, padding: 10 }}>
+                    <p style={{ fontSize: 10, color: '#485272', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Demande de booking</p>
+                    <textarea
+                      value={bookingMsg}
+                      onChange={e => setBookingMsg(e.target.value)}
+                      placeholder="Type d'événement, lieu, horaires…"
+                      rows={3}
+                      style={{
+                        width: '100%', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #1c2030',
+                        borderRadius: 8, padding: '6px 8px', fontSize: 11, color: '#d0daf0',
+                        resize: 'none', outline: 'none', boxSizing: 'border-box',
+                      }}
+                    />
+                    <input
+                      type="number"
+                      value={bookingFee}
+                      onChange={e => setBookingFee(e.target.value)}
+                      placeholder="Cachet (€) — optionnel"
+                      style={{
+                        width: '100%', marginTop: 6, background: 'rgba(255,255,255,0.04)', border: '0.5px solid #1c2030',
+                        borderRadius: 8, padding: '5px 8px', fontSize: 11, color: '#d0daf0',
+                        outline: 'none', boxSizing: 'border-box',
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <button
+                        onClick={sendBookingRequest}
+                        disabled={bookingSending}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                          padding: '6px 0', borderRadius: 8, fontSize: 11, fontWeight: 500,
+                          background: '#4f46e5', border: 'none', color: '#fff', cursor: 'pointer', opacity: bookingSending ? 0.5 : 1,
+                        }}
+                      >
+                        <Send size={11} />{bookingSending ? 'Envoi…' : 'Envoyer'}
+                      </button>
+                      <button
+                        onClick={() => setShowBookingForm(false)}
+                        style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '0.5px solid #1c2030', color: '#485272', cursor: 'pointer' }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-          {/* Événements du jour */}
-          {selectedEvents.length === 0 ? (
-            <p className="text-xs text-white/25 italic">Aucun événement ce jour</p>
-          ) : (
-            <div className="space-y-2">
-              {selectedEvents.map(e => (
-                <div key={e.id} className="rounded-xl bg-white/5 p-2.5">
-                  <div className="flex items-start gap-2">
-                    <span className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${categoryColor(e.category)}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-white truncate">{e.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {!e.allDay && (
-                          <span className="flex items-center gap-1 text-[11px] text-white/40">
-                            <Clock className="h-3 w-3" />{formatHour(e.start)}{e.end ? ` – ${formatHour(e.end)}` : ''}
-                          </span>
-                        )}
-                        {e.lieu && (
-                          <span className="flex items-center gap-1 text-[11px] text-white/40">
-                            <MapPin className="h-3 w-3" />{e.lieu}
-                          </span>
+            {/* Confirmation booking */}
+            {bookingSent && (
+              <div className="mb-3 rounded-lg px-2.5 py-1.5" style={{ fontSize: 11, background: 'rgba(74,222,128,0.08)', border: '0.5px solid rgba(74,222,128,0.2)', color: '#4ade80' }}>
+                ✓ Demande envoyée !
+              </div>
+            )}
+
+            {/* Séparateur */}
+            <div style={{ borderTop: '0.5px solid #1c2030', marginBottom: 10 }} />
+
+            {/* Événements du jour */}
+            {selectedEvents.length === 0 ? (
+              <p style={{ fontSize: 11, color: '#2d3554', fontStyle: 'italic' }}>Aucun événement</p>
+            ) : (
+              <div className="flex flex-col gap-2 flex-1 overflow-y-auto">
+                {selectedEvents.map(e => {
+                  const barColor = eventBarColor(e.category)
+                  return (
+                    <div
+                      key={e.id}
+                      style={{ display: 'flex', alignItems: 'stretch', gap: 0, background: 'rgba(255,255,255,0.03)', border: '0.5px solid #1c2030', borderRadius: 8, overflow: 'hidden' }}
+                    >
+                      <div style={{ width: 3, background: barColor, flexShrink: 0 }} />
+                      <div style={{ padding: '7px 9px', flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 12, fontWeight: 500, color: '#d0daf0', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.title}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                          {!e.allDay && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#485272' }}>
+                              <Clock style={{ width: 10, height: 10 }} />{formatHour(e.start)}{e.end ? ` – ${formatHour(e.end)}` : ''}
+                            </span>
+                          )}
+                          {e.lieu && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#485272' }}>
+                              <MapPin style={{ width: 10, height: 10 }} />{e.lieu}
+                            </span>
+                          )}
+                        </div>
+                        {isOwner && (
+                          <button
+                            onClick={() => openEventFromCalendar(e.id)}
+                            style={{ marginTop: 5, fontSize: 10, color: '#6366f1', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                          >
+                            Gérer →
+                          </button>
                         )}
                       </div>
                     </div>
-                  </div>
-                  {isOwner && (
-                    <button
-                      onClick={() => openEventFromCalendar(e.id)}
-                      className="mt-2 w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 text-xs font-medium transition"
-                    >
-                      Gérer l&apos;événement →
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          /* Aucun jour sélectionné */
+          <div className="flex flex-col items-center justify-center h-full gap-2" style={{ opacity: 0.35 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5">
+              <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <p style={{ fontSize: 11, color: '#485272', textAlign: 'center', lineHeight: 1.5 }}>Sélectionnez<br />un jour</p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
