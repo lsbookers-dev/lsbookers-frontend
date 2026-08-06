@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Settings2, MessageCircle, Star, Plus, MapPin, Briefcase,
   Calendar, Euro, ChevronLeft, ChevronRight, X, Globe, Music, Youtube, Users,
+  Instagram, Twitter, Facebook, Linkedin, Link, Building2, Pencil, Check,
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
@@ -72,6 +73,15 @@ type ApiProfile = {
   soundcloudUrl?: string | null
   showSoundcloud?: boolean
   youtubeUrl?: string | null
+  instagramUrl?: string | null
+  facebookUrl?: string | null
+  tiktokUrl?: string | null
+  twitterUrl?: string | null
+  linkedinUrl?: string | null
+  websiteUrl?: string | null
+  address?: string | null
+  postalCode?: string | null
+  city?: string | null
   user?: {
     id: number
     pseudo?: string | null
@@ -139,6 +149,15 @@ export default function OrganizerProfilePage() {
   const [offerSubmitting, setOfferSubmitting] = useState(false)
   const [offerError, setOfferError]     = useState<string | null>(null)
 
+  // Coordonnées — édition inline
+  const [editingContact, setEditingContact] = useState(false)
+  const [contactForm, setContactForm] = useState({
+    instagramUrl: '', facebookUrl: '', tiktokUrl: '', twitterUrl: '',
+    linkedinUrl: '', websiteUrl: '', soundcloudUrl: '', youtubeUrl: '',
+    address: '', postalCode: '', city: '',
+  })
+  const [contactSaving, setContactSaving] = useState(false)
+
   // Publication modal
   const [showAddPub, setShowAddPub] = useState(false)
   const [pubTitle, setPubTitle] = useState('')
@@ -156,6 +175,19 @@ export default function OrganizerProfilePage() {
       .then(({ profile: p }) => {
         if (!p) return
         setProfile(p)
+        setContactForm({
+          instagramUrl: p.instagramUrl || '',
+          facebookUrl: p.facebookUrl || '',
+          tiktokUrl: p.tiktokUrl || '',
+          twitterUrl: p.twitterUrl || '',
+          linkedinUrl: p.linkedinUrl || '',
+          websiteUrl: p.websiteUrl || '',
+          soundcloudUrl: p.soundcloudUrl || '',
+          youtubeUrl: p.youtubeUrl || '',
+          address: p.address || '',
+          postalCode: p.postalCode || '',
+          city: p.city || '',
+        })
 
         if (p.id) {
           fetch(`${API}/api/publications/profile/${p.id}`)
@@ -307,6 +339,27 @@ export default function OrganizerProfilePage() {
     } catch {
       alert('Erreur lors de la suppression.')
     }
+  }
+
+  // ── Sauvegarder les coordonnées
+  const saveContact = async () => {
+    if (!profile) return
+    setContactSaving(true)
+    try {
+      const token = getAuthToken()
+      const res = await fetch(`${API}/api/profile/${profile.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(contactForm),
+      })
+      if (res.ok) {
+        const { profile: updated } = await res.json()
+        setProfile(prev => prev ? { ...prev, ...updated } : prev)
+        setEditingContact(false)
+      }
+    } catch { /* silencieux */ }
+    finally { setContactSaving(false) }
   }
 
   if (loading) {
@@ -550,65 +603,135 @@ export default function OrganizerProfilePage() {
             <p className="text-sm text-neutral-500">Aucun partenaire ajouté.</p>
           </section>
 
-          {/* Réseaux sociaux */}
-          {(profile?.soundcloudUrl || profile?.youtubeUrl) && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
+          {/* Coordonnées & Réseaux sociaux */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
                 <Globe size={15} className="text-indigo-400" />
-                <h2 className="text-base font-semibold">Réseaux sociaux</h2>
-              </div>
-              <div className="space-y-2">
-                {profile?.soundcloudUrl && (
-                  <a href={profile.soundcloudUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 text-sm text-neutral-300 hover:text-white transition group">
-                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-orange-500/15 border border-orange-500/25 group-hover:bg-orange-500/25 transition">
-                      <Music size={13} className="text-orange-400" />
-                    </span>
-                    <span className="truncate">SoundCloud</span>
-                  </a>
-                )}
-                {profile?.youtubeUrl && (
-                  <a href={profile.youtubeUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 text-sm text-neutral-300 hover:text-white transition group">
-                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-red-500/15 border border-red-500/25 group-hover:bg-red-500/25 transition">
-                      <Youtube size={13} className="text-red-400" />
-                    </span>
-                    <span className="truncate">YouTube</span>
-                  </a>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* Coordonnées */}
-          {(profile?.location || profile?.country || profile?.radiusKm) && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <MapPin size={15} className="text-pink-400" />
                 <h2 className="text-base font-semibold">Coordonnées</h2>
               </div>
-              <div className="space-y-1.5 text-sm text-neutral-300">
-                {profile?.location && (
-                  <p className="flex items-center gap-2">
-                    <span className="text-neutral-500 text-xs w-14">Ville</span>
-                    {profile.location}
-                  </p>
-                )}
-                {profile?.country && (
-                  <p className="flex items-center gap-2">
-                    <span className="text-neutral-500 text-xs w-14">Pays</span>
-                    {profile.country}
-                  </p>
-                )}
-                {profile?.radiusKm && (
-                  <p className="flex items-center gap-2">
-                    <span className="text-neutral-500 text-xs w-14">Rayon</span>
-                    {profile.radiusKm} km
-                  </p>
-                )}
+              {!editingContact ? (
+                <button
+                  onClick={() => setEditingContact(true)}
+                  className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5"
+                >
+                  <Pencil size={12} /> Modifier
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setEditingContact(false)}
+                    className="text-xs text-neutral-500 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={saveContact}
+                    disabled={contactSaving}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition"
+                  >
+                    <Check size={12} /> {contactSaving ? 'Sauvegarde…' : 'Enregistrer'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {editingContact ? (
+              /* ── Mode édition ── */
+              <div className="space-y-3">
+                <p className="text-xs text-neutral-500 uppercase tracking-wider">Réseaux sociaux</p>
+                {[
+                  { key: 'instagramUrl',  label: 'Instagram',   placeholder: 'https://instagram.com/...' },
+                  { key: 'tiktokUrl',     label: 'TikTok',      placeholder: 'https://tiktok.com/@...' },
+                  { key: 'facebookUrl',   label: 'Facebook',    placeholder: 'https://facebook.com/...' },
+                  { key: 'twitterUrl',    label: 'X / Twitter', placeholder: 'https://x.com/...' },
+                  { key: 'linkedinUrl',   label: 'LinkedIn',    placeholder: 'https://linkedin.com/...' },
+                  { key: 'youtubeUrl',    label: 'YouTube',     placeholder: 'https://youtube.com/...' },
+                  { key: 'soundcloudUrl', label: 'SoundCloud',  placeholder: 'https://soundcloud.com/...' },
+                  { key: 'websiteUrl',    label: 'Site web',    placeholder: 'https://monsite.com' },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="text-xs text-neutral-500 w-24 flex-shrink-0">{label}</span>
+                    <input
+                      type="url"
+                      value={contactForm[key as keyof typeof contactForm]}
+                      onChange={e => setContactForm(f => ({ ...f, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="flex-1 bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
+                    />
+                  </div>
+                ))}
+                <p className="text-xs text-neutral-500 uppercase tracking-wider pt-1">Adresse de l&apos;établissement</p>
+                {[
+                  { key: 'address',    label: 'Adresse',     placeholder: '12 rue de la Paix' },
+                  { key: 'postalCode', label: 'Code postal', placeholder: '75001' },
+                  { key: 'city',       label: 'Ville',       placeholder: 'Paris' },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="text-xs text-neutral-500 w-24 flex-shrink-0">{label}</span>
+                    <input
+                      type="text"
+                      value={contactForm[key as keyof typeof contactForm]}
+                      onChange={e => setContactForm(f => ({ ...f, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="flex-1 bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
+                    />
+                  </div>
+                ))}
               </div>
-            </section>
-          )}
+            ) : (
+              /* ── Mode affichage ── */
+              (() => {
+                const socials = [
+                  { url: profile?.instagramUrl,  icon: <Instagram size={13} className="text-pink-400" />,   bg: 'bg-pink-500/15 border-pink-500/25',   label: 'Instagram' },
+                  { url: profile?.tiktokUrl,     icon: <Music size={13} className="text-white" />,           bg: 'bg-white/10 border-white/15',          label: 'TikTok' },
+                  { url: profile?.facebookUrl,   icon: <Facebook size={13} className="text-blue-400" />,    bg: 'bg-blue-500/15 border-blue-500/25',   label: 'Facebook' },
+                  { url: profile?.twitterUrl,    icon: <Twitter size={13} className="text-sky-400" />,      bg: 'bg-sky-500/15 border-sky-500/25',     label: 'X / Twitter' },
+                  { url: profile?.linkedinUrl,   icon: <Linkedin size={13} className="text-blue-300" />,    bg: 'bg-blue-400/15 border-blue-400/25',   label: 'LinkedIn' },
+                  { url: profile?.youtubeUrl,    icon: <Youtube size={13} className="text-red-400" />,      bg: 'bg-red-500/15 border-red-500/25',     label: 'YouTube' },
+                  { url: profile?.soundcloudUrl, icon: <Music size={13} className="text-orange-400" />,     bg: 'bg-orange-500/15 border-orange-500/25', label: 'SoundCloud' },
+                  { url: profile?.websiteUrl,    icon: <Link size={13} className="text-indigo-300" />,      bg: 'bg-indigo-500/15 border-indigo-500/25', label: 'Site web' },
+                ].filter(s => s.url)
+                const hasAddress = profile?.address || profile?.postalCode || profile?.city
+                if (socials.length === 0 && !hasAddress) {
+                  return (
+                    <p className="text-xs text-neutral-500">
+                      Aucune coordonnée renseignée.{' '}
+                      <button onClick={() => setEditingContact(true)} className="text-indigo-400 hover:underline">Ajouter</button>
+                    </p>
+                  )
+                }
+                return (
+                  <div className="space-y-3">
+                    {socials.length > 0 && (
+                      <div className="space-y-2">
+                        {socials.map(({ url, icon, bg, label }) => (
+                          <a key={label} href={url!} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-2.5 text-sm text-neutral-300 hover:text-white transition group">
+                            <span className={`flex items-center justify-center w-7 h-7 rounded-lg border ${bg} group-hover:opacity-80 transition`}>
+                              {icon}
+                            </span>
+                            <span className="truncate text-xs">{label}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {hasAddress && (
+                      <div className={`${socials.length > 0 ? 'pt-2 border-t border-white/5' : ''} space-y-1`}>
+                        <div className="flex items-center gap-1.5 text-xs text-neutral-500 mb-1.5">
+                          <Building2 size={11} /> Adresse
+                        </div>
+                        {profile?.address && <p className="text-xs text-neutral-300">{profile.address}</p>}
+                        {(profile?.postalCode || profile?.city) && (
+                          <p className="text-xs text-neutral-300">{[profile.postalCode, profile.city].filter(Boolean).join(' ')}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()
+            )}
+          </section>
 
         </aside>
       </div>
