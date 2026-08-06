@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
   Settings2, MessageCircle, Star, Plus, MapPin, Briefcase,
-  Calendar, Euro, ChevronLeft, ChevronRight, X,
+  Calendar, Euro, ChevronLeft, ChevronRight, X, Globe, Music, Youtube, Users,
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
@@ -69,6 +69,9 @@ type ApiProfile = {
   followingCount?: number
   reviewsAvg?: number | null
   reviewsCount?: number
+  soundcloudUrl?: string | null
+  showSoundcloud?: boolean
+  youtubeUrl?: string | null
   user?: {
     id: number
     pseudo?: string | null
@@ -387,10 +390,18 @@ export default function OrganizerProfilePage() {
       </div>
 
       {/* ── Corps */}
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
+      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 pb-12">
 
-        {/* Colonne gauche */}
+        {/* ── Colonne gauche */}
         <div className="space-y-6">
+
+          {/* À propos */}
+          {profile?.bio && (
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
+              <h2 className="text-base font-semibold mb-2 text-white/90">À propos</h2>
+              <p className="text-sm text-neutral-300 leading-relaxed">{profile.bio}</p>
+            </section>
+          )}
 
           {/* Agenda */}
           {profile && (
@@ -401,88 +412,6 @@ export default function OrganizerProfilePage() {
               defaultCountry={profile.country ?? null}
             />
           )}
-
-          {/* Bio */}
-          {profile?.bio && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold mb-2">À propos</h2>
-              <p className="text-neutral-200 leading-relaxed">{profile.bio}</p>
-            </section>
-          )}
-
-          {/* ── Mes offres ── */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Briefcase size={16} className="text-pink-400" />
-                <h2 className="text-lg font-semibold">Mes offres</h2>
-                {myOffers.length > 0 && (
-                  <span className="text-xs text-neutral-500">({myOffers.length})</span>
-                )}
-              </div>
-              <button
-                onClick={() => { setOfferForm({ ...EMPTY_OFFER_FORM, location: profile?.location ?? '', country: profile?.country ?? '' }); setOfferError(null); setShowOfferModal(true) }}
-                className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
-              >
-                <Plus size={13} /> Publier une offre
-              </button>
-            </div>
-
-            {myOffers.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucune offre publiée pour le moment.</p>
-            ) : (
-              <>
-                <div className="space-y-3">
-                  {myOffers.slice(offerPage * OFFERS_PER_PAGE, (offerPage + 1) * OFFERS_PER_PAGE).map(o => {
-                    const dateStr = new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
-                    return (
-                      <div key={o.id} className="rounded-xl border border-white/8 bg-black/30 p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">{o.title}</p>
-                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-neutral-500">
-                              <span className="flex items-center gap-1"><Calendar size={11} />{dateStr}</span>
-                              <span className="flex items-center gap-1"><MapPin size={11} />{o.location}</span>
-                              {o.fee != null && <span className="flex items-center gap-1 text-green-400/80"><Euro size={11} />{Number(o.fee).toLocaleString('fr-FR')} €</span>}
-                              {o.specialty && <span className="px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10">{o.specialty}</span>}
-                            </div>
-                            <p className="text-xs text-neutral-400 mt-1.5 line-clamp-2">{o.description}</p>
-                          </div>
-                          <button
-                            onClick={() => deleteOffer(o.id)}
-                            className="text-neutral-600 hover:text-red-400 transition text-xs flex-shrink-0"
-                          >✕</button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Pagination */}
-                {myOffers.length > OFFERS_PER_PAGE && (
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-                    <button
-                      onClick={() => setOfferPage(p => Math.max(0, p - 1))}
-                      disabled={offerPage === 0}
-                      className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30 transition"
-                    >
-                      <ChevronLeft size={14} /> Précédent
-                    </button>
-                    <span className="text-xs text-neutral-600">
-                      {offerPage + 1} / {Math.ceil(myOffers.length / OFFERS_PER_PAGE)}
-                    </span>
-                    <button
-                      onClick={() => setOfferPage(p => Math.min(Math.ceil(myOffers.length / OFFERS_PER_PAGE) - 1, p + 1))}
-                      disabled={(offerPage + 1) * OFFERS_PER_PAGE >= myOffers.length}
-                      className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30 transition"
-                    >
-                      Suivant <ChevronRight size={14} />
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </section>
 
           {/* Publications */}
           <PublicationsSection
@@ -501,25 +430,32 @@ export default function OrganizerProfilePage() {
           />
         </div>
 
-        {/* Colonne droite */}
-        <aside className="space-y-6">
+        {/* ── Colonne droite */}
+        <aside className="space-y-5">
 
           {/* Avis */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold mb-3">Avis</h2>
-
+            <div className="flex items-center gap-2 mb-3">
+              <Star size={15} className="text-yellow-400" />
+              <h2 className="text-base font-semibold">Avis</h2>
+              {profile?.reviewsAvg != null && (
+                <span className="ml-auto text-sm font-medium text-yellow-400">
+                  {profile.reviewsAvg.toFixed(1)}<span className="text-neutral-500 text-xs font-normal"> / 5</span>
+                </span>
+              )}
+            </div>
             {reviews.length === 0 ? (
               <p className="text-sm text-neutral-500">Aucun avis pour l&apos;instant.</p>
             ) : (
               <div className="space-y-3">
-                {reviews.slice(0, 5).map(r => {
+                {reviews.slice(0, 4).map(r => {
                   const rName = r.author?.user
                     ? (r.author.user.pseudo || [r.author.user.firstName, r.author.user.lastName].filter(Boolean).join(' ') || 'Anonyme')
                     : 'Anonyme'
                   return (
-                    <div key={r.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="relative h-8 w-8 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
+                    <div key={r.id} className="rounded-xl border border-white/8 bg-black/20 p-3">
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <div className="relative h-7 w-7 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
                           {r.author?.avatar ? (
                             <Image src={r.author.avatar} alt={rName} fill className="object-cover" />
                           ) : (
@@ -528,26 +464,151 @@ export default function OrganizerProfilePage() {
                             </span>
                           )}
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{rName}</p>
+                        <div>
+                          <p className="text-xs font-medium leading-none mb-1">{rName}</p>
                           <div className="flex items-center gap-0.5">
                             {Array.from({ length: 5 }).map((_, i) => (
-                              <Star
-                                key={i}
-                                size={12}
-                                className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-neutral-600'}
-                              />
+                              <Star key={i} size={10} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-neutral-600'} />
                             ))}
                           </div>
                         </div>
                       </div>
-                      {r.comment && <p className="text-sm text-neutral-200 leading-relaxed">{r.comment}</p>}
+                      {r.comment && <p className="text-xs text-neutral-300 leading-relaxed">{r.comment}</p>}
                     </div>
                   )
                 })}
               </div>
             )}
           </section>
+
+          {/* Mes offres */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Briefcase size={15} className="text-pink-400" />
+                <h2 className="text-base font-semibold">Mes offres</h2>
+                {myOffers.length > 0 && (
+                  <span className="text-xs text-neutral-500">({myOffers.length})</span>
+                )}
+              </div>
+              <button
+                onClick={() => { setOfferForm({ ...EMPTY_OFFER_FORM, location: profile?.location ?? '', country: profile?.country ?? '' }); setOfferError(null); setShowOfferModal(true) }}
+                className="text-xs px-2.5 py-1 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
+              >
+                <Plus size={12} /> Publier
+              </button>
+            </div>
+
+            {myOffers.length === 0 ? (
+              <p className="text-sm text-neutral-500">Aucune offre publiée.</p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {myOffers.slice(offerPage * OFFERS_PER_PAGE, (offerPage + 1) * OFFERS_PER_PAGE).map(o => {
+                    const dateStr = new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+                    return (
+                      <div key={o.id} className="rounded-xl border border-white/8 bg-black/20 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{o.title}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-neutral-500">
+                              <span className="flex items-center gap-1"><Calendar size={10} />{dateStr}</span>
+                              <span className="flex items-center gap-1"><MapPin size={10} />{o.location}</span>
+                              {o.fee != null && <span className="flex items-center gap-1 text-green-400/80"><Euro size={10} />{Number(o.fee).toLocaleString('fr-FR')} €</span>}
+                            </div>
+                            {o.specialty && (
+                              <span className="inline-block mt-1 text-xs px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10">{o.specialty}</span>
+                            )}
+                          </div>
+                          <button onClick={() => deleteOffer(o.id)} className="text-neutral-600 hover:text-red-400 transition text-xs flex-shrink-0">✕</button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {myOffers.length > OFFERS_PER_PAGE && (
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                    <button onClick={() => setOfferPage(p => Math.max(0, p - 1))} disabled={offerPage === 0} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30 transition">
+                      <ChevronLeft size={13} /> Préc.
+                    </button>
+                    <span className="text-xs text-neutral-600">{offerPage + 1} / {Math.ceil(myOffers.length / OFFERS_PER_PAGE)}</span>
+                    <button onClick={() => setOfferPage(p => Math.min(Math.ceil(myOffers.length / OFFERS_PER_PAGE) - 1, p + 1))} disabled={(offerPage + 1) * OFFERS_PER_PAGE >= myOffers.length} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30 transition">
+                      Suiv. <ChevronRight size={13} />
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+
+          {/* Partenaires */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Users size={15} className="text-blue-400" />
+              <h2 className="text-base font-semibold">Partenaires</h2>
+            </div>
+            <p className="text-sm text-neutral-500">Aucun partenaire ajouté.</p>
+          </section>
+
+          {/* Réseaux sociaux */}
+          {(profile?.soundcloudUrl || profile?.youtubeUrl) && (
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Globe size={15} className="text-indigo-400" />
+                <h2 className="text-base font-semibold">Réseaux sociaux</h2>
+              </div>
+              <div className="space-y-2">
+                {profile?.soundcloudUrl && (
+                  <a href={profile.soundcloudUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm text-neutral-300 hover:text-white transition group">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-orange-500/15 border border-orange-500/25 group-hover:bg-orange-500/25 transition">
+                      <Music size={13} className="text-orange-400" />
+                    </span>
+                    <span className="truncate">SoundCloud</span>
+                  </a>
+                )}
+                {profile?.youtubeUrl && (
+                  <a href={profile.youtubeUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm text-neutral-300 hover:text-white transition group">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-red-500/15 border border-red-500/25 group-hover:bg-red-500/25 transition">
+                      <Youtube size={13} className="text-red-400" />
+                    </span>
+                    <span className="truncate">YouTube</span>
+                  </a>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Coordonnées */}
+          {(profile?.location || profile?.country || profile?.radiusKm) && (
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <MapPin size={15} className="text-pink-400" />
+                <h2 className="text-base font-semibold">Coordonnées</h2>
+              </div>
+              <div className="space-y-1.5 text-sm text-neutral-300">
+                {profile?.location && (
+                  <p className="flex items-center gap-2">
+                    <span className="text-neutral-500 text-xs w-14">Ville</span>
+                    {profile.location}
+                  </p>
+                )}
+                {profile?.country && (
+                  <p className="flex items-center gap-2">
+                    <span className="text-neutral-500 text-xs w-14">Pays</span>
+                    {profile.country}
+                  </p>
+                )}
+                {profile?.radiusKm && (
+                  <p className="flex items-center gap-2">
+                    <span className="text-neutral-500 text-xs w-14">Rayon</span>
+                    {profile.radiusKm} km
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
 
         </aside>
       </div>
