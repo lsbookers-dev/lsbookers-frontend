@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
   Settings2, MessageCircle, Star, Plus, MapPin, Music,
+  Globe, Youtube, Instagram, Twitter, Facebook, Linkedin, Link,
+  Pencil, Check, X, Users, Euro, FileText,
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
@@ -31,6 +33,14 @@ type ApiProfile = {
   soundcloudUrl?: string | null
   showSoundcloud?: boolean
   youtubeUrl?: string | null
+  instagramUrl?: string | null
+  facebookUrl?: string | null
+  tiktokUrl?: string | null
+  twitterUrl?: string | null
+  linkedinUrl?: string | null
+  websiteUrl?: string | null
+  cvText?: string | null
+  feeInfo?: string | null
   availableForBooking?: boolean
   showRealName?: boolean
   followersCount?: number
@@ -87,30 +97,64 @@ const buildSoundcloudEmbed = (url: string) => {
   return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url.trim())}&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true`
 }
 
-// ─────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────
 function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const t = typeof window !== 'undefined' ? getAuthToken() : null
   return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
 }
 
+// ─────────────────────────────────────────────
+// Composant bouton édition inline
+// ─────────────────────────────────────────────
+function EditBar({ saving, onSave, onCancel }: { saving: boolean; onSave: () => void; onCancel: () => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button onClick={onCancel} className="text-xs text-neutral-500 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
+        Annuler
+      </button>
+      <button onClick={onSave} disabled={saving} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-pink-600 hover:bg-pink-500 disabled:opacity-50 transition">
+        <Check size={12} /> {saving ? 'Sauvegarde…' : 'Enregistrer'}
+      </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────
 export default function ArtistProfilePage() {
   const router = useRouter()
   const { user } = useAuth()
 
-  const [profile, setProfile] = useState<ApiProfile | null>(null)
+  const [profile, setProfile]           = useState<ApiProfile | null>(null)
   const [publications, setPublications] = useState<Publication[]>([])
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [loading, setLoading] = useState(true)
+  const [reviews, setReviews]           = useState<Review[]>([])
+  const [loading, setLoading]           = useState(true)
 
   // Publication modal
   const [showAddPub, setShowAddPub] = useState(false)
-  const [pubTitle, setPubTitle] = useState('')
+  const [pubTitle, setPubTitle]     = useState('')
   const [pubCaption, setPubCaption] = useState('')
-  const [pubFile, setPubFile] = useState<File | null>(null)
+  const [pubFile, setPubFile]       = useState<File | null>(null)
   const [pubUploading, setPubUploading] = useState(false)
   const pubInputRef = useRef<HTMLInputElement>(null)
+
+  // CV — édition inline
+  const [editingCv, setEditingCv] = useState(false)
+  const [cvDraft, setCvDraft]     = useState('')
+  const [cvSaving, setCvSaving]   = useState(false)
+
+  // Tarifs — édition inline
+  const [editingFee, setEditingFee] = useState(false)
+  const [feeDraft, setFeeDraft]     = useState('')
+  const [feeSaving, setFeeSaving]   = useState(false)
+
+  // Réseaux sociaux — édition inline
+  const [editingSocials, setEditingSocials] = useState(false)
+  const [socialsForm, setSocialsForm] = useState({
+    instagramUrl: '', facebookUrl: '', tiktokUrl: '', twitterUrl: '',
+    linkedinUrl: '', websiteUrl: '',
+  })
+  const [socialsSaving, setSocialsSaving] = useState(false)
 
   // ── Chargement du profil
   useEffect(() => {
@@ -122,17 +166,23 @@ export default function ArtistProfilePage() {
       .then(({ profile: p }) => {
         if (!p) return
         setProfile(p)
+        setCvDraft(p.cvText || '')
+        setFeeDraft(p.feeInfo || '')
+        setSocialsForm({
+          instagramUrl: p.instagramUrl || '',
+          facebookUrl:  p.facebookUrl  || '',
+          tiktokUrl:    p.tiktokUrl    || '',
+          twitterUrl:   p.twitterUrl   || '',
+          linkedinUrl:  p.linkedinUrl  || '',
+          websiteUrl:   p.websiteUrl   || '',
+        })
 
-        // Publications
         if (p.id) {
           fetch(`${API}/api/publications/profile/${p.id}`)
             .then(r => r.json())
             .then(d => setPublications(d.publications || []))
             .catch(() => {})
-        }
 
-        // Avis
-        if (p.id) {
           fetch(`${API}/api/reviews/profile/${p.id}`)
             .then(r => r.json())
             .then(d => setReviews(d.reviews || []))
@@ -143,11 +193,46 @@ export default function ArtistProfilePage() {
       .finally(() => setLoading(false))
   }, [user])
 
+  // ── Sauvegarder un champ
+  const saveField = async (data: Record<string, string | null>) => {
+    if (!profile) return false
+    const token = getAuthToken()
+    const res = await fetch(`${API}/api/profile/${profile.id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      const { profile: updated } = await res.json()
+      setProfile(prev => prev ? { ...prev, ...updated } : prev)
+      return true
+    }
+    return false
+  }
+
+  const saveCv = async () => {
+    setCvSaving(true)
+    if (await saveField({ cvText: cvDraft })) setEditingCv(false)
+    setCvSaving(false)
+  }
+
+  const saveFee = async () => {
+    setFeeSaving(true)
+    if (await saveField({ feeInfo: feeDraft })) setEditingFee(false)
+    setFeeSaving(false)
+  }
+
+  const saveSocials = async () => {
+    setSocialsSaving(true)
+    if (await saveField(socialsForm)) setEditingSocials(false)
+    setSocialsSaving(false)
+  }
+
   // ── Ajouter une publication
   const handleAddPublication = async () => {
     if (!pubTitle.trim() || !pubFile || !profile) return
     setPubUploading(true)
-
     try {
       const fd = new FormData()
       fd.append('file', pubFile)
@@ -155,58 +240,40 @@ export default function ArtistProfilePage() {
       fd.append('type', pubFile.type.startsWith('video/') ? 'video' : 'image')
 
       const uploadRes = await fetch(`${API}/api/upload`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: getAuthHeaders(),
-        body: fd,
+        method: 'POST', credentials: 'include', headers: getAuthHeaders(), body: fd,
       })
       if (!uploadRes.ok) throw new Error('Upload échoué')
       const { url } = await uploadRes.json()
 
-      const mediaType = pubFile.type.startsWith('video/') ? 'video' : 'image'
-
       const pubRes = await fetch(`${API}/api/publications`, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST', credentials: 'include',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          title: pubTitle,
-          media: url,
-          mediaType,
-          caption: pubCaption.trim() || undefined,
-          profileId: profile.id,
+          title: pubTitle, media: url,
+          mediaType: pubFile.type.startsWith('video/') ? 'video' : 'image',
+          caption: pubCaption.trim() || undefined, profileId: profile.id,
         }),
       })
       if (!pubRes.ok) throw new Error('Sauvegarde échouée')
-
-      const saved = await pubRes.json()
-      setPublications(prev => [saved, ...prev])
-      setPubTitle('')
-      setPubCaption('')
-      setPubFile(null)
-      setShowAddPub(false)
+      setPublications(prev => [await pubRes.json(), ...prev])
+      setPubTitle(''); setPubCaption(''); setPubFile(null); setShowAddPub(false)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Erreur lors de l\'ajout')
+      alert(e instanceof Error ? e.message : 'Erreur')
     } finally {
       setPubUploading(false)
       if (pubInputRef.current) pubInputRef.current.value = ''
     }
   }
 
-  // ── Supprimer une publication
   const handleDeletePub = async (id: number) => {
     if (!confirm('Supprimer cette publication ?')) return
     try {
       const res = await fetch(`${API}/api/publications/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: getAuthHeaders(),
+        method: 'DELETE', credentials: 'include', headers: getAuthHeaders(),
       })
       if (!res.ok) throw new Error('Échec')
       setPublications(prev => prev.filter(p => p.id !== id))
-    } catch {
-      alert('Impossible de supprimer la publication')
-    }
+    } catch { alert('Impossible de supprimer') }
   }
 
   if (loading) {
@@ -219,6 +286,15 @@ export default function ArtistProfilePage() {
 
   const soundcloudEmbed = profile?.soundcloudUrl ? buildSoundcloudEmbed(profile.soundcloudUrl) : ''
 
+  const socialLinks = [
+    { url: profile?.instagramUrl, icon: <Instagram size={13} className="text-pink-400" />,   bg: 'bg-pink-500/15 border-pink-500/25',     label: 'Instagram' },
+    { url: profile?.tiktokUrl,    icon: <Music size={13} className="text-white" />,           bg: 'bg-white/10 border-white/15',           label: 'TikTok' },
+    { url: profile?.facebookUrl,  icon: <Facebook size={13} className="text-blue-400" />,    bg: 'bg-blue-500/15 border-blue-500/25',     label: 'Facebook' },
+    { url: profile?.twitterUrl,   icon: <Twitter size={13} className="text-sky-400" />,      bg: 'bg-sky-500/15 border-sky-500/25',       label: 'X / Twitter' },
+    { url: profile?.linkedinUrl,  icon: <Linkedin size={13} className="text-blue-300" />,    bg: 'bg-blue-400/15 border-blue-400/25',     label: 'LinkedIn' },
+    { url: profile?.websiteUrl,   icon: <Link size={13} className="text-indigo-300" />,      bg: 'bg-indigo-500/15 border-indigo-500/25', label: 'Site web' },
+  ].filter(s => s.url)
+
   return (
     <div className="min-h-screen bg-black text-white">
 
@@ -228,20 +304,17 @@ export default function ArtistProfilePage() {
           ? <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
           : <div className="w-full h-full bg-gradient-to-br from-pink-900/40 to-black" />
         }
-        {/* Bouton paramètres */}
         <button
           onClick={() => router.push('/settings/profile')}
           className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur border border-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 text-sm transition"
         >
-          <Settings2 size={16} />
-          Paramètres
+          <Settings2 size={16} /> Paramètres
         </button>
       </div>
 
       {/* ── En-tête profil ── */}
       <div className="max-w-6xl mx-auto px-4 pt-5 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          {/* Avatar */}
           <div className="relative -mt-12 h-24 w-24 rounded-2xl overflow-hidden ring-4 ring-black flex-shrink-0">
             {profile?.avatar
               ? <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
@@ -253,34 +326,24 @@ export default function ArtistProfilePage() {
 
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">{displayName(profile)}</h1>
-
-            {/* Localisation */}
             {(profile?.location || profile?.country) && (
               <p className="flex items-center gap-1 text-sm text-white/50 mt-0.5">
                 <MapPin size={13} />
                 {[profile.location, profile.country].filter(Boolean).join(', ')}
               </p>
             )}
-
-            {/* Spécialités */}
             {profile?.specialties && profile.specialties.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {profile.specialties.map(s => (
-                  <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-pink-600/20 border border-pink-600/40 text-pink-300">
-                    {s}
-                  </span>
+                  <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-pink-600/20 border border-pink-600/40 text-pink-300">{s}</span>
                 ))}
               </div>
             )}
-
-            {/* Stats followers / avis */}
             <div className="flex items-center gap-4 mt-2 text-xs text-white/40">
               <span><strong className="text-white">{profile?.followingCount ?? 0}</strong> abonné{(profile?.followingCount ?? 0) > 1 ? 's' : ''}</span>
               <span><strong className="text-white">{profile?.followersCount ?? 0}</strong> abonnement{(profile?.followersCount ?? 0) > 1 ? 's' : ''}</span>
               {(profile?.reviewsCount ?? 0) > 0 && (
-                <span>
-                  <strong className="text-white">{profile?.reviewsAvg?.toFixed(1)}</strong>★ · {profile?.reviewsCount} avis
-                </span>
+                <span><strong className="text-white">{profile?.reviewsAvg?.toFixed(1)}</strong>★ · {profile?.reviewsCount} avis</span>
               )}
               {profile?.availableForBooking && (
                 <span className="text-emerald-400 font-medium">● Disponible pour booking</span>
@@ -300,15 +363,24 @@ export default function ArtistProfilePage() {
       {/* ── Corps principal ── */}
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 pb-16">
 
-        {/* Colonne gauche */}
+        {/* ── Colonne gauche ── */}
         <div className="space-y-6">
 
-          {/* Bio */}
+          {/* À propos */}
           {profile?.bio && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
               <h2 className="text-base font-semibold mb-2">À propos</h2>
               <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
             </section>
+          )}
+
+          {/* Agenda */}
+          {profile && (
+            <AgendaCalendar
+              profileId={profile.id}
+              isOwner={true}
+              showAvailability={true}
+            />
           )}
 
           {/* Publications */}
@@ -327,105 +399,102 @@ export default function ArtistProfilePage() {
             }
           />
 
-          {/* Agenda */}
-          {profile && (
-            <AgendaCalendar
-              profileId={profile.id}
-              isOwner={true}
-              showAvailability={true}
-            />
-          )}
+          {/* CV */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <FileText size={15} className="text-purple-400" />
+                <h2 className="text-base font-semibold">CV / Expérience</h2>
+              </div>
+              {!editingCv
+                ? <button onClick={() => setEditingCv(true)} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
+                    <Pencil size={12} /> Modifier
+                  </button>
+                : <EditBar saving={cvSaving} onSave={saveCv} onCancel={() => { setEditingCv(false); setCvDraft(profile?.cvText || '') }} />
+              }
+            </div>
+            {editingCv ? (
+              <textarea
+                value={cvDraft}
+                onChange={e => setCvDraft(e.target.value)}
+                rows={6}
+                placeholder="Décris ton parcours, tes expériences, tes formations…"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-purple-500/40 resize-none"
+              />
+            ) : profile?.cvText ? (
+              <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{profile.cvText}</p>
+            ) : (
+              <p className="text-sm text-neutral-500">
+                Aucun CV renseigné.{' '}
+                <button onClick={() => setEditingCv(true)} className="text-purple-400 hover:underline">Ajouter</button>
+              </p>
+            )}
+          </section>
         </div>
 
-        {/* Colonne droite */}
+        {/* ── Colonne droite ── */}
         <aside className="space-y-5">
+
+          {/* Avis */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Star size={15} className="text-yellow-400" />
+              <h2 className="text-base font-semibold">Avis reçus</h2>
+              {(profile?.reviewsAvg ?? 0) > 0 && (
+                <span className="ml-auto text-sm font-medium text-yellow-400">
+                  {profile?.reviewsAvg?.toFixed(1)}<span className="text-neutral-500 text-xs font-normal"> / 5</span>
+                </span>
+              )}
+            </div>
+            {reviews.length === 0
+              ? <p className="text-xs text-white/30 text-center py-3">Aucun avis pour l&apos;instant</p>
+              : <div className="space-y-3">
+                  {reviews.slice(0, 4).map(r => (
+                    <div key={r.id} className="rounded-xl border border-white/8 bg-black/20 p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        {r.author?.avatar
+                          ? <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0"><Image src={r.author.avatar} alt="" fill className="object-cover" /></div>
+                          : <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/40 flex-shrink-0">{r.author?.user?.pseudo?.[0]?.toUpperCase() || '?'}</div>
+                        }
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{r.author?.user?.pseudo || r.author?.user?.firstName || 'Anonyme'}</p>
+                          <div className="flex items-center gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star key={i} size={10} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-white/15'} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      {r.comment && <p className="text-xs text-white/60 leading-relaxed">{r.comment}</p>}
+                    </div>
+                  ))}
+                </div>
+            }
+          </section>
 
           {/* SoundCloud */}
           {profile?.showSoundcloud && soundcloudEmbed && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <div className="rounded-lg overflow-hidden">
-                <iframe
-                  title="SoundCloud"
-                  width="100%"
-                  height="180"
-                  scrolling="no"
-                  frameBorder="no"
-                  allow="autoplay"
-                  src={soundcloudEmbed}
-                />
-              </div>
-            </section>
-          )}
-
-          {/* Styles musicaux */}
-          {profile?.styles && profile.styles.length > 0 && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Music size={15} className="text-pink-400" />
-                <h2 className="text-sm font-semibold">Styles musicaux</h2>
+                <Music size={15} className="text-orange-400" />
+                <h2 className="text-base font-semibold">SoundCloud</h2>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {profile.styles.map(s => (
-                  <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-white/8 border border-white/10 text-white/70">
-                    {s}
-                  </span>
-                ))}
+              <div className="rounded-lg overflow-hidden">
+                <iframe title="SoundCloud" width="100%" height="180" scrolling="no" frameBorder="no" allow="autoplay" src={soundcloudEmbed} />
               </div>
             </section>
           )}
 
-          {/* Avis */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold">Avis reçus</h2>
-              {(profile?.reviewsAvg ?? 0) > 0 && (
-                <span className="text-xs text-white/50">
-                  {profile?.reviewsAvg?.toFixed(1)} / 5 · {profile?.reviewsCount} avis
-                </span>
-              )}
-            </div>
-
-            {reviews.length === 0 && (
-              <p className="text-xs text-white/30 text-center py-4">Aucun avis pour l&apos;instant</p>
-            )}
-
-            <div className="space-y-3">
-              {reviews.slice(0, 5).map(r => (
-                <div key={r.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    {r.author?.avatar
-                      ? <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                          <Image src={r.author.avatar} alt="" fill className="object-cover" />
-                        </div>
-                      : <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/40 flex-shrink-0">
-                          {r.author?.user?.pseudo?.[0]?.toUpperCase() || '?'}
-                        </div>
-                    }
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">
-                        {r.author?.user?.pseudo || r.author?.user?.firstName || 'Anonyme'}
-                      </p>
-                      <div className="flex items-center gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} size={11} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-white/15'} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  {r.comment && <p className="text-xs text-white/60 leading-relaxed">{r.comment}</p>}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Vidéo YouTube */}
+          {/* Vidéo de présentation */}
           {profile?.youtubeUrl && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-sm font-semibold mb-3">Vidéo de prestation</h2>
+              <div className="flex items-center gap-2 mb-3">
+                <Youtube size={15} className="text-red-400" />
+                <h2 className="text-base font-semibold">Vidéo de présentation</h2>
+              </div>
               <div className="rounded-xl overflow-hidden aspect-video">
                 <iframe
-                  width="100%"
-                  height="100%"
+                  width="100%" height="100%"
                   src={profile.youtubeUrl.replace('watch?v=', 'embed/')}
                   title="Vidéo de prestation"
                   frameBorder="0"
@@ -435,47 +504,132 @@ export default function ArtistProfilePage() {
               </div>
             </section>
           )}
+
+          {/* Tarifs */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Euro size={15} className="text-green-400" />
+                <h2 className="text-base font-semibold">Tarifs</h2>
+              </div>
+              {!editingFee
+                ? <button onClick={() => setEditingFee(true)} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
+                    <Pencil size={12} /> Modifier
+                  </button>
+                : <EditBar saving={feeSaving} onSave={saveFee} onCancel={() => { setEditingFee(false); setFeeDraft(profile?.feeInfo || '') }} />
+              }
+            </div>
+            {editingFee ? (
+              <textarea
+                value={feeDraft}
+                onChange={e => setFeeDraft(e.target.value)}
+                rows={4}
+                placeholder="Ex : Cachet à partir de 500€ · Devis sur demande · Frais de déplacement en sus…"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
+              />
+            ) : profile?.feeInfo ? (
+              <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{profile.feeInfo}</p>
+            ) : (
+              <p className="text-sm text-neutral-500">
+                Aucun tarif renseigné.{' '}
+                <button onClick={() => setEditingFee(true)} className="text-green-400 hover:underline">Ajouter</button>
+              </p>
+            )}
+          </section>
+
+          {/* Partenariats */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Users size={15} className="text-blue-400" />
+              <h2 className="text-base font-semibold">Partenariats</h2>
+            </div>
+            <p className="text-sm text-neutral-500">Aucun partenaire ajouté.</p>
+          </section>
+
+          {/* Réseaux sociaux */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Globe size={15} className="text-indigo-400" />
+                <h2 className="text-base font-semibold">Réseaux sociaux</h2>
+              </div>
+              {!editingSocials
+                ? <button onClick={() => setEditingSocials(true)} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
+                    <Pencil size={12} /> Modifier
+                  </button>
+                : <EditBar saving={socialsSaving} onSave={saveSocials} onCancel={() => { setEditingSocials(false); setSocialsForm({ instagramUrl: profile?.instagramUrl || '', facebookUrl: profile?.facebookUrl || '', tiktokUrl: profile?.tiktokUrl || '', twitterUrl: profile?.twitterUrl || '', linkedinUrl: profile?.linkedinUrl || '', websiteUrl: profile?.websiteUrl || '' }) }} />
+              }
+            </div>
+
+            {editingSocials ? (
+              <div className="space-y-2.5">
+                {[
+                  { key: 'instagramUrl',  label: 'Instagram',   placeholder: 'https://instagram.com/...' },
+                  { key: 'tiktokUrl',     label: 'TikTok',      placeholder: 'https://tiktok.com/@...' },
+                  { key: 'facebookUrl',   label: 'Facebook',    placeholder: 'https://facebook.com/...' },
+                  { key: 'twitterUrl',    label: 'X / Twitter', placeholder: 'https://x.com/...' },
+                  { key: 'linkedinUrl',   label: 'LinkedIn',    placeholder: 'https://linkedin.com/...' },
+                  { key: 'websiteUrl',    label: 'Site web',    placeholder: 'https://monsite.com' },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="text-xs text-neutral-500 w-20 flex-shrink-0">{label}</span>
+                    <input
+                      type="url"
+                      value={socialsForm[key as keyof typeof socialsForm]}
+                      onChange={e => setSocialsForm(f => ({ ...f, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="flex-1 bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : socialLinks.length === 0 ? (
+              <p className="text-sm text-neutral-500">
+                Aucun réseau renseigné.{' '}
+                <button onClick={() => setEditingSocials(true)} className="text-indigo-400 hover:underline">Ajouter</button>
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {socialLinks.map(({ url, icon, bg, label }) => (
+                  <a key={label} href={url!} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm text-neutral-300 hover:text-white transition group">
+                    <span className={`flex items-center justify-center w-7 h-7 rounded-lg border ${bg} group-hover:opacity-80 transition`}>
+                      {icon}
+                    </span>
+                    <span className="text-xs">{label}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
+
         </aside>
       </div>
 
       {/* ── Modal : ajouter une publication ── */}
       {showAddPub && (
-        <div
-          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowAddPub(false)}
-        >
-          <div
-            className="max-w-md w-full bg-neutral-950 border border-white/10 rounded-2xl p-5"
-            onClick={e => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAddPub(false)}>
+          <div className="max-w-md w-full bg-neutral-950 border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold">Nouvelle publication</h3>
-              <button onClick={() => setShowAddPub(false)} className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20">Fermer</button>
+              <button onClick={() => setShowAddPub(false)} className="text-neutral-400 hover:text-white"><X size={18} /></button>
             </div>
             <div className="space-y-3">
               <input
                 className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/60"
-                placeholder="Titre"
-                value={pubTitle}
-                onChange={e => setPubTitle(e.target.value)}
+                placeholder="Titre" value={pubTitle} onChange={e => setPubTitle(e.target.value)}
               />
               <textarea
                 className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/60 resize-none"
-                placeholder="Légende (optionnel)"
-                rows={3}
-                value={pubCaption}
-                onChange={e => setPubCaption(e.target.value)}
+                placeholder="Légende (optionnel)" rows={3} value={pubCaption} onChange={e => setPubCaption(e.target.value)}
               />
               <input
-                ref={pubInputRef}
-                type="file"
-                accept="image/*,video/*"
+                ref={pubInputRef} type="file" accept="image/*,video/*"
                 className="w-full text-sm text-white/50 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-white/10 file:text-white hover:file:bg-white/20"
                 onChange={e => setPubFile(e.target.files?.[0] || null)}
               />
               <button
-                onClick={handleAddPublication}
-                disabled={pubUploading || !pubTitle.trim() || !pubFile}
+                onClick={handleAddPublication} disabled={pubUploading || !pubTitle.trim() || !pubFile}
                 className="w-full py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-sm font-semibold transition"
               >
                 {pubUploading ? 'Envoi en cours…' : 'Publier'}
