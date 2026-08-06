@@ -790,7 +790,7 @@ export default function AgendaCalendar({
                 {MONTHS_FR[month - 1]} {year}
               </span>
               {events.length > 0 && (
-                <span style={{ fontSize: 11, color: '#485272' }}>
+                <span style={{ fontSize: 11, color: '#9ea8c8' }}>
                   {events.length} événement{events.length > 1 ? 's' : ''}
                 </span>
               )}
@@ -817,13 +817,13 @@ export default function AgendaCalendar({
               <div style={{ width: '0.5px', height: 16, background: '#1c2030', margin: '0 2px' }} />
               <button
                 onClick={prevMonth}
-                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#485272', cursor: 'pointer' }}
+                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#9ea8c8', cursor: 'pointer' }}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={nextMonth}
-                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#485272', cursor: 'pointer' }}
+                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#9ea8c8', cursor: 'pointer' }}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

@@ -83,7 +83,7 @@ export default function CalendarGrid({
         {/* Jours de la semaine */}
         <div className="grid grid-cols-7 mb-2">
           {DAYS_FR.map((d, i) => (
-            <div key={i} className="text-center font-medium py-1" style={{ fontSize: 10, color: '#2d3554', letterSpacing: '0.05em' }}>
+            <div key={i} className="text-center font-medium py-1" style={{ fontSize: 10, color: '#8892b0', letterSpacing: '0.05em' }}>
               {d}
             </div>
           ))}
@@ -91,7 +91,7 @@ export default function CalendarGrid({
 
         {/* Cellules */}
         {loading ? (
-          <div className="h-40 flex items-center justify-center" style={{ color: '#2d3554', fontSize: 13 }}>
+          <div className="h-40 flex items-center justify-center" style={{ color: '#8892b0', fontSize: 13 }}>
             Chargement…
           </div>
         ) : (
@@ -104,7 +104,7 @@ export default function CalendarGrid({
               const isPast     = date < now && !isToday
 
               let cellStyle: React.CSSProperties = {}
-              let numColor = '#3a4060'
+              let numColor = '#8892b0'
 
               if (isSelected) {
                 cellStyle = { background: '#4f46e5', outline: '2px solid #6366f1', outlineOffset: 1, borderRadius: 10 }
@@ -114,9 +114,9 @@ export default function CalendarGrid({
                 numColor = '#a5b4fc'
               } else if (avail) {
                 cellStyle = { borderRadius: 10 }
-                numColor = isPast ? '#3a4060' : '#d0daf0'
+                numColor = isPast ? '#6b7a9a' : '#e2e8f8'
               } else {
-                numColor = isPast ? '#272f45' : '#3a4060'
+                numColor = isPast ? '#5a6580' : '#8892b0'
               }
 
               return (
@@ -165,20 +165,20 @@ export default function CalendarGrid({
 
         {/* Légende */}
         <div className="flex items-center gap-4 mt-3 pt-3 flex-wrap" style={{ borderTop: '0.5px solid #1c2030' }}>
-          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#2d3554' }}>
+          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#8892b0' }}>
             <span style={{ display: 'inline-block', width: 12, height: 2, background: '#4ade80', borderRadius: 1 }} />
             Disponible
           </span>
-          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#2d3554' }}>
+          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#8892b0' }}>
             <span style={{ display: 'inline-block', width: 12, height: 2, background: '#fb923c', borderRadius: 1 }} />
             En discussion
           </span>
-          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#2d3554' }}>
+          <span className="flex items-center gap-1.5" style={{ fontSize: 10, color: '#8892b0' }}>
             <span style={{ display: 'inline-block', width: 12, height: 2, background: '#f87171', borderRadius: 1 }} />
             Indisponible
           </span>
           {totalEvents > 0 && (
-            <span className="ml-auto" style={{ fontSize: 10, color: '#2d3554' }}>
+            <span className="ml-auto" style={{ fontSize: 10, color: '#8892b0' }}>
               {totalEvents} événement{totalEvents > 1 ? 's' : ''} ce mois
             </span>
           )}
@@ -334,12 +334,12 @@ export default function CalendarGrid({
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
                           {!e.allDay && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#485272' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#9ea8c8' }}>
                               <Clock style={{ width: 10, height: 10 }} />{formatHour(e.start)}{e.end ? ` – ${formatHour(e.end)}` : ''}
                             </span>
                           )}
                           {e.lieu && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#485272' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#9ea8c8' }}>
                               <MapPin style={{ width: 10, height: 10 }} />{e.lieu}
                             </span>
                           )}
@@ -365,7 +365,7 @@ export default function CalendarGrid({
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5">
               <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            <p style={{ fontSize: 11, color: '#485272', textAlign: 'center', lineHeight: 1.5 }}>Sélectionnez<br />un jour</p>
+            <p style={{ fontSize: 11, color: '#9ea8c8', textAlign: 'center', lineHeight: 1.5 }}>Sélectionnez<br />un jour</p>
           </div>
         )}
       </div>
