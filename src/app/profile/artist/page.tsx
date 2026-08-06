@@ -255,7 +255,8 @@ export default function ArtistProfilePage() {
         }),
       })
       if (!pubRes.ok) throw new Error('Sauvegarde échouée')
-      setPublications(prev => [await pubRes.json(), ...prev])
+      const saved = await pubRes.json()
+      setPublications(prev => [saved, ...prev])
       setPubTitle(''); setPubCaption(''); setPubFile(null); setShowAddPub(false)
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Erreur')
