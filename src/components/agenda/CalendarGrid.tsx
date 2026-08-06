@@ -2,7 +2,7 @@
 
 import { Send, X, Clock, MapPin } from 'lucide-react'
 import { CalEvent, AvailDay } from './types'
-import { DAYS_FR, AVAIL_OPTIONS, isSameDay, formatHour, categoryColor } from './helpers'
+import { DAYS_FR, AVAIL_OPTIONS, isSameDay, formatHour } from './helpers'
 
 interface CalendarGridProps {
   cells: (Date | null)[]
