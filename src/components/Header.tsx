@@ -121,9 +121,13 @@ export default function Header() {
 
   // ── Popup notifications ─────────────────────────────
   const notifRef    = useRef<HTMLDivElement>(null)
+  const notifOpenRef = useRef(false)           // ← ref pour le polling
   const [notifOpen, setNotifOpen]       = useState(false)
   const [notifList, setNotifList]       = useState<PopupNotif[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
+
+  // Garder le ref en sync avec l'état
+  useEffect(() => { notifOpenRef.current = notifOpen }, [notifOpen])
 
   // Lire aussi directement le localStorage pour les utilisateurs déjà connectés
   // (le fix de normalizeUser s'applique seulement après une reconnexion)
@@ -160,32 +164,25 @@ export default function Header() {
     setNotifOpen(v => !v)
     if (!opening) return
 
-    // Fetch la liste
+    // Réinitialiser le compteur immédiatement (avant même la réponse réseau)
+    setUnreadNotif(0)
     setNotifLoading(true)
+
+    // Fetch liste + mark-all-read en parallèle
+    const token = getAuthToken()
+    const headers = { Authorization: `Bearer ${token}` }
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
+      const [listRes] = await Promise.all([
+        fetch(`${API_BASE}/api/notifications`, { headers }),
+        fetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH', headers }),
+      ])
+      if (listRes.ok) {
+        const data = await listRes.json()
         setNotifList(data.notifications || [])
       }
     } catch { /* silencieux */ }
     setNotifLoading(false)
-
-    // Marquer tout comme lu + réinitialiser le compteur
-    if (unreadNotif > 0) {
-      setUnreadNotif(0)
-      try {
-        const token = getAuthToken()
-        await fetch(`${API_BASE}/api/notifications/mark-all-read`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      } catch { /* silencieux */ }
-    }
-  }, [notifOpen, API_BASE, unreadNotif])
+  }, [notifOpen, API_BASE])
 
   /* ── Fermer le menu au changement de page ──────────── */
   useEffect(() => { setMenuOpen(false) }, [pathname])
@@ -202,8 +199,10 @@ export default function Header() {
         fetch(`${API_BASE}/api/messages/unread-count?t=${Date.now()}`, { headers }),
         fetch(`${API_BASE}/api/notifications/unread-count?t=${Date.now()}`, { headers }),
       ])
-      if (msgRes.ok)   setUnreadMsg(Number((await msgRes.json()).count ?? 0))
-      if (notifRes.ok) setUnreadNotif(Number((await notifRes.json()).count ?? 0))
+      if (msgRes.ok) setUnreadMsg(Number((await msgRes.json()).count ?? 0))
+      // Ne pas écraser le compteur si le popup est ouvert (évite la race condition)
+      if (notifRes.ok && !notifOpenRef.current)
+        setUnreadNotif(Number((await notifRes.json()).count ?? 0))
     } catch { /* silencieux */ }
   }, [API_BASE, user?.id])
 
