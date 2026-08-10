@@ -47,10 +47,24 @@ function getConfig(type: string): TypeConfig {
   return TYPE_CONFIG[type] || TYPE_CONFIG.DEFAULT
 }
 
+const BOOKING_TYPES = [
+  'BOOKING_REQUEST', 'BOOKING_ACCEPTED', 'BOOKING_DECLINED',
+  'BOOKING_CANCELLED', 'CANCELLATION_REQUEST', 'CANCELLATION_ACCEPTED',
+  'CANCELLATION_DECLINED', 'PAYMENT_RECEIVED',
+]
+
 function getLink(notif: Notif): string | null {
-  if (notif.conversationId) return `/messages?c=${notif.conversationId}`
-  if (notif.offerId) return `/offers`
-  if (notif.actor?.id) {
+  // Messages → conversation directe
+  if (notif.type === 'NEW_MESSAGE' && notif.conversationId)
+    return `/messages?c=${notif.conversationId}`
+  // Bookings → conversation liée (ou agenda en fallback)
+  if (BOOKING_TYPES.includes(notif.type))
+    return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
+  // Offres
+  if (notif.type === 'NEW_OFFER')
+    return `/offers`
+  // Réseau social → profil de l'acteur
+  if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()
     if (role === 'artist')    return `/artist/${notif.actor.id}`
     if (role === 'organizer') return `/organizer/${notif.actor.id}`

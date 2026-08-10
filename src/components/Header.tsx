@@ -16,6 +16,56 @@ import { getAuthToken } from '@/utils/auth'
 ───────────────────────────────────────────────────────── */
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
+type PopupNotif = {
+  id: number
+  type: string
+  content: string
+  read: boolean
+  createdAt: string
+  actor?: { id: number; name?: string | null; avatar?: string | null; role?: string | null } | null
+  conversationId?: number | null
+  offerId?: number | null
+}
+
+const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
+  NEW_MESSAGE:           { icon: '💬', color: 'bg-blue-500/15 text-blue-300' },
+  BOOKING_REQUEST:       { icon: '📩', color: 'bg-violet-500/15 text-violet-300' },
+  BOOKING_ACCEPTED:      { icon: '✅', color: 'bg-green-500/15 text-green-300' },
+  BOOKING_DECLINED:      { icon: '❌', color: 'bg-red-500/15 text-red-300' },
+  BOOKING_CANCELLED:     { icon: '🚫', color: 'bg-red-500/15 text-red-300' },
+  CANCELLATION_REQUEST:  { icon: '⚠️', color: 'bg-orange-500/15 text-orange-300' },
+  CANCELLATION_ACCEPTED: { icon: '✅', color: 'bg-green-500/15 text-green-300' },
+  CANCELLATION_DECLINED: { icon: '❌', color: 'bg-red-500/15 text-red-300' },
+  PAYMENT_RECEIVED:      { icon: '💳', color: 'bg-green-500/15 text-green-300' },
+  NEW_OFFER:             { icon: '🎯', color: 'bg-pink-500/15 text-pink-300' },
+  NEW_FOLLOW:            { icon: '👤', color: 'bg-teal-500/15 text-teal-300' },
+  NEW_COMMENT:           { icon: '💭', color: 'bg-indigo-500/15 text-indigo-300' },
+  NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
+  DEFAULT:               { icon: '🔔', color: 'bg-white/10 text-white/50' },
+}
+
+const BOOKING_TYPES = [
+  'BOOKING_REQUEST', 'BOOKING_ACCEPTED', 'BOOKING_DECLINED',
+  'BOOKING_CANCELLED', 'CANCELLATION_REQUEST', 'CANCELLATION_ACCEPTED',
+  'CANCELLATION_DECLINED', 'PAYMENT_RECEIVED',
+]
+
+function getPopupLink(notif: PopupNotif): string | null {
+  if (notif.type === 'NEW_MESSAGE' && notif.conversationId)
+    return `/messages?c=${notif.conversationId}`
+  if (BOOKING_TYPES.includes(notif.type))
+    return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
+  if (notif.type === 'NEW_OFFER')
+    return `/offers`
+  if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.actor?.id) {
+    const role = notif.actor.role?.toLowerCase()
+    if (role === 'artist')    return `/artist/${notif.actor.id}`
+    if (role === 'organizer') return `/organizer/${notif.actor.id}`
+    if (role === 'provider')  return `/provider/${notif.actor.id}`
+  }
+  return null
+}
+
 type AuthUser = {
   id: number | string
   name?: string
@@ -67,7 +117,13 @@ export default function Header() {
   const [menuOpen, setMenuOpen]           = useState(false)
   const [unreadMsg, setUnreadMsg]         = useState(0)
   const [unreadNotif, setUnreadNotif]     = useState(0)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuRef  = useRef<HTMLDivElement>(null)
+
+  // ── Popup notifications ─────────────────────────────
+  const notifRef    = useRef<HTMLDivElement>(null)
+  const [notifOpen, setNotifOpen]       = useState(false)
+  const [notifList, setNotifList]       = useState<PopupNotif[]>([])
+  const [notifLoading, setNotifLoading] = useState(false)
 
   // Lire aussi directement le localStorage pour les utilisateurs déjà connectés
   // (le fix de normalizeUser s'applique seulement après une reconnexion)
@@ -86,16 +142,50 @@ export default function Header() {
   const avatarSrc = user?.avatarUrl || user?.avatar || localAvatar || null
   const displayName = user?.name || localName || 'Mon compte'
 
-  /* ── Fermer le menu au clic extérieur ──────────────── */
+  /* ── Fermer les menus au clic extérieur ────────────── */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node))
         setMenuOpen(false)
-      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node))
+        setNotifOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  /* ── Ouvrir le popup notifications ─────────────────── */
+  const openNotifPopup = useCallback(async () => {
+    const opening = !notifOpen
+    setNotifOpen(v => !v)
+    if (!opening) return
+
+    // Fetch la liste
+    setNotifLoading(true)
+    try {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setNotifList(data.notifications || [])
+      }
+    } catch { /* silencieux */ }
+    setNotifLoading(false)
+
+    // Marquer tout comme lu + réinitialiser le compteur
+    if (unreadNotif > 0) {
+      setUnreadNotif(0)
+      try {
+        const token = getAuthToken()
+        await fetch(`${API_BASE}/api/notifications/mark-all-read`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      } catch { /* silencieux */ }
+    }
+  }, [notifOpen, API_BASE, unreadNotif])
 
   /* ── Fermer le menu au changement de page ──────────── */
   useEffect(() => { setMenuOpen(false) }, [pathname])
@@ -192,17 +282,94 @@ export default function Header() {
                 )}
               </Link>
 
-              {/* Notifications — masqué sur mobile */}
-              <Link href="/notifications"
-                className="hidden md:flex relative rounded-full p-2.5 hover:bg-white/8 transition"
-                title="Notifications">
-                <Bell className="h-5 w-5 text-white/80" />
-                {unreadNotif > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 rounded-full bg-purple-600 text-[9px] font-bold text-white grid place-items-center">
-                    {unreadNotif > 99 ? '99+' : unreadNotif}
-                  </span>
+              {/* Notifications — popup desktop */}
+              <div className="hidden md:block relative" ref={notifRef}>
+                <button
+                  onClick={openNotifPopup}
+                  className="flex relative rounded-full p-2.5 hover:bg-white/8 transition"
+                  title="Notifications"
+                >
+                  <Bell className="h-5 w-5 text-white/80" />
+                  {unreadNotif > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 rounded-full bg-purple-600 text-[9px] font-bold text-white grid place-items-center">
+                      {unreadNotif > 99 ? '99+' : unreadNotif}
+                    </span>
+                  )}
+                </button>
+
+                {notifOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-[380px] rounded-2xl border border-white/10 bg-neutral-900/98 backdrop-blur shadow-2xl overflow-hidden z-50 flex flex-col" style={{ maxHeight: '520px' }}>
+                    {/* En-tête popup */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
+                      <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                      <Link
+                        href="/notifications"
+                        onClick={() => setNotifOpen(false)}
+                        className="text-xs text-white/40 hover:text-white/70 transition"
+                      >
+                        Tout voir →
+                      </Link>
+                    </div>
+
+                    {/* Corps scrollable */}
+                    <div className="overflow-y-auto flex-1">
+                      {notifLoading ? (
+                        <div className="flex items-center justify-center py-10">
+                          <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : notifList.length === 0 ? (
+                        <div className="text-center py-10">
+                          <p className="text-2xl mb-2">🔔</p>
+                          <p className="text-xs text-white/30">Aucune notification</p>
+                        </div>
+                      ) : (
+                        <div className="p-2 space-y-0.5">
+                          {notifList.slice(0, 20).map(notif => {
+                            const cfg  = POPUP_TYPE_CONFIG[notif.type] || POPUP_TYPE_CONFIG.DEFAULT
+                            const link = getPopupLink(notif)
+                            const inner = (
+                              <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
+                                notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
+                              }`}>
+                                {/* Avatar ou icône */}
+                                <div className="shrink-0 mt-0.5">
+                                  {notif.actor?.avatar ? (
+                                    <img src={notif.actor.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                                  ) : (
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${cfg.color}`}>
+                                      {cfg.icon}
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Texte */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-white/75 leading-relaxed line-clamp-2">{notif.content}</p>
+                                  <p className="text-[10px] text-white/30 mt-1">
+                                    {new Date(notif.createdAt).toLocaleDateString('fr-FR', {
+                                      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                                    })}
+                                  </p>
+                                </div>
+                                {/* Point non-lu */}
+                                {!notif.read && (
+                                  <span className="shrink-0 w-2 h-2 rounded-full bg-violet-400 mt-1" />
+                                )}
+                              </div>
+                            )
+                            return link ? (
+                              <Link key={notif.id} href={link} onClick={() => setNotifOpen(false)} className="block">
+                                {inner}
+                              </Link>
+                            ) : (
+                              <div key={notif.id}>{inner}</div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </Link>
+              </div>
 
               {/* ── Menu compte ──────────────────────────── */}
               {user && (
