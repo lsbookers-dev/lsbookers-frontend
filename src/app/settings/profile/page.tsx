@@ -324,6 +324,10 @@ export default function ProfileSettings() {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = '' // reset pour permettre de re-sélectionner le même fichier
+    if (file.size > 100 * 1024 * 1024) {
+      setError('Le fichier dépasse 100 Mo. Veuillez choisir une image plus légère.')
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => setCropModal({ src: reader.result as string, type })
     reader.readAsDataURL(file)
