@@ -530,16 +530,16 @@ export default function RegisterPage() {
                   </p>
 
                   {role === 'ARTIST' ? (
-                    <Field label="Pseudo / Nom de scène" hint="Lettres, chiffres, tirets et underscores — 3 à 30 caractères.">
-                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. DJNova, MC Flash…" pattern="[a-zA-Z0-9_.\-]{3,30}" title="3 à 30 caractères : lettres, chiffres, tirets, underscores" />
+                    <Field label="Pseudo / Nom de scène" hint="Lettres, chiffres, espaces, tirets et underscores — 3 à 30 caractères.">
+                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. DJ Nova, MC Flash…" pattern="[a-zA-Z0-9_ .\-]{3,30}" title="3 à 30 caractères : lettres, chiffres, espaces, tirets, underscores" />
                     </Field>
                   ) : role === 'ORGANIZER' ? (
                     <Field label="Nom de l'établissement / Nom commercial" hint="Ce nom apparaîtra sur votre profil public.">
-                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. ClubNova, FestivalLumieres…" pattern="[a-zA-Z0-9_.\-]{3,30}" title="3 à 30 caractères" />
+                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. Club Nova, Festival Lumières…" pattern="[a-zA-Z0-9_ .\-]{3,30}" title="3 à 30 caractères" />
                     </Field>
                   ) : (
                     <Field label="Nom commercial / Nom de votre activité" hint="Ce nom apparaîtra sur votre profil public.">
-                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. PhotoStudio94, SonPro…" pattern="[a-zA-Z0-9_.\-]{3,30}" title="3 à 30 caractères" />
+                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. Photo Studio 94, Son Pro…" pattern="[a-zA-Z0-9_ .\-]{3,30}" title="3 à 30 caractères" />
                     </Field>
                   )}
 
