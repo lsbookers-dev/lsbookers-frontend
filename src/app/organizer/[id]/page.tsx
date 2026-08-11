@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { MessageCircle, Plus, X, Calendar, MapPin, Euro, Briefcase } from 'lucide-react'
+import { MessageCircle, Plus, X, Calendar, MapPin, Euro, Briefcase, Instagram, Facebook, Globe, Music } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import PublicationsSection from '@/components/PublicationsSection'
@@ -41,6 +41,15 @@ type PublicProfile = {
   radiusKm?: number | null
   specialties?: string[] | null
   socials?: Socials
+  instagramUrl?: string | null
+  facebookUrl?: string | null
+  tiktokUrl?: string | null
+  twitterUrl?: string | null
+  linkedinUrl?: string | null
+  websiteUrl?: string | null
+  address?: string | null
+  city?: string | null
+  postalCode?: string | null
   followersCount?: number
   followingCount?: number
   user?: PublicUser
@@ -575,15 +584,58 @@ export default function OrganizerPublicProfilePage() {
           </div>
 
           <aside className="space-y-6">
+            {/* Avis */}
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <h2 className="text-lg font-semibold">Avis</h2>
               <p className="text-neutral-400 text-sm mt-3">Aucun avis pour le moment.</p>
             </section>
 
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold">Tarifs</h2>
-              <p className="text-neutral-400 text-sm mt-3">Tarifs non renseignés.</p>
-            </section>
+            {/* Coordonnées */}
+            {(profile.instagramUrl || profile.facebookUrl || profile.tiktokUrl ||
+              profile.twitterUrl || profile.linkedinUrl || profile.websiteUrl ||
+              profile.address || profile.city) && (() => {
+              const socialLinks = [
+                { url: profile.instagramUrl, icon: Instagram, label: 'Instagram',  color: 'hover:text-pink-400' },
+                { url: profile.facebookUrl,  icon: Facebook,  label: 'Facebook',   color: 'hover:text-blue-400' },
+                { url: profile.tiktokUrl,    icon: Music,      label: 'TikTok',     color: 'hover:text-white' },
+                { url: profile.twitterUrl,   icon: Globe,      label: 'Twitter/X',  color: 'hover:text-sky-400' },
+                { url: profile.linkedinUrl,  icon: Globe,      label: 'LinkedIn',   color: 'hover:text-blue-300' },
+                { url: profile.websiteUrl,   icon: Globe,      label: 'Site web',   color: 'hover:text-violet-400' },
+              ].filter(s => s.url?.trim())
+
+              const addressLine = [profile.address, profile.postalCode, profile.city].filter(Boolean).join(', ')
+
+              return (
+                <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+                  <h2 className="text-lg font-semibold">Coordonnées</h2>
+
+                  {addressLine && (
+                    <p className="mt-3 text-sm text-white/70 flex items-start gap-2">
+                      <MapPin className="w-4 h-4 mt-0.5 text-white/30 shrink-0" />
+                      {addressLine}
+                    </p>
+                  )}
+
+                  {socialLinks.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-4">
+                      {socialLinks.map(({ url, icon: Icon, label, color }) => (
+                        <a
+                          key={label}
+                          href={url!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={label}
+                          className={`flex items-center gap-2 text-white/40 ${color} transition-colors`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span className="text-xs">{label}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )
+            })()}
           </aside>
         </div>
       </div>

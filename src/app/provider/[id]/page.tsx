@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Instagram, Facebook, Globe, Music, Youtube } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import AgendaCalendar from '@/components/AgendaCalendar'
@@ -31,6 +31,15 @@ type PublicProfile = {
   radiusKm?: number | null
   avatar?: string | null
   banner?: string | null
+  cvText?: string | null
+  feeInfo?: string | null
+  youtubeUrl?: string | null
+  instagramUrl?: string | null
+  facebookUrl?: string | null
+  tiktokUrl?: string | null
+  twitterUrl?: string | null
+  linkedinUrl?: string | null
+  websiteUrl?: string | null
   followersCount?: number
   followingCount?: number
   user?: PublicUser
@@ -273,6 +282,7 @@ export default function ProviderPublicProfilePage() {
             {/* Publications */}
             <PublicationsSection publications={publications} title="Réalisations" />
 
+            {/* Agenda */}
             {profile && (
               <AgendaCalendar
                 profileId={profile.id}
@@ -283,43 +293,98 @@ export default function ProviderPublicProfilePage() {
               />
             )}
 
+            {/* CV */}
+            {profile.cvText && (
+              <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+                <h2 className="text-lg font-semibold">CV / Expérience</h2>
+                <p className="text-neutral-200 mt-3 leading-relaxed whitespace-pre-line text-sm">{profile.cvText}</p>
+              </section>
+            )}
+
           </div>
 
           {/* ===== Colonne droite ===== */}
 
-          <aside className="space-y-6">
+          {(() => {
+            const youtubeEmbed = profile.youtubeUrl?.trim()
+              ? (() => {
+                  const match = profile.youtubeUrl!.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
+                  return match ? `https://www.youtube.com/embed/${match[1]}` : profile.youtubeUrl!
+                })()
+              : ''
 
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            const socialLinks = [
+              { url: profile.instagramUrl, icon: Instagram, label: 'Instagram',  color: 'hover:text-pink-400' },
+              { url: profile.facebookUrl,  icon: Facebook,  label: 'Facebook',   color: 'hover:text-blue-400' },
+              { url: profile.tiktokUrl,    icon: Music,      label: 'TikTok',     color: 'hover:text-white' },
+              { url: profile.twitterUrl,   icon: Globe,      label: 'Twitter/X',  color: 'hover:text-sky-400' },
+              { url: profile.linkedinUrl,  icon: Globe,      label: 'LinkedIn',   color: 'hover:text-blue-300' },
+              { url: profile.websiteUrl,   icon: Globe,      label: 'Site web',   color: 'hover:text-violet-400' },
+            ].filter(s => s.url?.trim())
 
-              <h2 className="text-lg font-semibold">Informations</h2>
+            return (
+              <aside className="space-y-6">
 
-              <ul className="mt-3 space-y-2 text-sm text-white/80">
+                {/* Avis */}
+                <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+                  <h2 className="text-lg font-semibold">Avis</h2>
+                  <p className="text-neutral-400 text-sm mt-3">Les avis seront ajoutés prochainement.</p>
+                </section>
 
-                <li><span className="text-white/50">Établissement :</span> {etab || '—'}</li>
+                {/* Prestations & Tarifs */}
+                {profile.feeInfo && (
+                  <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+                    <h2 className="text-lg font-semibold">Prestations &amp; Tarifs</h2>
+                    <p className="text-neutral-200 mt-3 leading-relaxed whitespace-pre-line text-sm">{profile.feeInfo}</p>
+                  </section>
+                )}
 
-                <li><span className="text-white/50">Localisation :</span> {location}</li>
+                {/* Vidéo de présentation */}
+                {youtubeEmbed && (
+                  <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+                    <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <Youtube className="w-4 h-4 text-red-400" />
+                      Vidéo de présentation
+                    </h2>
+                    <div className="rounded-xl overflow-hidden aspect-video">
+                      <iframe
+                        title="YouTube"
+                        width="100%"
+                        height="100%"
+                        src={youtubeEmbed}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    </div>
+                  </section>
+                )}
 
-                <li><span className="text-white/50">Pays :</span> {country || '—'}</li>
+                {/* Réseaux sociaux */}
+                {socialLinks.length > 0 && (
+                  <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+                    <h2 className="text-lg font-semibold">Réseaux sociaux</h2>
+                    <div className="mt-3 flex flex-wrap gap-4">
+                      {socialLinks.map(({ url, icon: Icon, label, color }) => (
+                        <a
+                          key={label}
+                          href={url!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={label}
+                          className={`flex items-center gap-2 text-white/40 ${color} transition-colors`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span className="text-xs">{label}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
-                <li><span className="text-white/50">Rayon :</span> {radius ?? '—'} {radius ? 'km' : ''}</li>
-
-              </ul>
-
-            </section>
-
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-
-              <h2 className="text-lg font-semibold">Avis</h2>
-
-              <p className="text-neutral-400 text-sm mt-3">
-
-                Les avis seront ajoutés prochainement.
-
-              </p>
-
-            </section>
-
-          </aside>
+              </aside>
+            )
+          })()}
 
         </div>
 
