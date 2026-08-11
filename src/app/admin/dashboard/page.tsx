@@ -18,14 +18,26 @@ type Summary = {
   signupsToday: number
 }
 
+type LoginPeriod = 'day' | 'week' | 'month' | 'year'
+
+const PERIOD_LABELS: Record<LoginPeriod, string> = {
+  day:   'Aujourd\'hui',
+  week:  '7 derniers jours',
+  month: 'Ce mois',
+  year:  'Cette année',
+}
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 const money = (cents: number) =>
   (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
 export default function AdminDashboard() {
-  const [summary, setSummary] = React.useState<Summary | null>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
+  const [summary, setSummary]           = React.useState<Summary | null>(null)
+  const [loading, setLoading]           = React.useState(true)
+  const [error, setError]               = React.useState<string | null>(null)
+  const [loginPeriod, setLoginPeriod]   = React.useState<LoginPeriod>('day')
+  const [loginCount, setLoginCount]     = React.useState<number | null>(null)
+  const [loginLoading, setLoginLoading] = React.useState(false)
 
   const tokenRef = React.useRef<string | null>(null)
   React.useEffect(() => {
@@ -41,6 +53,7 @@ export default function AdminDashboard() {
     cache: 'no-store' as const,
   }), [])
 
+  // Chargement du résumé général
   React.useEffect(() => {
     let alive = true
     ;(async () => {
@@ -62,6 +75,25 @@ export default function AdminDashboard() {
     return () => { alive = false }
   }, [authed])
 
+  // Chargement du compteur de connexions (se recharge à chaque changement de période)
+  React.useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        setLoginLoading(true)
+        const r = await fetch(`${API_BASE}/api/admin/stats/logins?period=${loginPeriod}`, authed())
+        if (!r.ok) throw new Error('HTTP ' + r.status)
+        const json = await r.json() as { count: number }
+        if (alive) setLoginCount(json.count)
+      } catch {
+        if (alive) setLoginCount(null)
+      } finally {
+        if (alive) setLoginLoading(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [authed, loginPeriod])
+
   if (loading) return <div className="p-8 text-white">Chargement…</div>
   if (error || !summary) return <div className="p-8 text-red-400">{error ?? 'Données indisponibles'}</div>
 
@@ -70,12 +102,62 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold mb-6">Tableau de bord admin</h1>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <KPI title="Utilisateurs" value={summary.usersTotal.toLocaleString()} sub={`${summary.artists} artistes • ${summary.organizers} orga • ${summary.providers} presta`} />
-        <KPI title="Utilisateurs payants" value={summary.payingUsers.toLocaleString()} sub={`MRR ${money(summary.mrrCents)}`} />
-        <KPI title="Conversations / Messages" value={`${summary.conversations.toLocaleString()} / ${summary.messages.toLocaleString()}`} />
+        <KPI
+          title="Utilisateurs"
+          value={summary.usersTotal.toLocaleString()}
+          sub={`${summary.artists} artistes • ${summary.organizers} orga • ${summary.providers} presta`}
+        />
+        <KPI
+          title="Utilisateurs payants"
+          value={summary.payingUsers.toLocaleString()}
+          sub={`MRR ${money(summary.mrrCents)}`}
+        />
+        <KPI
+          title="Conversations / Messages"
+          value={`${summary.conversations.toLocaleString()} / ${summary.messages.toLocaleString()}`}
+        />
         <KPI title="CA abonnements (mois)" value={money(summary.revenueMonthCents)} />
-        <KPI title="CA formules" value={money(summary.revenueOffersCents)} />
-        <KPI title="Aujourd’hui" value={`${summary.loginsToday} connexions`} sub={`${summary.signupsToday} inscriptions`} />
+        <KPI title="CA formules"            value={money(summary.revenueOffersCents)} />
+
+        <KPI
+          title="Inscriptions aujourd'hui"
+          value={summary.signupsToday.toLocaleString()}
+        />
+      </div>
+
+      {/* ── Carte Connexions avec filtres ── */}
+      <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f0f0f] p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <p className="text-sm text-white/60">Connexions</p>
+
+          {/* Boutons de filtre */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {(Object.keys(PERIOD_LABELS) as LoginPeriod[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setLoginPeriod(p)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition ${
+                  loginPeriod === p
+                    ? 'bg-violet-600 border-violet-500 text-white'
+                    : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                }`}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-2xl font-extrabold">
+          {loginLoading ? (
+            <span className="text-white/30">…</span>
+          ) : loginCount !== null ? (
+            loginCount.toLocaleString()
+          ) : (
+            '—'
+          )}
+        </p>
+        <p className="text-xs text-white/40 mt-1">{PERIOD_LABELS[loginPeriod]}</p>
       </div>
     </div>
   )
