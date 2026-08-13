@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
+import CityAutocomplete from '@/components/CityAutocomplete'
 
 // ─────────────────────────────────────────────
 // Types
@@ -706,7 +707,11 @@ export default function RegisterPage() {
                   )}
 
                   <Field label="Ville (optionnel)">
-                    <Input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="Ex. Paris, Lyon, Marseille…" />
+                    <CityAutocomplete
+                      value={city}
+                      onChange={setCity}
+                      placeholder="Ex. Paris, Lyon, Marseille…"
+                    />
                   </Field>
 
                   <div className="flex gap-3">

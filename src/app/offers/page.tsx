@@ -8,6 +8,7 @@ import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles,
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
+import CityAutocomplete from '@/components/CityAutocomplete'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type Offer = {
@@ -391,12 +392,12 @@ export default function OffersPage() {
 
             {/* Ville */}
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-              <input
+              <MapPin className="absolute left-3 top-2.5 w-3.5 h-3.5 text-white/30 pointer-events-none z-10" />
+              <CityAutocomplete
                 value={filters.location}
-                onChange={e => setFilters(p => ({ ...p, location: e.target.value }))}
+                onChange={v => setFilters(p => ({ ...p, location: v }))}
                 placeholder="Ville"
-                className="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:outline-none focus:border-purple-500/50"
+                inputClassName="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:outline-none focus:border-purple-500/50"
               />
             </div>
 
@@ -523,9 +524,11 @@ export default function OffersPage() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input required value={pubForm.location} onChange={e => setPubForm(p => ({ ...p, location: e.target.value }))}
+                <CityAutocomplete
+                  value={pubForm.location}
+                  onChange={v => setPubForm(p => ({ ...p, location: v }))}
                   placeholder="Ville *"
-                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
+                  inputClassName="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40"
                 />
                 <input required value={pubForm.country} onChange={e => setPubForm(p => ({ ...p, country: e.target.value }))}
                   placeholder="Pays *"

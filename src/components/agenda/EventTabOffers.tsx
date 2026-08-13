@@ -2,6 +2,7 @@
 
 import { EventOffer, EventOfferForm } from './types'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
+import CityAutocomplete from '@/components/CityAutocomplete'
 
 interface Props {
   eventStart: string
@@ -89,10 +90,11 @@ export default function EventTabOffers(p: Props) {
               onChange={e => p.setEventOfferForm(prev => ({ ...prev, time: e.target.value }))}
               className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
             />
-            <input required value={p.eventOfferForm.location}
-              onChange={e => p.setEventOfferForm(prev => ({ ...prev, location: e.target.value }))}
+            <CityAutocomplete
+              value={p.eventOfferForm.location}
+              onChange={v => p.setEventOfferForm(prev => ({ ...prev, location: v }))}
               placeholder="Ville *"
-              className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
+              inputClassName="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 outline-none"
             />
             <input required value={p.eventOfferForm.country}
               onChange={e => p.setEventOfferForm(prev => ({ ...prev, country: e.target.value }))}

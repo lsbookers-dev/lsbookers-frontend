@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import PublicationModal from '@/components/PublicationModal'
 import { getAuthToken } from '@/utils/auth'
+import CityAutocomplete from '@/components/CityAutocomplete'
 
 /* ─────────────────────────────────────────────────────────────
    TYPES
@@ -365,11 +366,11 @@ function TopList({ title, role, apiBase }: { title: string; role: 'ARTIST' | 'PR
           <Flame className="w-3.5 h-3.5 text-orange-400" />
           <span className="text-xs font-bold uppercase tracking-widest text-white/80">{title}</span>
         </div>
-        <input
+        <CityAutocomplete
           value={filter}
-          onChange={e => setFilter(e.target.value)}
+          onChange={v => setFilter(v)}
           placeholder="Ville ou pays…"
-          className="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-2 py-1 w-28 placeholder:text-white/25 focus:outline-none focus:border-purple-500/40"
+          inputClassName="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-2 py-1 w-28 placeholder:text-white/25 focus:outline-none focus:border-purple-500/40"
         />
       </div>
 
@@ -521,11 +522,11 @@ function OffersSection({ apiBase }: { apiBase: string }) {
           <h2 className="text-base font-bold text-white">Dernières offres</h2>
         </div>
         <div className="flex items-center gap-3">
-          <input
+          <CityAutocomplete
             value={filter}
-            onChange={e => setFilter(e.target.value)}
+            onChange={v => setFilter(v)}
             placeholder="Ville ou pays…"
-            className="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-3 py-1.5 placeholder:text-white/25 focus:outline-none focus:border-purple-500/40 w-36"
+            inputClassName="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-3 py-1.5 placeholder:text-white/25 focus:outline-none focus:border-purple-500/40 w-36"
           />
           <Link href="/offers"
             className="text-xs font-medium bg-white/8 hover:bg-white/12 border border-white/10 rounded-lg px-3 py-1.5 text-white/70 transition-colors">

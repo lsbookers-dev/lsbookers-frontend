@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { Search, MapPin, Globe, Sliders, X, Music2, Building2, Wrench, ChevronDown, Calendar, ArrowDownAZ, Clock } from 'lucide-react'
+import CityAutocomplete from '@/components/CityAutocomplete'
 
 interface User {
   id: number
@@ -499,13 +500,12 @@ export default function SearchPage() {
                     </select>
                   </div>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                    <input
-                      type="text"
-                      placeholder="Ville"
-                      className="w-full pl-9 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-white/25 transition text-sm"
+                    <MapPin className="absolute left-3 top-3.5 w-4 h-4 text-white/30 pointer-events-none z-10" />
+                    <CityAutocomplete
                       value={zone}
-                      onChange={e => setZone(e.target.value)}
+                      onChange={setZone}
+                      placeholder="Ville"
+                      inputClassName="w-full pl-9 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-white/25 transition text-sm"
                     />
                   </div>
                   <select

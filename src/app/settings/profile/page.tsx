@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
+import CityAutocomplete from '@/components/CityAutocomplete'
 
 // ─────────────────────────────────────────────
 // Config
@@ -584,11 +585,11 @@ export default function ProfileSettings() {
           <div className="space-y-4">
             <div>
               <label className="text-sm text-white/70 mb-2 block">Ville</label>
-              <input
+              <CityAutocomplete
                 value={profile.location}
-                onChange={e => setProfile(p => ({ ...p, location: e.target.value }))}
+                onChange={v => setProfile(p => ({ ...p, location: v }))}
                 placeholder="Ex : Paris, Lyon, Marseille…"
-                className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50"
+                inputClassName="w-full rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50"
               />
             </div>
             <div>
@@ -745,11 +746,12 @@ export default function ProfileSettings() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
-                    <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                    <input required value={offerForm.location}
-                      onChange={e => setOfferForm(p => ({ ...p, location: e.target.value }))}
+                    <MapPin size={14} className="absolute left-3 top-3 text-white/30 pointer-events-none z-10" />
+                    <CityAutocomplete
+                      value={offerForm.location}
+                      onChange={v => setOfferForm(p => ({ ...p, location: v }))}
                       placeholder="Ville *"
-                      className="h-10 w-full rounded-xl bg-white/5 pl-8 pr-3 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
+                      inputClassName="h-10 w-full rounded-xl bg-white/5 pl-8 pr-3 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/50"
                     />
                   </div>
                   <input required value={offerForm.country}

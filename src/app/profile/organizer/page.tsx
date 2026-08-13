@@ -13,6 +13,7 @@ import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
+import CityAutocomplete from '@/components/CityAutocomplete'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -809,11 +810,11 @@ export default function OrganizerProfilePage() {
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  required value={offerForm.location}
-                  onChange={e => setOfferForm(p => ({ ...p, location: e.target.value }))}
+                <CityAutocomplete
+                  value={offerForm.location}
+                  onChange={v => setOfferForm(p => ({ ...p, location: v }))}
                   placeholder="Ville *"
-                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                  inputClassName="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
                 <input
                   required value={offerForm.country}
