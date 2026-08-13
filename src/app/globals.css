@@ -75,15 +75,31 @@ html {
 }
 
 /* 6. Scrollbar fine et discrète — Chrome Windows, Edge
-      (la scrollbar native Windows fait ~17px et casse les layouts) */
+      (la scrollbar native Windows fait ~17px et casse les layouts)
+      scrollbar-gutter: stable réserve toujours l'espace scrollbar → layout stable */
 html {
   scrollbar-width: thin;
   scrollbar-color: #3f3f46 transparent;
+  scrollbar-gutter: stable;
+  /* color-scheme: dark force Chrome/Windows à utiliser les couleurs sombres
+     pour les composants natifs (dropdowns, datepickers, scrollbars) */
+  color-scheme: dark;
 }
 ::-webkit-scrollbar              { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track        { background: transparent; }
 ::-webkit-scrollbar-thumb        { background: #3f3f46; border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover  { background: #52525b; }
+
+/* Menus déroulants (<select> et <option>) — fond sombre sur Chrome Windows
+   Sans ça, Chrome Windows affiche les options avec un fond blanc */
+select {
+  color-scheme: dark;
+  background-color: transparent;
+}
+select option {
+  background-color: #1c1c1e;
+  color: #ffffff;
+}
 
 /* 7. Empêche le zoom automatique sur les champs de saisie sur iOS
       (iOS zoome sur les inputs dont la font-size est < 16px) */

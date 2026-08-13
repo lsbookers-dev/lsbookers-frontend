@@ -185,7 +185,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
       onClick={onClose}
     >
       <div
-        className="relative max-w-4xl w-full max-h-[90vh] bg-neutral-950 border border-white/10 rounded-2xl overflow-hidden flex flex-col md:flex-row"
+        className="relative max-w-4xl w-full max-h-[95vh] md:h-[88vh] bg-neutral-950 border border-white/10 rounded-2xl overflow-hidden flex flex-col md:flex-row"
         onClick={e => e.stopPropagation()}
       >
         {/* ── Bouton fermer ── */}
@@ -197,23 +197,24 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
         </button>
 
         {/* ── Média (gauche) ── */}
-        <div className="md:w-3/5 bg-black flex items-center justify-center min-h-[260px] md:min-h-0">
+        <div className="md:w-3/5 bg-black flex items-center justify-center min-h-[260px] md:min-h-0 md:h-full overflow-hidden">
           {pub.mediaType === 'image' ? (
-            <div className="relative w-full h-64 md:h-full min-h-[300px]">
-              <Image src={pub.media} alt={pub.title} fill className="object-contain" />
+            <div className="relative w-full h-72 md:h-full">
+              <Image src={pub.media} alt={pub.title} fill className="object-contain" unoptimized />
             </div>
           ) : (
             <video
               src={pub.media}
               controls
               autoPlay
-              className="w-full max-h-[70vh] object-contain"
+              playsInline
+              className="w-full h-full max-h-[70vh] md:max-h-full object-contain"
             />
           )}
         </div>
 
         {/* ── Panneau droit : infos + commentaires ── */}
-        <div className="md:w-2/5 flex flex-col border-l border-white/10">
+        <div className="md:w-2/5 flex flex-col border-l border-white/10 overflow-hidden">
 
           {/* En-tête : titre + caption */}
           <div className="p-4 border-b border-white/10 shrink-0">

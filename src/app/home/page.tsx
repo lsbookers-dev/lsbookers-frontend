@@ -231,10 +231,11 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
 /* ─────────────────────────────────────────────────────────────
    CARTE PUBLICATION
 ───────────────────────────────────────────────────────────── */
-function PostCard({ post, onLike, onOpenModal }: {
+function PostCard({ post, onLike, onOpenModal, currentUserId }: {
   post: Post
   onLike: (id: number) => void
   onOpenModal: (post: Post) => void
+  currentUserId?: number
 }) {
   return (
     <article className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden">
@@ -257,20 +258,37 @@ function PostCard({ post, onLike, onOpenModal }: {
             {post.author.profession || roleLabel(post.author.role)} · {timeAgo(post.createdAt)}
           </p>
         </div>
-        {post.isFromFollow && (
+        {/* Affiche "Suivi" uniquement si c'est un compte suivi et pas notre propre publication */}
+        {post.isFromFollow && post.author.userId !== currentUserId && (
           <span className="text-xs text-purple-400/60 flex-shrink-0">Suivi</span>
         )}
       </div>
 
       {/* Média — clic ouvre la modale */}
       <div
-        className="relative w-full aspect-[4/3] bg-zinc-900 cursor-pointer"
+        className="w-full bg-black cursor-pointer flex items-center justify-center"
         onClick={() => onOpenModal(post)}
       >
         {post.mediaType === 'VIDEO' ? (
-          <video src={post.media} className="w-full h-full object-cover" muted preload="metadata" />
+          <video
+            src={post.media}
+            className="w-full max-h-[560px] object-contain block"
+            muted
+            preload="metadata"
+            playsInline
+            onLoadedMetadata={(e) => {
+              /* Force Chrome/Windows à afficher le premier frame */
+              e.currentTarget.currentTime = 0.1
+            }}
+          />
         ) : (
-          <Image src={post.media} alt={post.caption || post.title} fill className="object-cover" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.media}
+            alt={post.caption || post.title}
+            className="w-full max-h-[560px] object-contain block"
+            loading="lazy"
+          />
         )}
       </div>
 
@@ -691,7 +709,7 @@ export default function HomePage() {
               </div>
             ) : (
               posts.map(p => (
-                <PostCard key={p.id} post={p} onLike={handleLike} onOpenModal={setSelectedPost} />
+                <PostCard key={p.id} post={p} onLike={handleLike} onOpenModal={setSelectedPost} currentUserId={user?.id} />
               ))
             )}
           </div>
