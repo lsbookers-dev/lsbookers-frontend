@@ -309,6 +309,21 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm]       = useState(false)
   const [role, setRole]                     = useState<Role>('ARTIST')
 
+  // Vérification pseudo
+  const [pseudoStatus, setPseudoStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
+
+  const checkPseudo = async (value: string) => {
+    if (!value || value.trim().length < 3) { setPseudoStatus('idle'); return }
+    setPseudoStatus('checking')
+    try {
+      const res = await fetch(`${API}/api/auth/check-pseudo?pseudo=${encodeURIComponent(value.trim())}`)
+      const data = await res.json()
+      setPseudoStatus(data.available ? 'available' : 'taken')
+    } catch {
+      setPseudoStatus('idle')
+    }
+  }
+
   // Étape 2
   const [pseudo, setPseudo]                       = useState('')
   const [firstName, setFirstName]                 = useState('')
@@ -337,6 +352,10 @@ export default function RegisterPage() {
   const handleStep2 = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (pseudoStatus === 'taken') {
+      setError('Ce pseudo est déjà utilisé. Choisis-en un autre.')
+      return
+    }
     setStep(3)
   }
 
@@ -541,19 +560,46 @@ export default function RegisterPage() {
                       : 'Ces informations permettent d\'identifier votre établissement.'}
                   </p>
 
-                  {role === 'ARTIST' ? (
-                    <Field label="Pseudo / Nom de scène" hint="Lettres, chiffres, espaces, tirets et underscores — 3 à 30 caractères.">
-                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. DJ Nova, MC Flash…" pattern="[a-zA-Z0-9_ .\-]{3,30}" title="3 à 30 caractères : lettres, chiffres, espaces, tirets, underscores" />
-                    </Field>
-                  ) : role === 'ORGANIZER' ? (
-                    <Field label="Nom de l'établissement / Nom commercial" hint="Ce nom apparaîtra sur votre profil public.">
-                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. Club Nova, Festival Lumières…" pattern="[a-zA-Z0-9_ .\-]{3,30}" title="3 à 30 caractères" />
-                    </Field>
-                  ) : (
-                    <Field label="Nom commercial / Nom de votre activité" hint="Ce nom apparaîtra sur votre profil public.">
-                      <Input type="text" value={pseudo} onChange={e => setPseudo(e.target.value)} required placeholder="Ex. Photo Studio 94, Son Pro…" pattern="[a-zA-Z0-9_ .\-]{3,30}" title="3 à 30 caractères" />
-                    </Field>
-                  )}
+                  {/* Indicateur de disponibilité du pseudo */}
+                  {(() => {
+                    const label = role === 'ARTIST'
+                      ? { field: 'Pseudo / Nom de scène', hint: 'Lettres, chiffres, espaces, tirets et underscores — 3 à 30 caractères.', placeholder: 'Ex. DJ Nova, MC Flash…' }
+                      : role === 'ORGANIZER'
+                      ? { field: "Nom de l'établissement / Nom commercial", hint: 'Ce nom apparaîtra sur votre profil public.', placeholder: 'Ex. Club Nova, Festival Lumières…' }
+                      : { field: 'Nom commercial / Nom de votre activité', hint: 'Ce nom apparaîtra sur votre profil public.', placeholder: 'Ex. Photo Studio 94, Son Pro…' }
+
+                    const statusEl = pseudoStatus === 'checking'
+                      ? <span className="text-xs text-white/40">Vérification…</span>
+                      : pseudoStatus === 'available'
+                      ? <span className="text-xs text-green-400">✓ Disponible</span>
+                      : pseudoStatus === 'taken'
+                      ? <span className="text-xs text-red-400">✗ Déjà utilisé</span>
+                      : null
+
+                    return (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-sm font-medium text-white/75">{label.field}</label>
+                          {statusEl}
+                        </div>
+                        <input
+                          type="text"
+                          value={pseudo}
+                          onChange={e => { setPseudo(e.target.value); setPseudoStatus('idle') }}
+                          onBlur={e => checkPseudo(e.target.value)}
+                          required
+                          placeholder={label.placeholder}
+                          pattern="[a-zA-Z0-9_ .\-]{3,30}"
+                          title="3 à 30 caractères : lettres, chiffres, espaces, tirets, underscores"
+                          className={`w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/30 outline-none ring-1 transition focus:ring-2
+                            ${pseudoStatus === 'available' ? 'ring-green-500/50 focus:ring-green-500/70'
+                            : pseudoStatus === 'taken'     ? 'ring-red-500/50 focus:ring-red-500/70'
+                            :                               'ring-white/10 focus:ring-purple-500/60'}`}
+                        />
+                        {label.hint && <p className="mt-1 text-xs text-white/35">{label.hint}</p>}
+                      </div>
+                    )
+                  })()}
 
                   <div className="grid grid-cols-2 gap-3">
                     <Field label={role === 'ARTIST' ? 'Prénom' : 'Prénom du responsable'}>
