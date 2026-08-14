@@ -43,6 +43,8 @@ const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
   NEW_OFFER:             { icon: '🎯', color: 'bg-pink-500/15 text-pink-300' },
   NEW_FOLLOW:            { icon: '👤', color: 'bg-teal-500/15 text-teal-300' },
   NEW_COMMENT:           { icon: '💭', color: 'bg-indigo-500/15 text-indigo-300' },
+  NEW_COMMENT_REPLY:     { icon: '↩️', color: 'bg-indigo-500/15 text-indigo-300' },
+  NEW_COMMENT_LIKE:      { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
   NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
   DEFAULT:               { icon: '🔔', color: 'bg-white/10 text-white/50' },
 }
@@ -60,8 +62,8 @@ function getPopupLink(notif: PopupNotif): string | null {
     return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
   if (notif.type === 'NEW_OFFER')
     return `/offers`
-  // NEW_COMMENT / NEW_LIKE avec publicationId → modal inline, pas de navigation
-  if (['NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.publicationId)
+  // NEW_COMMENT / NEW_LIKE / NEW_COMMENT_REPLY / NEW_COMMENT_LIKE avec publicationId → modal inline, pas de navigation
+  if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE'].includes(notif.type) && notif.publicationId)
     return null
   if (notif.type === 'NEW_FOLLOW' && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()
@@ -378,7 +380,7 @@ export default function Header() {
                               </div>
                             )
                             // Notif avec publicationId → ouvre la modal sans naviguer
-                            if (['NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.publicationId) {
+                            if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE'].includes(notif.type) && notif.publicationId) {
                               return (
                                 <button key={notif.id} className="block w-full text-left" onClick={() => openPubModal(notif.publicationId!)}>
                                   {inner}

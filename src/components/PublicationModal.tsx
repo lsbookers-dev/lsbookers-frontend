@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
-import { X, Heart, Send, Trash2 } from 'lucide-react'
+import { X, Heart, Send, Trash2, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import type { PubCardData } from './PublicationCard'
 import { getAuthToken } from '@/utils/auth'
@@ -21,6 +21,9 @@ type Comment = {
   createdAt: string
   profileId: number
   profile?: CommentProfile
+  likedByMe: boolean
+  _count: { likes: number; replies: number }
+  replies: Comment[]
 }
 
 const toAbs = (u?: string | null) => {
@@ -47,6 +50,15 @@ const timeAgo = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
+/** Met à jour le like d'un commentaire dans la liste (top-level ou reply) */
+function applyCommentLike(list: Comment[], id: number, liked: boolean, count: number): Comment[] {
+  return list.map(c => {
+    if (c.id === id) return { ...c, likedByMe: liked, _count: { ...c._count, likes: count } }
+    if (c.replies.length > 0) return { ...c, replies: applyCommentLike(c.replies, id, liked, count) }
+    return c
+  })
+}
+
 type Props = {
   pub: PubCardData
   onClose: () => void
@@ -60,15 +72,19 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
   const { user } = useAuth()
   const commentsEndRef = useRef<HTMLDivElement>(null)
 
-  const [comments,     setComments]     = useState<Comment[]>([])
-  const [loadingComs,  setLoadingComs]  = useState(true)
-  const [newComment,   setNewComment]   = useState('')
-  const [submitting,   setSubmitting]   = useState(false)
+  const [comments,        setComments]        = useState<Comment[]>([])
+  const [loadingComs,     setLoadingComs]     = useState(true)
+  const [newComment,      setNewComment]      = useState('')
+  const [submitting,      setSubmitting]      = useState(false)
 
-  const [liked,        setLiked]        = useState(initialLiked)
-  const [likeCount,    setLikeCount]    = useState(pub._count?.likes ?? 0)
-  const [commentCount, setCommentCount] = useState(pub._count?.comments ?? 0)
-  const [likeLoading,  setLikeLoading]  = useState(false)
+  const [liked,           setLiked]           = useState(initialLiked)
+  const [likeCount,       setLikeCount]       = useState(pub._count?.likes ?? 0)
+  const [commentCount,    setCommentCount]    = useState(pub._count?.comments ?? 0)
+  const [likeLoading,     setLikeLoading]     = useState(false)
+
+  const [replyingTo,      setReplyingTo]      = useState<number | null>(null)
+  const [replyText,       setReplyText]       = useState('')
+  const [replySubmitting, setReplySubmitting] = useState(false)
 
   /* ── Fermer avec Escape ── */
   useEffect(() => {
@@ -81,7 +97,9 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
   const loadComments = useCallback(async () => {
     setLoadingComs(true)
     try {
-      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/comments`)
+      const profileId = user?.profile?.id
+      const qs = profileId ? `?profileId=${profileId}` : ''
+      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/comments${qs}`)
       if (res.ok) {
         const data = await res.json()
         setComments(data.comments || [])
@@ -91,7 +109,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
     } finally {
       setLoadingComs(false)
     }
-  }, [pub.id])
+  }, [pub.id, user?.profile?.id])
 
   useEffect(() => { loadComments() }, [loadComments])
 
@@ -100,7 +118,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
     commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [comments])
 
-  /* ── Like ── */
+  /* ── Like publication ── */
   const handleLike = async () => {
     if (!user || likeLoading) return
     const token = getAuthToken()
@@ -125,6 +143,25 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
     }
   }
 
+  /* ── Like commentaire ── */
+  const handleLikeComment = async (commentId: number) => {
+    if (!user) return
+    const token = getAuthToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/publications/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setComments(prev => applyCommentLike(prev, commentId, data.liked, data.count))
+      }
+    } catch (err) {
+      console.error('Erreur like commentaire:', err)
+    }
+  }
+
   /* ── Envoyer un commentaire ── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -145,7 +182,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
       })
       if (res.ok) {
         const comment = await res.json()
-        setComments(prev => [...prev, comment])
+        setComments(prev => [...prev, { ...comment, replies: comment.replies ?? [], likedByMe: false, _count: comment._count ?? { likes: 0, replies: 0 } }])
         const newCount = commentCount + 1
         setCommentCount(newCount)
         onCountChange?.(pub.id, likeCount, newCount)
@@ -158,8 +195,52 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
     }
   }
 
-  /* ── Supprimer un commentaire ── */
-  const handleDeleteComment = async (commentId: number) => {
+  /* ── Envoyer une réponse ── */
+  const handleReply = async (parentId: number) => {
+    if (!replyText.trim() || replySubmitting || !user) return
+    const token = getAuthToken()
+    if (!token) return
+
+    setReplySubmitting(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content: replyText.trim(), parentId }),
+      })
+      if (res.ok) {
+        const reply = await res.json()
+        const normalizedReply: Comment = {
+          ...reply,
+          replies: [],
+          likedByMe: false,
+          _count: reply._count ?? { likes: 0, replies: 0 },
+        }
+        setComments(prev =>
+          prev.map(c =>
+            c.id === parentId
+              ? { ...c, replies: [...(c.replies ?? []), normalizedReply], _count: { ...c._count, replies: c._count.replies + 1 } }
+              : c
+          )
+        )
+        const newCount = commentCount + 1
+        setCommentCount(newCount)
+        onCountChange?.(pub.id, likeCount, newCount)
+        setReplyText('')
+        setReplyingTo(null)
+      }
+    } catch (err) {
+      console.error('Erreur réponse:', err)
+    } finally {
+      setReplySubmitting(false)
+    }
+  }
+
+  /* ── Supprimer un commentaire ou une réponse ── */
+  const handleDeleteComment = async (commentId: number, isReply = false) => {
     const token = getAuthToken()
     if (!token) return
 
@@ -169,7 +250,17 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
-        setComments(prev => prev.filter(c => c.id !== commentId))
+        if (isReply) {
+          setComments(prev =>
+            prev.map(c => ({
+              ...c,
+              replies: c.replies.filter(r => r.id !== commentId),
+              _count: { ...c._count, replies: Math.max(0, c._count.replies - 1) },
+            }))
+          )
+        } else {
+          setComments(prev => prev.filter(c => c.id !== commentId))
+        }
         const newCount = Math.max(0, commentCount - 1)
         setCommentCount(newCount)
         onCountChange?.(pub.id, likeCount, newCount)
@@ -177,6 +268,111 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
     } catch (err) {
       console.error('Erreur suppression commentaire:', err)
     }
+  }
+
+  /* ── Rendu d'un commentaire (utilisé pour top-level ET replies) ── */
+  const renderComment = (c: Comment, isReply = false) => {
+    const isOwn = user?.profile?.id === c.profileId || Number(user?.profile?.id) === c.profileId
+    const avatarUrl = toAbs(c.profile?.avatar) || '/default-avatar.png'
+    const isReplying = replyingTo === c.id
+
+    return (
+      <div key={c.id} className={isReply ? 'ml-9 mt-2' : ''}>
+        <div className="flex gap-2.5">
+          <div className="relative h-7 w-7 rounded-full overflow-hidden shrink-0 mt-0.5">
+            <Image src={avatarUrl} alt="avatar" fill className="object-cover" unoptimized />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-xs font-semibold">{displayName(c.profile)}</span>
+                <span className="ml-2 text-[10px] text-white/35">{timeAgo(c.createdAt)}</span>
+              </div>
+              {isOwn && (
+                <button
+                  onClick={() => handleDeleteComment(c.id, isReply)}
+                  className="text-white/25 hover:text-red-400 transition shrink-0 mt-0.5"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-white/75 mt-0.5 leading-relaxed">{c.content}</p>
+
+            {/* Actions : like + répondre */}
+            <div className="flex items-center gap-3 mt-1.5">
+              <button
+                onClick={() => handleLikeComment(c.id)}
+                disabled={!user}
+                className={`flex items-center gap-1 text-[10px] transition ${
+                  c.likedByMe ? 'text-red-400' : 'text-white/35 hover:text-white/60'
+                } disabled:cursor-not-allowed`}
+              >
+                <Heart
+                  size={11}
+                  className={c.likedByMe ? 'fill-red-400 stroke-red-400' : ''}
+                />
+                {c._count.likes > 0 && <span>{c._count.likes}</span>}
+              </button>
+
+              {!isReply && user && (
+                <button
+                  onClick={() => {
+                    if (isReplying) {
+                      setReplyingTo(null)
+                      setReplyText('')
+                    } else {
+                      setReplyingTo(c.id)
+                      setReplyText('')
+                    }
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-white/35 hover:text-white/60 transition"
+                >
+                  <MessageCircle size={11} />
+                  {isReplying ? 'Annuler' : 'Répondre'}
+                  {c._count.replies > 0 && !isReplying && (
+                    <span className="ml-0.5 text-white/25">({c._count.replies})</span>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Réponses imbriquées */}
+        {c.replies?.length > 0 && (
+          <div className="mt-2 space-y-3">
+            {c.replies.map(r => renderComment(r, true))}
+          </div>
+        )}
+
+        {/* Champ de réponse inline */}
+        {isReplying && (
+          <div className="ml-9 mt-2 flex items-center gap-2">
+            <input
+              autoFocus
+              type="text"
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              placeholder={`Répondre à ${displayName(c.profile)}…`}
+              maxLength={500}
+              className="flex-1 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition"
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); handleReply(c.id) }
+                if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') }
+              }}
+            />
+            <button
+              onClick={() => handleReply(c.id)}
+              disabled={!replyText.trim() || replySubmitting}
+              className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-full p-1.5 transition"
+            >
+              <Send size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -234,34 +430,7 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
                 {user ? ' Soyez le premier !' : ''}
               </p>
             ) : (
-              comments.map(c => {
-                const isOwn = user?.profile?.id === c.profileId
-                const avatarUrl = toAbs(c.profile?.avatar) || '/default-avatar.png'
-                return (
-                  <div key={c.id} className="flex gap-2.5">
-                    <div className="relative h-7 w-7 rounded-full overflow-hidden shrink-0 mt-0.5">
-                      <Image src={avatarUrl} alt="avatar" fill className="object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <span className="text-xs font-semibold">{displayName(c.profile)}</span>
-                          <span className="ml-2 text-[10px] text-white/35">{timeAgo(c.createdAt)}</span>
-                        </div>
-                        {isOwn && (
-                          <button
-                            onClick={() => handleDeleteComment(c.id)}
-                            className="text-white/25 hover:text-red-400 transition shrink-0 mt-0.5"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-xs text-white/75 mt-0.5 leading-relaxed">{c.content}</p>
-                    </div>
-                  </div>
-                )
-              })
+              comments.map(c => renderComment(c, false))
             )}
             <div ref={commentsEndRef} />
           </div>
