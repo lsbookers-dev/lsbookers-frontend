@@ -226,8 +226,8 @@ function LogoPicker({
       {cropSrc && (
         <CropModal
           src={cropSrc}
-          aspectRatio={1}
-          displayWidth={320}
+          aspectRatio={3}
+          displayWidth={480}
           shape="rect"
           maxZoom={6}
           onConfirm={handleConfirm}
@@ -238,7 +238,7 @@ function LogoPicker({
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h4 className="font-semibold text-purple-300">Logo — Header</h4>
-            <p className="text-xs text-white/50 mt-0.5">Recadrage carré automatique</p>
+            <p className="text-xs text-white/50 mt-0.5">Recadrage horizontal (3:1)</p>
             {url && <p className="text-[10px] text-white/30 break-all mt-1">{url}</p>}
           </div>
           <label className={`px-4 py-2 rounded-xl cursor-pointer font-medium text-sm transition ${busy ? 'bg-white/10 opacity-60' : 'bg-purple-600 hover:bg-purple-500 text-white'}`}>
@@ -248,7 +248,7 @@ function LogoPicker({
         </div>
         {url && (
           <div className="mt-4 flex items-center gap-4">
-            <img src={url} alt="Logo actuel" className="h-20 w-20 rounded-xl border border-white/10 object-contain bg-black" />
+            <img src={url} alt="Logo actuel" className="h-14 w-48 rounded-xl border border-white/10 object-contain bg-black" />
             <div className="text-xs text-white/40">
               <p>Logo actuel</p>
               <p className="mt-1 text-white/25">Choisir un nouveau fichier pour remplacer</p>
