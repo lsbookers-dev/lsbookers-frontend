@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
+import CropModal from '@/components/CropModal'
 import { getAuthToken } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -137,6 +138,13 @@ export default function ArtistProfilePage() {
   const [pubFile, setPubFile]       = useState<File | null>(null)
   const [pubUploading, setPubUploading] = useState(false)
   const pubInputRef = useRef<HTMLInputElement>(null)
+
+  // Avatar / Bannière — upload inline
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [cropModal, setCropModal] = useState<{ src: string; type: 'avatar' | 'banner' } | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
 
   // CV — édition inline
   const [editingCv, setEditingCv] = useState(false)
@@ -277,6 +285,53 @@ export default function ArtistProfilePage() {
     } catch { alert('Impossible de supprimer') }
   }
 
+  // ── Upload avatar / bannière inline
+  const uploadImage = async (file: File, folder: 'avatars' | 'banners') => {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('folder', folder)
+    const res = await fetch(`${API}/api/upload`, {
+      method: 'POST', credentials: 'include', headers: getAuthHeaders(), body: fd,
+    })
+    if (!res.ok) throw new Error('Upload échoué')
+    const data = await res.json()
+    return data.url as string
+  }
+
+  const openCrop = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    if (file.size > 100 * 1024 * 1024) { alert('Le fichier dépasse 100 Mo.'); return }
+    const reader = new FileReader()
+    reader.onload = () => setCropModal({ src: reader.result as string, type })
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropConfirm = async (blob: Blob) => {
+    const type = cropModal?.type
+    setCropModal(null)
+    if (!type || !profile) return
+    const file = new File([blob], `${type}.jpg`, { type: 'image/jpeg' })
+    if (type === 'avatar') {
+      setUploadingAvatar(true)
+      try {
+        const url = await uploadImage(file, 'avatars')
+        const ok = await saveField({ avatar: url })
+        if (ok) setProfile(p => p ? { ...p, avatar: url } : p)
+      } catch { alert("Erreur lors de l'upload") }
+      finally { setUploadingAvatar(false) }
+    } else {
+      setUploadingBanner(true)
+      try {
+        const url = await uploadImage(file, 'banners')
+        const ok = await saveField({ banner: url })
+        if (ok) setProfile(p => p ? { ...p, banner: url } : p)
+      } catch { alert("Erreur lors de l'upload") }
+      finally { setUploadingBanner(false) }
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -300,29 +355,51 @@ export default function ArtistProfilePage() {
     <div className="min-h-screen bg-black text-white">
 
       {/* ── Bannière ── */}
-      <div className="relative h-56 sm:h-64 md:h-72">
+      <div
+        className="relative h-56 sm:h-64 md:h-72 group cursor-pointer"
+        onClick={() => bannerInputRef.current?.click()}
+      >
         {profile?.banner
           ? <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
           : <div className="w-full h-full bg-gradient-to-br from-pink-900/40 to-black" />
         }
+        {/* Overlay hover */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          {uploadingBanner
+            ? <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            : <Pencil size={28} className="text-white drop-shadow-lg" />
+          }
+        </div>
         <button
-          onClick={() => router.push('/settings/profile')}
-          className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur border border-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 text-sm transition"
+          onClick={e => { e.stopPropagation(); router.push('/settings/profile') }}
+          className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur border border-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 text-sm transition z-10"
         >
           <Settings2 size={16} /> Paramètres
         </button>
+        <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'banner')} />
       </div>
 
       {/* ── En-tête profil ── */}
       <div className="max-w-6xl mx-auto px-4 pt-5 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="relative -mt-12 h-24 w-24 rounded-2xl overflow-hidden ring-4 ring-black flex-shrink-0">
+          <div
+            className="relative -mt-12 h-24 w-24 rounded-2xl overflow-hidden ring-4 ring-black flex-shrink-0 group cursor-pointer"
+            onClick={() => avatarInputRef.current?.click()}
+          >
             {profile?.avatar
               ? <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
               : <div className="w-full h-full bg-white/10 flex items-center justify-center text-3xl font-black text-white/30">
                   {user?.email?.[0]?.toUpperCase() || '?'}
                 </div>
             }
+            {/* Overlay hover */}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
+              {uploadingAvatar
+                ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                : <Pencil size={16} className="text-white" />
+              }
+            </div>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'avatar')} />
           </div>
 
           <div>
@@ -606,6 +683,16 @@ export default function ArtistProfilePage() {
 
         </aside>
       </div>
+
+      {/* ── CropModal avatar / bannière ── */}
+      {cropModal && (
+        <CropModal
+          src={cropModal.src}
+          aspectRatio={cropModal.type === 'banner' ? 16 / 5 : 1}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropModal(null)}
+        />
+      )}
 
       {/* ── Modal : ajouter une publication ── */}
       {showAddPub && (

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
+import CropModal from '@/components/CropModal'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 
@@ -154,6 +155,13 @@ export default function ProviderProfilePage() {
   const [pubFile, setPubFile]         = useState<File | null>(null)
   const [pubUploading, setPubUploading] = useState(false)
   const pubInputRef = useRef<HTMLInputElement>(null)
+
+  // Avatar / Bannière — upload inline
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [cropModal, setCropModal] = useState<{ src: string; type: 'avatar' | 'banner' } | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
 
   // CV — édition inline
   const [editingCv, setEditingCv] = useState(false)
@@ -323,6 +331,53 @@ export default function ProviderProfilePage() {
     } catch { alert('Échec de la suppression.') }
   }
 
+  // ── Upload avatar / bannière inline
+  const uploadImage = async (file: File, folder: 'avatars' | 'banners') => {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('folder', folder)
+    const res = await fetch(`${API}/api/upload`, {
+      method: 'POST', credentials: 'include', headers: getAuthHeaders(), body: fd,
+    })
+    if (!res.ok) throw new Error('Upload échoué')
+    const data = await res.json()
+    return data.url as string
+  }
+
+  const openCrop = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    if (file.size > 100 * 1024 * 1024) { alert('Le fichier dépasse 100 Mo.'); return }
+    const reader = new FileReader()
+    reader.onload = () => setCropModal({ src: reader.result as string, type })
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropConfirm = async (blob: Blob) => {
+    const type = cropModal?.type
+    setCropModal(null)
+    if (!type || !profile) return
+    const file = new File([blob], `${type}.jpg`, { type: 'image/jpeg' })
+    if (type === 'avatar') {
+      setUploadingAvatar(true)
+      try {
+        const url = await uploadImage(file, 'avatars')
+        const ok = await saveField({ avatar: url })
+        if (ok) setProfile(p => p ? { ...p, avatar: url } : p)
+      } catch { alert("Erreur lors de l'upload") }
+      finally { setUploadingAvatar(false) }
+    } else {
+      setUploadingBanner(true)
+      try {
+        const url = await uploadImage(file, 'banners')
+        const ok = await saveField({ banner: url })
+        if (ok) setProfile(p => p ? { ...p, banner: url } : p)
+      } catch { alert("Erreur lors de l'upload") }
+      finally { setUploadingBanner(false) }
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -344,29 +399,51 @@ export default function ProviderProfilePage() {
     <div className="min-h-screen bg-black text-white">
 
       {/* ── Bannière */}
-      <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
+      <div
+        className="relative h-56 sm:h-64 md:h-72 lg:h-80 group cursor-pointer"
+        onClick={() => bannerInputRef.current?.click()}
+      >
         {profile?.banner
           ? <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
           : <div className="absolute inset-0 bg-gradient-to-br from-violet-900/60 to-black" />
         }
+        {/* Overlay hover */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          {uploadingBanner
+            ? <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            : <Pencil size={28} className="text-white drop-shadow-lg" />
+          }
+        </div>
         <button
-          onClick={() => router.push('/settings/profile')}
-          className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 backdrop-blur"
+          onClick={e => { e.stopPropagation(); router.push('/settings/profile') }}
+          className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 backdrop-blur z-10"
         >
           <Settings2 size={18} /> Paramètres
         </button>
+        <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'banner')} />
       </div>
 
       {/* ── En-tête sous bannière */}
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black flex-shrink-0">
+          <div
+            className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black flex-shrink-0 group cursor-pointer"
+            onClick={() => avatarInputRef.current?.click()}
+          >
             {profile?.avatar
               ? <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
               : <div className="w-full h-full bg-violet-800 flex items-center justify-center text-2xl font-bold">
                   {displayName(profile).charAt(0).toUpperCase()}
                 </div>
             }
+            {/* Overlay hover */}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+              {uploadingAvatar
+                ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                : <Pencil size={16} className="text-white" />
+              }
+            </div>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'avatar')} />
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">{displayName(profile)}</h1>
@@ -686,6 +763,16 @@ export default function ProviderProfilePage() {
 
         </aside>
       </div>
+
+      {/* ── CropModal avatar / bannière ── */}
+      {cropModal && (
+        <CropModal
+          src={cropModal.src}
+          aspectRatio={cropModal.type === 'banner' ? 16 / 5 : 1}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropModal(null)}
+        />
+      )}
 
       {/* ── Modal : publier une offre */}
       {showOfferModal && (

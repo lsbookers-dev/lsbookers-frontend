@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/context/AuthContext'
-import CropModal from '@/components/CropModal'
 import {
-  Camera, Save, ArrowLeft, Music, MapPin, User, Briefcase,
+  Save, ArrowLeft, Music, MapPin, User, Briefcase,
   CheckCircle, XCircle, ShieldOff, ShieldAlert,
   Plus, X, Calendar, Euro
 } from 'lucide-react'
@@ -204,9 +203,6 @@ export default function ProfileSettings() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [uploadingBanner, setUploadingBanner] = useState(false)
-  const [cropModal, setCropModal] = useState<{ src: string; type: 'avatar' | 'banner' } | null>(null)
 
   type BlockedUser = {
     id: number
@@ -233,9 +229,6 @@ export default function ProfileSettings() {
     title: '', description: '', type: 'ARTIST' as 'ARTIST' | 'PROVIDER' | 'ALL',
     specialty: '', date: '', time: '20:00', location: '', country: '', fee: '',
   })
-
-  const avatarRef = useRef<HTMLInputElement>(null)
-  const bannerRef = useRef<HTMLInputElement>(null)
 
   // ── Chargement du profil
   useEffect(() => {
@@ -301,62 +294,6 @@ export default function ProfileSettings() {
       // silently fail
     } finally {
       setUnblockingId(null)
-    }
-  }
-
-  // ── Upload image
-  const uploadImage = async (file: File, folder: 'avatars' | 'banners') => {
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('folder', folder)
-    fd.append('type', 'image')
-    const res = await fetch(`${API}/api/upload`, {
-      method: 'POST',
-      credentials: 'include',
-      body: fd,
-    })
-    if (!res.ok) throw new Error('Échec upload')
-    const data = await res.json()
-    return data.url as string
-  }
-
-  // Ouvre le modal de recadrage au lieu d'uploader directement
-  const openCrop = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = '' // reset pour permettre de re-sélectionner le même fichier
-    if (file.size > 100 * 1024 * 1024) {
-      setError('Le fichier dépasse 100 Mo. Veuillez choisir une image plus légère.')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => setCropModal({ src: reader.result as string, type })
-    reader.readAsDataURL(file)
-  }
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => openCrop(e, 'avatar')
-  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => openCrop(e, 'banner')
-
-  // Reçoit le blob recadré → upload → sauvegarde l'URL
-  const handleCropConfirm = async (blob: Blob) => {
-    const type = cropModal?.type
-    setCropModal(null)
-    if (!type) return
-    const file = new File([blob], `${type}.jpg`, { type: 'image/jpeg' })
-    if (type === 'avatar') {
-      setUploadingAvatar(true)
-      try {
-        const url = await uploadImage(file, 'avatars')
-        setProfile(p => ({ ...p, avatar: url }))
-      } catch { setError("Erreur lors de l'upload de la photo") }
-      finally { setUploadingAvatar(false) }
-    } else {
-      setUploadingBanner(true)
-      try {
-        const url = await uploadImage(file, 'banners')
-        setProfile(p => ({ ...p, banner: url }))
-      } catch { setError("Erreur lors de l'upload de la bannière") }
-      finally { setUploadingBanner(false) }
     }
   }
 
@@ -456,19 +393,6 @@ export default function ProfileSettings() {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white pb-20">
 
-      {/* Modal de recadrage */}
-      {cropModal && (
-        <CropModal
-          src={cropModal.src}
-          aspectRatio={cropModal.type === 'avatar' ? 1 : 3}
-          displayWidth={cropModal.type === 'avatar' ? 280 : 360}
-          shape={cropModal.type === 'avatar' ? 'circle' : 'rect'}
-          maxZoom={6}
-          onConfirm={handleCropConfirm}
-          onCancel={() => setCropModal(null)}
-        />
-      )}
-
       {/* Header fixe */}
       <div className="sticky top-0 z-10 border-b border-white/10 bg-black/60 backdrop-blur-xl">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -500,53 +424,6 @@ export default function ProfileSettings() {
             <XCircle size={16} /> {error}
           </div>
         )}
-
-        {/* ── SECTION : Apparence ── */}
-        <Section title="Apparence" icon={<Camera size={18} />}>
-
-          {/* Bannière */}
-          <div className="relative h-36 rounded-xl overflow-hidden bg-white/5 border border-white/10 mb-4">
-            {profile.banner && (
-              <Image src={profile.banner} alt="Bannière" fill className="object-cover" />
-            )}
-            <button
-              onClick={() => bannerRef.current?.click()}
-              disabled={uploadingBanner}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/40 hover:bg-black/60 transition text-sm text-white/70 hover:text-white"
-            >
-              <Camera size={20} />
-              {uploadingBanner ? 'Upload…' : 'Changer la bannière'}
-            </button>
-            <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
-          </div>
-
-          {/* Avatar */}
-          <div className="flex items-center gap-4">
-            <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-white/10 border border-white/10 flex-shrink-0">
-              {profile.avatar
-                ? <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-2xl font-black text-white/30">
-                    {user?.email?.[0]?.toUpperCase() || '?'}
-                  </div>
-              }
-              <button
-                onClick={() => avatarRef.current?.click()}
-                disabled={uploadingAvatar}
-                className="absolute inset-0 flex items-center justify-center bg-black/50 hover:bg-black/70 transition opacity-0 hover:opacity-100"
-              >
-                <Camera size={16} className="text-white" />
-              </button>
-              <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Photo de profil</p>
-              <p className="text-xs text-white/45 mt-1">JPG, PNG · Max 5 Mo · Carré recommandé</p>
-              <button onClick={() => avatarRef.current?.click()} disabled={uploadingAvatar} className="mt-2 text-xs text-emerald-400 hover:text-emerald-300 underline underline-offset-4">
-                {uploadingAvatar ? 'Upload en cours…' : 'Changer la photo'}
-              </button>
-            </div>
-          </div>
-        </Section>
 
         {/* ── SECTION : Identité publique ── */}
         <Section title="Identité publique" icon={<User size={18} />}>
