@@ -19,6 +19,7 @@ type Props = {
   required?: boolean
   id?: string
   name?: string
+  showDepartment?: boolean
 }
 
 /**
@@ -35,6 +36,7 @@ export default function CityAutocomplete({
   required,
   id,
   name,
+  showDepartment = true,
 }: Props) {
   const [suggestions, setSuggestions]   = useState<Commune[]>([])
   const [open, setOpen]                 = useState(false)
@@ -176,7 +178,7 @@ export default function CityAutocomplete({
                 }`}
               >
                 <span className="font-medium">{s.nom}</span>
-                {s.departement && (
+                {showDepartment && s.departement && (
                   <span className="text-xs text-white/35 flex-shrink-0">
                     {s.departement.nom} ({s.departement.code})
                   </span>

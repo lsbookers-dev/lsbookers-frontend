@@ -366,7 +366,8 @@ function TopList({ title, role, apiBase }: { title: string; role: 'ARTIST' | 'PR
         <CityAutocomplete
           value={filter}
           onChange={v => setFilter(v)}
-          placeholder="Ville ou pays…"
+          placeholder="Ville…"
+          showDepartment={false}
           inputClassName="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-2 py-1 w-28 placeholder:text-white/25 focus:outline-none focus:border-purple-500/40"
         />
       </div>
@@ -522,7 +523,8 @@ function OffersSection({ apiBase }: { apiBase: string }) {
           <CityAutocomplete
             value={filter}
             onChange={v => setFilter(v)}
-            placeholder="Ville ou pays…"
+            placeholder="Ville…"
+            showDepartment={false}
             inputClassName="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-3 py-1.5 placeholder:text-white/25 focus:outline-none focus:border-purple-500/40 w-36"
           />
           <Link href="/offers"
