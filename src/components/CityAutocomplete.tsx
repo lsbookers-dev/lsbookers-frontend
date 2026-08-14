@@ -20,6 +20,7 @@ type Props = {
   id?: string
   name?: string
   showDepartment?: boolean
+  dropdownMinWidth?: number
 }
 
 /**
@@ -37,6 +38,7 @@ export default function CityAutocomplete({
   id,
   name,
   showDepartment = true,
+  dropdownMinWidth = 240,
 }: Props) {
   const [suggestions, setSuggestions]   = useState<Commune[]>([])
   const [open, setOpen]                 = useState(false)
@@ -161,7 +163,7 @@ export default function CityAutocomplete({
             position: 'fixed',
             top:     dropdownPos.top,
             left:    dropdownPos.left,
-            width:   Math.max(dropdownPos.width, 240),
+            width:   Math.max(dropdownPos.width, dropdownMinWidth),
             zIndex:  9999,
           }}
           className="bg-neutral-900 border border-white/10 rounded-xl overflow-hidden shadow-2xl"
