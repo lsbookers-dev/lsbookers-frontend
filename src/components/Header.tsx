@@ -53,7 +53,7 @@ const BOOKING_TYPES = [
   'CANCELLATION_DECLINED', 'PAYMENT_RECEIVED',
 ]
 
-function getPopupLink(notif: PopupNotif, currentUser?: { id: number | string; role: string } | null): string | null {
+function getPopupLink(notif: PopupNotif): string | null {
   if (notif.type === 'NEW_MESSAGE' && notif.conversationId)
     return `/messages?c=${notif.conversationId}`
   if (BOOKING_TYPES.includes(notif.type))
@@ -347,7 +347,7 @@ export default function Header() {
                         <div className="p-2 space-y-0.5">
                           {notifList.slice(0, 20).map(notif => {
                             const cfg  = POPUP_TYPE_CONFIG[notif.type] || POPUP_TYPE_CONFIG.DEFAULT
-                            const link = getPopupLink(notif, user)
+                            const link = getPopupLink(notif)
                             const inner = (
                               <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
                                 notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
