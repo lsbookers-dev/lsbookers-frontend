@@ -10,6 +10,8 @@ import {
   Settings, UserRound, Briefcase, ChevronDown,
 } from 'lucide-react'
 import { getAuthToken } from '@/utils/auth'
+import PublicationModal from './PublicationModal'
+import type { PubCardData } from './PublicationCard'
 
 /* ─────────────────────────────────────────────────────────
    TYPES
@@ -58,20 +60,9 @@ function getPopupLink(notif: PopupNotif, currentUser?: { id: number | string; ro
     return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
   if (notif.type === 'NEW_OFFER')
     return `/offers`
-  // NEW_COMMENT → ouvre la publication du destinataire (= l'utilisateur connecté)
-  if (notif.type === 'NEW_COMMENT' && notif.publicationId && currentUser) {
-    const role = currentUser.role?.toLowerCase()
-    if (role === 'artist')    return `/artist/${currentUser.id}?pub=${notif.publicationId}`
-    if (role === 'organizer') return `/organizer/${currentUser.id}?pub=${notif.publicationId}`
-    if (role === 'provider')  return `/provider/${currentUser.id}?pub=${notif.publicationId}`
-  }
-  // NEW_LIKE → ouvre la publication du destinataire
-  if (notif.type === 'NEW_LIKE' && notif.publicationId && currentUser) {
-    const role = currentUser.role?.toLowerCase()
-    if (role === 'artist')    return `/artist/${currentUser.id}?pub=${notif.publicationId}`
-    if (role === 'organizer') return `/organizer/${currentUser.id}?pub=${notif.publicationId}`
-    if (role === 'provider')  return `/provider/${currentUser.id}?pub=${notif.publicationId}`
-  }
+  // NEW_COMMENT / NEW_LIKE avec publicationId → modal inline, pas de navigation
+  if (['NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.publicationId)
+    return null
   if (notif.type === 'NEW_FOLLOW' && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()
     if (role === 'artist')    return `/artist/${notif.actor.id}`
@@ -140,6 +131,22 @@ export default function Header() {
   const [notifOpen, setNotifOpen]       = useState(false)
   const [notifList, setNotifList]       = useState<PopupNotif[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
+  const [pubModal, setPubModal]         = useState<PubCardData | null>(null)
+
+  const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
+  const openPubModal = useCallback(async (pubId: number) => {
+    setNotifOpen(false)
+    try {
+      const token = getAuthToken()
+      const res = await fetch(`${API}/api/publications/${pubId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) return
+      const pub = await res.json() as PubCardData
+      setPubModal(pub)
+    } catch { /* silencieux */ }
+  }, [API])
 
   // Garder le ref en sync avec l'état
   useEffect(() => { notifOpenRef.current = notifOpen }, [notifOpen])
@@ -370,6 +377,14 @@ export default function Header() {
                                 )}
                               </div>
                             )
+                            // Notif avec publicationId → ouvre la modal sans naviguer
+                            if (['NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.publicationId) {
+                              return (
+                                <button key={notif.id} className="block w-full text-left" onClick={() => openPubModal(notif.publicationId!)}>
+                                  {inner}
+                                </button>
+                              )
+                            }
                             return link ? (
                               <Link key={notif.id} href={link} onClick={() => setNotifOpen(false)} className="block">
                                 {inner}
@@ -491,6 +506,15 @@ export default function Header() {
           })}
         </div>
       </nav>
+
+      {/* Modal publication ouverte depuis une notification */}
+      {pubModal && (
+        <PublicationModal
+          pub={pubModal}
+          onClose={() => setPubModal(null)}
+          onCountChange={() => {}}
+        />
+      )}
     </>
   )
 }
