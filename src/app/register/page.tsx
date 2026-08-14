@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
+import { Eye, EyeOff } from 'lucide-react'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
 // ─────────────────────────────────────────────
@@ -304,6 +305,8 @@ export default function RegisterPage() {
   const [email, setEmail]                   = useState('')
   const [password, setPassword]             = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword]     = useState(false)
+  const [showConfirm, setShowConfirm]       = useState(false)
   const [role, setRole]                     = useState<Role>('ARTIST')
 
   // Étape 2
@@ -484,14 +487,18 @@ export default function RegisterPage() {
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">🔒</span>
                       <input
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         required
                         autoComplete="new-password"
                         placeholder="Au moins 8 caractères"
-                        className="w-full rounded-xl bg-white/5 pl-10 pr-4 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition"
+                        className="w-full rounded-xl bg-white/5 pl-10 pr-10 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition"
                       />
+                      <button type="button" onClick={() => setShowPassword(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </Field>
 
@@ -499,14 +506,18 @@ export default function RegisterPage() {
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">🔒</span>
                       <input
-                        type="password"
+                        type={showConfirm ? 'text' : 'password'}
                         value={confirmPassword}
                         onChange={e => setConfirmPassword(e.target.value)}
                         required
                         autoComplete="new-password"
                         placeholder="••••••••"
-                        className="w-full rounded-xl bg-white/5 pl-10 pr-4 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition"
+                        className="w-full rounded-xl bg-white/5 pl-10 pr-10 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition"
                       />
+                      <button type="button" onClick={() => setShowConfirm(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition">
+                        {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </Field>
 
