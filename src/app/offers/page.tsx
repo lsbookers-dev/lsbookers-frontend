@@ -193,6 +193,16 @@ export default function OffersPage() {
   const [applySubmitting, setApplySubmit]   = useState(false)
   const [applyError, setApplyError]         = useState<string | null>(null)
 
+  // Pré-remplir les filtres depuis les paramètres URL (ex: "Voir offres similaires")
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const specialty = params.get('specialty') || ''
+    const location  = params.get('location')  || ''
+    if (specialty || location) {
+      setFilters(prev => ({ ...prev, specialty, location }))
+    }
+  }, [])
+
   // Charger les données du profil connecté (spécialités + ville/pays)
   useEffect(() => {
     if (!user?.id) return

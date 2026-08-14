@@ -9,6 +9,7 @@ import {
   Briefcase, Loader2, UserPlus, Flame, MessageCircle, ChevronDown,
 } from 'lucide-react'
 import PublicationModal from '@/components/PublicationModal'
+import OfferModal, { type OfferDetail } from '@/components/OfferModal'
 import { getAuthToken } from '@/utils/auth'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
@@ -72,18 +73,7 @@ type SuggestedProfile = {
   profileUrl: string
 }
 
-type Offer = {
-  id: number
-  title: string
-  description: string
-  type: 'ARTIST' | 'PROVIDER' | 'ALL'
-  specialty: string | null
-  location: string
-  country: string
-  date: string
-  createdAt: string
-  organizer: { user: { name: string } | null } | null
-}
+type Offer = OfferDetail
 
 const POSTS_PER_PAGE = 6
 
@@ -428,7 +418,16 @@ function SuggestedProfiles({ items }: { items: SuggestedProfile[] }) {
 /* ─────────────────────────────────────────────────────────────
    SIDEBAR OFFRES (colonne droite, compact)
 ───────────────────────────────────────────────────────────── */
-function OffersSidebar({ apiBase }: { apiBase: string }) {
+const OFFER_DOT: Record<string, string> = {
+  ARTIST:   'bg-pink-400',
+  PROVIDER: 'bg-blue-400',
+  ALL:      'bg-purple-400',
+}
+
+function OffersSidebar({ apiBase, onSelectOffer }: {
+  apiBase: string
+  onSelectOffer: (offer: Offer) => void
+}) {
   const [offers, setOffers] = useState<Offer[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -436,7 +435,7 @@ function OffersSidebar({ apiBase }: { apiBase: string }) {
     setLoading(true)
     fetch(`${apiBase}/api/offers`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => setOffers(Array.isArray(d) ? d.slice(0, 5) : []))
+      .then(d => setOffers(Array.isArray(d) ? d.slice(0, 6) : []))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [apiBase])
@@ -455,30 +454,30 @@ function OffersSidebar({ apiBase }: { apiBase: string }) {
       ) : (
         <div className="p-3 flex flex-col gap-2">
           {offers.map(o => (
-            <Link key={o.id} href="/offers"
-              className="group rounded-xl border border-white/8 bg-white/3 hover:bg-white/6 hover:border-white/15 p-3 flex flex-col gap-2 transition-all">
-              {/* Badge type */}
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-white leading-snug line-clamp-2 group-hover:text-purple-200 transition-colors">
-                  {o.title}
+            <button
+              key={o.id}
+              onClick={() => onSelectOffer(o)}
+              className="group rounded-xl border border-white/8 bg-white/3 hover:bg-white/6 hover:border-white/15 p-3 flex items-start gap-2.5 transition-all text-left w-full"
+            >
+              {/* Dot coloré = code type */}
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${OFFER_DOT[o.type] ?? OFFER_DOT.ALL}`} />
+              <div className="flex-1 min-w-0">
+                {/* Poste recherché = specialty ou titre */}
+                <p className="text-sm font-medium text-white leading-snug line-clamp-1 group-hover:text-purple-200 transition-colors">
+                  {o.specialty || o.title}
                 </p>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 mt-0.5 ${
-                  o.type === 'ARTIST'   ? 'bg-pink-500/20 text-pink-300 border border-pink-500/25' :
-                  o.type === 'PROVIDER' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/25' :
-                                          'bg-purple-500/20 text-purple-300 border border-purple-500/25'
-                }`}>
-                  {offerTypeLabel(o.type)}
-                </span>
+                {/* Organisateur */}
+                <p className="text-[11px] text-white/40 mt-0.5 truncate">{o.organizer.name}</p>
+                {/* Lieu + date */}
+                <div className="flex items-center gap-2 mt-1 text-[11px] text-white/30">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3 flex-shrink-0" />{o.location}
+                  </span>
+                  <span className="text-white/15">·</span>
+                  <span>📅 {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                </div>
               </div>
-              {/* Méta */}
-              <div className="flex items-center gap-2 text-[11px] text-white/40">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />{o.location}
-                </span>
-                <span className="text-white/20">·</span>
-                <span>📅 {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-              </div>
-            </Link>
+            </button>
           ))}
         </div>
       )}
@@ -499,12 +498,13 @@ export default function HomePage() {
   const { user } = useAuth() as { user: { id: number } | null }
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-  const [featured, setFeatured]         = useState<FeaturedProfile[]>([])
-  const [posts, setPosts]               = useState<Post[]>([])
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
-  const [suggested, setSuggested]       = useState<SuggestedProfile[]>([])
-  const [loadingFeed, setLoadingFeed]   = useState(true)
-  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
+  const [featured, setFeatured]           = useState<FeaturedProfile[]>([])
+  const [posts, setPosts]                 = useState<Post[]>([])
+  const [selectedPost, setSelectedPost]   = useState<Post | null>(null)
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null)
+  const [suggested, setSuggested]         = useState<SuggestedProfile[]>([])
+  const [loadingFeed, setLoadingFeed]     = useState(true)
+  const [visibleCount, setVisibleCount]   = useState(POSTS_PER_PAGE)
 
   // Tab mobile : 'feed' | 'top' | 'offers'
   const [mobileTab, setMobileTab] = useState<'feed' | 'top' | 'offers'>('feed')
@@ -632,9 +632,18 @@ export default function HomePage() {
 
         {/* ════ COLONNE DROITE : Offres (sticky) ═════════════ */}
         <aside className={`lg:sticky lg:top-20 ${mobileTab !== 'offers' ? 'hidden lg:block' : ''}`}>
-          <OffersSidebar apiBase={API_BASE} />
+          <OffersSidebar apiBase={API_BASE} onSelectOffer={setSelectedOffer} />
         </aside>
       </div>
+
+      {/* ── Modale offre ───────────────────────────────────── */}
+      {selectedOffer && (
+        <OfferModal
+          offer={selectedOffer}
+          onClose={() => setSelectedOffer(null)}
+          isLoggedIn={!!user}
+        />
+      )}
 
       {/* ── Modale publication ─────────────────────────────── */}
       {selectedPost && (
