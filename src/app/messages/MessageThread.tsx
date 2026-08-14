@@ -2,13 +2,14 @@
 
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, MessageCircle, Loader2,
   CheckCheck, Check, Paperclip, Send, FileText, X, ExternalLink, CalendarPlus,
+  UserPlus, Search,
 } from 'lucide-react'
 import { Avatar, AttachmentBubble } from './MessageUI'
 import { BookingRequestCard, CancellationRequestCard } from './BookingCards'
@@ -62,10 +63,19 @@ export default function MessageThread({
   const [bookingSending, setBookingSending] = useState(false)
   const [bookingError, setBookingError] = useState('')
 
+  // ── Statut en ligne ────────────────────────────────────────
+  const [onlineStatus, setOnlineStatus] = useState<{ online: boolean; lastActiveAt: string | null } | null>(null)
+
+  // ── Partage de profil ──────────────────────────────────────
+  const [showShareProfile, setShowShareProfile] = useState(false)
+  const [shareSearch, setShareSearch] = useState('')
+  const [shareResults, setShareResults] = useState<Array<{id:number;name:string;role:string;avatar:string|null;profileUrl:string;profession:string|null}>>([])
+  const [shareLoading, setShareLoading] = useState(false)
+
   const submitBooking = async () => {
     if (!token || !activeConvId || !bookingDate || bookingSending) return
-    const other = activeConv?.participants.find(p => p.id !== currentUserId)
-    if (!other?.profileId) {
+    const otherForBooking = activeConv?.participants.find(p => p.id !== currentUserId)
+    if (!otherForBooking?.profileId) {
       setBookingError('Profil de l\'interlocuteur introuvable.')
       return
     }
@@ -76,7 +86,7 @@ export default function MessageThread({
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          targetProfileId: other.profileId,
+          targetProfileId: otherForBooking.profileId,
           conversationId: activeConvId,
           date: bookingDate,
           fee: bookingFee ? parseFloat(bookingFee) : undefined,
@@ -100,6 +110,66 @@ export default function MessageThread({
     } finally {
       setBookingSending(false)
     }
+  }
+
+  // ── Effet polling statut en ligne ─────────────────────────
+  const other = activeConv?.participants.find((p) => p.id !== currentUserId) ?? activeConv?.participants[0]
+
+  useEffect(() => {
+    if (!other || !token) return
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/messages/status/${other.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (res.ok) setOnlineStatus(await res.json())
+      } catch {}
+    }
+    fetchStatus()
+    const iv = setInterval(fetchStatus, 30000)
+    return () => clearInterval(iv)
+  }, [other?.id, token])
+
+  // ── Effet recherche partage profil ────────────────────────
+  useEffect(() => {
+    if (!shareSearch.trim() || !token) { setShareResults([]); return }
+    const t = setTimeout(async () => {
+      setShareLoading(true)
+      try {
+        const res = await fetch(`${API_BASE}/api/search?name=${encodeURIComponent(shareSearch.trim())}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        const users = Array.isArray(data?.users) ? data.users : []
+        setShareResults(users.map((u: {id:number;pseudo?:string|null;firstName?:string|null;lastName?:string|null;role:string;profile?:{avatar?:string|null}|null}) => ({
+          id: u.id,
+          name: u.pseudo || [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Utilisateur',
+          role: u.role,
+          avatar: u.profile?.avatar || null,
+          profession: null,
+          profileUrl: `/${u.role?.toLowerCase() === 'artist' ? 'artist' : u.role?.toLowerCase() === 'organizer' ? 'organizer' : 'provider'}/${u.id}`,
+        })))
+      } catch { setShareResults([]) }
+      finally { setShareLoading(false) }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [shareSearch, token])
+
+  // ── Envoi partage profil ───────────────────────────────────
+  const sendProfileShare = async (targetUserId: number) => {
+    if (!activeConvId || !token) return
+    try {
+      await fetch(`${API_BASE}/api/messages/share-profile`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: activeConvId, profileUserId: targetUserId }),
+      })
+      setShowShareProfile(false)
+      setShareSearch('')
+      setShareResults([])
+      await fetchMessages(activeConvId)
+    } catch {}
   }
 
   // Lien vers le profil de l'interlocuteur
@@ -151,8 +221,8 @@ export default function MessageThread({
     )
   }
 
-  const other = activeConv.participants.find((p) => p.id !== currentUserId) ?? activeConv.participants[0]
-  const Icon = other ? ROLE_ICON[other.role] : null
+  const otherParticipant = activeConv.participants.find((p) => p.id !== currentUserId) ?? activeConv.participants[0]
+  const Icon = otherParticipant ? ROLE_ICON[otherParticipant.role] : null
 
   return (
     <div className={`flex-1 flex flex-col min-w-0 bg-gradient-to-b from-[#09090f] to-[#07070d] ${activeConvId && mobileView === 'chat' ? 'flex' : 'hidden md:flex'}`}>
@@ -164,18 +234,36 @@ export default function MessageThread({
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        {other && (() => {
-          const profileLink = getProfileLink(other.role, other.id)
+        {otherParticipant && (() => {
+          const profileLink = getProfileLink(otherParticipant.role, otherParticipant.id)
           const inner = (
             <div className="flex items-center gap-3 min-w-0 flex-1 group">
-              <Avatar src={other.profile?.avatar || ''} alt={other.name} size={38} />
+              <Avatar src={otherParticipant.profile?.avatar || ''} alt={otherParticipant.name} size={38} />
               <div className="min-w-0">
-                <p className="font-semibold text-sm truncate group-hover:text-violet-300 transition">{other.name}</p>
+                <p className="font-semibold text-sm truncate group-hover:text-violet-300 transition">{otherParticipant.name}</p>
                 {Icon && (
-                  <div className={`flex items-center gap-1 text-xs ${ROLE_COLOR[other.role]}`}>
+                  <div className={`flex items-center gap-1 text-xs ${ROLE_COLOR[otherParticipant.role]}`}>
                     <Icon className="w-3 h-3" />
-                    <span>{ROLE_LABEL[other.role]}</span>
+                    <span>{ROLE_LABEL[otherParticipant.role]}</span>
                   </div>
+                )}
+                {onlineStatus && (
+                  <p className="text-[11px] text-white/40 mt-0.5">
+                    {onlineStatus.online
+                      ? <span className="text-emerald-400">● En ligne</span>
+                      : onlineStatus.lastActiveAt
+                        ? (() => {
+                            const diff = Date.now() - new Date(onlineStatus.lastActiveAt).getTime()
+                            const min = Math.floor(diff / 60000)
+                            if (min < 1) return <span className="text-white/30">● En ligne à l&apos;instant</span>
+                            if (min < 60) return <span className="text-white/30">● En ligne il y a {min} min</span>
+                            const h = Math.floor(min / 60)
+                            if (h < 24) return <span className="text-white/30">● En ligne il y a {h}h</span>
+                            return <span className="text-white/30">● En ligne il y a {Math.floor(h / 24)}j</span>
+                          })()
+                        : null
+                    }
+                  </p>
                 )}
               </div>
               {profileLink && <ExternalLink className="w-3.5 h-3.5 text-white/20 group-hover:text-violet-400 transition ml-1 shrink-0" />}
@@ -185,22 +273,6 @@ export default function MessageThread({
             ? <Link href={profileLink} className="flex-1 min-w-0">{inner}</Link>
             : <div className="flex-1 min-w-0">{inner}</div>
         })()}
-
-        {/* Bouton proposer un booking — organisateurs seulement */}
-        {isOrganizer && other && (
-          <button
-            onClick={() => { setShowBookingForm(v => !v); setBookingError('') }}
-            title="Proposer un booking"
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-              showBookingForm
-                ? 'bg-violet-600 text-white shadow-sm shadow-violet-900/40'
-                : 'bg-white/[0.05] border border-white/[0.08] text-white/50 hover:bg-violet-500/20 hover:text-violet-300 hover:border-violet-500/30'
-            }`}
-          >
-            <CalendarPlus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Booking</span>
-          </button>
-        )}
       </div>
 
       {/* Formulaire de proposition de booking (slide-down) */}
@@ -348,6 +420,40 @@ export default function MessageThread({
                 return
               }
 
+              // Carte profil partagé
+              if (msg.type === 'PROFILE_SHARE' && msg.content) {
+                let shared: {name:string;role:string;avatar:string|null;profession:string|null;location:string|null;profileUrl:string} | null = null
+                try { shared = JSON.parse(msg.content) } catch {}
+                if (shared) {
+                  items.push(
+                    <div key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      {!isMe && <div className="w-7 h-7 shrink-0 mb-1"><Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} /></div>}
+                      <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                        <p className="text-[10px] text-white/30 mb-1 px-1">{isMe ? 'Vous avez partagé un profil' : 'A partagé un profil'}</p>
+                        <a href={shared.profileUrl}
+                          className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#1c1c2e] border border-white/[0.08] hover:border-violet-500/30 hover:bg-violet-500/5 transition min-w-[200px]">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 shrink-0">
+                            {shared.avatar
+                              ? <img src={shared.avatar} alt={shared.name} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center text-sm font-bold text-white/30">{shared.name[0]}</div>
+                            }
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white/90 truncate">{shared.name}</p>
+                            <p className="text-xs text-white/40">{shared.role === 'ARTIST' ? 'Artiste' : shared.role === 'ORGANIZER' ? 'Organisateur' : 'Prestataire'}</p>
+                            {shared.profession && <p className="text-xs text-white/25 truncate">{shared.profession}</p>}
+                          </div>
+                          <ExternalLink className="w-3.5 h-3.5 text-white/20 shrink-0 ml-auto" />
+                        </a>
+                        <span className="text-[10px] text-white/20 mt-1 px-1">{formatMessageTime(msg.createdAt)}</span>
+                      </div>
+                      {isMe && <div className="w-7 shrink-0" />}
+                    </div>
+                  )
+                  return
+                }
+              }
+
               // Arrondi des bulles selon position dans le groupe
               const bubbleRadius = isMe
                 ? isFirst && isLast ? 'rounded-[18px] rounded-br-[5px]'
@@ -431,6 +537,51 @@ export default function MessageThread({
         </div>
       )}
 
+      {/* Modal partage de profil */}
+      {showShareProfile && (
+        <div className="mx-4 mb-2 rounded-2xl border border-white/[0.08] bg-[#141420]/90 p-3 shadow-lg">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-white/70">Partager un profil</p>
+            <button onClick={() => { setShowShareProfile(false); setShareSearch('') }}
+              className="text-white/30 hover:text-white/60 transition p-1"><X className="w-4 h-4" /></button>
+          </div>
+          <div className="relative mb-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+            <input
+              type="text"
+              value={shareSearch}
+              onChange={e => setShareSearch(e.target.value)}
+              placeholder="Chercher un utilisateur…"
+              autoFocus
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-500/40 transition"
+            />
+          </div>
+          <div className="max-h-40 overflow-y-auto space-y-0.5">
+            {shareLoading ? (
+              <div className="flex items-center gap-2 p-2 text-xs text-white/30"><Loader2 className="w-3.5 h-3.5 animate-spin" />Recherche…</div>
+            ) : shareResults.length === 0 && shareSearch.trim() ? (
+              <p className="p-2 text-xs text-white/25">Aucun résultat</p>
+            ) : (
+              shareResults.map(u => (
+                <button key={u.id} onClick={() => sendProfileShare(u.id)}
+                  className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-white/[0.05] transition text-left">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10 shrink-0">
+                    {u.avatar
+                      ? <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white/30">{u.name[0]}</div>
+                    }
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white/80 truncate">{u.name}</p>
+                    <p className="text-xs text-white/35">{u.role === 'ARTIST' ? 'Artiste' : u.role === 'ORGANIZER' ? 'Organisateur' : 'Prestataire'}</p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Zone de saisie */}
       <div className="px-4 pb-4 pt-2 shrink-0 bg-gradient-to-t from-[#09090f] to-transparent">
         <div className="flex items-end gap-2 rounded-2xl border border-white/[0.08] bg-[#141420]/80 backdrop-blur-sm px-3 py-2.5 shadow-lg shadow-black/20 focus-within:border-violet-500/30 transition-colors">
@@ -451,6 +602,28 @@ export default function MessageThread({
             className="hidden"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
+          {isOrganizer && (
+            <button
+              onClick={() => { setShowBookingForm(v => !v); setBookingError('') }}
+              title="Proposer un booking"
+              className={`p-2 rounded-xl transition shrink-0 self-end ${
+                showBookingForm
+                  ? 'text-violet-400 bg-violet-500/20'
+                  : 'text-white/25 hover:text-white/60 hover:bg-white/[0.05]'
+              }`}
+              type="button"
+            >
+              <CalendarPlus className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={() => setShowShareProfile(v => !v)}
+            className="p-2 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/[0.05] transition shrink-0 self-end"
+            type="button"
+            title="Partager un profil"
+          >
+            <UserPlus className="w-4 h-4" />
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="p-2 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/[0.05] transition shrink-0 self-end"

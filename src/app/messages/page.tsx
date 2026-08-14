@@ -30,11 +30,10 @@ function MessagesContent() {
   const [sending, setSending] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
-  const [newConvSearch, setNewConvSearch] = useState('')
+  const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] = useState<SearchUser[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
-  const [showNewConv, setShowNewConv] = useState(false)
-  const [convSearch, setConvSearch] = useState('')
+  const [contacts, setContacts] = useState<SearchUser[]>([])
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [lightbox, setLightbox] = useState<{ url: string; name?: string | null } | null>(null)
 
@@ -167,14 +166,23 @@ function MessagesContent() {
     isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 120
   }, [])
 
+  /* ── Charger les contacts (followers + suivis) ── */
+  useEffect(() => {
+    if (!token) return
+    fetch(`${API_BASE}/api/follow/contacts`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setContacts(Array.isArray(d.contacts) ? d.contacts : []))
+      .catch(() => {})
+  }, [token])
+
   /* ── Recherche nouvelle conv ── */
   useEffect(() => {
-    if (!newConvSearch.trim() || !token) { setSearchResults([]); return }
+    if (!search.trim() || !token) { setSearchResults([]); return }
     const t = setTimeout(async () => {
       setSearchLoading(true)
       try {
         const res = await fetch(
-          `${API_BASE}/api/search?name=${encodeURIComponent(newConvSearch.trim())}`,
+          `${API_BASE}/api/search?name=${encodeURIComponent(search.trim())}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         if (!res.ok) return
@@ -184,7 +192,7 @@ function MessagesContent() {
       finally { setSearchLoading(false) }
     }, 300)
     return () => clearTimeout(t)
-  }, [newConvSearch, token])
+  }, [search, token])
 
   /* ── Sélectionner une conversation ── */
   const selectConv = useCallback((convId: number) => {
@@ -200,7 +208,7 @@ function MessagesContent() {
   const startConversation = useCallback(async (recipientId: number) => {
     if (!token) return
     const existing = conversations.find((c) => c.participants.some((p) => p.id === recipientId))
-    if (existing) { selectConv(existing.id); setShowNewConv(false); setNewConvSearch(''); return }
+    if (existing) { selectConv(existing.id); setSearch(''); return }
     try {
       const res = await fetch(`${API_BASE}/api/messages/start`, {
         method: 'POST',
@@ -220,8 +228,7 @@ function MessagesContent() {
         setActiveConv(newConv)
         router.push(`/messages?c=${data.conversationId}`)
         setMobileView('chat')
-        setShowNewConv(false)
-        setNewConvSearch('')
+        setSearch('')
       }
     } catch (err) { console.error('startConversation:', err) }
   }, [token, conversations, selectConv, router])
@@ -310,12 +317,9 @@ function MessagesContent() {
       <ConversationList
         conversations={conversations}
         currentUserId={currentUserId}
-        convSearch={convSearch}
-        setConvSearch={setConvSearch}
-        showNewConv={showNewConv}
-        setShowNewConv={setShowNewConv}
-        newConvSearch={newConvSearch}
-        setNewConvSearch={setNewConvSearch}
+        search={search}
+        setSearch={setSearch}
+        contacts={contacts}
         searchResults={searchResults}
         searchLoading={searchLoading}
         activeConvId={activeConvId}

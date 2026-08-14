@@ -1,8 +1,6 @@
-// messages/ConversationList.tsx — Panneau gauche : liste des conversations
-
 'use client'
 
-import { Search, MessageCircle, Plus, X, Loader2, Trash2 } from 'lucide-react'
+import { Search, MessageCircle, Loader2, Trash2 } from 'lucide-react'
 import { Avatar } from './MessageUI'
 import { ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatTime } from './_helpers'
 import type { Conversation, SearchUser } from './types'
@@ -10,12 +8,9 @@ import type { Conversation, SearchUser } from './types'
 interface ConversationListProps {
   conversations: Conversation[]
   currentUserId: number | null
-  convSearch: string
-  setConvSearch: (v: string) => void
-  showNewConv: boolean
-  setShowNewConv: (v: boolean) => void
-  newConvSearch: string
-  setNewConvSearch: (v: string) => void
+  search: string
+  setSearch: (v: string) => void
+  contacts: SearchUser[]
   searchResults: SearchUser[]
   searchLoading: boolean
   activeConvId: number | null
@@ -31,17 +26,25 @@ function getDisplayName(u: SearchUser) {
 }
 
 export default function ConversationList({
-  conversations, currentUserId, convSearch, setConvSearch,
-  showNewConv, setShowNewConv, newConvSearch, setNewConvSearch,
+  conversations, currentUserId, search, setSearch, contacts,
   searchResults, searchLoading, activeConvId, mobileView,
   deletingId, selectConv, startConversation, deleteConversation,
 }: ConversationListProps) {
 
-  const filteredConvs = conversations.filter((c) => {
-    if (!convSearch.trim()) return true
-    const other = c.participants.find((p) => p.id !== currentUserId) ?? c.participants[0]
-    return other?.name?.toLowerCase().includes(convSearch.toLowerCase())
-  })
+  const isSearching = search.trim().length > 0
+
+  // Quand on cherche : fusionner contacts (en tête) + searchResults (les autres)
+  const contactIds = new Set(contacts.map(c => c.id))
+  const otherResults = searchResults.filter(u => !contactIds.has(u.id))
+
+  const matchingContacts = isSearching
+    ? contacts.filter(c => getDisplayName(c).toLowerCase().includes(search.toLowerCase()))
+    : []
+
+  // Filtrer conversations si pas en mode recherche
+  const filteredConvs = !isSearching
+    ? conversations
+    : []
 
   return (
     <div className={`
@@ -57,167 +60,134 @@ export default function ConversationList({
             <h1 className="text-base font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
               Messages
             </h1>
-            {conversations.length > 0 && (
+            {conversations.length > 0 && !isSearching && (
               <p className="text-[11px] text-white/25 mt-0.5">{conversations.length} conversation{conversations.length > 1 ? 's' : ''}</p>
             )}
           </div>
-          <button
-            onClick={() => setShowNewConv(!showNewConv)}
-            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 ${
-              showNewConv
-                ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/25'
-                : 'bg-white/[0.06] text-white/40 hover:bg-white/10 hover:text-white/70 border border-white/[0.06]'
-            }`}
-          >
-            {showNewConv ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-          </button>
         </div>
 
-        {/* Recherche nouvelle conversation */}
-        {showNewConv && (
-          <div className="mb-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-              <input
-                type="text"
-                value={newConvSearch}
-                onChange={(e) => setNewConvSearch(e.target.value)}
-                placeholder="Chercher un utilisateur…"
-                autoFocus
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07] transition-all"
-              />
-            </div>
-            {newConvSearch.trim() && (
-              <div className="mt-2 rounded-xl border border-white/[0.07] bg-[#0f0f1c] overflow-hidden max-h-56 overflow-y-auto shadow-xl shadow-black/40">
-                {searchLoading ? (
-                  <div className="flex items-center gap-2 p-3 text-sm text-white/40">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Recherche…
-                  </div>
-                ) : searchResults.length === 0 ? (
-                  <p className="p-3 text-sm text-white/30">Aucun résultat</p>
-                ) : (
-                  searchResults.map((u) => {
-                    const Icon = ROLE_ICON[u.role]
-                    return (
-                      <button
-                        key={u.id}
-                        onClick={() => startConversation(u.id)}
-                        className="w-full flex items-center gap-3 px-3 py-3 hover:bg-white/[0.05] transition text-left"
-                      >
-                        <Avatar src={u.profile?.avatar || ''} alt={getDisplayName(u)} size={36} />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate text-white/90">{getDisplayName(u)}</p>
-                          <div className={`flex items-center gap-1 text-[11px] mt-0.5 ${ROLE_COLOR[u.role]}`}>
-                            <Icon className="w-2.5 h-2.5" />
-                            <span>{ROLE_LABEL[u.role]}</span>
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })
-                )}
+        {/* Barre de recherche unifiée */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher ou démarrer une conversation…"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07] transition-all"
+          />
+        </div>
+
+        {/* Résultats de recherche */}
+        {isSearching && (
+          <div className="mt-2 rounded-xl border border-white/[0.07] bg-[#0f0f1c] overflow-hidden max-h-72 overflow-y-auto shadow-xl shadow-black/40">
+            {searchLoading && matchingContacts.length === 0 ? (
+              <div className="flex items-center gap-2 p-3 text-sm text-white/40">
+                <Loader2 className="w-4 h-4 animate-spin" /> Recherche…
               </div>
+            ) : matchingContacts.length === 0 && otherResults.length === 0 ? (
+              <p className="p-3 text-sm text-white/30">Aucun résultat</p>
+            ) : (
+              <>
+                {matchingContacts.length > 0 && (
+                  <>
+                    <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/25">Contacts</p>
+                    {matchingContacts.map((u) => {
+                      const Icon = ROLE_ICON[u.role]
+                      return (
+                        <button key={u.id} onClick={() => startConversation(u.id)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.05] transition text-left">
+                          <Avatar src={u.profile?.avatar || ''} alt={getDisplayName(u)} size={36} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate text-white/90">{getDisplayName(u)}</p>
+                            <div className={`flex items-center gap-1 text-[11px] mt-0.5 ${ROLE_COLOR[u.role]}`}>
+                              <Icon className="w-2.5 h-2.5" /><span>{ROLE_LABEL[u.role]}</span>
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </>
+                )}
+                {otherResults.length > 0 && (
+                  <>
+                    <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/25">Autres utilisateurs</p>
+                    {otherResults.map((u) => {
+                      const Icon = ROLE_ICON[u.role]
+                      return (
+                        <button key={u.id} onClick={() => startConversation(u.id)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.05] transition text-left">
+                          <Avatar src={u.profile?.avatar || ''} alt={getDisplayName(u)} size={36} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate text-white/90">{getDisplayName(u)}</p>
+                            <div className={`flex items-center gap-1 text-[11px] mt-0.5 ${ROLE_COLOR[u.role]}`}>
+                              <Icon className="w-2.5 h-2.5" /><span>{ROLE_LABEL[u.role]}</span>
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </>
+                )}
+              </>
             )}
           </div>
         )}
-
-        {/* Filtre conversations existantes */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
-          <input
-            type="text"
-            value={convSearch}
-            onChange={(e) => setConvSearch(e.target.value)}
-            placeholder="Filtrer…"
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/[0.03] text-sm text-white placeholder-white/20 focus:outline-none border border-white/[0.04] focus:border-white/10 focus:bg-white/[0.05] transition-all"
-          />
-        </div>
       </div>
 
-      {/* Liste */}
-      <div className="flex-1 overflow-y-auto py-1">
-        {filteredConvs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
-            <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-white/15" />
+      {/* Liste des conversations existantes (quand pas en recherche) */}
+      {!isSearching && (
+        <div className="flex-1 overflow-y-auto py-1">
+          {filteredConvs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
+              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-white/15" />
+              </div>
+              <p className="text-sm text-white/25">Aucune conversation</p>
+              <p className="text-xs text-white/15">Recherche un utilisateur pour démarrer</p>
             </div>
-            <p className="text-sm text-white/25">
-              {conversations.length === 0 ? 'Aucune conversation' : 'Aucun résultat'}
-            </p>
-            {conversations.length === 0 && (
-              <button
-                onClick={() => setShowNewConv(true)}
-                className="text-xs text-violet-400/80 hover:text-violet-300 transition"
-              >
-                Démarrer une conversation
-              </button>
-            )}
-          </div>
-        ) : (
-          filteredConvs.map((conv) => {
-            const other = conv.participants.find((p) => p.id !== currentUserId) ?? conv.participants[0]
-            const isActive = conv.id === activeConvId
-            const isUnread =
-              !!conv.lastMessageMeta &&
-              conv.lastMessageMeta.senderId !== currentUserId &&
-              !conv.lastMessageMeta.seen
+          ) : (
+            filteredConvs.map((conv) => {
+              const other = conv.participants.find((p) => p.id !== currentUserId) ?? conv.participants[0]
+              const isActive = conv.id === activeConvId
+              const isUnread = !!conv.lastMessageMeta && conv.lastMessageMeta.senderId !== currentUserId && !conv.lastMessageMeta.seen
 
-            return (
-              <div
-                key={conv.id}
-                onClick={() => selectConv(conv.id)}
-                className={`group relative flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-all duration-150 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-violet-600/[0.18] via-violet-500/[0.08] to-transparent'
-                    : 'hover:bg-white/[0.03]'
-                }`}
-              >
-                {/* Barre active */}
-                {isActive && (
-                  <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-gradient-to-b from-violet-400 to-purple-600" />
-                )}
-
-                {/* Avatar avec badge non-lu */}
-                <div className="relative shrink-0">
-                  <Avatar src={other?.profile?.avatar || ''} alt={other?.name || '?'} size={44} />
-                  {isUnread && (
-                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-violet-500 border-2 border-[#0e0e1a] shadow-sm shadow-violet-500/50" />
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className={`text-sm truncate ${
-                      isUnread ? 'font-semibold text-white' : isActive ? 'font-medium text-white/90' : 'font-medium text-white/65'
-                    }`}>
-                      {other?.name}
-                    </p>
-                    <span className={`text-[10px] shrink-0 tabular-nums ${isUnread ? 'text-violet-400' : 'text-white/25'}`}>
-                      {conv.updatedAt ? formatTime(conv.updatedAt) : ''}
-                    </span>
+              return (
+                <div key={conv.id} onClick={() => selectConv(conv.id)}
+                  className={`group relative flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-all duration-150 ${
+                    isActive ? 'bg-gradient-to-r from-violet-600/[0.18] via-violet-500/[0.08] to-transparent' : 'hover:bg-white/[0.03]'
+                  }`}
+                >
+                  {isActive && <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-gradient-to-b from-violet-400 to-purple-600" />}
+                  <div className="relative shrink-0">
+                    <Avatar src={other?.profile?.avatar || ''} alt={other?.name || '?'} size={44} />
+                    {isUnread && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-violet-500 border-2 border-[#0e0e1a] shadow-sm shadow-violet-500/50" />}
                   </div>
-                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                    <p className={`text-xs truncate ${
-                      isUnread ? 'text-white/60' : 'text-white/30'
-                    }`}>
-                      {conv.lastMessage || <span className="italic text-white/20">Nouvelle conversation</span>}
-                    </p>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        onClick={(e) => deleteConversation(conv.id, e)}
-                        disabled={deletingId === conv.id}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-500/10 text-white/20 hover:text-red-400"
-                      >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-sm truncate ${isUnread ? 'font-semibold text-white' : isActive ? 'font-medium text-white/90' : 'font-medium text-white/65'}`}>
+                        {other?.name}
+                      </p>
+                      <span className={`text-[10px] shrink-0 tabular-nums ${isUnread ? 'text-violet-400' : 'text-white/25'}`}>
+                        {conv.updatedAt ? formatTime(conv.updatedAt) : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <p className={`text-xs truncate ${isUnread ? 'text-white/60' : 'text-white/30'}`}>
+                        {conv.lastMessage || <span className="italic text-white/20">Nouvelle conversation</span>}
+                      </p>
+                      <button onClick={(e) => deleteConversation(conv.id, e)} disabled={deletingId === conv.id}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-500/10 text-white/20 hover:text-red-400">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            )
-          })
-        )}
-      </div>
+              )
+            })
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -11,6 +11,7 @@ export interface Participant {
   role: Role
   profile?: { avatar?: string | null } | null
   profileId?: number | null
+  lastActiveAt?: string | null
 }
 
 export interface Conversation {
@@ -55,6 +56,16 @@ export interface Message {
   createdAt: string
   seen: boolean
   sender: { id: number; name: string; image?: string | null }
+  sharedProfile?: {
+    userId: number
+    profileId: number | null
+    name: string
+    role: string
+    avatar: string | null
+    profession: string | null
+    location: string | null
+    profileUrl: string
+  } | null
 }
 
 export interface SearchUser {
