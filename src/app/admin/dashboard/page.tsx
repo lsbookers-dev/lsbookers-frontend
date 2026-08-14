@@ -16,6 +16,7 @@ type Summary = {
   revenueOffersCents: number
   loginsToday: number
   signupsToday: number
+  onlineNow: number
 }
 
 type LoginPeriod = 'day' | 'week' | 'month' | 'year'
@@ -53,27 +54,30 @@ export default function AdminDashboard() {
     cache: 'no-store' as const,
   }), [])
 
-  // Chargement du résumé général
-  React.useEffect(() => {
-    let alive = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const r = await fetch(`${API_BASE}/api/admin/stats/summary`, authed())
-        if (!r.ok) throw new Error('HTTP ' + r.status)
-        const json = await r.json() as { summary?: Summary } | Summary
-        const sum: Summary = ('summary' in json && json.summary) ? json.summary as Summary : json as Summary
-        if (alive) setSummary(sum)
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Impossible de charger les indicateurs.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    })()
-    return () => { alive = false }
+  // Chargement du résumé général + auto-refresh toutes les 30s
+  const fetchSummary = React.useCallback(async (alive: { v: boolean }, silent = false) => {
+    try {
+      if (!silent) setLoading(true)
+      setError(null)
+      const r = await fetch(`${API_BASE}/api/admin/stats/summary`, authed())
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      const json = await r.json() as { summary?: Summary } | Summary
+      const sum: Summary = ('summary' in json && json.summary) ? json.summary as Summary : json as Summary
+      if (alive.v) setSummary(sum)
+    } catch (err) {
+      console.error(err)
+      if (alive.v && !silent) setError('Impossible de charger les indicateurs.')
+    } finally {
+      if (alive.v && !silent) setLoading(false)
+    }
   }, [authed])
+
+  React.useEffect(() => {
+    const alive = { v: true }
+    fetchSummary(alive)
+    const interval = setInterval(() => fetchSummary(alive, true), 30_000)
+    return () => { alive.v = false; clearInterval(interval) }
+  }, [fetchSummary])
 
   // Chargement du compteur de connexions (se recharge à chaque changement de période)
   React.useEffect(() => {
@@ -102,6 +106,7 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold mb-6">Tableau de bord admin</h1>
 
       <div className="grid gap-4 md:grid-cols-3">
+        <KPIOnline value={summary.onlineNow ?? 0} />
         <KPI
           title="Utilisateurs"
           value={summary.usersTotal.toLocaleString()}
@@ -169,6 +174,22 @@ function KPI({ title, value, sub }: { title: string; value: string; sub?: string
       <p className="text-sm text-white/60">{title}</p>
       <p className="text-2xl font-extrabold mt-1">{value}</p>
       {sub && <p className="text-xs text-white/50 mt-1">{sub}</p>}
+    </div>
+  )
+}
+
+function KPIOnline({ value }: { value: number }) {
+  return (
+    <div className="rounded-2xl border border-green-500/30 bg-[#0f0f0f] p-5">
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+        </span>
+        <p className="text-sm text-white/60">En ligne maintenant</p>
+      </div>
+      <p className="text-2xl font-extrabold mt-1">{value.toLocaleString()}</p>
+      <p className="text-xs text-white/40 mt-1">actifs dans les 2 dernières minutes</p>
     </div>
   )
 }
