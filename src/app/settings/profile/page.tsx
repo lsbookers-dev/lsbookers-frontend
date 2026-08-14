@@ -470,22 +470,43 @@ export default function ProfileSettings() {
               />
             </div>
             <div>
-              <label className="text-sm text-white/70 mb-2 block">
-                Rayon d&apos;intervention — <span className="text-emerald-400">{profile.radiusKm ?? 0} km</span>
+              <label className="text-sm text-white/70 mb-3 block">
+                Rayon d&apos;intervention
+                {profile.radiusKm
+                  ? <span className="text-emerald-400 ml-1">— {profile.radiusKm} km</span>
+                  : profile.radiusKm === null
+                    ? <span className="text-emerald-400 ml-1">— National</span>
+                    : null
+                }
               </label>
-              <input
-                type="range"
-                min={0}
-                max={500}
-                step={10}
-                value={profile.radiusKm ?? 0}
-                onChange={e => setProfile(p => ({ ...p, radiusKm: parseInt(e.target.value) }))}
-                className="w-full accent-emerald-500"
-              />
-              <div className="flex justify-between text-xs text-white/30 mt-1">
-                <span>0 km</span>
-                <span>500 km</span>
+              <div className="flex flex-wrap gap-2">
+                {[50, 100, 200, 500, 1000].map(km => (
+                  <button
+                    key={km}
+                    type="button"
+                    onClick={() => setProfile(p => ({ ...p, radiusKm: p.radiusKm === km ? null : km }))}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                      profile.radiusKm === km
+                        ? 'bg-emerald-600/30 border-emerald-500/60 text-emerald-300'
+                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {km} km
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setProfile(p => ({ ...p, radiusKm: p.radiusKm === 9999 ? null : 9999 }))}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                    profile.radiusKm === 9999
+                      ? 'bg-emerald-600/30 border-emerald-500/60 text-emerald-300'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  National
+                </button>
               </div>
+              <p className="text-xs text-white/25 mt-2">Cliquer à nouveau sur une valeur pour la désélectionner</p>
             </div>
           </div>
         </Section>
