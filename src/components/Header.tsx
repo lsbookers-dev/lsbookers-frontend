@@ -247,8 +247,8 @@ export default function Header() {
 
             {/* ── Logo ───────────────────────────────────── */}
             <Link href="/home" className="flex items-center flex-shrink-0 group">
-              <div className="relative h-11 w-44 group-hover:opacity-80 transition">
-                <Image src={logoSrc} alt="LSBookers" fill sizes="176px" className="object-contain object-left" priority unoptimized />
+              <div className="relative h-14 w-14 group-hover:opacity-80 transition">
+                <Image src={logoSrc} alt="LSBookers" fill sizes="56px" className="object-contain" priority unoptimized />
               </div>
             </Link>
 
