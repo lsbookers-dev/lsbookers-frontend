@@ -584,8 +584,6 @@ export default function HomePage() {
 
         {/* ════ COLONNE CENTRE : Feed publications ═══════════ */}
         <div className={mobileTab !== 'feed' ? 'hidden lg:block' : ''}>
-          <h2 className="text-base font-bold text-white mb-4">Publications</h2>
-
           {loadingFeed ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
