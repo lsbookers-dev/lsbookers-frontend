@@ -719,8 +719,8 @@ export default function HomePage() {
 
         {/* ════ SIDEBAR (1/3) ═════════════════════════════════ */}
         <aside className={`space-y-5 ${mobileTab === 'feed' ? 'hidden lg:block' : mobileTab !== 'top' ? 'hidden lg:block' : ''}`}>
-          <TopList title="Top Artistes"     role="ARTIST"   apiBase={API_BASE} />
-          <TopList title="Top Prestataires" role="PROVIDER" apiBase={API_BASE} />
+          <TopList title="Artistes en Tendance"     role="ARTIST"   apiBase={API_BASE} />
+          <TopList title="Prestataires en Tendance" role="PROVIDER" apiBase={API_BASE} />
           <SuggestedProfiles items={suggested} />
         </aside>
       </div>
