@@ -6,7 +6,7 @@
  * Utilisée sur tous les profils (privés + publics) et la page home.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import PublicationCard, { type PubCardData } from './PublicationCard'
 import PublicationModal from './PublicationModal'
@@ -34,14 +34,18 @@ export default function PublicationsSection({
   const [showAll,   setShowAll]   = useState(false)
   const [pubs,      setPubs]      = useState<PubCardData[]>(publications)
 
-  // Auto-ouvrir la publication ciblée depuis l'URL (?pub=ID)
+  // Auto-ouvrir la publication ciblée depuis l'URL (?pub=ID) — une seule fois
   const searchParams = useSearchParams()
   const pubIdFromUrl = Number(searchParams.get('pub')) || null
+  const autoOpenedRef = useRef(false)
   useEffect(() => {
-    if (!pubIdFromUrl || pubs.length === 0 || selected) return
+    if (!pubIdFromUrl || pubs.length === 0 || autoOpenedRef.current) return
     const match = pubs.find(p => p.id === pubIdFromUrl)
-    if (match) setSelected(match)
-  }, [pubIdFromUrl, pubs, selected])
+    if (match) {
+      setSelected(match)
+      autoOpenedRef.current = true
+    }
+  }, [pubIdFromUrl, pubs])
 
   /* Sync si la prop change (ex: ajout ou suppression d'une pub) */
   if (publications.length !== pubs.length) {
