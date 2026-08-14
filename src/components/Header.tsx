@@ -25,6 +25,7 @@ type PopupNotif = {
   actor?: { id: number; name?: string | null; avatar?: string | null; role?: string | null } | null
   conversationId?: number | null
   offerId?: number | null
+  publicationId?: number | null
 }
 
 const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
@@ -50,14 +51,28 @@ const BOOKING_TYPES = [
   'CANCELLATION_DECLINED', 'PAYMENT_RECEIVED',
 ]
 
-function getPopupLink(notif: PopupNotif): string | null {
+function getPopupLink(notif: PopupNotif, currentUser?: { id: number | string; role: string } | null): string | null {
   if (notif.type === 'NEW_MESSAGE' && notif.conversationId)
     return `/messages?c=${notif.conversationId}`
   if (BOOKING_TYPES.includes(notif.type))
     return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
   if (notif.type === 'NEW_OFFER')
     return `/offers`
-  if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.actor?.id) {
+  // NEW_COMMENT → ouvre la publication du destinataire (= l'utilisateur connecté)
+  if (notif.type === 'NEW_COMMENT' && notif.publicationId && currentUser) {
+    const role = currentUser.role?.toLowerCase()
+    if (role === 'artist')    return `/artist/${currentUser.id}?pub=${notif.publicationId}`
+    if (role === 'organizer') return `/organizer/${currentUser.id}?pub=${notif.publicationId}`
+    if (role === 'provider')  return `/provider/${currentUser.id}?pub=${notif.publicationId}`
+  }
+  // NEW_LIKE → ouvre la publication du destinataire
+  if (notif.type === 'NEW_LIKE' && notif.publicationId && currentUser) {
+    const role = currentUser.role?.toLowerCase()
+    if (role === 'artist')    return `/artist/${currentUser.id}?pub=${notif.publicationId}`
+    if (role === 'organizer') return `/organizer/${currentUser.id}?pub=${notif.publicationId}`
+    if (role === 'provider')  return `/provider/${currentUser.id}?pub=${notif.publicationId}`
+  }
+  if (notif.type === 'NEW_FOLLOW' && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()
     if (role === 'artist')    return `/artist/${notif.actor.id}`
     if (role === 'organizer') return `/organizer/${notif.actor.id}`
@@ -325,7 +340,7 @@ export default function Header() {
                         <div className="p-2 space-y-0.5">
                           {notifList.slice(0, 20).map(notif => {
                             const cfg  = POPUP_TYPE_CONFIG[notif.type] || POPUP_TYPE_CONFIG.DEFAULT
-                            const link = getPopupLink(notif)
+                            const link = getPopupLink(notif, user)
                             const inner = (
                               <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
                                 notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
