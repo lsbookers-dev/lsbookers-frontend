@@ -335,10 +335,7 @@ function TopList({ title, role, apiBase }: { title: string; role: 'ARTIST' | 'PR
     setLoading(true)
     try {
       const params = new URLSearchParams({ role })
-      if (loc) {
-        params.append('country', loc)
-        params.append('city', loc)
-      }
+      if (loc) params.append('city', loc)
       const r = await fetch(`${apiBase}/api/home/top?${params}`)
       if (r.ok) {
         const d = await r.json()

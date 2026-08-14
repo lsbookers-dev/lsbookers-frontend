@@ -157,10 +157,10 @@ export default function CityAutocomplete({
           data-city-dropdown="true"
           style={{
             position: 'fixed',
-            top:   dropdownPos.top,
-            left:  dropdownPos.left,
-            width: dropdownPos.width,
-            zIndex: 9999,
+            top:     dropdownPos.top,
+            left:    dropdownPos.left,
+            width:   Math.max(dropdownPos.width, 240),
+            zIndex:  9999,
           }}
           className="bg-neutral-900 border border-white/10 rounded-xl overflow-hidden shadow-2xl"
         >
