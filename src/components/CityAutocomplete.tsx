@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 
 type Commune = {
   nom: string
   departement?: { nom: string; code: string }
 }
+
+type DropdownPos = { top: number; left: number; width: number }
 
 type Props = {
   value: string
@@ -19,9 +22,9 @@ type Props = {
 }
 
 /**
- * Champ ville avec autocomplétion — utilise l'API gratuite geo.api.gouv.fr
- * Fonctionne pour toutes les communes françaises.
- * Pour les villes étrangères : l'utilisateur peut toujours saisir manuellement.
+ * Champ ville avec autocomplétion — API gratuite geo.api.gouv.fr (communes françaises).
+ * Le dropdown est rendu via un Portal dans <body> pour éviter les problèmes
+ * d'overflow-hidden sur les containers parents.
  */
 export default function CityAutocomplete({
   value,
@@ -33,12 +36,26 @@ export default function CityAutocomplete({
   id,
   name,
 }: Props) {
-  const [suggestions, setSuggestions] = useState<Commune[]>([])
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(-1)
+  const [suggestions, setSuggestions]   = useState<Commune[]>([])
+  const [open, setOpen]                 = useState(false)
+  const [loading, setLoading]           = useState(false)
+  const [activeIndex, setActiveIndex]   = useState(-1)
+  const [dropdownPos, setDropdownPos]   = useState<DropdownPos | null>(null)
+  const [mounted, setMounted]           = useState(false)
+
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inputRef   = useRef<HTMLInputElement>(null)
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Nécessaire pour createPortal (évite les erreurs SSR)
+  useEffect(() => { setMounted(true) }, [])
+
+  // Calcule la position du dropdown en coordonnées viewport (pour position: fixed)
+  const updatePos = useCallback(() => {
+    if (!inputRef.current) return
+    const rect = inputRef.current.getBoundingClientRect()
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+  }, [])
 
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setSuggestions([]); setOpen(false); return }
@@ -50,7 +67,7 @@ export default function CityAutocomplete({
       if (res.ok) {
         const data: Commune[] = await res.json()
         setSuggestions(data)
-        setOpen(data.length > 0)
+        if (data.length > 0) { updatePos(); setOpen(true) } else { setOpen(false) }
         setActiveIndex(-1)
       }
     } catch {
@@ -59,7 +76,7 @@ export default function CityAutocomplete({
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [updatePos])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value
@@ -77,30 +94,35 @@ export default function CityAutocomplete({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open) return
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setActiveIndex(i => Math.min(i + 1, suggestions.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setActiveIndex(i => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter' && activeIndex >= 0) {
-      e.preventDefault()
-      select(suggestions[activeIndex].nom)
-    } else if (e.key === 'Escape') {
-      setOpen(false)
-    }
+    if (e.key === 'ArrowDown')  { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, suggestions.length - 1)) }
+    else if (e.key === 'ArrowUp')    { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)) }
+    else if (e.key === 'Enter' && activeIndex >= 0) { e.preventDefault(); select(suggestions[activeIndex].nom) }
+    else if (e.key === 'Escape') { setOpen(false) }
   }
 
-  // Fermer si clic en dehors
+  // Fermer si clic en dehors (du wrapper ET du dropdown portal)
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as HTMLElement
+      const clickedWrapper  = wrapperRef.current?.contains(target)
+      const clickedDropdown = target.closest('[data-city-dropdown="true"]')
+      if (!clickedWrapper && !clickedDropdown) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Recalcule la position si scroll ou resize pendant que le dropdown est ouvert
+  useEffect(() => {
+    if (!open) return
+    const handler = () => updatePos()
+    window.addEventListener('scroll', handler, true)
+    window.addEventListener('resize', handler)
+    return () => {
+      window.removeEventListener('scroll', handler, true)
+      window.removeEventListener('resize', handler)
+    }
+  }, [open, updatePos])
 
   const defaultInputClass =
     'w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-purple-500/60'
@@ -108,29 +130,40 @@ export default function CityAutocomplete({
   return (
     <div ref={wrapperRef} className={`relative ${className ?? ''}`}>
       <input
+        ref={inputRef}
         id={id}
         name={name}
         type="text"
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        onFocus={() => { if (suggestions.length > 0) { updatePos(); setOpen(true) } }}
         placeholder={placeholder}
         required={required}
         autoComplete="off"
         className={inputClassName ?? defaultInputClass}
       />
 
-      {/* Indicateur de chargement */}
+      {/* Spinner chargement */}
       {loading && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-purple-400 rounded-full animate-spin" />
         </div>
       )}
 
-      {/* Liste de suggestions */}
-      {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-neutral-900 border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+      {/* Dropdown via Portal → rendu dans <body>, passe au-dessus de tout overflow-hidden */}
+      {mounted && open && suggestions.length > 0 && dropdownPos && createPortal(
+        <ul
+          data-city-dropdown="true"
+          style={{
+            position: 'fixed',
+            top:   dropdownPos.top,
+            left:  dropdownPos.left,
+            width: dropdownPos.width,
+            zIndex: 9999,
+          }}
+          className="bg-neutral-900 border border-white/10 rounded-xl overflow-hidden shadow-2xl"
+        >
           {suggestions.map((s, i) => (
             <li key={`${s.nom}-${i}`}>
               <button
@@ -151,7 +184,8 @@ export default function CityAutocomplete({
               </button>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   )
