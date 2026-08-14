@@ -453,33 +453,38 @@ function OffersSidebar({ apiBase }: { apiBase: string }) {
       ) : offers.length === 0 ? (
         <p className="text-center text-xs text-white/25 py-6">Aucune offre</p>
       ) : (
-        <ul className="py-2">
+        <div className="p-3 flex flex-col gap-2">
           {offers.map(o => (
-            <li key={o.id}>
-              <Link href="/offers" className="flex flex-col gap-1 px-4 py-2.5 hover:bg-white/4 transition-colors">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm text-white leading-tight line-clamp-2">{o.title}</p>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                    o.type === 'ARTIST'   ? 'bg-pink-500/15 text-pink-300 border border-pink-500/20' :
-                    o.type === 'PROVIDER' ? 'bg-blue-500/15 text-blue-300 border border-blue-500/20' :
-                                            'bg-purple-500/15 text-purple-300 border border-purple-500/20'
-                  }`}>
-                    {offerTypeLabel(o.type)}
-                  </span>
-                </div>
-                <p className="text-xs text-white/40 flex items-center gap-1">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />{o.location}
-                  <span className="text-white/20">·</span>
-                  {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+            <Link key={o.id} href="/offers"
+              className="group rounded-xl border border-white/8 bg-white/3 hover:bg-white/6 hover:border-white/15 p-3 flex flex-col gap-2 transition-all">
+              {/* Badge type */}
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium text-white leading-snug line-clamp-2 group-hover:text-purple-200 transition-colors">
+                  {o.title}
                 </p>
-              </Link>
-            </li>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 mt-0.5 ${
+                  o.type === 'ARTIST'   ? 'bg-pink-500/20 text-pink-300 border border-pink-500/25' :
+                  o.type === 'PROVIDER' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/25' :
+                                          'bg-purple-500/20 text-purple-300 border border-purple-500/25'
+                }`}>
+                  {offerTypeLabel(o.type)}
+                </span>
+              </div>
+              {/* Méta */}
+              <div className="flex items-center gap-2 text-[11px] text-white/40">
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3 flex-shrink-0" />{o.location}
+                </span>
+                <span className="text-white/20">·</span>
+                <span>📅 {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+              </div>
+            </Link>
           ))}
-        </ul>
+        </div>
       )}
 
       <div className="px-4 py-3 border-t border-white/8">
-        <Link href="/offers" className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1">
+        <Link href="/offers" className="text-xs text-purple-400 hover:text-purple-300 transition-colors">
           Voir toutes les offres →
         </Link>
       </div>
