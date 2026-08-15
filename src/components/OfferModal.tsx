@@ -118,17 +118,15 @@ export default function OfferModal({ offer, onClose, isLoggedIn }: Props) {
 
   const handleShare = async (recipient: SearchUser) => {
     const token = getAuthToken(); if (!token) return
-    const dateStr = new Date(offer.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-    const content = `Je voulais te partager cette offre : "${offer.title}"${offer.specialty ? ` (${offer.specialty})` : ''} à ${offer.location} le ${dateStr}. Jette un œil sur LS Bookers !`
     try {
-      const res = await fetch(`${API_BASE}/api/messages/send`, {
+      const res = await fetch(`${API_BASE}/api/messages/share-offer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ recipientId: recipient.id, content }),
+        body: JSON.stringify({ recipientId: recipient.id, offerId: offer.id }),
       })
       if (res.ok) {
         const data = await res.json()
-        setShareDone(data.conversationId ?? data.conversation?.id ?? null)
+        setShareDone(data.conversationId ?? null)
         setShareQ(''); setShareResults([])
       }
     } catch { /* silent */ }

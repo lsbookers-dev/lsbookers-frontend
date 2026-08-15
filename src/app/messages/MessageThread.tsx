@@ -15,6 +15,7 @@ import { Avatar, AttachmentBubble } from './MessageUI'
 import { BookingRequestCard, CancellationRequestCard } from './BookingCards'
 import { API_BASE, ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatMessageTime } from './_helpers'
 import type { Conversation, Message, BookingRequestData } from './types'
+import OfferModal, { type OfferDetail } from '@/components/OfferModal'
 
 interface MessageThreadProps {
   activeConv: Conversation | null
@@ -71,6 +72,9 @@ export default function MessageThread({
   const [shareSearch, setShareSearch] = useState('')
   const [shareResults, setShareResults] = useState<Array<{id:number;name:string;role:string;avatar:string|null;profileUrl:string;profession:string|null}>>([])
   const [shareLoading, setShareLoading] = useState(false)
+
+  // ── Carte offre partagée ───────────────────────────────────
+  const [selectedSharedOffer, setSelectedSharedOffer] = useState<OfferDetail | null>(null)
 
   const submitBooking = async () => {
     if (!token || !activeConvId || !bookingDate || bookingSending) return
@@ -454,6 +458,55 @@ export default function MessageThread({
                 }
               }
 
+              // Carte offre partagée
+              if (msg.type === 'OFFER_SHARE' && msg.content) {
+                let sharedOffer: OfferDetail | null = null
+                try { sharedOffer = JSON.parse(msg.content) } catch {}
+                if (sharedOffer) {
+                  const offerDateStr = new Date(sharedOffer.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                  const TYPE_COLOR: Record<string, string> = {
+                    ARTIST: 'border-l-pink-500',
+                    PROVIDER: 'border-l-blue-500',
+                    ALL: 'border-l-purple-500',
+                  }
+                  items.push(
+                    <div key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      {!isMe && <div className="w-7 h-7 shrink-0 mb-1"><Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} /></div>}
+                      <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                        <p className="text-[10px] text-white/30 mb-1 px-1">{isMe ? 'Vous avez partagé une offre' : 'A partagé une offre'}</p>
+                        <button
+                          onClick={() => setSelectedSharedOffer(sharedOffer)}
+                          className={`text-left flex flex-col gap-2 px-4 py-3 rounded-2xl bg-[#1c1c2e] border border-white/[0.08] border-l-4 ${TYPE_COLOR[sharedOffer.type] ?? 'border-l-purple-500'} hover:border-white/20 hover:bg-white/[0.04] transition min-w-[220px]`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full overflow-hidden bg-white/10 shrink-0">
+                              {sharedOffer.organizer.avatar
+                                ? <img src={sharedOffer.organizer.avatar} alt={sharedOffer.organizer.name} className="w-full h-full object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white/30">{sharedOffer.organizer.name[0]}</div>
+                              }
+                            </div>
+                            <p className="text-xs text-white/50 truncate">{sharedOffer.organizer.name}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white/90 leading-snug">{sharedOffer.title}</p>
+                            {sharedOffer.specialty && (
+                              <p className="text-xs text-white/40 mt-0.5">{sharedOffer.specialty}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-white/35">
+                            <span>📍 {sharedOffer.location}</span>
+                            <span>📅 {offerDateStr}</span>
+                          </div>
+                        </button>
+                        <span className="text-[10px] text-white/20 mt-1 px-1">{formatMessageTime(msg.createdAt)}</span>
+                      </div>
+                      {isMe && <div className="w-7 shrink-0" />}
+                    </div>
+                  )
+                  return
+                }
+              }
+
               // Arrondi des bulles selon position dans le groupe
               const bubbleRadius = isMe
                 ? isFirst && isLast ? 'rounded-[18px] rounded-br-[5px]'
@@ -641,6 +694,15 @@ export default function MessageThread({
         </div>
         <p className="text-[10px] text-white/10 mt-1.5 text-center tracking-wide">Entrée pour envoyer · Shift+Entrée pour nouvelle ligne</p>
       </div>
+
+      {/* Modal offre partagée */}
+      {selectedSharedOffer && (
+        <OfferModal
+          offer={selectedSharedOffer}
+          onClose={() => setSelectedSharedOffer(null)}
+          isLoggedIn={!!currentUserId}
+        />
+      )}
     </div>
   )
 }

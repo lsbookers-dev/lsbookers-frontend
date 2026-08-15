@@ -66,6 +66,27 @@ export interface Message {
     location: string | null
     profileUrl: string
   } | null
+  sharedOffer?: {
+    id: number
+    title: string
+    description: string
+    type: 'ARTIST' | 'PROVIDER' | 'ALL'
+    specialty: string | null
+    location: string
+    country: string
+    date: string
+    fee: number | null
+    radiusKm: number | null
+    applicantCount: number
+    status: string
+    createdAt: string
+    organizer: {
+      id: number
+      userId: number | null
+      avatar: string | null
+      name: string
+    }
+  } | null
 }
 
 export interface SearchUser {
