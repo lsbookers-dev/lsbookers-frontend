@@ -98,12 +98,6 @@ function roleLabel(role: string | null): string {
   return ''
 }
 
-function offerTypeLabel(type: string): string {
-  if (type === 'ARTIST')   return 'Artiste'
-  if (type === 'PROVIDER') return 'Prestataire'
-  return 'Tous'
-}
-
 /* ─────────────────────────────────────────────────────────────
    CAROUSEL (profils mis en avant)
 ───────────────────────────────────────────────────────────── */
