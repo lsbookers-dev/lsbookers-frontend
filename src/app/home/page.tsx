@@ -412,10 +412,10 @@ function SuggestedProfiles({ items }: { items: SuggestedProfile[] }) {
 /* ─────────────────────────────────────────────────────────────
    SIDEBAR OFFRES (colonne droite, compact)
 ───────────────────────────────────────────────────────────── */
-const OFFER_DOT: Record<string, string> = {
-  ARTIST:   'bg-pink-400',
-  PROVIDER: 'bg-blue-400',
-  ALL:      'bg-purple-400',
+const OFFER_BORDER: Record<string, string> = {
+  ARTIST:   'border-l-pink-500',
+  PROVIDER: 'border-l-blue-500',
+  ALL:      'border-l-purple-500',
 }
 
 function OffersSidebar({ apiBase, onSelectOffer }: {
@@ -451,25 +451,21 @@ function OffersSidebar({ apiBase, onSelectOffer }: {
             <button
               key={o.id}
               onClick={() => onSelectOffer(o)}
-              className="group rounded-xl border border-white/8 bg-white/3 hover:bg-white/6 hover:border-white/15 p-3 flex items-start gap-2.5 transition-all text-left w-full"
+              className={`group rounded-xl border-l-4 border border-white/8 ${OFFER_BORDER[o.type] ?? OFFER_BORDER.ALL} bg-white/3 hover:bg-white/6 hover:border-white/15 p-3 flex flex-col gap-1.5 transition-all text-left w-full`}
             >
-              {/* Dot coloré = code type */}
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${OFFER_DOT[o.type] ?? OFFER_DOT.ALL}`} />
-              <div className="flex-1 min-w-0">
-                {/* Poste recherché = specialty ou titre */}
-                <p className="text-sm font-medium text-white leading-snug line-clamp-1 group-hover:text-purple-200 transition-colors">
-                  {o.specialty || o.title}
-                </p>
-                {/* Organisateur */}
-                <p className="text-[11px] text-white/40 mt-0.5 truncate">{o.organizer.name}</p>
-                {/* Lieu + date */}
-                <div className="flex items-center gap-2 mt-1 text-[11px] text-white/30">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 flex-shrink-0" />{o.location}
-                  </span>
-                  <span className="text-white/15">·</span>
-                  <span>📅 {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-                </div>
+              {/* Poste recherché = specialty ou titre */}
+              <p className="text-sm font-semibold text-white leading-snug line-clamp-1 group-hover:text-purple-200 transition-colors">
+                {o.specialty || o.title}
+              </p>
+              {/* Organisateur — mis en valeur */}
+              <p className="text-xs font-medium text-white/65 truncate">{o.organizer.name}</p>
+              {/* Lieu + date */}
+              <div className="flex items-center gap-2 text-[11px] text-white/35">
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3 flex-shrink-0" />{o.location}
+                </span>
+                <span className="text-white/15">·</span>
+                <span>📅 {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
               </div>
             </button>
           ))}
