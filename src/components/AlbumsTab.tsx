@@ -8,9 +8,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { Plus, Trash2, X, FolderOpen, Play, Lock, ImagePlus, ChevronLeft } from 'lucide-react'
+import { Plus, Trash2, X, FolderOpen, Play, Lock, ImagePlus, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { PubCardData } from './PublicationCard'
-import PublicationModal from './PublicationModal'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -84,8 +83,8 @@ export default function AlbumsTab({
   const [openAlbum, setOpenAlbum]     = useState<AlbumDetail | null>(null)
   const [loadingAlbum, setLoadingAlbum] = useState(false)
 
-  // Vue d'une publication dans l'album
-  const [selectedPub, setSelectedPub] = useState<PubCardData | null>(null)
+  // Lightbox : index de l'item sélectionné dans l'album ouvert
+  const [selectedItemIdx, setSelectedItemIdx] = useState<number | null>(null)
 
   // Ajout de publications à l'album
   const [showAddPub, setShowAddPub]   = useState(false)
@@ -303,83 +302,184 @@ export default function AlbumsTab({
         </div>
       )}
 
-      {/* ── Modal : detail album ── */}
+      {/* ── Popup : detail album ── */}
       {(loadingAlbum || openAlbum) && (
-        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-sm flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 bg-neutral-950 flex-shrink-0">
-            <button onClick={() => setOpenAlbum(null)} className="text-white/60 hover:text-white transition">
-              <ChevronLeft size={22} />
-            </button>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-semibold truncate">{openAlbum?.title ?? '…'}</h3>
-              {openAlbum?.description && (
-                <p className="text-xs text-white/40 truncate">{openAlbum.description}</p>
+        <div
+          className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => { setOpenAlbum(null); setSelectedItemIdx(null) }}
+        >
+          <div
+            className="bg-neutral-950 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 flex-shrink-0">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold truncate">{openAlbum?.title ?? '…'}</h3>
+                  {openAlbum?.isPrivate && (
+                    <span className="flex items-center gap-1 text-[10px] text-white/40 bg-white/5 rounded-full px-1.5 py-0.5">
+                      <Lock size={9} /> Privé
+                    </span>
+                  )}
+                </div>
+                {openAlbum?.description && (
+                  <p className="text-xs text-white/40 truncate mt-0.5">{openAlbum.description}</p>
+                )}
+              </div>
+              {isOwner && openAlbum && (
+                <button
+                  onClick={() => setShowAddPub(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${btn} text-xs font-semibold text-white transition flex-shrink-0`}
+                >
+                  <ImagePlus size={13} /> Ajouter
+                </button>
+              )}
+              <button
+                onClick={() => { setOpenAlbum(null); setSelectedItemIdx(null) }}
+                className="text-white/40 hover:text-white transition flex-shrink-0"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Grille items */}
+            <div className="overflow-y-auto p-4 flex-1">
+              {loadingAlbum ? (
+                <div className="flex items-center justify-center h-40 text-white/30 text-sm">Chargement…</div>
+              ) : openAlbum && openAlbum.items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 gap-3 text-white/30">
+                  <FolderOpen size={32} />
+                  <p className="text-sm">{isOwner ? 'Ajoute des publications à cet album' : 'Cet album est vide'}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {openAlbum?.items.map((item, idx) => {
+                    const pub = item.publication
+                    const mediaUrl = pub?.media ?? item.mediaUrl ?? ''
+                    const mediaType = pub?.mediaType ?? item.mediaType ?? 'image'
+                    const isImg = mediaType?.toLowerCase() === 'image'
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="relative aspect-square rounded-xl overflow-hidden bg-white/5 group cursor-pointer"
+                        onClick={() => setSelectedItemIdx(idx)}
+                      >
+                        {isImg ? (
+                          <Image src={mediaUrl} alt="" fill className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
+                        ) : (
+                          <>
+                            <video src={mediaUrl} className="w-full h-full object-cover" muted preload="metadata" />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="bg-black/50 rounded-full p-2">
+                                <Play size={16} className="text-white fill-white" />
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {isOwner && (
+                          <button
+                            onClick={e => { e.stopPropagation(); handleRemoveItem(item.id) }}
+                            className="absolute top-1 right-1 bg-black/70 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </div>
-            {isOwner && openAlbum && (
-              <button
-                onClick={() => setShowAddPub(true)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${btn} text-xs font-semibold text-white transition`}
-              >
-                <ImagePlus size={14} /> Ajouter
-              </button>
-            )}
-          </div>
-
-          {/* Grille items */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {loadingAlbum ? (
-              <div className="flex items-center justify-center h-40 text-white/30 text-sm">Chargement…</div>
-            ) : openAlbum && openAlbum.items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 gap-3 text-white/30">
-                <FolderOpen size={32} />
-                <p className="text-sm">{isOwner ? 'Ajoute des publications à cet album' : 'Cet album est vide'}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {openAlbum?.items.map(item => {
-                  // Source d'affichage : publication en priorité, sinon mediaUrl direct
-                  const pub = item.publication
-                  const mediaUrl = pub?.media ?? item.mediaUrl ?? ''
-                  const mediaType = pub?.mediaType ?? item.mediaType ?? 'image'
-                  const isImg = mediaType?.toLowerCase() === 'image'
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="relative aspect-square rounded-xl overflow-hidden bg-white/5 group cursor-pointer"
-                      onClick={() => pub && setSelectedPub(pub)}
-                    >
-                      {isImg ? (
-                        <Image src={mediaUrl} alt="" fill className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
-                      ) : (
-                        <>
-                          <video src={mediaUrl} className="w-full h-full object-cover" muted preload="metadata" />
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="bg-black/50 rounded-full p-2">
-                              <Play size={16} className="text-white fill-white" />
-                            </div>
-                          </div>
-                        </>
-                      )}
-                      {/* Bouton supprimer item (owner) */}
-                      {isOwner && (
-                        <button
-                          onClick={e => { e.stopPropagation(); handleRemoveItem(item.id) }}
-                          className="absolute top-1 right-1 bg-black/70 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
         </div>
       )}
+
+      {/* ── Lightbox : visionneuse galerie ── */}
+      {selectedItemIdx !== null && openAlbum && openAlbum.items.length > 0 && (() => {
+        const items = openAlbum.items
+        const item  = items[selectedItemIdx]
+        if (!item) return null
+        const mediaUrl  = item.publication?.media ?? item.mediaUrl ?? ''
+        const mediaType = item.publication?.mediaType ?? item.mediaType ?? 'image'
+        const caption   = item.publication?.caption ?? item.caption ?? null
+        const isImg     = mediaType?.toLowerCase() === 'image'
+        const hasPrev   = selectedItemIdx > 0
+        const hasNext   = selectedItemIdx < items.length - 1
+
+        return (
+          <div
+            className="fixed inset-0 z-[220] bg-black/95 flex flex-col"
+            onClick={() => setSelectedItemIdx(null)}
+          >
+            {/* Header lightbox */}
+            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => setSelectedItemIdx(null)}
+                className="flex items-center gap-1.5 text-white/60 hover:text-white transition text-sm"
+              >
+                <ChevronLeft size={18} /> Retour à l&apos;album
+              </button>
+              <span className="text-xs text-white/40">{selectedItemIdx + 1} / {items.length}</span>
+            </div>
+
+            {/* Media centré */}
+            <div className="flex-1 flex items-center justify-center relative px-12" onClick={e => e.stopPropagation()}>
+              {isImg ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={mediaUrl} alt={caption || ''} className="max-w-full max-h-full object-contain rounded-lg" />
+              ) : (
+                <video
+                  key={mediaUrl}
+                  src={mediaUrl}
+                  className="max-w-full max-h-full rounded-lg"
+                  controls
+                  autoPlay
+                  playsInline
+                />
+              )}
+
+              {/* Flèche gauche */}
+              {hasPrev && (
+                <button
+                  onClick={() => setSelectedItemIdx(i => (i ?? 1) - 1)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/90 rounded-full p-2.5 text-white transition"
+                >
+                  <ChevronLeft size={22} />
+                </button>
+              )}
+
+              {/* Flèche droite */}
+              {hasNext && (
+                <button
+                  onClick={() => setSelectedItemIdx(i => (i ?? 0) + 1)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/90 rounded-full p-2.5 text-white transition"
+                >
+                  <ChevronRight size={22} />
+                </button>
+              )}
+            </div>
+
+            {/* Caption + dots */}
+            <div className="flex-shrink-0 px-4 pb-4 space-y-2" onClick={e => e.stopPropagation()}>
+              {caption && <p className="text-sm text-white/60 text-center">{caption}</p>}
+              {items.length > 1 && (
+                <div className="flex justify-center gap-1.5">
+                  {items.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedItemIdx(i)}
+                      className={`rounded-full transition-all ${i === selectedItemIdx ? 'bg-white w-4 h-1.5' : 'bg-white/30 w-1.5 h-1.5'}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Modal : choisir une publication à ajouter ── */}
       {showAddPub && openAlbum && (
@@ -427,21 +527,6 @@ export default function AlbumsTab({
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* ── Modale publication (vue détail) ── */}
-      {selectedPub && (
-        <PublicationModal
-          pub={selectedPub}
-          onClose={() => setSelectedPub(null)}
-        />
-      )}
-
-      {/* Badge privé */}
-      {openAlbum?.isPrivate && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[210] flex items-center gap-1.5 bg-black/80 text-white/60 text-xs px-3 py-1.5 rounded-full border border-white/10 pointer-events-none">
-          <Lock size={11} /> Album privé
         </div>
       )}
     </div>
