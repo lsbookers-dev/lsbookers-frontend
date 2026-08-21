@@ -266,7 +266,7 @@ export default function AlbumsTab({
 
       {/* ── Modal : créer un album ── */}
       {showCreate && (
-        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
+        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
           <div className="max-w-sm w-full bg-neutral-950 border border-white/10 rounded-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold">Nouvel album</h3>
@@ -305,9 +305,9 @@ export default function AlbumsTab({
 
       {/* ── Modal : detail album ── */}
       {(loadingAlbum || openAlbum) && (
-        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-sm flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-neutral-950/80">
+          <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 bg-neutral-950 flex-shrink-0">
             <button onClick={() => setOpenAlbum(null)} className="text-white/60 hover:text-white transition">
               <ChevronLeft size={22} />
             </button>
@@ -383,7 +383,7 @@ export default function AlbumsTab({
 
       {/* ── Modal : choisir une publication à ajouter ── */}
       {showAddPub && openAlbum && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowAddPub(false)}>
+        <div className="fixed inset-0 z-[210] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowAddPub(false)}>
           <div className="w-full sm:max-w-lg bg-neutral-950 border border-white/10 rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Ajouter une publication</h3>
@@ -440,7 +440,7 @@ export default function AlbumsTab({
 
       {/* Badge privé */}
       {openAlbum?.isPrivate && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 bg-black/80 text-white/60 text-xs px-3 py-1.5 rounded-full border border-white/10 pointer-events-none">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[210] flex items-center gap-1.5 bg-black/80 text-white/60 text-xs px-3 py-1.5 rounded-full border border-white/10 pointer-events-none">
           <Lock size={11} /> Album privé
         </div>
       )}
