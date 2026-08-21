@@ -64,7 +64,7 @@ type Publication = {
   id: number
   title: string
   media: string
-  mediaType: 'image' | 'video'
+  mediaType: string
   caption?: string
   createdAt?: string
   _count?: { likes: number; comments: number }
