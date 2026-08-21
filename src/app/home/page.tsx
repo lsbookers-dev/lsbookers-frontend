@@ -262,7 +262,7 @@ function PostCard({ post, onLike, onOpenModal, currentUserId }: {
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={current.url} src={current.url} alt={post.caption || post.title} className="w-full max-h-[560px] object-contain block cursor-pointer" loading="lazy" />
+          <img src={current.url} alt={post.caption || post.title} className="w-full max-h-[560px] object-contain block cursor-pointer" loading="lazy" />
         )}
 
         {/* Flèches navigation */}
