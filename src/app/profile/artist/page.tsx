@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Settings2, MessageCircle, Star, Plus, MapPin, Music,
   Globe, Youtube, Instagram, Twitter, Facebook, Linkedin, Link,
-  Pencil, Check, X, Users, Euro, FileText,
+  Pencil, Check, Users, Euro, FileText,
 } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
