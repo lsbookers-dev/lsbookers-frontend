@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import {
   Heart, Star, MapPin, Users, ChevronLeft, ChevronRight,
-  Briefcase, Loader2, UserPlus, Flame, MessageCircle, ChevronDown, Images,
+  Briefcase, Loader2, UserPlus, Flame, MessageCircle, ChevronDown,
 } from 'lucide-react'
 import PublicationModal from '@/components/PublicationModal'
 import OfferModal, { type OfferDetail } from '@/components/OfferModal'
@@ -211,6 +211,23 @@ function PostCard({ post, onLike, onOpenModal, currentUserId }: {
   onOpenModal: (post: Post) => void
   currentUserId?: number
 }) {
+  const allMedia = [
+    { url: post.media, mediaType: post.mediaType },
+    ...(post.additionalMedia ?? []).map(m => ({ url: m.url, mediaType: m.mediaType })),
+  ]
+  const [mediaIdx, setMediaIdx] = useState(0)
+  const current = allMedia[mediaIdx] ?? allMedia[0]
+  const isMulti = allMedia.length > 1
+
+  const prev = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setMediaIdx(i => (i - 1 + allMedia.length) % allMedia.length)
+  }
+  const next = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setMediaIdx(i => (i + 1) % allMedia.length)
+  }
+
   return (
     <article className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden">
       <div className="flex items-center gap-3 p-3">
@@ -234,23 +251,46 @@ function PostCard({ post, onLike, onOpenModal, currentUserId }: {
         )}
       </div>
 
-      <div className="w-full bg-black cursor-pointer flex items-center justify-center relative" onClick={() => onOpenModal(post)}>
-        {post.mediaType === 'VIDEO' ? (
+      <div className="w-full bg-black flex items-center justify-center relative group" onClick={() => onOpenModal(post)}>
+        {current.mediaType === 'video' || current.mediaType === 'VIDEO' ? (
           <video
-            src={post.media}
-            className="w-full max-h-[560px] object-contain block"
+            key={current.url}
+            src={current.url}
+            className="w-full max-h-[560px] object-contain block cursor-pointer"
             muted preload="metadata" playsInline
             onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={post.media} alt={post.caption || post.title} className="w-full max-h-[560px] object-contain block" loading="lazy" />
+          <img key={current.url} src={current.url} alt={post.caption || post.title} className="w-full max-h-[560px] object-contain block cursor-pointer" loading="lazy" />
         )}
-        {(post.additionalMedia?.length ?? 0) > 0 && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 text-white text-xs font-semibold">
-            <Images className="w-3 h-3" />
-            <span>+{post.additionalMedia!.length}</span>
-          </div>
+
+        {/* Flèches navigation */}
+        {isMulti && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 backdrop-blur-sm rounded-full p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 backdrop-blur-sm rounded-full p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            {/* Points indicateurs */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1" onClick={e => e.stopPropagation()}>
+              {allMedia.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); setMediaIdx(i) }}
+                  className={`rounded-full transition-all ${i === mediaIdx ? 'bg-white w-4 h-1.5' : 'bg-white/40 w-1.5 h-1.5'}`}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
