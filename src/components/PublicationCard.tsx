@@ -1,14 +1,22 @@
 'use client'
 
 import Image from 'next/image'
-import { Heart, MessageCircle, Play } from 'lucide-react'
+import { Heart, MessageCircle, Play, Images } from 'lucide-react'
+
+export type PubMediaItem = {
+  id?: number
+  url: string
+  mediaType: 'image' | 'video' | string
+  order?: number
+}
 
 export type PubCardData = {
   id: number
   title: string
   media: string
-  mediaType: 'image' | 'video'
+  mediaType: 'image' | 'video' | string
   caption?: string
+  additionalMedia?: PubMediaItem[]
   _count?: { likes: number; comments: number }
 }
 
@@ -20,17 +28,17 @@ type Props = {
 }
 
 export default function PublicationCard({ pub, onClick, showTitle = false }: Props) {
-  const likes    = pub._count?.likes    ?? 0
-  const comments = pub._count?.comments ?? 0
-
-  const isImage = pub.mediaType?.toLowerCase() === 'image'
+  const likes      = pub._count?.likes    ?? 0
+  const comments   = pub._count?.comments ?? 0
+  const isImage    = pub.mediaType?.toLowerCase() === 'image'
+  const extraCount = pub.additionalMedia?.length ?? 0
 
   return (
     <div
       onClick={() => onClick(pub)}
       className="group relative rounded-xl overflow-hidden border border-white/10 bg-black/30 cursor-pointer"
     >
-      {/* ── Média ── */}
+      {/* ── Média principal ── */}
       <div className="relative w-full aspect-square">
         {isImage ? (
           <Image
@@ -48,13 +56,20 @@ export default function PublicationCard({ pub, onClick, showTitle = false }: Pro
               muted
               preload="metadata"
             />
-            {/* Icône play pour les vidéos */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="bg-black/50 rounded-full p-3">
                 <Play size={20} className="text-white fill-white" />
               </div>
             </div>
           </>
+        )}
+
+        {/* ── Badge multi-photos ── */}
+        {extraCount > 0 && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 pointer-events-none">
+            <Images size={11} className="text-white" />
+            <span className="text-white text-[10px] font-semibold">+{extraCount}</span>
+          </div>
         )}
 
         {/* ── Overlay hover ── */}

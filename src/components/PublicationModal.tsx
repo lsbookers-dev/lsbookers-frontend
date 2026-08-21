@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
-import { X, Heart, Send, Trash2, MessageCircle } from 'lucide-react'
+import { X, Heart, Send, Trash2, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import type { PubCardData } from './PublicationCard'
 import { getAuthToken } from '@/utils/auth'
@@ -85,6 +85,14 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
   const [replyingTo,      setReplyingTo]      = useState<number | null>(null)
   const [replyText,       setReplyText]       = useState('')
   const [replySubmitting, setReplySubmitting] = useState(false)
+
+  /* ── Galerie multi-médias ── */
+  const allMedia = [
+    { url: pub.media, mediaType: pub.mediaType as string },
+    ...(pub.additionalMedia ?? []).map(m => ({ url: m.url, mediaType: m.mediaType as string })),
+  ]
+  const [mediaIndex, setMediaIndex] = useState(0)
+  const currentMedia = allMedia[mediaIndex] ?? allMedia[0]
 
   /* ── Fermer avec Escape ── */
   useEffect(() => {
@@ -392,20 +400,52 @@ export default function PublicationModal({ pub, onClose, onCountChange, initialL
           <X size={18} />
         </button>
 
-        {/* ── Média (gauche) ── */}
-        <div className="md:w-3/5 bg-black flex items-center justify-center min-h-[260px] md:min-h-0 md:h-full overflow-hidden">
-          {pub.mediaType === 'image' ? (
+        {/* ── Galerie médias (gauche) ── */}
+        <div className="md:w-3/5 bg-black flex items-center justify-center min-h-[260px] md:min-h-0 md:h-full overflow-hidden relative">
+          {currentMedia.mediaType === 'image' ? (
             <div className="relative w-full h-72 md:h-full">
-              <Image src={pub.media} alt={pub.title} fill className="object-contain" unoptimized />
+              <Image src={currentMedia.url} alt={pub.title} fill className="object-contain" unoptimized />
             </div>
           ) : (
             <video
-              src={pub.media}
+              key={currentMedia.url}
+              src={currentMedia.url}
               controls
               autoPlay
               playsInline
               className="w-full h-full max-h-[70vh] md:max-h-full object-contain"
             />
+          )}
+
+          {/* Navigation flèches */}
+          {allMedia.length > 1 && (
+            <>
+              <button
+                onClick={() => setMediaIndex(i => Math.max(0, i - 1))}
+                disabled={mediaIndex === 0}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition disabled:opacity-20 z-10"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => setMediaIndex(i => Math.min(allMedia.length - 1, i + 1))}
+                disabled={mediaIndex === allMedia.length - 1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition disabled:opacity-20 z-10"
+              >
+                <ChevronRight size={18} />
+              </button>
+
+              {/* Dots */}
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+                {allMedia.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setMediaIndex(i)}
+                    className={`w-1.5 h-1.5 rounded-full transition ${i === mediaIndex ? 'bg-white' : 'bg-white/30'}`}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
 

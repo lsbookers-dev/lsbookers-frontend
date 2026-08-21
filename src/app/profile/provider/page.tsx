@@ -13,6 +13,8 @@ import {
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
 import CropModal from '@/components/CropModal'
+import AddPublicationModal from '@/components/AddPublicationModal'
+import AlbumsTab from '@/components/AlbumsTab'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 
@@ -150,11 +152,6 @@ export default function ProviderProfilePage() {
 
   // Publication modal
   const [showAddPub, setShowAddPub]   = useState(false)
-  const [pubTitle, setPubTitle]       = useState('')
-  const [pubCaption, setPubCaption]   = useState('')
-  const [pubFile, setPubFile]         = useState<File | null>(null)
-  const [pubUploading, setPubUploading] = useState(false)
-  const pubInputRef = useRef<HTMLInputElement>(null)
 
   // Avatar / Bannière — upload inline
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -286,38 +283,6 @@ export default function ProviderProfilePage() {
       })
       setMyOffers(prev => prev.filter(o => o.id !== id))
     } catch { alert('Erreur lors de la suppression.') }
-  }
-
-  // ── Publications
-  const addPublication = async () => {
-    if (!pubTitle.trim() || !pubFile || !profile) return
-    setPubUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', pubFile); fd.append('folder', 'media')
-      fd.append('type', pubFile.type.startsWith('video/') ? 'video' : 'image')
-
-      const uploadRes = await fetch(`${API}/api/upload`, {
-        method: 'POST', credentials: 'include', headers: getAuthHeaders(), body: fd,
-      })
-      if (!uploadRes.ok) throw new Error('Upload échoué')
-      const { url } = await uploadRes.json()
-
-      const pubRes = await fetch(`${API}/api/publications`, {
-        method: 'POST', credentials: 'include',
-        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({
-          title: pubTitle, media: url,
-          mediaType: pubFile.type.startsWith('video/') ? 'video' : 'image',
-          caption: pubCaption.trim() || undefined, profileId: profile.id,
-        }),
-      })
-      if (!pubRes.ok) throw new Error('Publication échouée')
-      const saved = await pubRes.json()
-      setPublications(prev => [saved, ...prev])
-      setPubTitle(''); setPubCaption(''); setPubFile(null); setShowAddPub(false)
-    } catch (err) { alert(err instanceof Error ? err.message : 'Erreur') }
-    finally { setPubUploading(false); if (pubInputRef.current) pubInputRef.current.value = '' }
   }
 
   const deletePublication = async (id: number) => {
@@ -515,6 +480,20 @@ export default function ProviderProfilePage() {
               </button>
             }
           />
+
+          {/* Albums */}
+          {profile && (
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
+              <h2 className="text-base font-semibold mb-4">Albums</h2>
+              <AlbumsTab
+                profileId={profile.id}
+                isOwner={true}
+                token={getAuthToken() ?? ''}
+                accent="blue"
+                publications={publications}
+              />
+            </section>
+          )}
 
           {/* CV */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
@@ -815,23 +794,14 @@ export default function ProviderProfilePage() {
       )}
 
       {/* ── Modal : ajouter une publication */}
-      {showAddPub && (
-        <div className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAddPub(false)}>
-          <div className="max-w-md w-full bg-neutral-950 border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Nouvelle publication</h3>
-              <button onClick={() => setShowAddPub(false)} className="text-neutral-400 hover:text-white"><X size={18} /></button>
-            </div>
-            <div className="space-y-3">
-              <input className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-violet-500/60" placeholder="Titre" value={pubTitle} onChange={e => setPubTitle(e.target.value)} />
-              <textarea className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-violet-500/60 resize-none" placeholder="Légende (optionnel)" rows={3} value={pubCaption} onChange={e => setPubCaption(e.target.value)} />
-              <input ref={pubInputRef} type="file" accept="image/*,video/*" className="w-full text-sm text-white/50 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-white/10 file:text-white hover:file:bg-white/20" onChange={e => setPubFile(e.target.files?.[0] || null)} />
-              <button onClick={addPublication} disabled={pubUploading || !pubTitle.trim() || !pubFile} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-sm font-semibold transition">
-                {pubUploading ? 'Envoi en cours…' : 'Publier'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {showAddPub && profile && (
+        <AddPublicationModal
+          profileId={profile.id}
+          token={getAuthToken() ?? ''}
+          accent="blue"
+          onClose={() => setShowAddPub(false)}
+          onPublished={(pub) => setPublications(prev => [pub, ...prev])}
+        />
       )}
 
     </div>

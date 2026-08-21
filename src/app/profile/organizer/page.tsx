@@ -12,6 +12,8 @@ import {
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
 import CropModal from '@/components/CropModal'
+import AddPublicationModal from '@/components/AddPublicationModal'
+import AlbumsTab from '@/components/AlbumsTab'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
@@ -162,11 +164,6 @@ export default function OrganizerProfilePage() {
 
   // Publication modal
   const [showAddPub, setShowAddPub] = useState(false)
-  const [pubTitle, setPubTitle] = useState('')
-  const [pubCaption, setPubCaption] = useState('')
-  const [pubFile, setPubFile] = useState<File | null>(null)
-  const [pubUploading, setPubUploading] = useState(false)
-  const pubInputRef = useRef<HTMLInputElement>(null)
 
   // Avatar / Bannière — upload inline
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -222,58 +219,6 @@ export default function OrganizerProfilePage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [user])
-
-  // ── Ajouter une publication
-  const addPublication = async () => {
-    if (!pubTitle.trim() || !pubFile || !profile) return
-
-    try {
-      setPubUploading(true)
-
-      const fd = new FormData()
-      fd.append('file', pubFile)
-      fd.append('folder', 'media')
-      fd.append('type', pubFile.type.startsWith('video/') ? 'video' : 'image')
-
-      const uploadRes = await fetch(`${API}/api/upload`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: getAuthHeaders(),
-        body: fd,
-      })
-      if (!uploadRes.ok) throw new Error('Upload échoué')
-      const { url } = await uploadRes.json()
-
-      const mediaType = pubFile.type.startsWith('video/') ? 'video' : 'image'
-
-      const pubRes = await fetch(`${API}/api/publications`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({
-          title: pubTitle,
-          media: url,
-          mediaType,
-          caption: pubCaption.trim() || undefined,
-          profileId: profile.id,
-        }),
-      })
-      if (!pubRes.ok) throw new Error('Publication échouée')
-
-      const saved = await pubRes.json()
-      setPublications(prev => [saved, ...prev])
-      setPubTitle('')
-      setPubCaption('')
-      setPubFile(null)
-      setShowAddPub(false)
-    } catch (err) {
-      console.error(err)
-      alert("Échec de l'ajout de la publication.")
-    } finally {
-      setPubUploading(false)
-      if (pubInputRef.current) pubInputRef.current.value = ''
-    }
-  }
 
   // ── Supprimer une publication
   const deletePublication = async (id: number) => {
@@ -576,6 +521,20 @@ export default function OrganizerProfilePage() {
               </button>
             }
           />
+
+          {/* Albums */}
+          {profile && (
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
+              <h2 className="text-base font-semibold mb-4">Albums</h2>
+              <AlbumsTab
+                profileId={profile.id}
+                isOwner={true}
+                token={getAuthToken() ?? ''}
+                accent="violet"
+                publications={publications}
+              />
+            </section>
+          )}
         </div>
 
         {/* ── Colonne droite */}
@@ -953,53 +912,14 @@ export default function OrganizerProfilePage() {
       )}
 
       {/* ── Modal : ajouter une publication */}
-      {showAddPub && (
-        <div
-          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowAddPub(false)}
-        >
-          <div
-            className="max-w-md w-full bg-neutral-950 border border-white/10 rounded-2xl p-5"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Nouvelle publication</h3>
-              <button onClick={() => setShowAddPub(false)} className="text-sm px-3 py-1 rounded bg-white/10 hover:bg-white/20">
-                Fermer
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <input
-                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Titre"
-                value={pubTitle}
-                onChange={e => setPubTitle(e.target.value)}
-              />
-              <textarea
-                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Légende (optionnel)"
-                rows={3}
-                value={pubCaption}
-                onChange={e => setPubCaption(e.target.value)}
-              />
-              <input
-                ref={pubInputRef}
-                type="file"
-                accept="image/*,video/*"
-                className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm"
-                onChange={e => setPubFile(e.target.files?.[0] || null)}
-              />
-              <button
-                onClick={addPublication}
-                disabled={pubUploading || !pubTitle.trim() || !pubFile}
-                className="w-full text-sm px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 disabled:opacity-50"
-              >
-                {pubUploading ? 'Envoi…' : 'Publier'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {showAddPub && profile && (
+        <AddPublicationModal
+          profileId={profile.id}
+          token={getAuthToken() ?? ''}
+          accent="violet"
+          onClose={() => setShowAddPub(false)}
+          onPublished={(pub) => setPublications(prev => [pub, ...prev])}
+        />
       )}
     </div>
   )
