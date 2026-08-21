@@ -132,6 +132,7 @@ export default function ArtistProfilePage() {
   const [publications, setPublications] = useState<Publication[]>([])
   const [reviews, setReviews]           = useState<Review[]>([])
   const [loading, setLoading]           = useState(true)
+  const [pubTab, setPubTab]             = useState<'publications' | 'albums'>('publications')
 
   // Publication modal
   const [showAddPub, setShowAddPub] = useState(false)
@@ -421,26 +422,41 @@ export default function ArtistProfilePage() {
             />
           )}
 
-          {/* Publications */}
-          <PublicationsSection
-            publications={publications}
-            title="Publications"
-            isOwner={true}
-            onDelete={handleDeletePub}
-            headerAction={
-              <button
-                onClick={() => setShowAddPub(true)}
-                className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
-              >
-                <Plus size={13} /> Ajouter
-              </button>
-            }
-          />
+          {/* Publications + Albums (onglets) */}
+          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
+            {/* Header avec onglets */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex gap-1 bg-black/30 rounded-xl p-1">
+                <button
+                  onClick={() => setPubTab('publications')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'publications' ? 'bg-pink-600 text-white' : 'text-white/50 hover:text-white'}`}
+                >
+                  Publications
+                </button>
+                <button
+                  onClick={() => setPubTab('albums')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'albums' ? 'bg-pink-600 text-white' : 'text-white/50 hover:text-white'}`}
+                >
+                  Albums
+                </button>
+              </div>
+              {pubTab === 'publications' && (
+                <button
+                  onClick={() => setShowAddPub(true)}
+                  className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
+                >
+                  <Plus size={13} /> Ajouter
+                </button>
+              )}
+            </div>
 
-          {/* Albums */}
-          {profile && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-              <h2 className="text-base font-semibold mb-4">Albums</h2>
+            {pubTab === 'publications' ? (
+              <PublicationsSection
+                publications={publications}
+                isOwner={true}
+                onDelete={handleDeletePub}
+              />
+            ) : profile ? (
               <AlbumsTab
                 profileId={profile.id}
                 isOwner={true}
@@ -448,8 +464,8 @@ export default function ArtistProfilePage() {
                 accent="pink"
                 publications={publications}
               />
-            </section>
-          )}
+            ) : null}
+          </section>
 
           {/* CV */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
