@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import {
   Heart, Star, MapPin, Users, ChevronLeft, ChevronRight,
-  Briefcase, Loader2, UserPlus, Flame, MessageCircle, ChevronDown,
+  Briefcase, Loader2, UserPlus, Flame, MessageCircle, ChevronDown, Images,
 } from 'lucide-react'
 import PublicationModal from '@/components/PublicationModal'
 import OfferModal, { type OfferDetail } from '@/components/OfferModal'
@@ -28,6 +28,8 @@ type FeaturedProfile = {
   profileUrl: string
 }
 
+type PostMedia = { id?: number; url: string; mediaType: string; order?: number }
+
 type Post = {
   id: number
   media: string
@@ -39,6 +41,7 @@ type Post = {
   commentsCount: number
   likedByMe: boolean
   isFromFollow: boolean
+  additionalMedia?: PostMedia[]
   author: {
     profileId: number
     userId: number | null
@@ -231,7 +234,7 @@ function PostCard({ post, onLike, onOpenModal, currentUserId }: {
         )}
       </div>
 
-      <div className="w-full bg-black cursor-pointer flex items-center justify-center" onClick={() => onOpenModal(post)}>
+      <div className="w-full bg-black cursor-pointer flex items-center justify-center relative" onClick={() => onOpenModal(post)}>
         {post.mediaType === 'VIDEO' ? (
           <video
             src={post.media}
@@ -242,6 +245,12 @@ function PostCard({ post, onLike, onOpenModal, currentUserId }: {
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={post.media} alt={post.caption || post.title} className="w-full max-h-[560px] object-contain block" loading="lazy" />
+        )}
+        {(post.additionalMedia?.length ?? 0) > 0 && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 text-white text-xs font-semibold">
+            <Images className="w-3 h-3" />
+            <span>+{post.additionalMedia!.length}</span>
+          </div>
         )}
       </div>
 
@@ -644,6 +653,7 @@ export default function HomePage() {
             media: selectedPost.media,
             mediaType: selectedPost.mediaType.toLowerCase() as 'image' | 'video',
             caption: selectedPost.caption ?? undefined,
+            additionalMedia: selectedPost.additionalMedia ?? [],
             _count: { likes: selectedPost.likesCount, comments: selectedPost.commentsCount ?? 0 },
           }}
           onClose={() => setSelectedPost(null)}
