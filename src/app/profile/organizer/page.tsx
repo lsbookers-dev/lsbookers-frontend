@@ -614,7 +614,7 @@ export default function OrganizerProfilePage() {
               <div className="rounded-xl overflow-hidden aspect-video">
                 <iframe
                   width="100%" height="100%"
-                  src={profile.youtubeUrl.replace('watch?v=', 'embed/')}
+                  src={(() => { const m = profile.youtubeUrl!.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/); return m ? `https://www.youtube.com/embed/${m[1]}` : profile.youtubeUrl! })()}
                   title="Vidéo de présentation" frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
