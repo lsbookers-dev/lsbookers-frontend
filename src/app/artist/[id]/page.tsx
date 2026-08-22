@@ -33,6 +33,7 @@ type ApiProfile = {
   soundcloudUrl?: string | null
   showSoundcloud?: boolean | null
   showStyles?: boolean | null
+  showYoutubeUrl?: boolean | null
   youtubeUrl?: string | null
   cvText?: string | null
   feeInfo?: string | null
@@ -293,7 +294,7 @@ export default function ArtistPublicProfilePage() {
           )}
 
           {/* Vidéo de présentation */}
-          {youtubeEmbed && (
+          {profile.showYoutubeUrl !== false && youtubeEmbed && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <Youtube className="w-4 h-4 text-red-400" />

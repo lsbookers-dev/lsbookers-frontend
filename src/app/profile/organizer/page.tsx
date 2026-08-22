@@ -77,6 +77,7 @@ type ApiProfile = {
   soundcloudUrl?: string | null
   showSoundcloud?: boolean
   youtubeUrl?: string | null
+  showYoutubeUrl?: boolean
   instagramUrl?: string | null
   facebookUrl?: string | null
   tiktokUrl?: string | null
@@ -602,6 +603,25 @@ export default function OrganizerProfilePage() {
               </div>
             )}
           </section>
+
+          {/* Vidéo de présentation */}
+          {profile?.showYoutubeUrl !== false && profile?.youtubeUrl && (
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Youtube size={15} className="text-red-400" />
+                <h2 className="text-base font-semibold">Vidéo de présentation</h2>
+              </div>
+              <div className="rounded-xl overflow-hidden aspect-video">
+                <iframe
+                  width="100%" height="100%"
+                  src={profile.youtubeUrl.replace('watch?v=', 'embed/')}
+                  title="Vidéo de présentation" frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </section>
+          )}
 
           {/* Mes offres */}
           <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">

@@ -83,6 +83,7 @@ type Profile = {
   showSoundcloud: boolean
   showStyles: boolean
   youtubeUrl: string
+  showYoutubeUrl: boolean
   availableForBooking: boolean
   showRealName: boolean
   avatar: string | null
@@ -195,6 +196,7 @@ export default function ProfileSettings() {
     showSoundcloud: false,
     showStyles: true,
     youtubeUrl: '',
+    showYoutubeUrl: true,
     availableForBooking: true,
     showRealName: false,
     avatar: null,
@@ -253,6 +255,7 @@ export default function ProfileSettings() {
           showSoundcloud: !!p.showSoundcloud,
           showStyles: p.showStyles !== false,
           youtubeUrl: p.youtubeUrl || '',
+          showYoutubeUrl: p.showYoutubeUrl !== false,
           availableForBooking: p.availableForBooking ?? true,
           showRealName: p.showRealName ?? false,
           avatar: p.avatar || null,
@@ -320,6 +323,7 @@ export default function ProfileSettings() {
           showSoundcloud: profile.showSoundcloud,
           showStyles: profile.showStyles,
           youtubeUrl: profile.youtubeUrl,
+          showYoutubeUrl: profile.showYoutubeUrl,
           availableForBooking: profile.availableForBooking,
           showRealName: profile.showRealName,
           avatar: profile.avatar,
@@ -579,6 +583,16 @@ export default function ProfileSettings() {
                   placeholder="https://youtube.com/watch?v=..."
                   className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50"
                 />
+                {profile.youtubeUrl && (
+                  <div className="mt-3 border-t border-white/8 pt-3">
+                    <Toggle
+                      value={profile.showYoutubeUrl}
+                      onChange={v => setProfile(p => ({ ...p, showYoutubeUrl: v }))}
+                      label="Afficher la vidéo sur mon profil"
+                      description="Visible par les autres utilisateurs"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </Section>

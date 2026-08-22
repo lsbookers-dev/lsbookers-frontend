@@ -36,6 +36,7 @@ type ApiProfile = {
   soundcloudUrl?: string | null
   showSoundcloud?: boolean
   showStyles?: boolean
+  showYoutubeUrl?: boolean
   youtubeUrl?: string | null
   instagramUrl?: string | null
   facebookUrl?: string | null
@@ -570,7 +571,7 @@ export default function ArtistProfilePage() {
           )}
 
           {/* Vidéo de présentation */}
-          {profile?.youtubeUrl && (
+          {profile?.showYoutubeUrl !== false && profile?.youtubeUrl && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Youtube size={15} className="text-red-400" />

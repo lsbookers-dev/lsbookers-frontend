@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { MessageCircle, Plus, X, Calendar, MapPin, Euro, Briefcase, Instagram, Facebook, Globe, Music } from 'lucide-react'
+import { MessageCircle, Plus, X, Calendar, MapPin, Euro, Briefcase, Instagram, Facebook, Globe, Music, Youtube } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import PublicationsSection from '@/components/PublicationsSection'
@@ -52,6 +52,8 @@ type PublicProfile = {
   postalCode?: string | null
   followersCount?: number
   followingCount?: number
+  youtubeUrl?: string | null
+  showYoutubeUrl?: boolean
   user?: PublicUser
 }
 
@@ -589,6 +591,31 @@ export default function OrganizerPublicProfilePage() {
               <h2 className="text-lg font-semibold">Avis</h2>
               <p className="text-neutral-400 text-sm mt-3">Aucun avis pour le moment.</p>
             </section>
+
+            {/* Vidéo de présentation */}
+            {profile.showYoutubeUrl !== false && profile.youtubeUrl?.trim() && (() => {
+              const match = profile.youtubeUrl!.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
+              const embed = match ? `https://www.youtube.com/embed/${match[1]}` : profile.youtubeUrl!
+              return (
+                <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+                  <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Youtube className="w-4 h-4 text-red-400" />
+                    Vidéo de présentation
+                  </h2>
+                  <div className="rounded-xl overflow-hidden aspect-video">
+                    <iframe
+                      title="YouTube"
+                      width="100%"
+                      height="100%"
+                      src={embed}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
+                  </div>
+                </section>
+              )
+            })()}
 
             {/* Coordonnées */}
             {(profile.instagramUrl || profile.facebookUrl || profile.tiktokUrl ||

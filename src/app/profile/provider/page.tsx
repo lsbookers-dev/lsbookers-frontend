@@ -36,6 +36,7 @@ type ApiProfile = {
   avatar?: string | null
   banner?: string | null
   youtubeUrl?: string | null
+  showYoutubeUrl?: boolean
   instagramUrl?: string | null
   facebookUrl?: string | null
   tiktokUrl?: string | null
@@ -619,7 +620,7 @@ export default function ProviderProfilePage() {
           </section>
 
           {/* Vidéo de présentation */}
-          {profile?.youtubeUrl && (
+          {profile?.showYoutubeUrl !== false && profile?.youtubeUrl && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Youtube size={15} className="text-red-400" />
