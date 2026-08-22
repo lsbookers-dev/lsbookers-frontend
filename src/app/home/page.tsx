@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Heart, Star, MapPin, Users, ChevronLeft, ChevronRight,
   Briefcase, Loader2, UserPlus, Flame, MessageCircle, ChevronDown,
+  Volume2, VolumeX,
 } from 'lucide-react'
 import PublicationModal from '@/components/PublicationModal'
 import OfferModal, { type OfferDetail } from '@/components/OfferModal'
@@ -205,11 +206,13 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
 /* ─────────────────────────────────────────────────────────────
    CARTE PUBLICATION
 ───────────────────────────────────────────────────────────── */
-function PostCard({ post, onLike, onOpenModal, currentUserId }: {
+function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleMute }: {
   post: Post
   onLike: (id: number) => void
   onOpenModal: (post: Post) => void
   currentUserId?: number
+  isMuted: boolean
+  onToggleMute: () => void
 }) {
   const allMedia = [
     { url: post.media, mediaType: post.mediaType },
@@ -218,6 +221,12 @@ function PostCard({ post, onLike, onOpenModal, currentUserId }: {
   const [mediaIdx, setMediaIdx] = useState(0)
   const current = allMedia[mediaIdx] ?? allMedia[0]
   const isMulti = allMedia.length > 1
+  const isVideo = current.mediaType === 'video' || current.mediaType === 'VIDEO'
+
+  const videoRef = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = isMuted
+  }, [isMuted])
 
   const prev = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -252,14 +261,25 @@ function PostCard({ post, onLike, onOpenModal, currentUserId }: {
       </div>
 
       <div className="w-full bg-black flex items-center justify-center relative group" onClick={() => onOpenModal(post)}>
-        {current.mediaType === 'video' || current.mediaType === 'VIDEO' ? (
-          <video
-            key={current.url}
-            src={current.url}
-            className="w-full max-h-[560px] object-contain block cursor-pointer"
-            muted preload="metadata" playsInline
-            onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
-          />
+        {isVideo ? (
+          <>
+            <video
+              key={current.url}
+              ref={videoRef}
+              src={current.url}
+              className="w-full max-h-[560px] object-contain block cursor-pointer"
+              muted preload="metadata" playsInline
+              onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
+            />
+            {/* Bouton mute/unmute global */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleMute() }}
+              className="absolute bottom-3 right-3 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/15 text-white transition-all"
+              title={isMuted ? 'Activer le son' : 'Couper le son'}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          </>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={current.url} alt={post.caption || post.title} className="w-full max-h-[560px] object-contain block cursor-pointer" loading="lazy" />
@@ -544,6 +564,8 @@ export default function HomePage() {
   const [suggested, setSuggested]         = useState<SuggestedProfile[]>([])
   const [loadingFeed, setLoadingFeed]     = useState(true)
   const [visibleCount, setVisibleCount]   = useState(POSTS_PER_PAGE)
+  const [isMuted, setIsMuted]             = useState(true)
+  const toggleMute = () => setIsMuted(m => !m)
 
   // Tab mobile : 'feed' | 'top' | 'offers'
   const [mobileTab, setMobileTab] = useState<'feed' | 'top' | 'offers'>('feed')
@@ -647,7 +669,7 @@ export default function HomePage() {
           ) : (
             <div className="space-y-4">
               {visiblePosts.map(p => (
-                <PostCard key={p.id} post={p} onLike={handleLike} onOpenModal={setSelectedPost} currentUserId={user?.id} />
+                <PostCard key={p.id} post={p} onLike={handleLike} onOpenModal={setSelectedPost} currentUserId={user?.id} isMuted={isMuted} onToggleMute={toggleMute} />
               ))}
 
               {/* Bouton Charger plus */}
