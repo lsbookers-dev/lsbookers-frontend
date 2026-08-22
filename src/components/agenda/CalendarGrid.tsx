@@ -258,7 +258,7 @@ export default function CalendarGrid({
                   </button>
                 ) : (
                   <div style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid #1c2030', borderRadius: 10, padding: 10 }}>
-                    <p style={{ fontSize: 10, color: '#485272', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Demande de booking</p>
+                    <p style={{ fontSize: 10, color: '#485272', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Proposition de booking</p>
                     <textarea
                       value={bookingMsg}
                       onChange={e => setBookingMsg(e.target.value)}

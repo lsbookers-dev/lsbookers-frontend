@@ -99,7 +99,7 @@ export function BookingRequestCard({
     <div className="max-w-sm w-full rounded-2xl border border-violet-500/30 bg-violet-900/20 overflow-hidden">
       <div className="px-4 py-3 border-b border-violet-500/20 flex items-center gap-2">
         <CalendarDays className="w-4 h-4 text-violet-400 shrink-0" />
-        <span className="text-sm font-semibold text-violet-300">Demande de booking</span>
+        <span className="text-sm font-semibold text-violet-300">Proposition de booking</span>
         <StatusBadge status={status} />
       </div>
       <div className="px-4 py-3 space-y-1.5">
