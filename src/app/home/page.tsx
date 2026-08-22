@@ -224,9 +224,33 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
   const isVideo = current.mediaType === 'video' || current.mediaType === 'VIDEO'
 
   const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Met à jour le mute sur l'élément vidéo (React muted prop n'est pas réactif)
   useEffect(() => {
     if (videoRef.current) videoRef.current.muted = isMuted
   }, [isMuted])
+
+  // Autoplay quand la vidéo entre dans le viewport, pause quand elle sort
+  useEffect(() => {
+    if (!isVideo) return
+    const video = videoRef.current
+    if (!video) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {})
+          } else {
+            video.pause()
+            video.currentTime = 0.1
+          }
+        })
+      },
+      { threshold: 0.4 }
+    )
+    observer.observe(video)
+    return () => observer.disconnect()
+  }, [current.url, isVideo])
 
   const prev = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -268,7 +292,7 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
               ref={videoRef}
               src={current.url}
               className="w-full max-h-[560px] object-contain block cursor-pointer"
-              muted preload="metadata" playsInline
+              muted preload="metadata" playsInline loop
               onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
             />
             {/* Bouton mute/unmute global */}
