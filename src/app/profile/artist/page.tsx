@@ -35,6 +35,7 @@ type ApiProfile = {
   banner?: string | null
   soundcloudUrl?: string | null
   showSoundcloud?: boolean
+  showStyles?: boolean
   youtubeUrl?: string | null
   instagramUrl?: string | null
   facebookUrl?: string | null
@@ -539,6 +540,21 @@ export default function ArtistProfilePage() {
                 </div>
             }
           </section>
+
+          {/* Styles musicaux */}
+          {profile?.showStyles !== false && profile?.styles && profile.styles.length > 0 && (
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Music size={15} className="text-pink-400" />
+                <h2 className="text-base font-semibold">Styles musicaux</h2>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {profile.styles.map(s => (
+                  <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300">{s}</span>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* SoundCloud */}
           {profile?.showSoundcloud && soundcloudEmbed && (
