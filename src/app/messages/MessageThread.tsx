@@ -569,7 +569,7 @@ export default function MessageThread({
           )}
           {filePreviewUrl && file.type.startsWith('video/') && (
             <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-black flex items-center justify-center">
-              <video src={filePreviewUrl} className="w-full h-full object-cover" muted />
+              <video src={filePreviewUrl} className="w-full h-full object-cover" muted preload="metadata" playsInline onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }} />
             </div>
           )}
           {!filePreviewUrl && (

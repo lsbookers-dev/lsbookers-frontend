@@ -90,13 +90,13 @@ export function AttachmentBubble({ msg, onImageClick }: {
   if (msg.attachmentType === 'VIDEO') {
     return (
       <video
+        src={url}
         controls
         preload="metadata"
+        playsInline
         onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
         className="mt-1 w-52 rounded-xl bg-black max-w-full"
-      >
-        <source src={url} />
-      </video>
+      />
     )
   }
   return (
