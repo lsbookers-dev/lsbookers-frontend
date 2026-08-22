@@ -29,10 +29,11 @@ function getTokenUserId(): number | null {
 }
 
 export default function FollowButton({ targetUserId, onFollowChange }: Props) {
-  const [following, setFollowing] = useState(false)
-  const [blocked, setBlocked]     = useState(false)
-  const [loading, setLoading]     = useState(true)
-  const [busy, setBusy]           = useState(false)
+  const [following, setFollowing]   = useState(false)
+  const [followsYou, setFollowsYou] = useState(false)
+  const [blocked, setBlocked]       = useState(false)
+  const [loading, setLoading]       = useState(true)
+  const [busy, setBusy]             = useState(false)
   const [showBlockMenu, setShowBlockMenu] = useState(false)
 
   const currentUserId = getTokenUserId()
@@ -46,7 +47,7 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
           fetch(`${API_BASE}/api/follow/status/${targetUserId}`, { headers: authHeaders() }),
           fetch(`${API_BASE}/api/block/status/${targetUserId}`,  { headers: authHeaders() }),
         ])
-        if (fRes.ok) { const d = await fRes.json(); setFollowing(d.following) }
+        if (fRes.ok) { const d = await fRes.json(); setFollowing(d.following); setFollowsYou(d.followsYou ?? false) }
         if (bRes.ok) { const d = await bRes.json(); setBlocked(d.blocked) }
       } catch {
         // silently fail
@@ -125,11 +126,13 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
         className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition disabled:opacity-40 ${
           following
             ? 'border border-white/20 bg-white/10 text-white hover:bg-white/20'
+            : followsYou
+            ? 'bg-blue-600 hover:bg-blue-500 text-white'
             : 'bg-emerald-600 hover:bg-emerald-500 text-white'
         }`}
       >
         {following ? <UserMinus size={16} /> : <UserPlus size={16} />}
-        {following ? 'Abonné' : 'Suivre'}
+        {following ? 'Abonné' : followsYou ? 'Suivre en retour' : 'Suivre'}
       </button>
 
       {/* Menu bloquer */}
