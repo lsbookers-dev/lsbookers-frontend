@@ -81,6 +81,7 @@ type Profile = {
   radiusKm: number | null
   soundcloudUrl: string
   showSoundcloud: boolean
+  showStyles: boolean
   youtubeUrl: string
   availableForBooking: boolean
   showRealName: boolean
@@ -192,6 +193,7 @@ export default function ProfileSettings() {
     radiusKm: null,
     soundcloudUrl: '',
     showSoundcloud: false,
+    showStyles: true,
     youtubeUrl: '',
     availableForBooking: true,
     showRealName: false,
@@ -249,6 +251,7 @@ export default function ProfileSettings() {
           radiusKm: p.radiusKm ?? null,
           soundcloudUrl: p.soundcloudUrl || '',
           showSoundcloud: !!p.showSoundcloud,
+          showStyles: p.showStyles !== false,
           youtubeUrl: p.youtubeUrl || '',
           availableForBooking: p.availableForBooking ?? true,
           showRealName: p.showRealName ?? false,
@@ -315,6 +318,7 @@ export default function ProfileSettings() {
           radiusKm: profile.radiusKm,
           soundcloudUrl: profile.soundcloudUrl,
           showSoundcloud: profile.showSoundcloud,
+          showStyles: profile.showStyles,
           youtubeUrl: profile.youtubeUrl,
           availableForBooking: profile.availableForBooking,
           showRealName: profile.showRealName,
@@ -530,6 +534,14 @@ export default function ProfileSettings() {
               selected={profile.styles}
               onChange={v => setProfile(p => ({ ...p, styles: v }))}
             />
+            <div className="mt-3 border-t border-white/8 pt-3">
+              <Toggle
+                value={profile.showStyles}
+                onChange={v => setProfile(p => ({ ...p, showStyles: v }))}
+                label="Afficher les styles sur mon profil"
+                description="Visible par les autres utilisateurs"
+              />
+            </div>
           </Section>
         )}
 

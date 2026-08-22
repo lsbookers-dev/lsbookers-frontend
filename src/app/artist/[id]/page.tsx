@@ -32,6 +32,7 @@ type ApiProfile = {
   banner?: string | null
   soundcloudUrl?: string | null
   showSoundcloud?: boolean | null
+  showStyles?: boolean | null
   youtubeUrl?: string | null
   cvText?: string | null
   feeInfo?: string | null
@@ -263,7 +264,7 @@ export default function ArtistPublicProfilePage() {
           </section>
 
           {/* Styles musicaux — au-dessus de SoundCloud, sous les avis */}
-          {styles.length > 0 && (
+          {profile.showStyles !== false && styles.length > 0 && (
             <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <h2 className="text-lg font-semibold">Styles musicaux</h2>
               <div className="mt-3 flex flex-wrap gap-2">
