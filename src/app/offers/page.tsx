@@ -55,13 +55,15 @@ const TYPE_CONFIG = {
 /* ─── Carte d'offre ─────────────────────────────────────── */
 function OfferCard({
   offer,
-  canApply,
+  isLoggedIn,
+  isOwner,
   applying,
   onApply,
   onShare,
 }: {
   offer: Offer
-  canApply: boolean
+  isLoggedIn: boolean
+  isOwner: boolean
   applying: boolean
   onApply: (offer: Offer) => void
   onShare: (offer: Offer) => void
@@ -168,8 +170,8 @@ function OfferCard({
             Partager
           </button>
 
-          {/* Postuler */}
-          {canApply && (
+          {/* Postuler — visible pour tout utilisateur connecté sauf le créateur */}
+          {isLoggedIn && !isOwner && (
             <button
               onClick={() => onApply(offer)}
               disabled={applying}
@@ -199,8 +201,8 @@ function OffersInner() {
   const [forMe, setForMe]               = useState(false)
   const [userSpecialties, setUserSpec]  = useState<string[]>([])
 
-  const canApply    = user?.role === 'ARTIST' || user?.role === 'PROVIDER'
-  const isOrganizer = user?.role === 'ORGANIZER'
+  const isOrganizer  = user?.role === 'ORGANIZER'
+  const canFilterMe  = user?.role === 'ARTIST' || user?.role === 'PROVIDER'
 
   // Modal publication (organisateurs)
   const [showPublish, setShowPublish]     = useState(false)
@@ -406,8 +408,17 @@ function OffersInner() {
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-white/40" />
               <span className="text-sm font-medium text-white/60">Filtrer les offres</span>
+              {(Object.values(filters).some(Boolean) || forMe) && (
+                <button
+                  onClick={() => { setFilters({ type: '', specialty: '', location: '', country: '' }); setForMe(false) }}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white/40 hover:text-white/70 border border-white/10 hover:border-white/20 transition-all"
+                >
+                  <X className="w-3 h-3" />
+                  Réinitialiser
+                </button>
+              )}
             </div>
-            {canApply && (
+            {canFilterMe && (
               <button
                 onClick={() => setForMe(v => !v)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
@@ -493,7 +504,8 @@ function OffersInner() {
                 <OfferCard
                   key={offer.id}
                   offer={offer}
-                  canApply={canApply}
+                  isLoggedIn={!!user}
+                  isOwner={!!user && Number(user.id) === offer.organizer.userId}
                   applying={applyingId === offer.id}
                   onApply={handleApply}
                   onShare={o => { setShareOffer(o); setShareQuery(''); setShareUsers([]); setShareSuccess(false) }}
