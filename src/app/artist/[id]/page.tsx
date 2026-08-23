@@ -171,57 +171,60 @@ export default function ArtistPublicProfilePage() {
     <div className="min-h-screen bg-black text-white">
 
       {/* ── Bannière ── */}
-      <div className="relative h-56 sm:h-64 md:h-72 lg:h-80">
+      <div className="relative h-48 sm:h-56 md:h-64 lg:h-72">
         <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-90" />
       </div>
 
-      {/* ── Header ── */}
-      <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-4 ring-black" />
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">{name}</h1>
-            <p className="text-sm text-neutral-300">
-              {[location, country].filter(Boolean).join(', ')}
-              {profile.radiusKm ? ` · Rayon ${profile.radiusKm} km` : ''}
-            </p>
-            {specialties.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                {specialties.map(s => (
-                  <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40">{s}</span>
-                ))}
+      <div className="max-w-6xl mx-auto px-4">
+        {/* ── Header ── */}
+        <section className="relative -mt-10 rounded-2xl border border-white/10 bg-neutral-900/60 p-4 md:p-5 backdrop-blur">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-2 ring-white/10 shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-xl md:text-2xl font-bold truncate">{name}</h1>
+                <p className="text-sm text-white/60">{profile.user?.role || 'ARTIST'}</p>
+                <p className="text-xs text-white/50 mt-1">
+                  {location ? `${location}${country ? `, ${country}` : ''}` : country}
+                  {profile.radiusKm ? ` • Rayon ${profile.radiusKm} km` : ''}
+                </p>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        <div className="flex flex-col items-end gap-3">
-          <div className="flex items-center gap-3">
-            {!isOwner && (
-              <FollowButton
-                targetUserId={profile.userId}
-                onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
-              />
-            )}
-            {!isOwner && (
-              <button
-                onClick={() => router.push(`/messages?to=${profile.userId}`)}
-                className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
-              >
-                <MessageCircle size={16} />
-                Contacter
-              </button>
-            )}
+            <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 sm:ml-auto flex-wrap">
+              <div className="flex items-center gap-2">
+                <FollowButton
+                  targetUserId={profile.userId}
+                  onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
+                />
+                {!isOwner && (
+                  <button
+                    onClick={() => router.push(`/messages?to=${profile.userId}`)}
+                    className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
+                  >
+                    <MessageCircle size={16} />
+                    Contacter
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-4 text-xs text-white/50">
+                <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>
+                <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnements</span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-sm text-white/50">
-            <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>
-            <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnements</span>
-          </div>
-        </div>
-      </div>
 
-      {/* ── Corps ── */}
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
+          {specialties.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {specialties.map((s) => (
+                <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40">{s}</span>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── Corps ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 mt-6 pb-12">
 
         {/* Colonne gauche */}
         <div className="space-y-6">
@@ -345,6 +348,7 @@ export default function ArtistPublicProfilePage() {
           )}
 
         </aside>
+        </div>
       </div>
     </div>
   )
