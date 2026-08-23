@@ -1,136 +1,118 @@
 'use client'
 
-import Link from 'next/link'
 import { useState } from 'react'
-import axios, { isAxiosError } from 'axios'
+import Link from 'next/link'
+import axios from 'axios'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('')
+  const [email, setEmail]     = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent]       = useState(false)
+  const [error, setError]     = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
-
     try {
       await axios.post(`${API}/api/auth/forgot-password`, { email })
       setSent(true)
-    } catch (err) {
-      if (isAxiosError(err) && err.response?.status === 429) {
-        setError('Trop de tentatives. Réessayez dans 5 minutes.')
-      } else {
-        // On affiche toujours le succès pour ne pas révéler si l'email existe
-        setSent(true)
-      }
+    } catch {
+      setError('Une erreur est survenue. Réessaie dans quelques instants.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
-        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl" />
-        <div className="absolute left-1/2 top-1/2 h-64 w-[42rem] -translate-x-1/2 -translate-y-1/2 rotate-12 rounded-[4rem] border border-white/5 bg-white/5 blur-2xl" />
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#0a0a0f] text-white px-4">
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-purple-500/15 blur-3xl" />
+        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-pink-500/10 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
-        <aside className="hidden lg:flex flex-col justify-between border-r border-white/10">
-          <div className="p-10">
-            <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="h-12 w-12 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/25 transition flex items-center justify-center">
-                <span className="font-black text-lg tracking-widest">LS</span>
+      <div className="relative z-10 w-full max-w-md">
+
+        <div className="flex items-center gap-3 mb-8">
+          <div className="h-9 w-9 rounded-xl bg-white/10 backdrop-blur ring-1 ring-white/15 flex items-center justify-center">
+            <span className="font-black text-sm tracking-widest">LS</span>
+          </div>
+          <span className="font-extrabold text-base">LSBookers</span>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl p-7 shadow-2xl">
+
+          {sent ? (
+            <div className="text-center py-4">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 text-3xl">
+                📬
               </div>
-              <div className="leading-tight">
-                <p className="text-xl font-extrabold tracking-tight">Bookers</p>
-                <p className="text-xs text-white/60">Plateforme de booking</p>
-              </div>
-            </Link>
-            <div className="mt-12 space-y-5">
-              <h1 className="text-4xl font-extrabold tracking-tight">Mot de passe oublié ?</h1>
-              <p className="max-w-md text-white/70">
-                Pas de panique. Saisis ton email et on t&apos;envoie un lien pour créer un nouveau mot de passe.
+              <h2 className="text-xl font-black mb-2">Email envoyé !</h2>
+              <p className="text-sm text-white/55 leading-relaxed">
+                Si un compte est associé à{' '}
+                <span className="text-white/80 font-medium">{email}</span>,
+                tu recevras un lien de réinitialisation sous peu.
               </p>
-            </div>
-          </div>
-          <div className="p-10">
-            <p className="text-xs text-white/50">© {new Date().getFullYear()} LSBookers — Tous droits réservés.</p>
-          </div>
-        </aside>
-
-        <main className="flex items-center justify-center p-6 lg:p-12">
-          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
-
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Réinitialiser</h2>
+              <p className="text-xs text-white/30 mt-3">Pense à vérifier tes spams.</p>
               <Link
                 href="/login"
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition"
+                className="mt-6 inline-block text-sm text-purple-400 hover:text-purple-300 transition"
               >
-                Retour
+                ← Retour à la connexion
               </Link>
             </div>
-
-            {sent ? (
-              <div className="space-y-4 py-4 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600/20 ring-2 ring-emerald-500/50">
-                  <svg className="h-7 w-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Vérifie ta boîte mail</h3>
-                  <p className="mt-2 text-sm text-white/60">
-                    Si un compte existe avec cet email, tu recevras un lien de réinitialisation dans quelques instants.
-                  </p>
-                </div>
-                <p className="text-xs text-white/40">Le lien est valable 1 heure.</p>
-                <Link href="/login" className="inline-block text-sm text-emerald-400 underline underline-offset-4 hover:text-emerald-300">
-                  Retour à la connexion
-                </Link>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-sm text-white/60">
-                  Entre l&apos;adresse email associée à ton compte.
+          ) : (
+            <>
+              <div className="mb-5">
+                <h2 className="text-2xl font-black mb-1">Mot de passe oublié</h2>
+                <p className="text-sm text-white/50">
+                  Saisis ton email et on t&apos;envoie un lien pour réinitialiser ton mot de passe.
                 </p>
+              </div>
 
-                {error && (
-                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-                    {error}
-                  </div>
-                )}
+              {error && (
+                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {error}
+                </div>
+              )}
 
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm text-white/80">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    autoComplete="email"
-                    placeholder="nom@domaine.com"
-                    className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60"
-                  />
+                  <label className="mb-1.5 block text-sm font-medium text-white/75">Email</label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">✉️</span>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      placeholder="nom@domaine.com"
+                      className="w-full rounded-xl bg-white/5 pl-10 pr-4 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition"
+                    />
+                  </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
+                  className="w-full rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-500 disabled:opacity-60 transition shadow-lg shadow-purple-900/40"
                 >
-                  {loading ? 'Envoi en cours…' : 'Envoyer le lien'}
+                  {loading ? 'Envoi en cours…' : 'Envoyer le lien →'}
                 </button>
               </form>
-            )}
-          </div>
-        </main>
+
+              <p className="mt-5 text-center text-sm text-white/40">
+                Tu te souviens ?{' '}
+                <Link href="/login" className="text-purple-400 hover:text-purple-300 font-medium transition">
+                  Se connecter
+                </Link>
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

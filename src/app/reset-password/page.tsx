@@ -1,53 +1,60 @@
 'use client'
 
-import { Suspense, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
+import { Eye, EyeOff } from 'lucide-react'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
 
-function ResetPasswordContent() {
-  const searchParams = useSearchParams()
+function ResetPasswordForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const token = searchParams.get('token')
 
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [password, setPassword]         = useState('')
+  const [confirm, setConfirm]           = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm]   = useState(false)
+  const [loading, setLoading]           = useState(false)
+  const [success, setSuccess]           = useState(false)
+  const [error, setError]               = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token) setError('Lien invalide ou expiré. Refais une demande de réinitialisation.')
+  }, [token])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    if (password !== confirm) {
-      setError('Les mots de passe ne correspondent pas.')
-      return
-    }
     if (password.length < 8) {
       setError('Le mot de passe doit contenir au moins 8 caractères.')
       return
     }
-    if (!token) {
-      setError('Lien invalide.')
+    if (password !== confirm) {
+      setError('Les mots de passe ne correspondent pas.')
       return
     }
 
     setLoading(true)
     try {
       await axios.post(`${API}/api/auth/reset-password`, { token, password })
-      setDone(true)
+      setSuccess(true)
+      setTimeout(() => router.push('/login'), 3000)
     } catch (err) {
       if (isAxiosError(err)) {
-        if (err.response?.status === 400) {
-          setError('Ce lien est invalide ou a expiré. Refais une demande de réinitialisation.')
+        const msg = err.response?.data?.error
+        if (msg?.includes('différent')) {
+          setError('Le nouveau mot de passe doit être différent de l\'ancien.')
+        } else if (msg?.includes('invalide') || msg?.includes('expire')) {
+          setError('Lien invalide ou expiré. Refais une demande de réinitialisation.')
         } else {
-          setError(err.response?.data?.error || 'Erreur lors de la réinitialisation.')
+          setError('Une erreur est survenue. Réessaie dans quelques instants.')
         }
       } else {
-        setError('Erreur réseau.')
+        setError('Une erreur est survenue. Réessaie dans quelques instants.')
       }
     } finally {
       setLoading(false)
@@ -55,53 +62,123 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Nouveau mot de passe</h2>
-        <Link href="/login" className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition">
-          Connexion
-        </Link>
-      </div>
+    <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl p-7 shadow-2xl">
 
-      {done ? (
-        <div className="space-y-4 py-4 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600/20 ring-2 ring-emerald-500/50">
-            <svg className="h-7 w-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
+      {success ? (
+        /* ── Succès ── */
+        <div className="text-center py-4">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 text-3xl">
+            ✅
           </div>
-          <div>
-            <h3 className="font-bold text-lg">Mot de passe modifié !</h3>
-            <p className="mt-2 text-sm text-white/60">Tu peux maintenant te connecter avec ton nouveau mot de passe.</p>
-          </div>
-          <button onClick={() => router.replace('/login')} className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500">
-            Se connecter →
-          </button>
+          <h2 className="text-xl font-black mb-2">Mot de passe mis à jour !</h2>
+          <p className="text-sm text-white/55 leading-relaxed">
+            Tu vas être redirigé vers la page de connexion dans quelques secondes…
+          </p>
+          <Link
+            href="/login"
+            className="mt-5 inline-block text-sm text-purple-400 hover:text-purple-300 transition"
+          >
+            Se connecter maintenant →
+          </Link>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!token && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              Lien invalide. Refais une demande de réinitialisation.
+        /* ── Formulaire ── */
+        <>
+          <div className="mb-5">
+            <h2 className="text-2xl font-black mb-1">Nouveau mot de passe</h2>
+            <p className="text-sm text-white/50">
+              Choisis un nouveau mot de passe sécurisé, différent de l&apos;ancien.
+            </p>
+          </div>
+
+          {error && (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {error}
+              {(error.includes('invalide') || error.includes('expiré')) && (
+                <div className="mt-2">
+                  <Link href="/forgot-password" className="text-purple-400 underline underline-offset-4 hover:text-purple-300 transition text-xs">
+                    Refaire une demande
+                  </Link>
+                </div>
+              )}
             </div>
           )}
-          {error && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
-          )}
-          <div>
-            <label className="mb-2 block text-sm text-white/80">Nouveau mot de passe</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="new-password" placeholder="Au moins 8 caractères"
-              className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm text-white/80">Confirmer le mot de passe</label>
-            <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required autoComplete="new-password" placeholder="••••••••"
-              className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-white placeholder-white/40 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-500/60" />
-          </div>
-          <button type="submit" disabled={loading || !token} className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60">
-            {loading ? 'Enregistrement…' : 'Enregistrer le mot de passe'}
-          </button>
-        </form>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Nouveau mot de passe */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-white/75">
+                Nouveau mot de passe
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">🔒</span>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  placeholder="8 caractères minimum"
+                  disabled={!token}
+                  className="w-full rounded-xl bg-white/5 pl-10 pr-10 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirmation */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-white/75">
+                Confirmer le mot de passe
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">🔒</span>
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  disabled={!token}
+                  className="w-full rounded-xl bg-white/5 pl-10 pr-10 py-2.5 text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition"
+                >
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {/* Indicateur concordance */}
+              {confirm && (
+                <p className={`mt-1 text-xs ${password === confirm ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {password === confirm ? '✓ Les mots de passe correspondent' : '✗ Les mots de passe ne correspondent pas'}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !token}
+              className="w-full rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-500 disabled:opacity-60 transition shadow-lg shadow-purple-900/40"
+            >
+              {loading ? 'Mise à jour…' : 'Réinitialiser mon mot de passe →'}
+            </button>
+          </form>
+
+          <p className="mt-5 text-center text-sm text-white/40">
+            <Link href="/login" className="text-purple-400 hover:text-purple-300 font-medium transition">
+              ← Retour à la connexion
+            </Link>
+          </p>
+        </>
       )}
     </div>
   )
@@ -109,38 +186,29 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-28 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
-        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl" />
-        <div className="absolute left-1/2 top-1/2 h-64 w-[42rem] -translate-x-1/2 -translate-y-1/2 rotate-12 rounded-[4rem] border border-white/5 bg-white/5 blur-2xl" />
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#0a0a0f] text-white px-4">
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-purple-500/15 blur-3xl" />
+        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-pink-500/10 blur-3xl" />
       </div>
-      <div className="relative mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
-        <aside className="hidden lg:flex flex-col justify-between border-r border-white/10">
-          <div className="p-10">
-            <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="h-12 w-12 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/25 transition flex items-center justify-center">
-                <span className="font-black text-lg tracking-widest">LS</span>
-              </div>
-              <div className="leading-tight">
-                <p className="text-xl font-extrabold tracking-tight">Bookers</p>
-                <p className="text-xs text-white/60">Plateforme de booking</p>
-              </div>
-            </Link>
-            <div className="mt-12 space-y-5">
-              <h1 className="text-4xl font-extrabold tracking-tight">Nouveau mot de passe</h1>
-              <p className="max-w-md text-white/70">Choisis un nouveau mot de passe sécurisé pour ton compte LSBookers.</p>
-            </div>
+
+      <div className="relative z-10 w-full max-w-md">
+
+        <div className="flex items-center gap-3 mb-8">
+          <div className="h-9 w-9 rounded-xl bg-white/10 backdrop-blur ring-1 ring-white/15 flex items-center justify-center">
+            <span className="font-black text-sm tracking-widest">LS</span>
           </div>
-          <div className="p-10">
-            <p className="text-xs text-white/50">© {new Date().getFullYear()} LSBookers — Tous droits réservés.</p>
+          <span className="font-extrabold text-base">LSBookers</span>
+        </div>
+
+        <Suspense fallback={
+          <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl p-7 text-center text-white/40 text-sm">
+            Chargement…
           </div>
-        </aside>
-        <main className="flex items-center justify-center p-6 lg:p-12">
-          <Suspense fallback={<div className="text-white/60 text-sm">Chargement…</div>}>
-            <ResetPasswordContent />
-          </Suspense>
-        </main>
+        }>
+          <ResetPasswordForm />
+        </Suspense>
       </div>
     </div>
   )
