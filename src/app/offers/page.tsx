@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles, Plus, X, Users } from 'lucide-react' // X gardé pour modal publier
+import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles, Plus, X, Users, Send, Share2, Layers } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
-import OfferModal, { type OfferDetail } from '@/components/OfferModal'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type Offer = {
@@ -55,20 +54,24 @@ const TYPE_CONFIG = {
 /* ─── Carte d'offre ─────────────────────────────────────── */
 function OfferCard({
   offer,
-  onOpen,
+  canApply,
+  onApply,
+  onShare,
 }: {
   offer: Offer
-  onOpen: (offer: Offer) => void
+  canApply: boolean
+  onApply: (offer: Offer) => void
+  onShare: (offer: Offer) => void
 }) {
   const cfg = TYPE_CONFIG[offer.type]
   const date = new Date(offer.date)
   const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const similarHref = `/offers?${offer.specialty ? `specialty=${encodeURIComponent(offer.specialty)}&` : ''}location=${encodeURIComponent(offer.location)}`
 
   return (
     <div
-      onClick={() => onOpen(offer)}
-      className={`group relative rounded-2xl border ${cfg.border} bg-white/[0.03] hover:bg-white/[0.05] transition-all duration-200 overflow-hidden flex flex-col cursor-pointer`}
+      className={`group relative rounded-2xl border ${cfg.border} bg-white/[0.03] hover:bg-white/[0.05] transition-all duration-200 overflow-hidden flex flex-col`}
     >
 
       {/* Trait couleur en haut — identique aux cartes de recherche */}
@@ -144,17 +147,44 @@ function OfferCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-3 pt-3 border-t border-white/5">
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/5">
           <Link
             href={`/organizer/${offer.organizer.userId}`}
-            onClick={e => e.stopPropagation()}
             className="text-xs text-white/40 hover:text-white/70 transition-colors"
           >
             Voir le profil →
           </Link>
-          <span className="ml-auto text-xs text-white/30 group-hover:text-white/50 transition-colors">
-            Voir l&apos;offre →
-          </span>
+
+          <div className="ml-auto flex items-center gap-2">
+            {/* Offres similaires */}
+            <Link
+              href={similarHref}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-white/50 hover:text-white/80 border border-white/10 hover:border-white/20 transition-all"
+            >
+              <Layers className="w-3 h-3" />
+              Similaires
+            </Link>
+
+            {/* Partager */}
+            <button
+              onClick={() => onShare(offer)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-white/50 hover:text-white/80 border border-white/10 hover:border-white/20 transition-all"
+            >
+              <Share2 className="w-3 h-3" />
+              Partager
+            </button>
+
+            {/* Postuler */}
+            {canApply && (
+              <button
+                onClick={() => onApply(offer)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-white font-medium bg-gradient-to-r ${cfg.apply} hover:opacity-90 transition-all`}
+              >
+                <Send className="w-3 h-3" />
+                Postuler
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -185,8 +215,19 @@ export default function OffersPage() {
   const [userLocation, setUserLocation] = useState('')
   const [userCountry, setUserCountry]   = useState('')
 
-  // Modal offre (postuler + partager + similaires)
-  const [selectedOffer, setSelectedOffer] = useState<OfferDetail | null>(null)
+  // Modal postuler
+  const [applyOffer, setApplyOffer]       = useState<Offer | null>(null)
+  const [applyMessage, setApplyMessage]   = useState('')
+  const [applySubmitting, setApplySubmitting] = useState(false)
+  const [applyError, setApplyError]       = useState<string | null>(null)
+  const [applySuccess, setApplySuccess]   = useState(false)
+
+  // Modal partager
+  const [shareOffer, setShareOffer]       = useState<Offer | null>(null)
+  const [shareQuery, setShareQuery]       = useState('')
+  const [shareUsers, setShareUsers]       = useState<{ id: number; pseudo?: string; firstName?: string; lastName?: string; avatar?: string | null }[]>([])
+  const [shareSubmitting, setShareSubmitting] = useState(false)
+  const [shareSuccess, setShareSuccess]   = useState(false)
 
 
   // Pré-remplir les filtres depuis les paramètres URL (ex: "Voir offres similaires")
@@ -254,15 +295,72 @@ export default function OffersPage() {
     return () => clearTimeout(t)
   }, [loadOffers])
 
-  const handleOpenOffer = (offer: Offer) => {
-    setSelectedOffer({
-      ...offer,
-      radiusKm: null,
-      status: 'ACTIVE',
-      applicantCount: offer.applicantCount ?? 0,
-      specialty: offer.specialty ?? null,
-      fee: offer.fee ?? null,
-    } as OfferDetail)
+  // Recherche utilisateurs pour le partage
+  useEffect(() => {
+    if (!shareOffer || shareQuery.trim().length < 2) { setShareUsers([]); return }
+    const t = setTimeout(async () => {
+      try {
+        const token = getAuthToken()
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+        const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(shareQuery)}&limit=8`, { credentials: 'include', headers })
+        if (res.ok) {
+          const data = await res.json()
+          setShareUsers((data.users || data).slice(0, 8))
+        }
+      } catch { setShareUsers([]) }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [shareQuery, shareOffer])
+
+  const handleApply = (offer: Offer) => {
+    setApplyOffer(offer)
+    setApplyMessage(`Bonjour, je suis intéressé(e) par votre offre "${offer.title}". N'hésitez pas à consulter mon profil.`)
+    setApplyError(null)
+    setApplySuccess(false)
+  }
+
+  const submitApply = async () => {
+    if (!applyOffer) return
+    setApplySubmitting(true)
+    setApplyError(null)
+    try {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE}/api/offers/${applyOffer.id}/apply`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ message: applyMessage }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Erreur')
+      }
+      setApplySuccess(true)
+      setTimeout(() => { setApplyOffer(null); setApplySuccess(false) }, 2000)
+    } catch (err: unknown) {
+      setApplyError(err instanceof Error ? err.message : 'Erreur lors de la candidature.')
+    } finally {
+      setApplySubmitting(false)
+    }
+  }
+
+  const sendShare = async (toUserId: number) => {
+    if (!shareOffer) return
+    setShareSubmitting(true)
+    try {
+      const token = getAuthToken()
+      const text = `🎯 Offre : ${shareOffer.title}\n📍 ${shareOffer.location}\nConsulte l'offre sur LS Bookers !`
+      await fetch(`${API_BASE}/api/messages`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ recipientId: toUserId, content: text }),
+      })
+      setShareSuccess(true)
+      setTimeout(() => { setShareOffer(null); setShareSuccess(false); setShareQuery(''); setShareUsers([]) }, 1800)
+    } catch { /* silent */ } finally {
+      setShareSubmitting(false)
+    }
   }
 
   const submitPublish = async () => {
@@ -425,7 +523,9 @@ export default function OffersPage() {
                 <OfferCard
                   key={offer.id}
                   offer={offer}
-                  onOpen={handleOpenOffer}
+                  canApply={canApply}
+                  onApply={handleApply}
+                  onShare={o => { setShareOffer(o); setShareQuery(''); setShareUsers([]); setShareSuccess(false) }}
                 />
               ))}
             </div>
@@ -433,13 +533,84 @@ export default function OffersPage() {
         )}
       </div>
 
-      {/* ── Modal offre (postuler + partager + similaires) ── */}
-      {selectedOffer && (
-        <OfferModal
-          offer={selectedOffer}
-          onClose={() => setSelectedOffer(null)}
-          isLoggedIn={!!user}
-        />
+      {/* ── Modal : Postuler ── */}
+      {applyOffer && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setApplyOffer(null)}>
+          <div className="max-w-md w-full bg-neutral-950 border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold">Postuler — {applyOffer.title}</h3>
+              <button onClick={() => setApplyOffer(null)} className="text-neutral-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            {applySuccess ? (
+              <p className="text-center text-green-400 py-6">✅ Candidature envoyée ! Bonne chance 🎉</p>
+            ) : (
+              <>
+                <textarea
+                  rows={5}
+                  value={applyMessage}
+                  onChange={e => setApplyMessage(e.target.value)}
+                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40 resize-none mb-3"
+                />
+                {applyError && <p className="text-xs text-red-400 mb-2">{applyError}</p>}
+                <button
+                  onClick={submitApply}
+                  disabled={applySubmitting || !applyMessage.trim()}
+                  className={`w-full bg-gradient-to-r ${TYPE_CONFIG[applyOffer.type].apply} disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition`}
+                >
+                  {applySubmitting ? 'Envoi…' : 'Envoyer ma candidature'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal : Partager ── */}
+      {shareOffer && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShareOffer(null)}>
+          <div className="max-w-sm w-full bg-neutral-950 border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold">Partager cette offre</h3>
+              <button onClick={() => setShareOffer(null)} className="text-neutral-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            {shareSuccess ? (
+              <p className="text-center text-green-400 py-6">✅ Offre partagée !</p>
+            ) : (
+              <>
+                <input
+                  value={shareQuery}
+                  onChange={e => setShareQuery(e.target.value)}
+                  placeholder="Rechercher un utilisateur…"
+                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40 mb-3"
+                />
+                <div className="space-y-1 max-h-60 overflow-y-auto">
+                  {shareUsers.map(u => {
+                    const name = u.pseudo || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Utilisateur'
+                    return (
+                      <button
+                        key={u.id}
+                        onClick={() => sendShare(u.id)}
+                        disabled={shareSubmitting}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 transition text-left"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-zinc-800 overflow-hidden flex-shrink-0">
+                          {u.avatar ? <Image src={u.avatar} alt={name} width={32} height={32} className="object-cover w-full h-full" /> : (
+                            <div className="w-full h-full flex items-center justify-center text-xs text-white/50 font-bold">{name[0]?.toUpperCase()}</div>
+                          )}
+                        </div>
+                        <span className="text-sm text-white/80">{name}</span>
+                        <Send className="w-3.5 h-3.5 text-white/30 ml-auto" />
+                      </button>
+                    )
+                  })}
+                  {shareQuery.length >= 2 && shareUsers.length === 0 && (
+                    <p className="text-xs text-white/30 text-center py-4">Aucun utilisateur trouvé</p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── Modal : publier une offre (organisateurs) ── */}
