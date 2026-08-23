@@ -215,7 +215,7 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
 /* ─────────────────────────────────────────────────────────────
    CARTE PUBLICATION OFFICIELLE LSBOOKERS
 ───────────────────────────────────────────────────────────── */
-function AdminPostCard({ post, isNew }: { post: AdminPost; isNew?: boolean }) {
+function AdminPostCard({ post }: { post: AdminPost }) {
   const isVideo = post.mediaType === 'VIDEO'
 
   return (
@@ -224,12 +224,6 @@ function AdminPostCard({ post, isNew }: { post: AdminPost; isNew?: boolean }) {
       <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 text-xs px-2 py-1 rounded-full backdrop-blur-sm">
         <Star className="w-3 h-3 fill-yellow-300" /> Officiel
       </div>
-      {/* Badge Nouveau */}
-      {isNew && (
-        <div className="absolute top-3 left-3 z-10 flex items-center gap-1 bg-purple-600/80 border border-purple-400/30 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm font-medium">
-          Nouveau
-        </div>
-      )}
 
       {/* Header */}
       <div className="flex items-center gap-3 p-3 pt-4">
@@ -667,7 +661,7 @@ export default function HomePage() {
   const [selectedPost, setSelectedPost]   = useState<Post | null>(null)
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null)
   const [suggested, setSuggested]         = useState<SuggestedProfile[]>([])
-  const [unseenAdminPosts, setUnseenAdminPosts] = useState<AdminPost[]>([])
+  const [adminPosts, setAdminPosts] = useState<AdminPost[]>([])
   const [loadingFeed, setLoadingFeed]     = useState(true)
   const [visibleCount, setVisibleCount]   = useState(POSTS_PER_PAGE)
   const [isMuted, setIsMuted]             = useState(true)
@@ -694,17 +688,7 @@ export default function HomePage() {
         .then(d => {
           if (!d) return
           setPosts(d.posts || [])
-          const allAdmin: AdminPost[] = d.adminPosts || []
-          // Compute unseen using localStorage
-          const storageKey = `lsb_admin_seen_${user.id}`
-          let seenIds: Set<number>
-          try {
-            const raw = localStorage.getItem(storageKey)
-            seenIds = raw ? new Set<number>(JSON.parse(raw)) : new Set<number>()
-          } catch {
-            seenIds = new Set<number>()
-          }
-          setUnseenAdminPosts(allAdmin.filter(p => !seenIds.has(p.id)))
+          setAdminPosts(d.adminPosts || [])
         })
         .catch(() => {})
         .finally(() => setLoadingFeed(false))
@@ -717,25 +701,6 @@ export default function HomePage() {
       setLoadingFeed(false)
     }
   }, [user, API_BASE])
-
-  // ── Marquer les publications admin non vues comme vues ──
-  useEffect(() => {
-    if (!user || unseenAdminPosts.length === 0) return
-    const t = setTimeout(() => {
-      const storageKey = `lsb_admin_seen_${user.id}`
-      let seenIds: Set<number>
-      try {
-        const raw = localStorage.getItem(storageKey)
-        seenIds = raw ? new Set<number>(JSON.parse(raw)) : new Set<number>()
-      } catch {
-        seenIds = new Set<number>()
-      }
-      unseenAdminPosts.forEach(p => seenIds.add(p.id))
-      localStorage.setItem(storageKey, JSON.stringify(Array.from(seenIds)))
-      setUnseenAdminPosts([])
-    }, 2000)
-    return () => clearTimeout(t)
-  }, [unseenAdminPosts, user])
 
   // ── Toggle like ─────────────────────────────────────────
   const handleLike = async (postId: number) => {
@@ -756,8 +721,15 @@ export default function HomePage() {
     }
   }
 
-  const visiblePosts = posts.slice(0, visibleCount)
-  const hasMore = posts.length > visibleCount
+  // Mélanger posts admin et posts normaux, triés par date décroissante
+  type FeedItem = { kind: 'post'; data: Post } | { kind: 'admin'; data: AdminPost }
+  const combinedFeed: FeedItem[] = [
+    ...posts.map(p => ({ kind: 'post' as const, data: p })),
+    ...adminPosts.map(p => ({ kind: 'admin' as const, data: p })),
+  ].sort((a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime())
+
+  const visibleFeed = combinedFeed.slice(0, visibleCount)
+  const hasMore = combinedFeed.length > visibleCount
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 text-white">
@@ -794,7 +766,7 @@ export default function HomePage() {
               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
               <p className="text-sm text-white/30">Chargement du feed…</p>
             </div>
-          ) : posts.length === 0 && unseenAdminPosts.length === 0 ? (
+          ) : combinedFeed.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-8">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl">📸</div>
               <div>
@@ -807,14 +779,11 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Publications officielles LS Bookers non vues */}
-              {unseenAdminPosts.map(p => (
-                <AdminPostCard key={`admin-${p.id}`} post={p} isNew />
-              ))}
-
-              {visiblePosts.map(p => (
-                <PostCard key={p.id} post={p} onLike={handleLike} onOpenModal={setSelectedPost} currentUserId={user?.id} isMuted={isMuted} onToggleMute={toggleMute} />
-              ))}
+              {visibleFeed.map(item =>
+                item.kind === 'admin'
+                  ? <AdminPostCard key={`admin-${item.data.id}`} post={item.data} />
+                  : <PostCard key={item.data.id} post={item.data} onLike={handleLike} onOpenModal={setSelectedPost} currentUserId={user?.id} isMuted={isMuted} onToggleMute={toggleMute} />
+              )}
 
               {/* Bouton Charger plus */}
               {hasMore && (
@@ -828,7 +797,7 @@ export default function HomePage() {
               )}
 
               {/* Fin du feed */}
-              {!hasMore && posts.length > 0 && (
+              {!hasMore && combinedFeed.length > 0 && (
                 <p className="text-center text-xs text-white/20 py-6">— Vous avez tout vu —</p>
               )}
             </div>
