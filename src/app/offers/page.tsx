@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
+import OfferModal, { type OfferDetail } from '@/components/OfferModal'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type Offer = {
@@ -55,12 +56,10 @@ const TYPE_CONFIG = {
 /* ─── Carte d'offre ─────────────────────────────────────── */
 function OfferCard({
   offer,
-  canApply,
-  onApply,
+  onOpen,
 }: {
   offer: Offer
-  canApply: boolean
-  onApply: (offer: Offer) => void
+  onOpen: (offer: Offer) => void
 }) {
   const cfg = TYPE_CONFIG[offer.type]
   const date = new Date(offer.date)
@@ -68,7 +67,10 @@ function OfferCard({
   const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className={`group relative rounded-2xl border ${cfg.border} bg-white/[0.03] hover:bg-white/[0.05] transition-all duration-200 overflow-hidden flex flex-col`}>
+    <div
+      onClick={() => onOpen(offer)}
+      className={`group relative rounded-2xl border ${cfg.border} bg-white/[0.03] hover:bg-white/[0.05] transition-all duration-200 overflow-hidden flex flex-col cursor-pointer`}
+    >
 
       {/* Trait couleur en haut — identique aux cartes de recherche */}
       <div className={`absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r ${cfg.gradient} opacity-60 group-hover:opacity-100 transition-opacity`} />
@@ -144,17 +146,16 @@ function OfferCard({
 
         {/* Actions */}
         <div className="flex items-center gap-3 pt-3 border-t border-white/5">
-          <Link href={`/organizer/${offer.organizer.userId}`} className="text-xs text-white/40 hover:text-white/70 transition-colors">
+          <Link
+            href={`/organizer/${offer.organizer.userId}`}
+            onClick={e => e.stopPropagation()}
+            className="text-xs text-white/40 hover:text-white/70 transition-colors"
+          >
             Voir le profil →
           </Link>
-          {canApply && (
-            <button
-              onClick={() => onApply(offer)}
-              className={`ml-auto text-xs font-semibold px-5 py-2 rounded-full transition-all active:scale-95 bg-gradient-to-r ${cfg.apply} hover:opacity-90 text-white`}
-            >
-              Postuler
-            </button>
-          )}
+          <span className="ml-auto text-xs text-white/30 group-hover:text-white/50 transition-colors">
+            Voir l&apos;offre →
+          </span>
         </div>
       </div>
     </div>
@@ -187,7 +188,10 @@ export default function OffersPage() {
   const [userLocation, setUserLocation] = useState('')
   const [userCountry, setUserCountry]   = useState('')
 
-  // Modal candidature (artistes / prestataires)
+  // Modal offre (postuler + partager + similaires)
+  const [selectedOffer, setSelectedOffer] = useState<OfferDetail | null>(null)
+
+  // Modal candidature inline (conservé pour compatibilité, non utilisé quand modal offre actif)
   const [applyOffer, setApplyOffer]         = useState<Offer | null>(null)
   const [applyMessage, setApplyMessage]     = useState('')
   const [applySubmitting, setApplySubmit]   = useState(false)
@@ -257,6 +261,17 @@ export default function OffersPage() {
     const t = setTimeout(loadOffers, 400)
     return () => clearTimeout(t)
   }, [loadOffers])
+
+  const handleOpenOffer = (offer: Offer) => {
+    setSelectedOffer({
+      ...offer,
+      radiusKm: null,
+      status: 'ACTIVE',
+      applicantCount: offer.applicantCount ?? 0,
+      specialty: offer.specialty ?? null,
+      fee: offer.fee ?? null,
+    } as OfferDetail)
+  }
 
   const handleApply = (offer: Offer) => {
     const prefilled = `Bonjour, je souhaite postuler pour l'offre "${offer.title}" que vous venez de publier. Je me tiens à votre disposition.`
@@ -452,8 +467,7 @@ export default function OffersPage() {
                 <OfferCard
                   key={offer.id}
                   offer={offer}
-                  canApply={canApply}
-                  onApply={handleApply}
+                  onOpen={handleOpenOffer}
                 />
               ))}
             </div>
@@ -461,7 +475,16 @@ export default function OffersPage() {
         )}
       </div>
 
-      {/* ── Modal : postuler à une offre ── */}
+      {/* ── Modal offre (postuler + partager + similaires) ── */}
+      {selectedOffer && (
+        <OfferModal
+          offer={selectedOffer}
+          onClose={() => setSelectedOffer(null)}
+          isLoggedIn={!!user}
+        />
+      )}
+
+      {/* ── Modal : postuler à une offre (fallback inline, non utilisé) ── */}
       {applyOffer && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setApplyOffer(null)}>
           <div className="max-w-lg w-full bg-neutral-950 border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
