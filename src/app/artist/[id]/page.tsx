@@ -168,30 +168,29 @@ export default function ArtistPublicProfilePage() {
   ].filter(s => s.url?.trim())
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen">
 
-      {/* ── Bannière ── */}
-      <div className="relative h-48 sm:h-56 md:h-64 lg:h-72">
-        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-90" />
-      </div>
+      {/* ── Zone sombre : bannière + header ── */}
+      <div className="bg-[#0a0a0f] text-white">
+        {/* Bannière */}
+        <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden">
+          <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-85" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0f] pointer-events-none" />
+        </div>
 
-      <div className="max-w-6xl mx-auto px-4">
-        {/* ── Header ── */}
-        <section className="relative -mt-10 rounded-2xl border border-white/10 bg-neutral-900/60 p-4 md:p-5 backdrop-blur">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-4 min-w-0">
-              <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-2 ring-white/10 shrink-0" />
-              <div className="min-w-0">
-                <h1 className="text-xl md:text-2xl font-bold truncate">{name}</h1>
-                <p className="text-sm text-white/60">{profile.user?.role || 'ARTIST'}</p>
-                <p className="text-xs text-white/50 mt-1">
-                  {location ? `${location}${country ? `, ${country}` : ''}` : country}
-                  {profile.radiusKm ? ` • Rayon ${profile.radiusKm} km` : ''}
-                </p>
-              </div>
+        {/* Infos profil */}
+        <div className="max-w-6xl mx-auto px-4 pb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-14 relative z-10">
+            <SafeImage type="avatar" src={avatarUrl} name={name} size={88} className="ring-4 ring-[#0a0a0f] rounded-2xl shrink-0" />
+            <div className="flex-1 min-w-0 pb-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-white truncate">{name}</h1>
+              <p className="text-sm text-white/50 mt-1">
+                {profile.user?.role || 'ARTIST'}
+                {(location || country) ? ` · ${[location, country].filter(Boolean).join(', ')}` : ''}
+                {profile.radiusKm ? ` · Rayon ${profile.radiusKm} km` : ''}
+              </p>
             </div>
-
-            <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 sm:ml-auto flex-wrap">
+            <div className="flex flex-col sm:items-end gap-2 pb-1 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <FollowButton
                   targetUserId={profile.userId}
@@ -207,7 +206,7 @@ export default function ArtistPublicProfilePage() {
                   </button>
                 )}
               </div>
-              <div className="flex items-center gap-4 text-xs text-white/50">
+              <div className="flex items-center gap-4 text-xs text-white/40">
                 <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>
                 <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnements</span>
               </div>
@@ -215,139 +214,141 @@ export default function ArtistPublicProfilePage() {
           </div>
 
           {specialties.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               {specialties.map((s) => (
-                <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40">{s}</span>
+                <span key={s} className="text-xs px-3 py-1.5 rounded-full bg-white/[0.08] border border-white/[0.12] text-white/60">{s}</span>
               ))}
             </div>
           )}
-        </section>
-
-        {/* ── Corps ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 mt-6 pb-12">
-
-        {/* Colonne gauche */}
-        <div className="space-y-6">
-
-          {/* À propos */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold">À propos</h2>
-            <p className="text-neutral-200 mt-3 leading-relaxed">{bio}</p>
-          </section>
-
-          {/* Agenda */}
-          {profile && (
-            <AgendaCalendar
-              profileId={profile.id}
-              isOwner={false}
-              showAvailability={true}
-              viewerRole={viewer?.role ?? null}
-              viewerProfileId={viewer?.profile?.id ?? null}
-            />
-          )}
-
-          {/* Publications */}
-          <PublicationsSection publications={publications} title="Publications" />
-
-          {/* CV */}
-          {profile.cvText && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold">CV / Expérience</h2>
-              <p className="text-neutral-200 mt-3 leading-relaxed whitespace-pre-line text-sm">{profile.cvText}</p>
-            </section>
-          )}
         </div>
+      </div>
 
-        {/* Colonne droite */}
-        <aside className="space-y-6">
+      {/* ── Zone claire : contenu ── */}
+      <div className="bg-[#f0f0f6]">
+        <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 pb-12">
 
-          {/* Avis */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold">Avis</h2>
-            <p className="text-neutral-400 text-sm mt-3">Les avis seront ajoutés prochainement.</p>
-          </section>
+          {/* Colonne gauche */}
+          <div className="space-y-6">
 
-          {/* Styles musicaux — au-dessus de SoundCloud, sous les avis */}
-          {profile.showStyles !== false && styles.length > 0 && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold">Styles musicaux</h2>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {styles.map(s => (
-                  <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300">{s}</span>
-                ))}
-              </div>
+            {/* À propos */}
+            <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900">À propos</h2>
+              <p className="text-gray-600 mt-3 leading-relaxed">{bio}</p>
             </section>
-          )}
 
-          {/* SoundCloud */}
-          {soundcloudEmbed && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3">
-              <div className="rounded-lg overflow-hidden">
-                <iframe
-                  title="Soundcloud"
-                  width="100%"
-                  height="180"
-                  scrolling="no"
-                  frameBorder="no"
-                  allow="autoplay"
-                  src={soundcloudEmbed}
-                />
-              </div>
+            {/* Agenda */}
+            {profile && (
+              <AgendaCalendar
+                profileId={profile.id}
+                isOwner={false}
+                showAvailability={true}
+                viewerRole={viewer?.role ?? null}
+                viewerProfileId={viewer?.profile?.id ?? null}
+              />
+            )}
+
+            {/* Publications */}
+            <PublicationsSection publications={publications} title="Publications" />
+
+            {/* CV */}
+            {profile.cvText && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900">CV / Expérience</h2>
+                <p className="text-gray-600 mt-3 leading-relaxed whitespace-pre-line text-sm">{profile.cvText}</p>
+              </section>
+            )}
+          </div>
+
+          {/* Colonne droite */}
+          <aside className="space-y-6">
+
+            {/* Avis */}
+            <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900">Avis</h2>
+              <p className="text-gray-500 text-sm mt-3">Les avis seront ajoutés prochainement.</p>
             </section>
-          )}
 
-          {/* Vidéo de présentation */}
-          {profile.showYoutubeUrl !== false && youtubeEmbed && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <Youtube className="w-4 h-4 text-red-400" />
-                Vidéo de présentation
-              </h2>
-              <div className="rounded-xl overflow-hidden aspect-video">
-                <iframe
-                  title="YouTube"
-                  width="100%"
-                  height="100%"
-                  src={youtubeEmbed}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full"
-                />
-              </div>
-            </section>
-          )}
+            {/* Styles musicaux */}
+            {profile.showStyles !== false && styles.length > 0 && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900">Styles musicaux</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {styles.map(s => (
+                    <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-50 border border-pink-200 text-pink-700">{s}</span>
+                  ))}
+                </div>
+              </section>
+            )}
 
-          {/* Tarifs */}
-          {profile.feeInfo && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold">Tarifs</h2>
-              <p className="text-neutral-200 mt-3 leading-relaxed whitespace-pre-line text-sm">{profile.feeInfo}</p>
-            </section>
-          )}
+            {/* SoundCloud */}
+            {soundcloudEmbed && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">
+                <div className="rounded-lg overflow-hidden">
+                  <iframe
+                    title="Soundcloud"
+                    width="100%"
+                    height="180"
+                    scrolling="no"
+                    frameBorder="no"
+                    allow="autoplay"
+                    src={soundcloudEmbed}
+                  />
+                </div>
+              </section>
+            )}
 
-          {/* Réseaux sociaux */}
-          {socialLinks.length > 0 && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold">Réseaux sociaux</h2>
-              <div className="mt-3 flex flex-wrap gap-4">
-                {socialLinks.map(({ url, icon: Icon, label, color }) => (
-                  <a
-                    key={label}
-                    href={url!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={label}
-                    className={`flex items-center gap-2 text-white/40 ${color} transition-colors`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-xs">{label}</span>
-                  </a>
-                ))}
-              </div>
-            </section>
-          )}
+            {/* Vidéo de présentation */}
+            {profile.showYoutubeUrl !== false && youtubeEmbed && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h2 className="text-lg font-semibold mb-3 text-gray-900 flex items-center gap-2">
+                  <Youtube className="w-4 h-4 text-red-500" />
+                  Vidéo de présentation
+                </h2>
+                <div className="rounded-xl overflow-hidden aspect-video">
+                  <iframe
+                    title="YouTube"
+                    width="100%"
+                    height="100%"
+                    src={youtubeEmbed}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                  />
+                </div>
+              </section>
+            )}
 
-        </aside>
+            {/* Tarifs */}
+            {profile.feeInfo && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900">Tarifs</h2>
+                <p className="text-gray-600 mt-3 leading-relaxed whitespace-pre-line text-sm">{profile.feeInfo}</p>
+              </section>
+            )}
+
+            {/* Réseaux sociaux */}
+            {socialLinks.length > 0 && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900">Réseaux sociaux</h2>
+                <div className="mt-3 flex flex-wrap gap-4">
+                  {socialLinks.map(({ url, icon: Icon, label, color }) => (
+                    <a
+                      key={label}
+                      href={url!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={label}
+                      className={`flex items-center gap-2 text-gray-400 ${color} transition-colors`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-xs">{label}</span>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+
+          </aside>
         </div>
       </div>
     </div>

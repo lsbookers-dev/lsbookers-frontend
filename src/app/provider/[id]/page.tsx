@@ -183,36 +183,50 @@ export default function ProviderPublicProfilePage() {
 
   const bio = profile.bio || "Ce prestataire n’a pas encore rédigé de description."
 
-  return (
+  const youtubeEmbed = profile.youtubeUrl?.trim()
+    ? (() => {
+        const match = profile.youtubeUrl!.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
+        return match ? `https://www.youtube.com/embed/${match[1]}` : profile.youtubeUrl!
+      })()
+    : ''
 
-    <main className="min-h-screen bg-black text-white">
+  const socialLinks = [
+    { url: profile.instagramUrl, icon: Instagram, label: 'Instagram',  color: 'hover:text-pink-400' },
+    { url: profile.facebookUrl,  icon: Facebook,  label: 'Facebook',   color: 'hover:text-blue-400' },
+    { url: profile.tiktokUrl,    icon: Music,      label: 'TikTok',     color: 'hover:text-white' },
+    { url: profile.twitterUrl,   icon: Globe,      label: 'Twitter/X',  color: 'hover:text-sky-400' },
+    { url: profile.linkedinUrl,  icon: Globe,      label: 'LinkedIn',   color: 'hover:text-blue-300' },
+    { url: profile.websiteUrl,   icon: Globe,      label: 'Site web',   color: 'hover:text-violet-400' },
+  ].filter(s => s.url?.trim())
+
+  return (
+    <main className="min-h-screen bg-[#13131e] text-white">
 
       {/* ===== Bannière ===== */}
-
-      <div className="relative h-48 sm:h-56 md:h-64 lg:h-72">
-        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-90" />
+      <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 overflow-hidden">
+        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-75" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#13131e]/20 to-[#13131e]/70 pointer-events-none" />
       </div>
 
       <div className="max-w-6xl mx-auto px-4">
 
-        {/* ===== Header ===== */}
+        {/* ===== Header glass card ===== */}
+        <section className="relative -mt-12 rounded-2xl border border-white/[0.12] bg-[rgba(255,255,255,0.06)] backdrop-blur-2xl overflow-hidden">
 
-        <section className="relative -mt-10 rounded-2xl border border-white/10 bg-neutral-900/60 p-4 md:p-5 backdrop-blur">
-
-          {/* Ligne 1 : avatar + nom + boutons (responsive) */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          {/* Ligne principale : avatar + nom + boutons */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5">
             <div className="flex items-center gap-4 min-w-0">
-              <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-2 ring-white/10 shrink-0" />
+              <SafeImage type="avatar" src={avatarUrl} name={name} size={82} className="ring-2 ring-white/[0.15] rounded-xl shrink-0" />
               <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-widest text-white/35 mb-1">{role}{etab ? ` · ${etab}` : ''}</p>
                 <h1 className="text-xl md:text-2xl font-bold truncate">{name}</h1>
-                <p className="text-sm text-white/60">{role}{etab ? ` • ${etab}` : ''}</p>
-                <p className="text-xs text-white/50 mt-1">
-                  {location}{country ? `, ${country}` : ''}{radius ? ` • Rayon ${radius} km` : ''}
+                <p className="text-xs text-white/45 mt-1">
+                  {location}{country ? `, ${country}` : ''}{radius ? ` · Rayon ${radius} km` : ''}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 sm:ml-auto flex-wrap">
+            <div className="flex flex-col sm:items-end gap-2 sm:ml-auto flex-shrink-0">
               <div className="flex items-center gap-2">
                 {!isOwner && (
                   <FollowButton
@@ -230,60 +244,50 @@ export default function ProviderPublicProfilePage() {
                   </button>
                 )}
               </div>
-              <div className="flex items-center gap-4 text-xs text-white/50">
-                <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>
-                <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnements</span>
-              </div>
             </div>
           </div>
 
+          {/* Rangée de stats */}
+          <div className="flex border-t border-white/[0.07]">
+            <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
+              <p className="text-base font-semibold text-white">{abonnesCount}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnés</p>
+            </div>
+            <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
+              <p className="text-base font-semibold text-white">{profile.followersCount ?? 0}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
+            </div>
+            <div className="flex-1 py-3 text-center">
+              <p className="text-base font-semibold text-white">{publications.length}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">réalisations</p>
+            </div>
+          </div>
+
+          {/* Spécialités */}
           {specialties.length > 0 && (
-
-            <div className="mt-4 flex flex-wrap gap-2">
-
+            <div className="px-5 py-3 border-t border-white/[0.07] flex flex-wrap gap-2">
               {specialties.map((s) => (
-
-                <span
-                  key={s}
-                  className="text-xs px-2 py-1 rounded-full bg-violet-600/20 border border-violet-600/30"
-                >
+                <span key={s} className="text-xs px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-white/55">
                   {s}
                 </span>
-
               ))}
-
             </div>
-
           )}
-
         </section>
 
         {/* ===== Deux colonnes ===== */}
-
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 mt-6 pb-12">
 
-          {/* ===== Colonne gauche ===== */}
-
+          {/* Colonne gauche */}
           <div className="space-y-6">
 
-            {/* Description */}
-
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-
-              <h2 className="text-lg font-semibold">Description</h2>
-
-              <p className="text-neutral-200 mt-3 leading-relaxed">
-
-                {bio}
-
-              </p>
-
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+              <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Description</h2>
+              <p className="text-white/70 leading-relaxed">{bio}</p>
             </section>
 
-            {/* Publications */}
             <PublicationsSection publications={publications} title="Réalisations" />
 
-            {/* Agenda */}
             {profile && (
               <AgendaCalendar
                 profileId={profile.id}
@@ -294,105 +298,74 @@ export default function ProviderPublicProfilePage() {
               />
             )}
 
-            {/* CV */}
             {profile.cvText && (
-              <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-                <h2 className="text-lg font-semibold">CV / Expérience</h2>
-                <p className="text-neutral-200 mt-3 leading-relaxed whitespace-pre-line text-sm">{profile.cvText}</p>
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">CV / Expérience</h2>
+                <p className="text-white/65 leading-relaxed whitespace-pre-line text-sm">{profile.cvText}</p>
+              </section>
+            )}
+          </div>
+
+          {/* Colonne droite */}
+          <aside className="space-y-6">
+
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+              <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Avis</h2>
+              <p className="text-white/35 text-sm">Les avis seront ajoutés prochainement.</p>
+            </section>
+
+            {profile.feeInfo && (
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Prestations &amp; Tarifs</h2>
+                <p className="text-white/65 leading-relaxed whitespace-pre-line text-sm">{profile.feeInfo}</p>
               </section>
             )}
 
-          </div>
+            {profile.showYoutubeUrl !== false && youtubeEmbed && (
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
+                  <Youtube className="w-3.5 h-3.5 text-red-400" />
+                  Vidéo de présentation
+                </h2>
+                <div className="rounded-xl overflow-hidden aspect-video">
+                  <iframe
+                    title="YouTube"
+                    width="100%"
+                    height="100%"
+                    src={youtubeEmbed}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                  />
+                </div>
+              </section>
+            )}
 
-          {/* ===== Colonne droite ===== */}
+            {socialLinks.length > 0 && (
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Réseaux sociaux</h2>
+                <div className="flex flex-wrap gap-4">
+                  {socialLinks.map(({ url, icon: Icon, label, color }) => (
+                    <a
+                      key={label}
+                      href={url!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={label}
+                      className={`flex items-center gap-2 text-white/30 ${color} transition-colors`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-xs">{label}</span>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
 
-          {(() => {
-            const youtubeEmbed = profile.youtubeUrl?.trim()
-              ? (() => {
-                  const match = profile.youtubeUrl!.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
-                  return match ? `https://www.youtube.com/embed/${match[1]}` : profile.youtubeUrl!
-                })()
-              : ''
-
-            const socialLinks = [
-              { url: profile.instagramUrl, icon: Instagram, label: 'Instagram',  color: 'hover:text-pink-400' },
-              { url: profile.facebookUrl,  icon: Facebook,  label: 'Facebook',   color: 'hover:text-blue-400' },
-              { url: profile.tiktokUrl,    icon: Music,      label: 'TikTok',     color: 'hover:text-white' },
-              { url: profile.twitterUrl,   icon: Globe,      label: 'Twitter/X',  color: 'hover:text-sky-400' },
-              { url: profile.linkedinUrl,  icon: Globe,      label: 'LinkedIn',   color: 'hover:text-blue-300' },
-              { url: profile.websiteUrl,   icon: Globe,      label: 'Site web',   color: 'hover:text-violet-400' },
-            ].filter(s => s.url?.trim())
-
-            return (
-              <aside className="space-y-6">
-
-                {/* Avis */}
-                <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-                  <h2 className="text-lg font-semibold">Avis</h2>
-                  <p className="text-neutral-400 text-sm mt-3">Les avis seront ajoutés prochainement.</p>
-                </section>
-
-                {/* Prestations & Tarifs */}
-                {profile.feeInfo && (
-                  <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-                    <h2 className="text-lg font-semibold">Prestations &amp; Tarifs</h2>
-                    <p className="text-neutral-200 mt-3 leading-relaxed whitespace-pre-line text-sm">{profile.feeInfo}</p>
-                  </section>
-                )}
-
-                {/* Vidéo de présentation */}
-                {profile.showYoutubeUrl !== false && youtubeEmbed && (
-                  <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-                    <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Youtube className="w-4 h-4 text-red-400" />
-                      Vidéo de présentation
-                    </h2>
-                    <div className="rounded-xl overflow-hidden aspect-video">
-                      <iframe
-                        title="YouTube"
-                        width="100%"
-                        height="100%"
-                        src={youtubeEmbed}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full"
-                      />
-                    </div>
-                  </section>
-                )}
-
-                {/* Réseaux sociaux */}
-                {socialLinks.length > 0 && (
-                  <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-                    <h2 className="text-lg font-semibold">Réseaux sociaux</h2>
-                    <div className="mt-3 flex flex-wrap gap-4">
-                      {socialLinks.map(({ url, icon: Icon, label, color }) => (
-                        <a
-                          key={label}
-                          href={url!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={label}
-                          className={`flex items-center gap-2 text-white/40 ${color} transition-colors`}
-                        >
-                          <Icon className="w-5 h-5" />
-                          <span className="text-xs">{label}</span>
-                        </a>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-              </aside>
-            )
-          })()}
-
+          </aside>
         </div>
 
       </div>
-
     </main>
-
   )
-
 }
