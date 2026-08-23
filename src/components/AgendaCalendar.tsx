@@ -291,7 +291,7 @@ export default function AgendaCalendar({
     setSelectedEventId(id); setEventMode('detail')
     setDetailTab('details'); setEventDetail(null); setEventDetailError(false)
     setEventOffers([]); setShowEventOfferForm(false)
-    setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: defaultCountry || '', fee: '' })
+    setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', endDate: '', endTime: '', location: '', country: defaultCountry || '', fee: '' })
     fetch(`${API}/api/offers?eventId=${id}`)
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setEventOffers(data) })
