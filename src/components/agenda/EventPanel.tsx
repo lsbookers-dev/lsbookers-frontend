@@ -183,14 +183,20 @@ export default function EventPanel(p: EventPanelProps) {
                 className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
             </div>
             <div>
-              <p className="text-[10px] text-white/35 mb-1">Date fin</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] text-white/35">Date fin <span className="text-white/20">(optionnel)</span></p>
+                {createEndDate && (
+                  <button onClick={() => { setCreateEndDate(''); setCreateEndTime('') }} className="text-[10px] text-white/30 hover:text-white/60 transition">✕ effacer</button>
+                )}
+              </div>
               <input type="date" value={createEndDate} onChange={e => setCreateEndDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
             </div>
             <div>
-              <p className="text-[10px] text-white/35 mb-1">Heure fin</p>
+              <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(optionnel)</span></p>
               <input type="time" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                disabled={!createEndDate}
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40 disabled:opacity-30" />
             </div>
           </div>
           <input type="text" value={createLieu} onChange={e => setCreateLieu(e.target.value)}

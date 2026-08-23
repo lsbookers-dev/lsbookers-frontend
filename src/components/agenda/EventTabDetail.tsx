@@ -79,14 +79,20 @@ export default function EventTabDetail(p: Props) {
               className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
           </div>
           <div>
-            <p className="text-[10px] text-white/35 mb-1">Date fin</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] text-white/35">Date fin <span className="text-white/20">(optionnel)</span></p>
+              {p.editEnd && (
+                <button onClick={() => { p.setEditEnd(''); p.setEditEndTime('') }} className="text-[10px] text-white/30 hover:text-white/60 transition">✕ effacer</button>
+              )}
+            </div>
             <input type="date" value={p.editEnd} onChange={e => p.setEditEnd(e.target.value)}
               className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
           </div>
           <div>
-            <p className="text-[10px] text-white/35 mb-1">Heure fin</p>
+            <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(optionnel)</span></p>
             <input type="time" value={p.editEndTime} onChange={e => p.setEditEndTime(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
+              disabled={!p.editEnd}
+              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none disabled:opacity-30" />
           </div>
         </div>
         <input type="text" value={p.editLieu} onChange={e => p.setEditLieu(e.target.value)}
