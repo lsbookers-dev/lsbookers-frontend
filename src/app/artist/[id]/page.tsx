@@ -205,7 +205,7 @@ export default function ArtistPublicProfilePage() {
             )}
             {!isOwner && (
               <button
-                onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
+                onClick={() => router.push(`/messages?to=${profile.userId}`)}
                 className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm"
               >
                 <MessageCircle size={16} />

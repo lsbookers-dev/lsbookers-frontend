@@ -19,6 +19,7 @@ function MessagesContent() {
   const searchParams = useSearchParams()
 
   const activeConvId = searchParams.get('c') ? Number(searchParams.get('c')) : null
+  const toUserId = searchParams.get('to') ? Number(searchParams.get('to')) : null
 
   /* ── State ── */
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -71,6 +72,7 @@ function MessagesContent() {
       const list: Conversation[] = Array.isArray(data?.conversations) ? data.conversations : []
       list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       setConversations(list)
+      setConvLoaded(true)
       if (activeConvId) {
         const found = list.find((c) => c.id === activeConvId)
         if (found) setActiveConv(found)
@@ -142,6 +144,15 @@ function MessagesContent() {
       setMessages([])
     }
   }, [activeConvId, conversations])
+
+  /* ── Auto-ouvrir conversation via ?to= ── */
+  const autoStartedRef = useRef(false)
+  const [convLoaded, setConvLoaded] = useState(false)
+  useEffect(() => {
+    if (!toUserId || !token || autoStartedRef.current || !convLoaded) return
+    autoStartedRef.current = true
+    startConversation(toUserId)
+  }, [toUserId, token, convLoaded, startConversation])
 
   /* ── Smart scroll ── */
   useEffect(() => {

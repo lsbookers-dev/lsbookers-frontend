@@ -222,7 +222,7 @@ export default function ProviderPublicProfilePage() {
                 )}
                 {!isOwner && (
                   <button
-                    onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
+                    onClick={() => router.push(`/messages?to=${profile.userId}`)}
                     className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
                   >
                     <MessageCircle size={16} />

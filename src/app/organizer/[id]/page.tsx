@@ -328,7 +328,7 @@ export default function OrganizerPublicProfilePage() {
                 />
                 {!isOwner && (
                   <button
-                    onClick={() => router.push(`/messages/new?to=${profile.userId}`)}
+                    onClick={() => router.push(`/messages?to=${profile.userId}`)}
                     className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
                   >
                     <MessageCircle size={16} />
@@ -568,7 +568,7 @@ export default function OrganizerPublicProfilePage() {
                         {!isOwner && (viewer?.role === 'ARTIST' || viewer?.role === 'PROVIDER') && (
                           <div className="mt-3 pt-3 border-t border-white/5">
                             <button
-                              onClick={() => router.push(`/messages/new?to=${profile?.userId}&subject=${encodeURIComponent(`Candidature : ${offer.title}`)}`)}
+                              onClick={() => router.push(`/messages?to=${profile?.userId}&subject=${encodeURIComponent(`Candidature : ${offer.title}`)}`)}
                               className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-full transition-colors font-medium"
                             >
                               Postuler
