@@ -299,14 +299,13 @@ export default function OrganizerPublicProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white">
+    <main className="min-h-screen bg-black text-white">
       <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 overflow-hidden">
-        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-80" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0f]/60 pointer-events-none" />
+        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-90" />
       </div>
 
       <div className="max-w-6xl mx-auto px-4">
-        <section className="relative -mt-10 rounded-2xl border border-white/[0.12] bg-white/[0.07] p-4 md:p-5 backdrop-blur-md">
+        <section className="relative -mt-10 rounded-2xl border border-white/10 bg-neutral-900/60 p-4 md:p-5 backdrop-blur">
           {/* Ligne 1 : avatar + nom + boutons (responsive) */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-4 min-w-0">
@@ -360,12 +359,12 @@ export default function OrganizerPublicProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 mt-6 pb-12">
           <div className="space-y-6">
-            <section className="bg-white/[0.05] border border-white/[0.08] rounded-2xl p-4">
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <h2 className="text-lg font-semibold">Description</h2>
-              <p className="text-white/75 mt-3 leading-relaxed">{description}</p>
+              <p className="text-neutral-200 mt-3 leading-relaxed">{description}</p>
             </section>
 
-            <section className="rounded-2xl overflow-hidden border border-white/[0.08] bg-white/[0.03]">
+            <section className="rounded-2xl overflow-hidden border border-white/10 bg-black/30">
               <div className="flex items-center justify-between p-3">
                 <h2 className="text-lg font-semibold">Localisation</h2>
               </div>
@@ -384,7 +383,7 @@ export default function OrganizerPublicProfilePage() {
 
             <PublicationsSection publications={publications} title="Publications" />
 
-            <section className="bg-white/[0.05] border border-white/[0.08] rounded-2xl p-4">
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-purple-400" />
@@ -529,7 +528,7 @@ export default function OrganizerPublicProfilePage() {
                     const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
                     const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
                     return (
-                      <div key={offer.id} className="rounded-xl border border-white/[0.08] bg-white/[0.04] p-4">
+                      <div key={offer.id} className="rounded-xl border border-white/[0.08] bg-black/30 p-4">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -588,9 +587,9 @@ export default function OrganizerPublicProfilePage() {
 
           <aside className="space-y-6">
             {/* Avis */}
-            <section className="bg-white/[0.05] border border-white/[0.08] rounded-2xl p-4">
+            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
               <h2 className="text-lg font-semibold">Avis</h2>
-              <p className="text-white/40 text-sm mt-3">Aucun avis pour le moment.</p>
+              <p className="text-neutral-400 text-sm mt-3">Aucun avis pour le moment.</p>
             </section>
 
             {/* Vidéo de présentation */}
@@ -598,7 +597,7 @@ export default function OrganizerPublicProfilePage() {
               const match = profile.youtubeUrl!.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
               const embed = match ? `https://www.youtube.com/embed/${match[1]}` : profile.youtubeUrl!
               return (
-                <section className="bg-white/[0.05] border border-white/[0.08] rounded-2xl p-4">
+                <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
                   <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <Youtube className="w-4 h-4 text-red-400" />
                     Vidéo de présentation
@@ -634,7 +633,7 @@ export default function OrganizerPublicProfilePage() {
               const addressLine = [profile.address, profile.postalCode, profile.city].filter(Boolean).join(', ')
 
               return (
-                <section className="bg-white/[0.05] border border-white/[0.08] rounded-2xl p-4">
+                <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
                   <h2 className="text-lg font-semibold">Coordonnées</h2>
 
                   {addressLine && (
@@ -653,7 +652,7 @@ export default function OrganizerPublicProfilePage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           title={label}
-                          className={`flex items-center gap-2 text-white/40 ${color} transition-colors`}
+                          className={`flex items-center gap-2 text-neutral-400 ${color} transition-colors`}
                         >
                           <Icon className="w-5 h-5" />
                           <span className="text-xs">{label}</span>

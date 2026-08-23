@@ -315,380 +315,386 @@ export default function ArtistProfilePage() {
   ].filter(s => s.url)
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen">
 
-      {/* ── Bannière ── */}
-      <div
-        className="relative h-56 sm:h-64 md:h-72 group cursor-pointer"
-        onClick={() => bannerInputRef.current?.click()}
-      >
-        {profile?.banner
-          ? <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
-          : <div className="w-full h-full bg-gradient-to-br from-pink-900/40 to-black" />
-        }
-        {/* Overlay hover */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          {uploadingBanner
-            ? <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            : <Pencil size={28} className="text-white drop-shadow-lg" />
+      {/* ── Zone sombre : bannière + header ── */}
+      <div className="bg-[#0a0a0f] text-white">
+        {/* ── Bannière ── */}
+        <div
+          className="relative h-56 sm:h-64 md:h-72 group cursor-pointer overflow-hidden"
+          onClick={() => bannerInputRef.current?.click()}
+        >
+          {profile?.banner
+            ? <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
+            : <div className="w-full h-full bg-gradient-to-br from-pink-900/40 to-[#0a0a0f]" />
           }
-        </div>
-        <button
-          onClick={e => { e.stopPropagation(); router.push('/settings/profile') }}
-          className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur border border-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 text-sm transition z-10"
-        >
-          <Settings2 size={16} /> Paramètres
-        </button>
-        <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'banner')} />
-      </div>
-
-      {/* ── En-tête profil ── */}
-      <div className="max-w-6xl mx-auto px-4 pt-5 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div
-            className="relative -mt-12 h-24 w-24 rounded-2xl overflow-hidden ring-4 ring-black flex-shrink-0 group cursor-pointer"
-            onClick={() => avatarInputRef.current?.click()}
-          >
-            {profile?.avatar
-              ? <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
-              : <div className="w-full h-full bg-white/10 flex items-center justify-center text-3xl font-black text-white/30">
-                  {user?.email?.[0]?.toUpperCase() || '?'}
-                </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0a0a0f]/50 pointer-events-none" />
+          {/* Overlay hover */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            {uploadingBanner
+              ? <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              : <Pencil size={28} className="text-white drop-shadow-lg" />
             }
-            {/* Overlay hover */}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
-              {uploadingAvatar
-                ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                : <Pencil size={16} className="text-white" />
-              }
-            </div>
-            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'avatar')} />
           </div>
-
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">{displayName(profile)}</h1>
-            {(profile?.location || profile?.country) && (
-              <p className="flex items-center gap-1 text-sm text-white/50 mt-0.5">
-                <MapPin size={13} />
-                {[profile.location, profile.country].filter(Boolean).join(', ')}
-              </p>
-            )}
-            {profile?.specialties && profile.specialties.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {profile.specialties.map(s => (
-                  <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-pink-600/20 border border-pink-600/40 text-pink-300">{s}</span>
-                ))}
-              </div>
-            )}
-            <div className="flex items-center gap-4 mt-2 text-xs text-white/40">
-              <span><strong className="text-white">{profile?.followingCount ?? 0}</strong> abonné{(profile?.followingCount ?? 0) > 1 ? 's' : ''}</span>
-              <span><strong className="text-white">{profile?.followersCount ?? 0}</strong> abonnement{(profile?.followersCount ?? 0) > 1 ? 's' : ''}</span>
-              {(profile?.reviewsCount ?? 0) > 0 && (
-                <span><strong className="text-white">{profile?.reviewsAvg?.toFixed(1)}</strong>★ · {profile?.reviewsCount} avis</span>
-              )}
-              {profile?.availableForBooking && (
-                <span className="text-emerald-400 font-medium">● Disponible pour booking</span>
-              )}
-            </div>
-          </div>
+          <button
+            onClick={e => { e.stopPropagation(); router.push('/settings/profile') }}
+            className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur border border-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 text-sm transition z-10"
+          >
+            <Settings2 size={16} /> Paramètres
+          </button>
+          <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'banner')} />
         </div>
 
-        <button
-          onClick={() => router.push('/messages')}
-          className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm font-medium"
-        >
-          <MessageCircle size={16} /> Messages
-        </button>
-      </div>
-
-      {/* ── Corps principal ── */}
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 pb-16">
-
-        {/* ── Colonne gauche ── */}
-        <div className="space-y-6">
-
-          {/* À propos */}
-          {profile?.bio && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-              <h2 className="text-base font-semibold mb-2">À propos</h2>
-              <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
-            </section>
-          )}
-
-          {/* Agenda */}
-          {profile && (
-            <AgendaCalendar
-              profileId={profile.id}
-              isOwner={true}
-              showAvailability={true}
-            />
-          )}
-
-          {/* Publications + Albums (onglets) */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-            {/* Header avec onglets */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-1 bg-black/30 rounded-xl p-1">
-                <button
-                  onClick={() => setPubTab('publications')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'publications' ? 'bg-pink-600 text-white' : 'text-white/50 hover:text-white'}`}
-                >
-                  Publications
-                </button>
-                <button
-                  onClick={() => setPubTab('albums')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'albums' ? 'bg-pink-600 text-white' : 'text-white/50 hover:text-white'}`}
-                >
-                  Albums
-                </button>
+        {/* ── En-tête profil ── */}
+        <div className="max-w-6xl mx-auto px-4 pt-5 pb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div
+              className="relative -mt-12 h-24 w-24 rounded-2xl overflow-hidden ring-4 ring-[#0a0a0f] flex-shrink-0 group cursor-pointer"
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              {profile?.avatar
+                ? <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
+                : <div className="w-full h-full bg-white/10 flex items-center justify-center text-3xl font-black text-white/30">
+                    {user?.email?.[0]?.toUpperCase() || '?'}
+                  </div>
+              }
+              {/* Overlay hover */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
+                {uploadingAvatar
+                  ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  : <Pencil size={16} className="text-white" />
+                }
               </div>
-              {pubTab === 'publications' && (
-                <button
-                  onClick={() => setShowAddPub(true)}
-                  className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center gap-1 transition"
-                >
-                  <Plus size={13} /> Ajouter
-                </button>
-              )}
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'avatar')} />
             </div>
 
-            {pubTab === 'publications' ? (
-              <PublicationsSection
-                publications={publications}
-                isOwner={true}
-                onDelete={handleDeletePub}
-              />
-            ) : profile ? (
-              <AlbumsTab
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">{displayName(profile)}</h1>
+              {(profile?.location || profile?.country) && (
+                <p className="flex items-center gap-1 text-sm text-white/50 mt-0.5">
+                  <MapPin size={13} />
+                  {[profile.location, profile.country].filter(Boolean).join(', ')}
+                </p>
+              )}
+              {profile?.specialties && profile.specialties.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {profile.specialties.map(s => (
+                    <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-pink-600/20 border border-pink-600/40 text-pink-300">{s}</span>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-4 mt-2 text-xs text-white/40">
+                <span><strong className="text-white">{profile?.followingCount ?? 0}</strong> abonné{(profile?.followingCount ?? 0) > 1 ? 's' : ''}</span>
+                <span><strong className="text-white">{profile?.followersCount ?? 0}</strong> abonnement{(profile?.followersCount ?? 0) > 1 ? 's' : ''}</span>
+                {(profile?.reviewsCount ?? 0) > 0 && (
+                  <span><strong className="text-white">{profile?.reviewsAvg?.toFixed(1)}</strong>★ · {profile?.reviewsCount} avis</span>
+                )}
+                {profile?.availableForBooking && (
+                  <span className="text-emerald-400 font-medium">● Disponible pour booking</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => router.push('/messages')}
+            className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm font-medium"
+          >
+            <MessageCircle size={16} /> Messages
+          </button>
+        </div>
+      </div>
+
+      {/* ── Zone claire : corps principal ── */}
+      <div className="bg-[#f0f0f6]">
+        <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 pb-16">
+
+          {/* ── Colonne gauche ── */}
+          <div className="space-y-6">
+
+            {/* À propos */}
+            {profile?.bio && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h2 className="text-base font-semibold mb-2 text-gray-900">À propos</h2>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
+              </section>
+            )}
+
+            {/* Agenda */}
+            {profile && (
+              <AgendaCalendar
                 profileId={profile.id}
                 isOwner={true}
-                token={getAuthToken() ?? ''}
-                accent="pink"
-                publications={publications}
+                showAvailability={true}
               />
-            ) : null}
-          </section>
-
-          {/* CV */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <FileText size={15} className="text-purple-400" />
-                <h2 className="text-base font-semibold">CV / Expérience</h2>
-              </div>
-              {!editingCv
-                ? <button onClick={() => setEditingCv(true)} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
-                    <Pencil size={12} /> Modifier
-                  </button>
-                : <EditBar saving={cvSaving} onSave={saveCv} onCancel={() => { setEditingCv(false); setCvDraft(profile?.cvText || '') }} />
-              }
-            </div>
-            {editingCv ? (
-              <textarea
-                value={cvDraft}
-                onChange={e => setCvDraft(e.target.value)}
-                rows={6}
-                placeholder="Décris ton parcours, tes expériences, tes formations…"
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-purple-500/40 resize-none"
-              />
-            ) : profile?.cvText ? (
-              <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{profile.cvText}</p>
-            ) : (
-              <p className="text-sm text-neutral-500">
-                Aucun CV renseigné.{' '}
-                <button onClick={() => setEditingCv(true)} className="text-purple-400 hover:underline">Ajouter</button>
-              </p>
             )}
-          </section>
-        </div>
 
-        {/* ── Colonne droite ── */}
-        <aside className="space-y-5">
+            {/* Publications + Albums (onglets) */}
+            <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+              {/* Header avec onglets */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+                  <button
+                    onClick={() => setPubTab('publications')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'publications' ? 'bg-pink-600 text-white' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    Publications
+                  </button>
+                  <button
+                    onClick={() => setPubTab('albums')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'albums' ? 'bg-pink-600 text-white' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    Albums
+                  </button>
+                </div>
+                {pubTab === 'publications' && (
+                  <button
+                    onClick={() => setShowAddPub(true)}
+                    className="text-xs px-3 py-1.5 rounded-full bg-pink-600 hover:bg-pink-500 text-white flex items-center gap-1 transition"
+                  >
+                    <Plus size={13} /> Ajouter
+                  </button>
+                )}
+              </div>
 
-          {/* Avis */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Star size={15} className="text-yellow-400" />
-              <h2 className="text-base font-semibold">Avis reçus</h2>
-              {(profile?.reviewsAvg ?? 0) > 0 && (
-                <span className="ml-auto text-sm font-medium text-yellow-400">
-                  {profile?.reviewsAvg?.toFixed(1)}<span className="text-neutral-500 text-xs font-normal"> / 5</span>
-                </span>
+              {pubTab === 'publications' ? (
+                <PublicationsSection
+                  publications={publications}
+                  isOwner={true}
+                  onDelete={handleDeletePub}
+                />
+              ) : profile ? (
+                <AlbumsTab
+                  profileId={profile.id}
+                  isOwner={true}
+                  token={getAuthToken() ?? ''}
+                  accent="pink"
+                  publications={publications}
+                />
+              ) : null}
+            </section>
+
+            {/* CV */}
+            <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <FileText size={15} className="text-purple-500" />
+                  <h2 className="text-base font-semibold text-gray-900">CV / Expérience</h2>
+                </div>
+                {!editingCv
+                  ? <button onClick={() => setEditingCv(true)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-900 transition px-2 py-1 rounded-lg hover:bg-gray-100">
+                      <Pencil size={12} /> Modifier
+                    </button>
+                  : <EditBar saving={cvSaving} onSave={saveCv} onCancel={() => { setEditingCv(false); setCvDraft(profile?.cvText || '') }} />
+                }
+              </div>
+              {editingCv ? (
+                <textarea
+                  value={cvDraft}
+                  onChange={e => setCvDraft(e.target.value)}
+                  rows={6}
+                  placeholder="Décris ton parcours, tes expériences, tes formations…"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-purple-400 resize-none"
+                />
+              ) : profile?.cvText ? (
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{profile.cvText}</p>
+              ) : (
+                <p className="text-sm text-gray-400">
+                  Aucun CV renseigné.{' '}
+                  <button onClick={() => setEditingCv(true)} className="text-purple-500 hover:underline">Ajouter</button>
+                </p>
               )}
-            </div>
-            {reviews.length === 0
-              ? <p className="text-xs text-white/30 text-center py-3">Aucun avis pour l&apos;instant</p>
-              : <div className="space-y-3">
-                  {reviews.slice(0, 4).map(r => (
-                    <div key={r.id} className="rounded-xl border border-white/8 bg-black/20 p-3">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        {r.author?.avatar
-                          ? <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0"><Image src={r.author.avatar} alt="" fill className="object-cover" /></div>
-                          : <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/40 flex-shrink-0">{r.author?.user?.pseudo?.[0]?.toUpperCase() || '?'}</div>
-                        }
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate">{r.author?.user?.pseudo || r.author?.user?.firstName || 'Anonyme'}</p>
-                          <div className="flex items-center gap-0.5">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} size={10} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-white/15'} />
-                            ))}
+            </section>
+          </div>
+
+          {/* ── Colonne droite ── */}
+          <aside className="space-y-5">
+
+            {/* Avis */}
+            <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Star size={15} className="text-yellow-400" />
+                <h2 className="text-base font-semibold text-gray-900">Avis reçus</h2>
+                {(profile?.reviewsAvg ?? 0) > 0 && (
+                  <span className="ml-auto text-sm font-medium text-yellow-500">
+                    {profile?.reviewsAvg?.toFixed(1)}<span className="text-gray-400 text-xs font-normal"> / 5</span>
+                  </span>
+                )}
+              </div>
+              {reviews.length === 0
+                ? <p className="text-xs text-gray-400 text-center py-3">Aucun avis pour l&apos;instant</p>
+                : <div className="space-y-3">
+                    {reviews.slice(0, 4).map(r => (
+                      <div key={r.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          {r.author?.avatar
+                            ? <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0"><Image src={r.author.avatar} alt="" fill className="object-cover" /></div>
+                            : <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">{r.author?.user?.pseudo?.[0]?.toUpperCase() || '?'}</div>
+                          }
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate text-gray-900">{r.author?.user?.pseudo || r.author?.user?.firstName || 'Anonyme'}</p>
+                            <div className="flex items-center gap-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star key={i} size={10} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                              ))}
+                            </div>
                           </div>
                         </div>
+                        {r.comment && <p className="text-xs text-gray-600 leading-relaxed">{r.comment}</p>}
                       </div>
-                      {r.comment && <p className="text-xs text-white/60 leading-relaxed">{r.comment}</p>}
+                    ))}
+                  </div>
+              }
+            </section>
+
+            {/* Styles musicaux */}
+            {profile?.showStyles !== false && profile?.styles && profile.styles.length > 0 && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Music size={15} className="text-pink-500" />
+                  <h2 className="text-base font-semibold text-gray-900">Styles musicaux</h2>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {profile.styles.map(s => (
+                    <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-50 border border-pink-200 text-pink-700">{s}</span>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* SoundCloud */}
+            {profile?.showSoundcloud && soundcloudEmbed && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Music size={15} className="text-orange-500" />
+                  <h2 className="text-base font-semibold text-gray-900">SoundCloud</h2>
+                </div>
+                <div className="rounded-lg overflow-hidden">
+                  <iframe title="SoundCloud" width="100%" height="180" scrolling="no" frameBorder="no" allow="autoplay" src={soundcloudEmbed} />
+                </div>
+              </section>
+            )}
+
+            {/* Vidéo de présentation */}
+            {profile?.showYoutubeUrl !== false && profile?.youtubeUrl && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Youtube size={15} className="text-red-500" />
+                  <h2 className="text-base font-semibold text-gray-900">Vidéo de présentation</h2>
+                </div>
+                <div className="rounded-xl overflow-hidden aspect-video">
+                  <iframe
+                    width="100%" height="100%"
+                    src={(() => { const m = profile.youtubeUrl!.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\.\w-]+)/); return m ? `https://www.youtube.com/embed/${m[1]}` : profile.youtubeUrl! })()}
+                    title="Vidéo de prestation"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Tarifs */}
+            <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Euro size={15} className="text-green-500" />
+                  <h2 className="text-base font-semibold text-gray-900">Tarifs</h2>
+                </div>
+                {!editingFee
+                  ? <button onClick={() => setEditingFee(true)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-900 transition px-2 py-1 rounded-lg hover:bg-gray-100">
+                      <Pencil size={12} /> Modifier
+                    </button>
+                  : <EditBar saving={feeSaving} onSave={saveFee} onCancel={() => { setEditingFee(false); setFeeDraft(profile?.feeInfo || '') }} />
+                }
+              </div>
+              {editingFee ? (
+                <textarea
+                  value={feeDraft}
+                  onChange={e => setFeeDraft(e.target.value)}
+                  rows={4}
+                  placeholder="Ex : Cachet à partir de 500€ · Devis sur demande · Frais de déplacement en sus…"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-green-400 resize-none"
+                />
+              ) : profile?.feeInfo ? (
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{profile.feeInfo}</p>
+              ) : (
+                <p className="text-sm text-gray-400">
+                  Aucun tarif renseigné.{' '}
+                  <button onClick={() => setEditingFee(true)} className="text-green-500 hover:underline">Ajouter</button>
+                </p>
+              )}
+            </section>
+
+            {/* Partenariats */}
+            <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Users size={15} className="text-blue-500" />
+                <h2 className="text-base font-semibold text-gray-900">Partenariats</h2>
+              </div>
+              <p className="text-sm text-gray-400">Aucun partenaire ajouté.</p>
+            </section>
+
+            {/* Réseaux sociaux */}
+            <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Globe size={15} className="text-indigo-500" />
+                  <h2 className="text-base font-semibold text-gray-900">Réseaux sociaux</h2>
+                </div>
+                {!editingSocials
+                  ? <button onClick={() => setEditingSocials(true)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-900 transition px-2 py-1 rounded-lg hover:bg-gray-100">
+                      <Pencil size={12} /> Modifier
+                    </button>
+                  : <EditBar saving={socialsSaving} onSave={saveSocials} onCancel={() => { setEditingSocials(false); setSocialsForm({ instagramUrl: profile?.instagramUrl || '', facebookUrl: profile?.facebookUrl || '', tiktokUrl: profile?.tiktokUrl || '', twitterUrl: profile?.twitterUrl || '', linkedinUrl: profile?.linkedinUrl || '', websiteUrl: profile?.websiteUrl || '' }) }} />
+                }
+              </div>
+
+              {editingSocials ? (
+                <div className="space-y-2.5">
+                  {[
+                    { key: 'instagramUrl',  label: 'Instagram',   placeholder: 'https://instagram.com/...' },
+                    { key: 'tiktokUrl',     label: 'TikTok',      placeholder: 'https://tiktok.com/@...' },
+                    { key: 'facebookUrl',   label: 'Facebook',    placeholder: 'https://facebook.com/...' },
+                    { key: 'twitterUrl',    label: 'X / Twitter', placeholder: 'https://x.com/...' },
+                    { key: 'linkedinUrl',   label: 'LinkedIn',    placeholder: 'https://linkedin.com/...' },
+                    { key: 'websiteUrl',    label: 'Site web',    placeholder: 'https://monsite.com' },
+                  ].map(({ key, label, placeholder }) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-20 flex-shrink-0">{label}</span>
+                      <input
+                        type="url"
+                        value={socialsForm[key as keyof typeof socialsForm]}
+                        onChange={e => setSocialsForm(f => ({ ...f, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-indigo-400"
+                      />
                     </div>
                   ))}
                 </div>
-            }
-          </section>
-
-          {/* Styles musicaux */}
-          {profile?.showStyles !== false && profile?.styles && profile.styles.length > 0 && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Music size={15} className="text-pink-400" />
-                <h2 className="text-base font-semibold">Styles musicaux</h2>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {profile.styles.map(s => (
-                  <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300">{s}</span>
-                ))}
-              </div>
+              ) : socialLinks.length === 0 ? (
+                <p className="text-sm text-gray-400">
+                  Aucun réseau renseigné.{' '}
+                  <button onClick={() => setEditingSocials(true)} className="text-indigo-500 hover:underline">Ajouter</button>
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {socialLinks.map(({ url, icon, bg, label }) => (
+                    <a key={label} href={url!} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 text-sm text-gray-600 hover:text-gray-900 transition group">
+                      <span className={`flex items-center justify-center w-7 h-7 rounded-lg border ${bg} group-hover:opacity-80 transition`}>
+                        {icon}
+                      </span>
+                      <span className="text-xs">{label}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </section>
-          )}
 
-          {/* SoundCloud */}
-          {profile?.showSoundcloud && soundcloudEmbed && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Music size={15} className="text-orange-400" />
-                <h2 className="text-base font-semibold">SoundCloud</h2>
-              </div>
-              <div className="rounded-lg overflow-hidden">
-                <iframe title="SoundCloud" width="100%" height="180" scrolling="no" frameBorder="no" allow="autoplay" src={soundcloudEmbed} />
-              </div>
-            </section>
-          )}
-
-          {/* Vidéo de présentation */}
-          {profile?.showYoutubeUrl !== false && profile?.youtubeUrl && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Youtube size={15} className="text-red-400" />
-                <h2 className="text-base font-semibold">Vidéo de présentation</h2>
-              </div>
-              <div className="rounded-xl overflow-hidden aspect-video">
-                <iframe
-                  width="100%" height="100%"
-                  src={(() => { const m = profile.youtubeUrl!.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/); return m ? `https://www.youtube.com/embed/${m[1]}` : profile.youtubeUrl! })()}
-                  title="Vidéo de prestation"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            </section>
-          )}
-
-          {/* Tarifs */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Euro size={15} className="text-green-400" />
-                <h2 className="text-base font-semibold">Tarifs</h2>
-              </div>
-              {!editingFee
-                ? <button onClick={() => setEditingFee(true)} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
-                    <Pencil size={12} /> Modifier
-                  </button>
-                : <EditBar saving={feeSaving} onSave={saveFee} onCancel={() => { setEditingFee(false); setFeeDraft(profile?.feeInfo || '') }} />
-              }
-            </div>
-            {editingFee ? (
-              <textarea
-                value={feeDraft}
-                onChange={e => setFeeDraft(e.target.value)}
-                rows={4}
-                placeholder="Ex : Cachet à partir de 500€ · Devis sur demande · Frais de déplacement en sus…"
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
-              />
-            ) : profile?.feeInfo ? (
-              <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{profile.feeInfo}</p>
-            ) : (
-              <p className="text-sm text-neutral-500">
-                Aucun tarif renseigné.{' '}
-                <button onClick={() => setEditingFee(true)} className="text-green-400 hover:underline">Ajouter</button>
-              </p>
-            )}
-          </section>
-
-          {/* Partenariats */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Users size={15} className="text-blue-400" />
-              <h2 className="text-base font-semibold">Partenariats</h2>
-            </div>
-            <p className="text-sm text-neutral-500">Aucun partenaire ajouté.</p>
-          </section>
-
-          {/* Réseaux sociaux */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Globe size={15} className="text-indigo-400" />
-                <h2 className="text-base font-semibold">Réseaux sociaux</h2>
-              </div>
-              {!editingSocials
-                ? <button onClick={() => setEditingSocials(true)} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
-                    <Pencil size={12} /> Modifier
-                  </button>
-                : <EditBar saving={socialsSaving} onSave={saveSocials} onCancel={() => { setEditingSocials(false); setSocialsForm({ instagramUrl: profile?.instagramUrl || '', facebookUrl: profile?.facebookUrl || '', tiktokUrl: profile?.tiktokUrl || '', twitterUrl: profile?.twitterUrl || '', linkedinUrl: profile?.linkedinUrl || '', websiteUrl: profile?.websiteUrl || '' }) }} />
-              }
-            </div>
-
-            {editingSocials ? (
-              <div className="space-y-2.5">
-                {[
-                  { key: 'instagramUrl',  label: 'Instagram',   placeholder: 'https://instagram.com/...' },
-                  { key: 'tiktokUrl',     label: 'TikTok',      placeholder: 'https://tiktok.com/@...' },
-                  { key: 'facebookUrl',   label: 'Facebook',    placeholder: 'https://facebook.com/...' },
-                  { key: 'twitterUrl',    label: 'X / Twitter', placeholder: 'https://x.com/...' },
-                  { key: 'linkedinUrl',   label: 'LinkedIn',    placeholder: 'https://linkedin.com/...' },
-                  { key: 'websiteUrl',    label: 'Site web',    placeholder: 'https://monsite.com' },
-                ].map(({ key, label, placeholder }) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className="text-xs text-neutral-500 w-20 flex-shrink-0">{label}</span>
-                    <input
-                      type="url"
-                      value={socialsForm[key as keyof typeof socialsForm]}
-                      onChange={e => setSocialsForm(f => ({ ...f, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      className="flex-1 bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : socialLinks.length === 0 ? (
-              <p className="text-sm text-neutral-500">
-                Aucun réseau renseigné.{' '}
-                <button onClick={() => setEditingSocials(true)} className="text-indigo-400 hover:underline">Ajouter</button>
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {socialLinks.map(({ url, icon, bg, label }) => (
-                  <a key={label} href={url!} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 text-sm text-neutral-300 hover:text-white transition group">
-                    <span className={`flex items-center justify-center w-7 h-7 rounded-lg border ${bg} group-hover:opacity-80 transition`}>
-                      {icon}
-                    </span>
-                    <span className="text-xs">{label}</span>
-                  </a>
-                ))}
-              </div>
-            )}
-          </section>
-
-        </aside>
+          </aside>
+        </div>
       </div>
 
       {/* ── CropModal avatar / bannière ── */}

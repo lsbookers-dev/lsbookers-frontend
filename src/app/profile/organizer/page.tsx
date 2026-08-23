@@ -391,18 +391,18 @@ export default function OrganizerProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p className="text-neutral-400">Chargement…</p>
+      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
+        <p className="text-white/40">Chargement…</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0a0a0f] text-white">
 
       {/* ── Bannière */}
       <div
-        className="relative h-56 sm:h-64 md:h-72 lg:h-80 group cursor-pointer"
+        className="relative h-56 sm:h-64 md:h-72 lg:h-80 group cursor-pointer overflow-hidden"
         onClick={() => bannerInputRef.current?.click()}
       >
         {profile?.banner ? (
@@ -425,6 +425,7 @@ export default function OrganizerProfilePage() {
           Paramètres
         </button>
         <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'banner')} />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0a0a0f]/50 pointer-events-none" />
       </div>
 
       {/* ── En-tête sous bannière */}
@@ -466,7 +467,7 @@ export default function OrganizerProfilePage() {
             </div>
 
             {(profile?.location || profile?.country) && (
-              <p className="text-sm text-neutral-300 flex items-center gap-1 mt-1">
+              <p className="text-sm text-white/80 flex items-center gap-1 mt-1">
                 <MapPin size={14} className="text-pink-500" />
                 {[profile?.location, profile?.country].filter(Boolean).join(', ')}
                 {profile?.radiusKm ? ` · Rayon ${profile.radiusKm} km` : ''}
@@ -498,9 +499,9 @@ export default function OrganizerProfilePage() {
 
           {/* À propos */}
           {profile?.bio && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
+            <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-5">
               <h2 className="text-base font-semibold mb-2 text-white/90">À propos</h2>
-              <p className="text-sm text-neutral-300 leading-relaxed">{profile.bio}</p>
+              <p className="text-sm text-white/80 leading-relaxed">{profile.bio}</p>
             </section>
           )}
 
@@ -515,9 +516,9 @@ export default function OrganizerProfilePage() {
           )}
 
           {/* Publications + Albums (onglets) */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
+          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-1 bg-black/30 rounded-xl p-1">
+              <div className="flex gap-1 bg-white/[0.04] rounded-xl p-1">
                 <button
                   onClick={() => setPubTab('publications')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'publications' ? 'bg-violet-600 text-white' : 'text-white/50 hover:text-white'}`}
@@ -563,7 +564,7 @@ export default function OrganizerProfilePage() {
         <aside className="space-y-5">
 
           {/* Avis */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Star size={15} className="text-yellow-400" />
               <h2 className="text-base font-semibold">Avis</h2>
@@ -582,7 +583,7 @@ export default function OrganizerProfilePage() {
                     ? (r.author.user.pseudo || [r.author.user.firstName, r.author.user.lastName].filter(Boolean).join(' ') || 'Anonyme')
                     : 'Anonyme'
                   return (
-                    <div key={r.id} className="rounded-xl border border-white/8 bg-black/20 p-3">
+                    <div key={r.id} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
                       <div className="flex items-center gap-2.5 mb-1.5">
                         <div className="relative h-7 w-7 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
                           {r.author?.avatar ? (
@@ -602,7 +603,7 @@ export default function OrganizerProfilePage() {
                           </div>
                         </div>
                       </div>
-                      {r.comment && <p className="text-xs text-neutral-300 leading-relaxed">{r.comment}</p>}
+                      {r.comment && <p className="text-xs text-white/80 leading-relaxed">{r.comment}</p>}
                     </div>
                   )
                 })}
@@ -612,7 +613,7 @@ export default function OrganizerProfilePage() {
 
           {/* Vidéo de présentation */}
           {profile?.showYoutubeUrl !== false && profile?.youtubeUrl && (
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+            <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Youtube size={15} className="text-red-400" />
                 <h2 className="text-base font-semibold">Vidéo de présentation</h2>
@@ -630,7 +631,7 @@ export default function OrganizerProfilePage() {
           )}
 
           {/* Mes offres */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Briefcase size={15} className="text-pink-400" />
@@ -655,7 +656,7 @@ export default function OrganizerProfilePage() {
                   {myOffers.slice(offerPage * OFFERS_PER_PAGE, (offerPage + 1) * OFFERS_PER_PAGE).map(o => {
                     const dateStr = new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
                     return (
-                      <div key={o.id} className="rounded-xl border border-white/8 bg-black/20 p-3">
+                      <div key={o.id} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-white truncate">{o.title}</p>
@@ -676,11 +677,11 @@ export default function OrganizerProfilePage() {
                 </div>
                 {myOffers.length > OFFERS_PER_PAGE && (
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
-                    <button onClick={() => setOfferPage(p => Math.max(0, p - 1))} disabled={offerPage === 0} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30 transition">
+                    <button onClick={() => setOfferPage(p => Math.max(0, p - 1))} disabled={offerPage === 0} className="flex items-center gap-1 text-xs text-white/40 hover:text-white disabled:opacity-30 transition">
                       <ChevronLeft size={13} /> Préc.
                     </button>
                     <span className="text-xs text-neutral-600">{offerPage + 1} / {Math.ceil(myOffers.length / OFFERS_PER_PAGE)}</span>
-                    <button onClick={() => setOfferPage(p => Math.min(Math.ceil(myOffers.length / OFFERS_PER_PAGE) - 1, p + 1))} disabled={(offerPage + 1) * OFFERS_PER_PAGE >= myOffers.length} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30 transition">
+                    <button onClick={() => setOfferPage(p => Math.min(Math.ceil(myOffers.length / OFFERS_PER_PAGE) - 1, p + 1))} disabled={(offerPage + 1) * OFFERS_PER_PAGE >= myOffers.length} className="flex items-center gap-1 text-xs text-white/40 hover:text-white disabled:opacity-30 transition">
                       Suiv. <ChevronRight size={13} />
                     </button>
                   </div>
@@ -690,7 +691,7 @@ export default function OrganizerProfilePage() {
           </section>
 
           {/* Partenaires */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Users size={15} className="text-blue-400" />
               <h2 className="text-base font-semibold">Partenaires</h2>
@@ -699,7 +700,7 @@ export default function OrganizerProfilePage() {
           </section>
 
           {/* Coordonnées & Réseaux sociaux */}
-          <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4">
+          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Globe size={15} className="text-indigo-400" />
@@ -708,7 +709,7 @@ export default function OrganizerProfilePage() {
               {!editingContact ? (
                 <button
                   onClick={() => setEditingContact(true)}
-                  className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5"
+                  className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5"
                 >
                   <Pencil size={12} /> Modifier
                 </button>
@@ -716,7 +717,7 @@ export default function OrganizerProfilePage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setEditingContact(false)}
-                    className="text-xs text-neutral-500 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5"
+                    className="text-xs text-white/35 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5"
                   >
                     Annuler
                   </button>
@@ -734,7 +735,7 @@ export default function OrganizerProfilePage() {
             {editingContact ? (
               /* ── Mode édition ── */
               <div className="space-y-3">
-                <p className="text-xs text-neutral-500 uppercase tracking-wider">Réseaux sociaux</p>
+                <p className="text-xs text-white/35 uppercase tracking-wider">Réseaux sociaux</p>
                 {[
                   { key: 'instagramUrl',  label: 'Instagram',   placeholder: 'https://instagram.com/...' },
                   { key: 'tiktokUrl',     label: 'TikTok',      placeholder: 'https://tiktok.com/@...' },
@@ -746,30 +747,30 @@ export default function OrganizerProfilePage() {
                   { key: 'websiteUrl',    label: 'Site web',    placeholder: 'https://monsite.com' },
                 ].map(({ key, label, placeholder }) => (
                   <div key={key} className="flex items-center gap-2">
-                    <span className="text-xs text-neutral-500 w-24 flex-shrink-0">{label}</span>
+                    <span className="text-xs text-white/35 w-24 flex-shrink-0">{label}</span>
                     <input
                       type="url"
                       value={contactForm[key as keyof typeof contactForm]}
                       onChange={e => setContactForm(f => ({ ...f, [key]: e.target.value }))}
                       placeholder={placeholder}
-                      className="flex-1 bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
+                      className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
                     />
                   </div>
                 ))}
-                <p className="text-xs text-neutral-500 uppercase tracking-wider pt-1">Adresse de l&apos;établissement</p>
+                <p className="text-xs text-white/35 uppercase tracking-wider pt-1">Adresse de l&apos;établissement</p>
                 {[
                   { key: 'address',    label: 'Adresse',     placeholder: '12 rue de la Paix' },
                   { key: 'postalCode', label: 'Code postal', placeholder: '75001' },
                   { key: 'city',       label: 'Ville',       placeholder: 'Paris' },
                 ].map(({ key, label, placeholder }) => (
                   <div key={key} className="flex items-center gap-2">
-                    <span className="text-xs text-neutral-500 w-24 flex-shrink-0">{label}</span>
+                    <span className="text-xs text-white/35 w-24 flex-shrink-0">{label}</span>
                     <input
                       type="text"
                       value={contactForm[key as keyof typeof contactForm]}
                       onChange={e => setContactForm(f => ({ ...f, [key]: e.target.value }))}
                       placeholder={placeholder}
-                      className="flex-1 bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
+                      className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
                     />
                   </div>
                 ))}
@@ -802,7 +803,7 @@ export default function OrganizerProfilePage() {
                       <div className="space-y-2">
                         {socials.map(({ url, icon, bg, label }) => (
                           <a key={label} href={url!} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-2.5 text-sm text-neutral-300 hover:text-white transition group">
+                            className="flex items-center gap-2.5 text-sm text-white/80 hover:text-white transition group">
                             <span className={`flex items-center justify-center w-7 h-7 rounded-lg border ${bg} group-hover:opacity-80 transition`}>
                               {icon}
                             </span>
@@ -813,7 +814,7 @@ export default function OrganizerProfilePage() {
                     )}
                     {hasAddress && (
                       <div className={`${socials.length > 0 ? 'pt-2 border-t border-white/5' : ''} space-y-1`}>
-                        <div className="flex items-center gap-1.5 text-xs text-neutral-500 mb-1.5">
+                        <div className="flex items-center gap-1.5 text-xs text-white/35 mb-1.5">
                           <Building2 size={11} /> Adresse
                         </div>
                         {profile?.address && <p className="text-xs text-neutral-300">{profile.address}</p>}
@@ -864,7 +865,7 @@ export default function OrganizerProfilePage() {
                 value={offerForm.title}
                 onChange={e => setOfferForm(p => ({ ...p, title: e.target.value }))}
                 placeholder="Titre de l'offre *"
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
               />
               <textarea
                 required
@@ -872,14 +873,14 @@ export default function OrganizerProfilePage() {
                 value={offerForm.description}
                 onChange={e => setOfferForm(p => ({ ...p, description: e.target.value }))}
                 placeholder="Description *"
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40 resize-none"
+                className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40 resize-none"
               />
 
               <div className="grid grid-cols-2 gap-2">
                 <select
                   value={offerForm.type}
                   onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as OfferForm['type'], specialty: '' }))}
-                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                 >
                   <option value="ARTIST">Artiste</option>
                   <option value="PROVIDER">Prestataire</option>
@@ -888,7 +889,7 @@ export default function OrganizerProfilePage() {
                 <select
                   value={offerForm.specialty}
                   onChange={e => setOfferForm(p => ({ ...p, specialty: e.target.value }))}
-                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                 >
                   <option value="">Spécialité *</option>
                   {getSpecialtiesForOfferType(offerForm.type).map(s => (
@@ -903,13 +904,13 @@ export default function OrganizerProfilePage() {
                   <input
                     required type="date" value={offerForm.date}
                     onChange={e => setOfferForm(p => ({ ...p, date: e.target.value }))}
-                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl pl-8 pr-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                    className="h-10 w-full bg-white/[0.05] border border-white/[0.1] rounded-xl pl-8 pr-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                   />
                 </div>
                 <input
                   type="time" value={offerForm.time}
                   onChange={e => setOfferForm(p => ({ ...p, time: e.target.value }))}
-                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
               </div>
 
@@ -924,14 +925,14 @@ export default function OrganizerProfilePage() {
                   </div>
                   <input type="date" value={offerForm.endDate}
                     onChange={e => setOfferForm(p => ({ ...p, endDate: e.target.value }))}
-                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                    className="h-10 w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                   />
                 </div>
                 <div>
                   <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(optionnel)</span></p>
                   <input type="time" value={offerForm.endTime} disabled={!offerForm.endDate}
                     onChange={e => setOfferForm(p => ({ ...p, endTime: e.target.value }))}
-                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40 disabled:opacity-30"
+                    className="h-10 w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40 disabled:opacity-30"
                   />
                 </div>
               </div>
@@ -941,13 +942,13 @@ export default function OrganizerProfilePage() {
                   value={offerForm.location}
                   onChange={v => setOfferForm(p => ({ ...p, location: v }))}
                   placeholder="Ville *"
-                  inputClassName="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                  inputClassName="h-10 bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
                 <input
                   required value={offerForm.country}
                   onChange={e => setOfferForm(p => ({ ...p, country: e.target.value }))}
                   placeholder="Pays *"
-                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
               </div>
 
@@ -957,7 +958,7 @@ export default function OrganizerProfilePage() {
                   type="number" min="0" step="0.01" value={offerForm.fee}
                   onChange={e => setOfferForm(p => ({ ...p, fee: e.target.value }))}
                   placeholder="Tarif proposé (optionnel)"
-                  className="h-10 w-full bg-black/30 border border-white/10 rounded-xl pl-8 pr-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
+                  className="h-10 w-full bg-white/[0.05] border border-white/[0.1] rounded-xl pl-8 pr-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
               </div>
 
