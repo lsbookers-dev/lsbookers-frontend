@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles, Plus, X, Users } from 'lucide-react'
+import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles, Plus, X, Users } from 'lucide-react' // X gardé pour modal publier
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
@@ -165,8 +164,6 @@ function OfferCard({
 /* ─── Page principale ───────────────────────────────────── */
 export default function OffersPage() {
   const { user } = useAuth() as { user: { id: number | string; role: string } | null }
-  const router = useRouter()
-
   const [offers, setOffers]             = useState<Offer[]>([])
   const [loading, setLoading]           = useState(true)
   const [filters, setFilters]           = useState({
@@ -191,11 +188,6 @@ export default function OffersPage() {
   // Modal offre (postuler + partager + similaires)
   const [selectedOffer, setSelectedOffer] = useState<OfferDetail | null>(null)
 
-  // Modal candidature inline (conservé pour compatibilité, non utilisé quand modal offre actif)
-  const [applyOffer, setApplyOffer]         = useState<Offer | null>(null)
-  const [applyMessage, setApplyMessage]     = useState('')
-  const [applySubmitting, setApplySubmit]   = useState(false)
-  const [applyError, setApplyError]         = useState<string | null>(null)
 
   // Pré-remplir les filtres depuis les paramètres URL (ex: "Voir offres similaires")
   useEffect(() => {
@@ -271,40 +263,6 @@ export default function OffersPage() {
       specialty: offer.specialty ?? null,
       fee: offer.fee ?? null,
     } as OfferDetail)
-  }
-
-  const handleApply = (offer: Offer) => {
-    const prefilled = `Bonjour, je souhaite postuler pour l'offre "${offer.title}" que vous venez de publier. Je me tiens à votre disposition.`
-    setApplyMessage(prefilled)
-    setApplyError(null)
-    setApplyOffer(offer)
-  }
-
-  const submitApply = async () => {
-    if (!applyOffer) return
-    setApplySubmit(true)
-    setApplyError(null)
-    try {
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/api/offers/${applyOffer.id}/apply`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ message: applyMessage }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erreur')
-      // Mise à jour locale du compteur
-      setOffers(prev => prev.map(o =>
-        o.id === applyOffer.id ? { ...o, applicantCount: (o.applicantCount ?? 0) + 1 } : o
-      ))
-      setApplyOffer(null)
-      router.push(`/messages?conversation=${data.conversationId}`)
-    } catch (err: unknown) {
-      setApplyError(err instanceof Error ? err.message : 'Erreur lors de la candidature.')
-    } finally {
-      setApplySubmit(false)
-    }
   }
 
   const submitPublish = async () => {
@@ -482,40 +440,6 @@ export default function OffersPage() {
           onClose={() => setSelectedOffer(null)}
           isLoggedIn={!!user}
         />
-      )}
-
-      {/* ── Modal : postuler à une offre (fallback inline, non utilisé) ── */}
-      {applyOffer && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setApplyOffer(null)}>
-          <div className="max-w-lg w-full bg-neutral-950 border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold">Postuler</h3>
-                <p className="text-xs text-white/40 mt-0.5 truncate max-w-xs">&ldquo;{applyOffer.title}&rdquo;</p>
-              </div>
-              <button onClick={() => setApplyOffer(null)} className="text-neutral-400 hover:text-white"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-white/50 mb-1.5 block">Votre message</label>
-                <textarea
-                  rows={5}
-                  value={applyMessage}
-                  onChange={e => setApplyMessage(e.target.value)}
-                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-purple-500/40 resize-none"
-                />
-              </div>
-              {applyError && <p className="text-xs text-red-400">{applyError}</p>}
-              <button
-                onClick={submitApply}
-                disabled={applySubmitting || !applyMessage.trim()}
-                className={`w-full bg-gradient-to-r ${TYPE_CONFIG[applyOffer.type].apply} hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition`}
-              >
-                {applySubmitting ? 'Envoi…' : 'Envoyer ma candidature'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* ── Modal : publier une offre (organisateurs) ── */}
