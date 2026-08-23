@@ -77,6 +77,15 @@ type SuggestedProfile = {
   profileUrl: string
 }
 
+type AdminPost = {
+  id: number
+  title: string | null
+  content: string | null
+  mediaUrl: string | null
+  mediaType: string | null
+  createdAt: string
+}
+
 type Offer = OfferDetail
 
 const POSTS_PER_PAGE = 6
@@ -200,6 +209,78 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
         </>
       )}
     </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CARTE PUBLICATION OFFICIELLE LSBOOKERS
+───────────────────────────────────────────────────────────── */
+function AdminPostCard({ post, isNew }: { post: AdminPost; isNew?: boolean }) {
+  const isVideo = post.mediaType === 'VIDEO'
+
+  return (
+    <article className="rounded-2xl border border-purple-500/20 bg-purple-500/5 overflow-hidden relative">
+      {/* Badge Officiel */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+        <Star className="w-3 h-3 fill-yellow-300" /> Officiel
+      </div>
+      {/* Badge Nouveau */}
+      {isNew && (
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1 bg-purple-600/80 border border-purple-400/30 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm font-medium">
+          Nouveau
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center gap-3 p-3 pt-4">
+        <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex-shrink-0 flex items-center justify-center text-white text-sm font-bold border-2 border-purple-400/40">
+          LS
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-white">LS Bookers</span>
+            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+          </div>
+          <p className="text-xs text-purple-300/70">{timeAgo(post.createdAt)}</p>
+        </div>
+      </div>
+
+      {/* Média */}
+      {post.mediaUrl && (
+        <div className="w-full bg-black flex items-center justify-center">
+          {isVideo ? (
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video
+              src={post.mediaUrl}
+              className="w-full max-h-[480px] object-contain block"
+              controls
+              preload="metadata"
+              playsInline
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={post.mediaUrl}
+              alt={post.title || 'LS Bookers'}
+              className="w-full max-h-[480px] object-contain block"
+              loading="lazy"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Contenu texte */}
+      {(post.title || post.content) && (
+        <div className="p-3 space-y-1">
+          {post.title && (
+            <p className="text-sm font-semibold text-white">{post.title}</p>
+          )}
+          {post.content && (
+            <p className="text-sm text-white/70 leading-relaxed">{post.content}</p>
+          )}
+        </div>
+      )}
+    </article>
   )
 }
 
@@ -586,6 +667,7 @@ export default function HomePage() {
   const [selectedPost, setSelectedPost]   = useState<Post | null>(null)
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null)
   const [suggested, setSuggested]         = useState<SuggestedProfile[]>([])
+  const [unseenAdminPosts, setUnseenAdminPosts] = useState<AdminPost[]>([])
   const [loadingFeed, setLoadingFeed]     = useState(true)
   const [visibleCount, setVisibleCount]   = useState(POSTS_PER_PAGE)
   const [isMuted, setIsMuted]             = useState(true)
@@ -609,7 +691,21 @@ export default function HomePage() {
       setLoadingFeed(true)
       fetch(`${API_BASE}/api/home/feed`, { headers })
         .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d) setPosts(d.posts || []) })
+        .then(d => {
+          if (!d) return
+          setPosts(d.posts || [])
+          const allAdmin: AdminPost[] = d.adminPosts || []
+          // Compute unseen using localStorage
+          const storageKey = `lsb_admin_seen_${user.id}`
+          let seenIds: Set<number>
+          try {
+            const raw = localStorage.getItem(storageKey)
+            seenIds = raw ? new Set<number>(JSON.parse(raw)) : new Set<number>()
+          } catch {
+            seenIds = new Set<number>()
+          }
+          setUnseenAdminPosts(allAdmin.filter(p => !seenIds.has(p.id)))
+        })
         .catch(() => {})
         .finally(() => setLoadingFeed(false))
 
@@ -621,6 +717,25 @@ export default function HomePage() {
       setLoadingFeed(false)
     }
   }, [user, API_BASE])
+
+  // ── Marquer les publications admin non vues comme vues ──
+  useEffect(() => {
+    if (!user || unseenAdminPosts.length === 0) return
+    const t = setTimeout(() => {
+      const storageKey = `lsb_admin_seen_${user.id}`
+      let seenIds: Set<number>
+      try {
+        const raw = localStorage.getItem(storageKey)
+        seenIds = raw ? new Set<number>(JSON.parse(raw)) : new Set<number>()
+      } catch {
+        seenIds = new Set<number>()
+      }
+      unseenAdminPosts.forEach(p => seenIds.add(p.id))
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(seenIds)))
+      setUnseenAdminPosts([])
+    }, 2000)
+    return () => clearTimeout(t)
+  }, [unseenAdminPosts, user])
 
   // ── Toggle like ─────────────────────────────────────────
   const handleLike = async (postId: number) => {
@@ -679,7 +794,7 @@ export default function HomePage() {
               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
               <p className="text-sm text-white/30">Chargement du feed…</p>
             </div>
-          ) : posts.length === 0 ? (
+          ) : posts.length === 0 && unseenAdminPosts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-8">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl">📸</div>
               <div>
@@ -692,6 +807,11 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Publications officielles LS Bookers non vues */}
+              {unseenAdminPosts.map(p => (
+                <AdminPostCard key={`admin-${p.id}`} post={p} isNew />
+              ))}
+
               {visiblePosts.map(p => (
                 <PostCard key={p.id} post={p} onLike={handleLike} onOpenModal={setSelectedPost} currentUserId={user?.id} isMuted={isMuted} onToggleMute={toggleMute} />
               ))}

@@ -75,6 +75,7 @@ export default function AdminHeader() {
             <NavLink href="/admin/dashboard" label="Dashboard" />
             <NavLink href="/admin/users" label="Utilisateurs" />
             <NavLink href="/admin/messages" label="Messages" badge={unread} />
+            <NavLink href="/admin/publications" label="Publications" />
             <NavLink href="/admin/subscriptions" label="Abonnements" />
             <NavLink href="/admin/stats" label="Statistiques" />
             <NavLink href="/admin/settings" label="Paramètres" />
