@@ -90,6 +90,26 @@ export default function EventTabOffers(p: Props) {
               onChange={e => p.setEventOfferForm(prev => ({ ...prev, time: e.target.value }))}
               className="h-8 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
             />
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
+                <p className="text-[10px] text-white/30">Fin <span className="text-white/20">(optionnel)</span></p>
+                {p.eventOfferForm.endDate && (
+                  <button type="button" onClick={() => p.setEventOfferForm(prev => ({ ...prev, endDate: '', endTime: '' }))}
+                    className="text-[10px] text-white/25 hover:text-white/50 transition">✕</button>
+                )}
+              </div>
+              <input type="date" value={p.eventOfferForm.endDate}
+                onChange={e => p.setEventOfferForm(prev => ({ ...prev, endDate: e.target.value }))}
+                className="h-8 w-full px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none"
+              />
+            </div>
+            <div>
+              <p className="text-[10px] text-white/30 mb-0.5">Heure fin</p>
+              <input type="time" value={p.eventOfferForm.endTime} disabled={!p.eventOfferForm.endDate}
+                onChange={e => p.setEventOfferForm(prev => ({ ...prev, endTime: e.target.value }))}
+                className="h-8 w-full px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white outline-none disabled:opacity-30"
+              />
+            </div>
             <CityAutocomplete
               value={p.eventOfferForm.location}
               onChange={v => p.setEventOfferForm(prev => ({ ...prev, location: v }))}

@@ -102,7 +102,7 @@ export default function AgendaCalendar({
   const [submittingEventOffer, setSubmittingEventOffer] = useState(false)
   const [eventOfferError, setEventOfferError] = useState<string | null>(null)
   const [eventOfferForm, setEventOfferForm] = useState<EventOfferForm>({
-    title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: '', fee: '',
+    title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', endDate: '', endTime: '', location: '', country: '', fee: '',
   })
 
   // Formulaires inline dans le détail
@@ -632,6 +632,7 @@ export default function AgendaCalendar({
           title: form.title, description: form.description, type: form.type,
           specialty: form.specialty || null,
           date: `${form.date}T${form.time || '00:00'}:00`,
+          endDate: form.endDate ? `${form.endDate}T${form.endTime || '00:00'}:00` : null,
           location: form.location, country: form.country,
           fee: form.fee ? parseFloat(form.fee) : null,
           eventId: selectedEventId,
@@ -641,7 +642,7 @@ export default function AgendaCalendar({
       const created = await res.json()
       setEventOffers(prev => [created, ...prev])
       setShowEventOfferForm(false)
-      setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', location: '', country: defaultCountry || '', fee: '' })
+      setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', endDate: '', endTime: '', location: '', country: defaultCountry || '', fee: '' })
     } catch (err: unknown) {
       setEventOfferError(err instanceof Error ? err.message : 'Erreur')
     } finally {

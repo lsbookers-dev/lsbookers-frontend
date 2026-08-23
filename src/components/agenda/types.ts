@@ -133,6 +133,8 @@ export type EventOfferForm = {
   specialty: string
   date: string
   time: string
+  endDate: string
+  endTime: string
   location: string
   country: string
   fee: string

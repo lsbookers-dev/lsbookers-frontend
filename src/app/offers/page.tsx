@@ -21,6 +21,7 @@ type Offer = {
   location: string
   country: string
   fee?: number | null
+  endDate?: string | null
   createdAt: string
   organizerId: number
   applicantCount?: number
@@ -35,12 +36,12 @@ type Offer = {
 type OfferForm = {
   title: string; description: string
   type: 'ARTIST' | 'PROVIDER' | 'ALL'; specialty: string
-  date: string; time: string; location: string; country: string; fee: string
+  date: string; time: string; endDate: string; endTime: string; location: string; country: string; fee: string
 }
 
 const EMPTY_FORM: OfferForm = {
   title: '', description: '', type: 'ARTIST', specialty: '',
-  date: '', time: '', location: '', country: '', fee: '',
+  date: '', time: '', endDate: '', endTime: '', location: '', country: '', fee: '',
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -362,7 +363,9 @@ function OffersInner() {
         body: JSON.stringify({
           title: pubForm.title.trim(), description: pubForm.description.trim(),
           type: pubForm.type, specialty: pubForm.specialty || null,
-          date: dateTime, location: pubForm.location.trim(),
+          date: dateTime,
+          endDate: pubForm.endDate ? (pubForm.endTime ? pubForm.endDate + 'T' + pubForm.endTime + ':00' : pubForm.endDate + 'T23:59:00') : null,
+          location: pubForm.location.trim(),
           country: pubForm.country.trim(), fee: pubForm.fee ? parseFloat(pubForm.fee) : null,
         }),
       })
@@ -601,12 +604,36 @@ function OffersInner() {
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input required type="date" value={pubForm.date} onChange={e => setPubForm(p => ({ ...p, date: e.target.value }))}
-                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
-                />
-                <input type="time" value={pubForm.time} onChange={e => setPubForm(p => ({ ...p, time: e.target.value }))}
-                  className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
-                />
+                <div>
+                  <p className="text-[10px] text-white/35 mb-1">Date début *</p>
+                  <input required type="date" value={pubForm.date} onChange={e => setPubForm(p => ({ ...p, date: e.target.value }))}
+                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] text-white/35 mb-1">Heure début</p>
+                  <input type="time" value={pubForm.time} onChange={e => setPubForm(p => ({ ...p, time: e.target.value }))}
+                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-white/35">Date fin <span className="text-white/20">(optionnel)</span></p>
+                    {pubForm.endDate && (
+                      <button onClick={() => setPubForm(p => ({ ...p, endDate: '', endTime: '' }))} className="text-[10px] text-white/30 hover:text-white/60 transition">✕ effacer</button>
+                    )}
+                  </div>
+                  <input type="date" value={pubForm.endDate} onChange={e => setPubForm(p => ({ ...p, endDate: e.target.value }))}
+                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40"
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(optionnel)</span></p>
+                  <input type="time" value={pubForm.endTime} onChange={e => setPubForm(p => ({ ...p, endTime: e.target.value }))}
+                    disabled={!pubForm.endDate}
+                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-purple-500/40 disabled:opacity-30"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <CityAutocomplete

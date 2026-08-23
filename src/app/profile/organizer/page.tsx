@@ -43,6 +43,8 @@ type OfferForm = {
   specialty: string
   date: string
   time: string
+  endDate: string
+  endTime: string
   location: string
   country: string
   fee: string
@@ -50,7 +52,7 @@ type OfferForm = {
 
 const EMPTY_OFFER_FORM: OfferForm = {
   title: '', description: '', type: 'ARTIST', specialty: '',
-  date: '', time: '', location: '', country: '', fee: '',
+  date: '', time: '', endDate: '', endTime: '', location: '', country: '', fee: '',
 }
 
 const OFFERS_PER_PAGE = 3
@@ -254,6 +256,9 @@ export default function OrganizerProfilePage() {
     try {
       const token = getAuthToken()
       const dateTime = offerForm.time ? `${offerForm.date}T${offerForm.time}:00` : `${offerForm.date}T00:00:00`
+      const endDateTime = offerForm.endDate
+        ? (offerForm.endTime ? `${offerForm.endDate}T${offerForm.endTime}:00` : `${offerForm.endDate}T00:00:00`)
+        : null
       const res = await fetch(`${API}/api/offers`, {
         method: 'POST',
         credentials: 'include',
@@ -264,6 +269,7 @@ export default function OrganizerProfilePage() {
           type: offerForm.type,
           specialty: offerForm.specialty,
           date: dateTime,
+          endDate: endDateTime,
           location: offerForm.location.trim(),
           country: offerForm.country.trim(),
           fee: offerForm.fee ? parseFloat(offerForm.fee) : null,
@@ -905,6 +911,29 @@ export default function OrganizerProfilePage() {
                   onChange={e => setOfferForm(p => ({ ...p, time: e.target.value }))}
                   className="h-10 bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-white/35">Date fin <span className="text-white/20">(optionnel)</span></p>
+                    {offerForm.endDate && (
+                      <button type="button" onClick={() => setOfferForm(p => ({ ...p, endDate: '', endTime: '' }))}
+                        className="text-[10px] text-white/30 hover:text-white/60 transition">✕ effacer</button>
+                    )}
+                  </div>
+                  <input type="date" value={offerForm.endDate}
+                    onChange={e => setOfferForm(p => ({ ...p, endDate: e.target.value }))}
+                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40"
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(optionnel)</span></p>
+                  <input type="time" value={offerForm.endTime} disabled={!offerForm.endDate}
+                    onChange={e => setOfferForm(p => ({ ...p, endTime: e.target.value }))}
+                    className="h-10 w-full bg-black/30 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:ring-1 focus:ring-pink-500/40 disabled:opacity-30"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
