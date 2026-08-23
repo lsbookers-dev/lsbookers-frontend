@@ -145,15 +145,6 @@ function MessagesContent() {
     }
   }, [activeConvId, conversations])
 
-  /* ── Auto-ouvrir conversation via ?to= ── */
-  const autoStartedRef = useRef(false)
-  const [convLoaded, setConvLoaded] = useState(false)
-  useEffect(() => {
-    if (!toUserId || !token || autoStartedRef.current || !convLoaded) return
-    autoStartedRef.current = true
-    startConversation(toUserId)
-  }, [toUserId, token, convLoaded, startConversation])
-
   /* ── Smart scroll ── */
   useEffect(() => {
     const newCount = messages.length
@@ -215,6 +206,10 @@ function MessagesContent() {
     }))
   }, [router])
 
+  /* ── Auto-ouvrir conversation via ?to= ── */
+  const autoStartedRef = useRef(false)
+  const [convLoaded, setConvLoaded] = useState(false)
+
   /* ── Démarrer une conversation ── */
   const startConversation = useCallback(async (recipientId: number) => {
     if (!token) return
@@ -243,6 +238,12 @@ function MessagesContent() {
       }
     } catch (err) { console.error('startConversation:', err) }
   }, [token, conversations, selectConv, router])
+
+  useEffect(() => {
+    if (!toUserId || !token || autoStartedRef.current || !convLoaded) return
+    autoStartedRef.current = true
+    startConversation(toUserId)
+  }, [toUserId, token, convLoaded, startConversation])
 
   /* ── Envoyer un message (optimistic) ── */
   const handleSend = useCallback(async () => {
