@@ -28,6 +28,7 @@ type PopupNotif = {
   conversationId?: number | null
   offerId?: number | null
   publicationId?: number | null
+  deviceToken?: string | null
 }
 
 const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
@@ -380,6 +381,29 @@ export default function Header() {
                                 )}
                               </div>
                             )
+                            // Notif NEW_DEVICE_LOGIN → lien vers la page notifications complète
+                            if (notif.type === 'NEW_DEVICE_LOGIN') {
+                              return (
+                                <Link key={notif.id} href="/notifications" onClick={() => setNotifOpen(false)} className="block">
+                                  <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
+                                    notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
+                                  }`}>
+                                    <div className="shrink-0 mt-0.5">
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${POPUP_TYPE_CONFIG.NEW_DEVICE_LOGIN.color}`}>
+                                        {POPUP_TYPE_CONFIG.NEW_DEVICE_LOGIN.icon}
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs text-white/75 leading-relaxed line-clamp-2">{notif.content}</p>
+                                      <p className="text-[10px] text-amber-400/80 mt-1 font-medium">Gérer → voir les détails</p>
+                                    </div>
+                                    {!notif.read && (
+                                      <span className="shrink-0 w-2 h-2 rounded-full bg-violet-400 mt-1" />
+                                    )}
+                                  </div>
+                                </Link>
+                              )
+                            }
                             // Notif avec publicationId → ouvre la modal sans naviguer
                             if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE'].includes(notif.type) && notif.publicationId) {
                               return (

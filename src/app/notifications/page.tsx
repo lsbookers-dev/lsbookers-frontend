@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getAuthToken } from '@/utils/auth'
 
@@ -15,6 +16,7 @@ type Notif = {
   actor?: { id: number; name?: string | null; avatar?: string | null; role?: string | null } | null
   conversationId?: number | null
   offerId?: number | null
+  deviceToken?: string | null
 }
 
 // ─── Config types visuels ────────────────────────────────────────────────────
@@ -82,7 +84,8 @@ const PAGE_SIZE = 20
 // ─── Composant ───────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const { user } = useAuth() as { user: { id: number | string } | null }
+  const { user, logout } = useAuth() as { user: { id: number | string } | null; logout: () => void }
+  const router  = useRouter()
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   const [all, setAll]             = useState<Notif[]>([])
@@ -91,6 +94,48 @@ export default function NotificationsPage() {
   const [filterUnread, setFilterUnread] = useState(false)
   const [page, setPage]           = useState(1)
   const [markingAll, setMarkingAll] = useState(false)
+  const [deviceActions, setDeviceActions] = useState<Record<number, 'trusted' | 'rejected' | 'loading'>>({})
+
+  // ── Faire confiance à un appareil ─────────────────────────────────────────
+
+  const trustDevice = async (notifId: number, deviceToken: string) => {
+    setDeviceActions(prev => ({ ...prev, [notifId]: 'loading' }))
+    try {
+      const token = getAuthToken()
+      await fetch(`${API_BASE}/api/auth/trust-device`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ deviceToken }),
+        credentials: 'include',
+      })
+      setDeviceActions(prev => ({ ...prev, [notifId]: 'trusted' }))
+      markAsRead(notifId)
+    } catch {
+      setDeviceActions(prev => { const s = { ...prev }; delete s[notifId]; return s })
+    }
+  }
+
+  // ── Rejeter un appareil (invalide toutes les sessions) ────────────────────
+
+  const rejectDevice = async (notifId: number) => {
+    setDeviceActions(prev => ({ ...prev, [notifId]: 'loading' }))
+    try {
+      const token = getAuthToken()
+      await fetch(`${API_BASE}/api/auth/reject-device`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      })
+      setDeviceActions(prev => ({ ...prev, [notifId]: 'rejected' }))
+      // Déconnexion + redirection changement de mot de passe
+      setTimeout(() => {
+        logout()
+        router.push('/forgot-password?security=1')
+      }, 1500)
+    } catch {
+      setDeviceActions(prev => { const s = { ...prev }; delete s[notifId]; return s })
+    }
+  }
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -261,6 +306,34 @@ export default function NotificationsPage() {
                           day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
                         })}
                       </p>
+
+                      {/* Boutons pour les alertes de sécurité */}
+                      {notif.type === 'NEW_DEVICE_LOGIN' && notif.deviceToken && (
+                        <div className="mt-3">
+                          {deviceActions[notif.id] === 'trusted' ? (
+                            <p className="text-xs text-green-400">✓ Appareil marqué comme de confiance.</p>
+                          ) : deviceActions[notif.id] === 'rejected' ? (
+                            <p className="text-xs text-amber-400">⚠ Sessions fermées. Redirection vers la réinitialisation du mot de passe…</p>
+                          ) : (
+                            <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={e => { e.stopPropagation(); trustDevice(notif.id, notif.deviceToken!) }}
+                                disabled={deviceActions[notif.id] === 'loading'}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 disabled:opacity-50 transition"
+                              >
+                                {deviceActions[notif.id] === 'loading' ? '…' : '✓ Faire confiance'}
+                              </button>
+                              <button
+                                onClick={e => { e.stopPropagation(); rejectDevice(notif.id) }}
+                                disabled={deviceActions[notif.id] === 'loading'}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 disabled:opacity-50 transition"
+                              >
+                                {deviceActions[notif.id] === 'loading' ? '…' : '✗ Ce n\'est pas moi'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
