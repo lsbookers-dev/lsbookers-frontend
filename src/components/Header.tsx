@@ -46,6 +46,7 @@ const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
   NEW_COMMENT_REPLY:     { icon: '↩️', color: 'bg-indigo-500/15 text-indigo-300' },
   NEW_COMMENT_LIKE:      { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
   NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
+  NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300' },
   DEFAULT:               { icon: '🔔', color: 'bg-white/10 text-white/50' },
 }
 

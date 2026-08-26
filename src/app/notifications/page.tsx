@@ -39,6 +39,8 @@ const TYPE_CONFIG: Record<string, TypeConfig> = {
   NEW_FOLLOW:            { icon: '👤', color: 'bg-teal-500/15 text-teal-300',     label: 'Nouvel abonné' },
   NEW_COMMENT:           { icon: '💭', color: 'bg-indigo-500/15 text-indigo-300', label: 'Commentaire' },
   NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300',     label: 'Like' },
+  // Sécurité
+  NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300',   label: 'Sécurité' },
   // Fallback
   DEFAULT:               { icon: '🔔', color: 'bg-white/10 text-white/50',        label: 'Notification' },
 }
