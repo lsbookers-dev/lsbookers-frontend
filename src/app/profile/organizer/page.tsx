@@ -402,15 +402,15 @@ export default function OrganizerProfilePage() {
 
       {/* ── Bannière */}
       <div
-        className="relative h-56 sm:h-64 md:h-72 lg:h-80 group cursor-pointer overflow-hidden"
+        className="relative h-48 sm:h-56 md:h-64 lg:h-72 overflow-hidden group cursor-pointer"
         onClick={() => bannerInputRef.current?.click()}
       >
         {profile?.banner ? (
           <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-75" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-900/60 to-[#13131e]" />
+          <div className="w-full h-full bg-gradient-to-br from-pink-900/40 to-[#13131e]" />
         )}
-        {/* Overlay hover */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#13131e]/20 to-[#13131e]/70 pointer-events-none" />
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
           {uploadingBanner
             ? <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -419,80 +419,83 @@ export default function OrganizerProfilePage() {
         </div>
         <button
           onClick={e => { e.stopPropagation(); router.push('/settings/profile') }}
-          className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 backdrop-blur z-10"
+          className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur border border-white/20 text-white px-3 py-2 rounded-xl flex items-center gap-2 text-sm transition z-10"
         >
-          <Settings2 size={18} />
-          Paramètres
+          <Settings2 size={16} /> Paramètres
         </button>
         <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'banner')} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#13131e]/20 to-[#13131e]/70 pointer-events-none" />
       </div>
 
-      {/* ── En-tête sous bannière */}
-      <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div
-            className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-black flex-shrink-0 group cursor-pointer"
-            onClick={() => avatarInputRef.current?.click()}
-          >
-            {profile?.avatar ? (
-              <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
-            ) : (
-              <div className="w-full h-full bg-pink-800 flex items-center justify-center text-2xl font-bold">
-                {displayName(profile).charAt(0).toUpperCase()}
+      <div className="max-w-6xl mx-auto px-4">
+
+        {/* ── Glass card header */}
+        <section className="relative -mt-12 rounded-2xl border border-white/[0.12] bg-[rgba(255,255,255,0.06)] backdrop-blur-2xl overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5">
+            <div className="flex items-center gap-4 min-w-0">
+              <div
+                className="relative h-[82px] w-[82px] rounded-xl overflow-hidden ring-2 ring-white/[0.15] shrink-0 group/avatar cursor-pointer"
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                {profile?.avatar ? (
+                  <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-white/10 flex items-center justify-center text-3xl font-black text-white/30">
+                    {displayName(profile).charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+                  {uploadingAvatar
+                    ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    : <Pencil size={16} className="text-white" />
+                  }
+                </div>
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'avatar')} />
               </div>
-            )}
-            {/* Overlay hover */}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-              {uploadingAvatar
-                ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                : <Pencil size={16} className="text-white" />
-              }
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-widest text-white/35 mb-1">{user?.role || 'ORGANIZER'}</p>
+                <h1 className="text-xl md:text-2xl font-bold truncate">{displayName(profile)}</h1>
+                <p className="text-xs text-white/45 mt-1">
+                  {[profile?.location, profile?.country].filter(Boolean).join(', ')}
+                  {profile?.radiusKm ? ` · Rayon ${profile.radiusKm} km` : ''}
+                </p>
+              </div>
             </div>
-            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'avatar')} />
+            <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+              <button
+                onClick={() => router.push('/messages')}
+                className="bg-white text-black rounded-full px-4 py-2 text-sm whitespace-nowrap flex items-center gap-2"
+              >
+                <MessageCircle size={15} /> Messages
+              </button>
+            </div>
           </div>
 
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">{displayName(profile)}</h1>
-
-            <div className="flex items-center gap-3 mt-1 text-sm text-neutral-400">
-              <span><strong className="text-white">{profile?.followingCount ?? 0}</strong> abonné{(profile?.followingCount ?? 0) > 1 ? 's' : ''}</span>
-              <span><strong className="text-white">{profile?.followersCount ?? 0}</strong> abonnement{(profile?.followersCount ?? 0) > 1 ? 's' : ''}</span>
-              {profile?.reviewsAvg != null && (
-                <span className="flex items-center gap-1">
-                  <Star size={13} className="fill-yellow-400 text-yellow-400" />
-                  {profile.reviewsAvg.toFixed(1)} ({profile.reviewsCount} avis)
-                </span>
-              )}
+          <div className="flex border-t border-white/[0.07]">
+            <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
+              <p className="text-base font-semibold text-white">{profile?.followingCount ?? 0}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnés</p>
             </div>
-
-            {(profile?.location || profile?.country) && (
-              <p className="text-sm text-white/80 flex items-center gap-1 mt-1">
-                <MapPin size={14} className="text-pink-500" />
-                {[profile?.location, profile?.country].filter(Boolean).join(', ')}
-                {profile?.radiusKm ? ` · Rayon ${profile.radiusKm} km` : ''}
-              </p>
-            )}
-
-            {profile?.specialties && profile.specialties.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {profile.specialties.map(s => (
-                  <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40">
-                    {s}
-                  </span>
-                ))}
-              </div>
-            )}
+            <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
+              <p className="text-base font-semibold text-white">{profile?.followersCount ?? 0}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
+            </div>
+            <div className="flex-1 py-3 text-center">
+              <p className="text-base font-semibold text-white">{publications.length}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">publications</p>
+            </div>
           </div>
-        </div>
 
-        <button className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 hover:bg-neutral-200">
-          <MessageCircle size={18} /> Messages
-        </button>
-      </div>
+          {profile?.specialties && profile.specialties.length > 0 && (
+            <div className="px-5 py-3 border-t border-white/[0.07] flex flex-wrap gap-2">
+              {profile.specialties.map(s => (
+                <span key={s} className="text-xs px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-white/55">{s}</span>
+              ))}
+            </div>
+          )}
+        </section>
 
-      {/* ── Corps */}
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 pb-12">
+        {/* ── Corps */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 mt-6 pb-12">
 
         {/* ── Colonne gauche */}
         <div className="space-y-6">
@@ -830,6 +833,7 @@ export default function OrganizerProfilePage() {
           </section>
 
         </aside>
+      </div>
       </div>
 
       {/* ── CropModal avatar / bannière ── */}
