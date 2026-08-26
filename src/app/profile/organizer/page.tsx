@@ -391,14 +391,14 @@ export default function OrganizerProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#13131e] text-white flex items-center justify-center">
         <p className="text-white/40">Chargement…</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
+    <div className="min-h-screen bg-[#13131e] text-white">
 
       {/* ── Bannière */}
       <div
@@ -406,9 +406,9 @@ export default function OrganizerProfilePage() {
         onClick={() => bannerInputRef.current?.click()}
       >
         {profile?.banner ? (
-          <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
+          <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-75" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-900/60 to-black" />
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-900/60 to-[#13131e]" />
         )}
         {/* Overlay hover */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -425,7 +425,7 @@ export default function OrganizerProfilePage() {
           Paramètres
         </button>
         <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={e => openCrop(e, 'banner')} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0a0a0f]/50 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#13131e]/20 to-[#13131e]/70 pointer-events-none" />
       </div>
 
       {/* ── En-tête sous bannière */}
@@ -499,9 +499,9 @@ export default function OrganizerProfilePage() {
 
           {/* À propos */}
           {profile?.bio && (
-            <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-5">
-              <h2 className="text-base font-semibold mb-2 text-white/90">À propos</h2>
-              <p className="text-sm text-white/80 leading-relaxed">{profile.bio}</p>
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+              <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">À propos</h2>
+              <p className="text-white/70 leading-relaxed">{profile.bio}</p>
             </section>
           )}
 
@@ -516,7 +516,7 @@ export default function OrganizerProfilePage() {
           )}
 
           {/* Publications + Albums (onglets) */}
-          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-5">
+          <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex gap-1 bg-white/[0.04] rounded-xl p-1">
                 <button
@@ -564,7 +564,7 @@ export default function OrganizerProfilePage() {
         <aside className="space-y-5">
 
           {/* Avis */}
-          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
+          <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Star size={15} className="text-yellow-400" />
               <h2 className="text-base font-semibold">Avis</h2>
@@ -613,7 +613,7 @@ export default function OrganizerProfilePage() {
 
           {/* Vidéo de présentation */}
           {profile?.showYoutubeUrl !== false && profile?.youtubeUrl && (
-            <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Youtube size={15} className="text-red-400" />
                 <h2 className="text-base font-semibold">Vidéo de présentation</h2>
@@ -631,7 +631,7 @@ export default function OrganizerProfilePage() {
           )}
 
           {/* Mes offres */}
-          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
+          <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Briefcase size={15} className="text-pink-400" />
@@ -691,7 +691,7 @@ export default function OrganizerProfilePage() {
           </section>
 
           {/* Partenaires */}
-          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
+          <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Users size={15} className="text-blue-400" />
               <h2 className="text-base font-semibold">Partenaires</h2>
@@ -700,7 +700,7 @@ export default function OrganizerProfilePage() {
           </section>
 
           {/* Coordonnées & Réseaux sociaux */}
-          <section className="bg-white/[0.06] border border-white/[0.1] rounded-2xl p-4">
+          <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Globe size={15} className="text-indigo-400" />

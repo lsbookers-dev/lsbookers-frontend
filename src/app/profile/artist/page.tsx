@@ -113,7 +113,7 @@ function getAuthHeaders(extra: Record<string, string> = {}): Record<string, stri
 function EditBar({ saving, onSave, onCancel }: { saving: boolean; onSave: () => void; onCancel: () => void }) {
   return (
     <div className="flex items-center gap-2">
-      <button onClick={onCancel} className="text-xs text-neutral-500 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
+      <button onClick={onCancel} className="text-xs text-white/40 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
         Annuler
       </button>
       <button onClick={onSave} disabled={saving} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-pink-600 hover:bg-pink-500 disabled:opacity-50 transition">
@@ -315,20 +315,19 @@ export default function ArtistProfilePage() {
   ].filter(s => s.url)
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#13131e] text-white">
 
-      {/* ── Zone sombre : bannière + header ── */}
-      <div className="bg-[#0a0a0f] text-white">
-        {/* ── Bannière ── */}
+      {/* ── Bannière ── */}
+      <div className="bg-[#13131e]">
         <div
           className="relative h-56 sm:h-64 md:h-72 group cursor-pointer overflow-hidden"
           onClick={() => bannerInputRef.current?.click()}
         >
           {profile?.banner
-            ? <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-90" />
-            : <div className="w-full h-full bg-gradient-to-br from-pink-900/40 to-[#0a0a0f]" />
+            ? <Image src={profile.banner} alt="Bannière" fill priority className="object-cover opacity-75" />
+            : <div className="w-full h-full bg-gradient-to-br from-pink-900/40 to-[#13131e]" />
           }
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0a0a0f]/50 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#13131e]/20 to-[#13131e]/70 pointer-events-none" />
           {/* Overlay hover */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             {uploadingBanner
@@ -349,7 +348,7 @@ export default function ArtistProfilePage() {
         <div className="max-w-6xl mx-auto px-4 pt-5 pb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div
-              className="relative -mt-12 h-24 w-24 rounded-2xl overflow-hidden ring-4 ring-[#0a0a0f] flex-shrink-0 group cursor-pointer"
+              className="relative -mt-12 h-24 w-24 rounded-2xl overflow-hidden ring-4 ring-[#13131e] flex-shrink-0 group cursor-pointer"
               onClick={() => avatarInputRef.current?.click()}
             >
               {profile?.avatar
@@ -405,8 +404,8 @@ export default function ArtistProfilePage() {
         </div>
       </div>
 
-      {/* ── Zone claire : corps principal ── */}
-      <div className="bg-[#f0f0f6]">
+      {/* ── Corps principal ── */}
+      <div className="bg-[#13131e]">
         <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 pb-16">
 
           {/* ── Colonne gauche ── */}
@@ -414,9 +413,9 @@ export default function ArtistProfilePage() {
 
             {/* À propos */}
             {profile?.bio && (
-              <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                <h2 className="text-base font-semibold mb-2 text-gray-900">À propos</h2>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">À propos</h2>
+                <p className="text-white/70 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
               </section>
             )}
 
@@ -430,19 +429,19 @@ export default function ArtistProfilePage() {
             )}
 
             {/* Publications + Albums (onglets) */}
-            <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
               {/* Header avec onglets */}
               <div className="flex items-center justify-between mb-4">
-                <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+                <div className="flex gap-1 bg-white/[0.04] rounded-xl p-1">
                   <button
                     onClick={() => setPubTab('publications')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'publications' ? 'bg-pink-600 text-white' : 'text-gray-500 hover:text-gray-900'}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'publications' ? 'bg-pink-600 text-white' : 'text-white/50 hover:text-white'}`}
                   >
                     Publications
                   </button>
                   <button
                     onClick={() => setPubTab('albums')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'albums' ? 'bg-pink-600 text-white' : 'text-gray-500 hover:text-gray-900'}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'albums' ? 'bg-pink-600 text-white' : 'text-white/50 hover:text-white'}`}
                   >
                     Albums
                   </button>
@@ -475,14 +474,14 @@ export default function ArtistProfilePage() {
             </section>
 
             {/* CV */}
-            <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <FileText size={15} className="text-purple-500" />
-                  <h2 className="text-base font-semibold text-gray-900">CV / Expérience</h2>
+                  <FileText size={15} className="text-purple-400" />
+                  <h2 className="text-xs uppercase tracking-widest text-white/35">CV / Expérience</h2>
                 </div>
                 {!editingCv
-                  ? <button onClick={() => setEditingCv(true)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-900 transition px-2 py-1 rounded-lg hover:bg-gray-100">
+                  ? <button onClick={() => setEditingCv(true)} className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
                       <Pencil size={12} /> Modifier
                     </button>
                   : <EditBar saving={cvSaving} onSave={saveCv} onCancel={() => { setEditingCv(false); setCvDraft(profile?.cvText || '') }} />
@@ -494,14 +493,14 @@ export default function ArtistProfilePage() {
                   onChange={e => setCvDraft(e.target.value)}
                   rows={6}
                   placeholder="Décris ton parcours, tes expériences, tes formations…"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-purple-400 resize-none"
+                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 resize-none"
                 />
               ) : profile?.cvText ? (
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{profile.cvText}</p>
+                <p className="text-white/70 leading-relaxed whitespace-pre-wrap text-sm">{profile.cvText}</p>
               ) : (
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-white/35">
                   Aucun CV renseigné.{' '}
-                  <button onClick={() => setEditingCv(true)} className="text-purple-500 hover:underline">Ajouter</button>
+                  <button onClick={() => setEditingCv(true)} className="text-purple-400 hover:underline">Ajouter</button>
                 </p>
               )}
             </section>
@@ -511,36 +510,36 @@ export default function ArtistProfilePage() {
           <aside className="space-y-5">
 
             {/* Avis */}
-            <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Star size={15} className="text-yellow-400" />
-                <h2 className="text-base font-semibold text-gray-900">Avis reçus</h2>
+                <h2 className="text-xs uppercase tracking-widest text-white/35">Avis reçus</h2>
                 {(profile?.reviewsAvg ?? 0) > 0 && (
-                  <span className="ml-auto text-sm font-medium text-yellow-500">
-                    {profile?.reviewsAvg?.toFixed(1)}<span className="text-gray-400 text-xs font-normal"> / 5</span>
+                  <span className="ml-auto text-sm font-medium text-yellow-400">
+                    {profile?.reviewsAvg?.toFixed(1)}<span className="text-white/35 text-xs font-normal"> / 5</span>
                   </span>
                 )}
               </div>
               {reviews.length === 0
-                ? <p className="text-xs text-gray-400 text-center py-3">Aucun avis pour l&apos;instant</p>
+                ? <p className="text-xs text-white/35 text-center py-3">Aucun avis pour l&apos;instant</p>
                 : <div className="space-y-3">
                     {reviews.slice(0, 4).map(r => (
-                      <div key={r.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <div key={r.id} className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
                         <div className="flex items-center gap-2 mb-1.5">
                           {r.author?.avatar
                             ? <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0"><Image src={r.author.avatar} alt="" fill className="object-cover" /></div>
-                            : <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">{r.author?.user?.pseudo?.[0]?.toUpperCase() || '?'}</div>
+                            : <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/50 flex-shrink-0">{r.author?.user?.pseudo?.[0]?.toUpperCase() || '?'}</div>
                           }
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate text-gray-900">{r.author?.user?.pseudo || r.author?.user?.firstName || 'Anonyme'}</p>
+                            <p className="text-xs font-medium truncate text-white/70">{r.author?.user?.pseudo || r.author?.user?.firstName || 'Anonyme'}</p>
                             <div className="flex items-center gap-0.5">
                               {Array.from({ length: 5 }).map((_, i) => (
-                                <Star key={i} size={10} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                                <Star key={i} size={10} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-white/20'} />
                               ))}
                             </div>
                           </div>
                         </div>
-                        {r.comment && <p className="text-xs text-gray-600 leading-relaxed">{r.comment}</p>}
+                        {r.comment && <p className="text-xs text-white/70 leading-relaxed">{r.comment}</p>}
                       </div>
                     ))}
                   </div>
@@ -549,14 +548,14 @@ export default function ArtistProfilePage() {
 
             {/* Styles musicaux */}
             {profile?.showStyles !== false && profile?.styles && profile.styles.length > 0 && (
-              <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Music size={15} className="text-pink-500" />
-                  <h2 className="text-base font-semibold text-gray-900">Styles musicaux</h2>
+                  <Music size={15} className="text-pink-400" />
+                  <h2 className="text-xs uppercase tracking-widest text-white/35">Styles musicaux</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {profile.styles.map(s => (
-                    <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-50 border border-pink-200 text-pink-700">{s}</span>
+                    <span key={s} className="text-xs px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-white/55">{s}</span>
                   ))}
                 </div>
               </section>
@@ -564,10 +563,10 @@ export default function ArtistProfilePage() {
 
             {/* SoundCloud */}
             {profile?.showSoundcloud && soundcloudEmbed && (
-              <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Music size={15} className="text-orange-500" />
-                  <h2 className="text-base font-semibold text-gray-900">SoundCloud</h2>
+                  <Music size={15} className="text-orange-400" />
+                  <h2 className="text-xs uppercase tracking-widest text-white/35">SoundCloud</h2>
                 </div>
                 <div className="rounded-lg overflow-hidden">
                   <iframe title="SoundCloud" width="100%" height="180" scrolling="no" frameBorder="no" allow="autoplay" src={soundcloudEmbed} />
@@ -577,10 +576,10 @@ export default function ArtistProfilePage() {
 
             {/* Vidéo de présentation */}
             {profile?.showYoutubeUrl !== false && profile?.youtubeUrl && (
-              <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Youtube size={15} className="text-red-500" />
-                  <h2 className="text-base font-semibold text-gray-900">Vidéo de présentation</h2>
+                  <Youtube size={15} className="text-red-400" />
+                  <h2 className="text-xs uppercase tracking-widest text-white/35">Vidéo de présentation</h2>
                 </div>
                 <div className="rounded-xl overflow-hidden aspect-video">
                   <iframe
@@ -596,14 +595,14 @@ export default function ArtistProfilePage() {
             )}
 
             {/* Tarifs */}
-            <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Euro size={15} className="text-green-500" />
-                  <h2 className="text-base font-semibold text-gray-900">Tarifs</h2>
+                  <Euro size={15} className="text-green-400" />
+                  <h2 className="text-xs uppercase tracking-widest text-white/35">Tarifs</h2>
                 </div>
                 {!editingFee
-                  ? <button onClick={() => setEditingFee(true)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-900 transition px-2 py-1 rounded-lg hover:bg-gray-100">
+                  ? <button onClick={() => setEditingFee(true)} className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
                       <Pencil size={12} /> Modifier
                     </button>
                   : <EditBar saving={feeSaving} onSave={saveFee} onCancel={() => { setEditingFee(false); setFeeDraft(profile?.feeInfo || '') }} />
@@ -615,36 +614,36 @@ export default function ArtistProfilePage() {
                   onChange={e => setFeeDraft(e.target.value)}
                   rows={4}
                   placeholder="Ex : Cachet à partir de 500€ · Devis sur demande · Frais de déplacement en sus…"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-green-400 resize-none"
+                  className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 resize-none"
                 />
               ) : profile?.feeInfo ? (
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{profile.feeInfo}</p>
+                <p className="text-white/70 leading-relaxed whitespace-pre-wrap text-sm">{profile.feeInfo}</p>
               ) : (
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-white/35">
                   Aucun tarif renseigné.{' '}
-                  <button onClick={() => setEditingFee(true)} className="text-green-500 hover:underline">Ajouter</button>
+                  <button onClick={() => setEditingFee(true)} className="text-green-400 hover:underline">Ajouter</button>
                 </p>
               )}
             </section>
 
             {/* Partenariats */}
-            <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Users size={15} className="text-blue-500" />
-                <h2 className="text-base font-semibold text-gray-900">Partenariats</h2>
+                <Users size={15} className="text-blue-400" />
+                <h2 className="text-xs uppercase tracking-widest text-white/35">Partenariats</h2>
               </div>
-              <p className="text-sm text-gray-400">Aucun partenaire ajouté.</p>
+              <p className="text-sm text-white/35">Aucun partenaire ajouté.</p>
             </section>
 
             {/* Réseaux sociaux */}
-            <section className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Globe size={15} className="text-indigo-500" />
-                  <h2 className="text-base font-semibold text-gray-900">Réseaux sociaux</h2>
+                  <Globe size={15} className="text-indigo-400" />
+                  <h2 className="text-xs uppercase tracking-widest text-white/35">Réseaux sociaux</h2>
                 </div>
                 {!editingSocials
-                  ? <button onClick={() => setEditingSocials(true)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-900 transition px-2 py-1 rounded-lg hover:bg-gray-100">
+                  ? <button onClick={() => setEditingSocials(true)} className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
                       <Pencil size={12} /> Modifier
                     </button>
                   : <EditBar saving={socialsSaving} onSave={saveSocials} onCancel={() => { setEditingSocials(false); setSocialsForm({ instagramUrl: profile?.instagramUrl || '', facebookUrl: profile?.facebookUrl || '', tiktokUrl: profile?.tiktokUrl || '', twitterUrl: profile?.twitterUrl || '', linkedinUrl: profile?.linkedinUrl || '', websiteUrl: profile?.websiteUrl || '' }) }} />
@@ -662,27 +661,27 @@ export default function ArtistProfilePage() {
                     { key: 'websiteUrl',    label: 'Site web',    placeholder: 'https://monsite.com' },
                   ].map(({ key, label, placeholder }) => (
                     <div key={key} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 w-20 flex-shrink-0">{label}</span>
+                      <span className="text-xs text-white/40 w-20 flex-shrink-0">{label}</span>
                       <input
                         type="url"
                         value={socialsForm[key as keyof typeof socialsForm]}
                         onChange={e => setSocialsForm(f => ({ ...f, [key]: e.target.value }))}
                         placeholder={placeholder}
-                        className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-indigo-400"
+                        className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-xl px-2.5 py-1.5 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-white/30"
                       />
                     </div>
                   ))}
                 </div>
               ) : socialLinks.length === 0 ? (
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-white/35">
                   Aucun réseau renseigné.{' '}
-                  <button onClick={() => setEditingSocials(true)} className="text-indigo-500 hover:underline">Ajouter</button>
+                  <button onClick={() => setEditingSocials(true)} className="text-indigo-400 hover:underline">Ajouter</button>
                 </p>
               ) : (
                 <div className="space-y-2">
                   {socialLinks.map(({ url, icon, bg, label }) => (
                     <a key={label} href={url!} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 text-sm text-gray-600 hover:text-gray-900 transition group">
+                      className="flex items-center gap-2.5 text-sm text-white/70 hover:text-white transition group">
                       <span className={`flex items-center justify-center w-7 h-7 rounded-lg border ${bg} group-hover:opacity-80 transition`}>
                         {icon}
                       </span>

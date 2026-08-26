@@ -200,58 +200,68 @@ export default function ProviderPublicProfilePage() {
   ].filter(s => s.url?.trim())
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen bg-[#13131e] text-white">
 
       {/* ===== Bannière ===== */}
       <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 overflow-hidden">
-        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-90" />
+        <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-75" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#13131e]/20 to-[#13131e]/70 pointer-events-none" />
       </div>
 
       <div className="max-w-6xl mx-auto px-4">
 
-        {/* ===== Header card ===== */}
-        <section className="relative -mt-10 rounded-2xl border border-white/10 bg-neutral-900/60 p-4 md:p-5 backdrop-blur">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        {/* ===== Header glass card ===== */}
+        <section className="relative -mt-12 rounded-2xl border border-white/[0.12] bg-[rgba(255,255,255,0.06)] backdrop-blur-2xl overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5">
             <div className="flex items-center gap-4 min-w-0">
-              <SafeImage type="avatar" src={avatarUrl} name={name} size={80} className="ring-2 ring-white/10 shrink-0" />
+              <SafeImage type="avatar" src={avatarUrl} name={name} size={82} className="rounded-xl ring-2 ring-white/[0.15] shrink-0" />
               <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-widest text-white/35 mb-1">{role}{etab ? ` · ${etab}` : ''}</p>
                 <h1 className="text-xl md:text-2xl font-bold truncate">{name}</h1>
-                <p className="text-sm text-white/60">{role}{etab ? ` · ${etab}` : ''}</p>
-                <p className="text-xs text-white/50 mt-1">
+                <p className="text-xs text-white/45 mt-1">
                   {location}{country ? `, ${country}` : ''}{radius ? ` · Rayon ${radius} km` : ''}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 sm:ml-auto flex-wrap">
-              <div className="flex items-center gap-2">
-                {!isOwner && (
-                  <FollowButton
-                    targetUserId={profile.userId}
-                    onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
-                  />
-                )}
-                {!isOwner && (
-                  <button
-                    onClick={() => router.push(`/messages?to=${profile.userId}`)}
-                    className="bg-white text-black rounded-full px-4 py-2 flex items-center gap-2 hover:bg-neutral-200 text-sm whitespace-nowrap"
-                  >
-                    <MessageCircle size={16} />
-                    Contacter
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-4 text-xs text-white/50">
-                <span><strong className="text-white">{abonnesCount}</strong> abonnés</span>
-                <span><strong className="text-white">{profile.followersCount ?? 0}</strong> abonnements</span>
-              </div>
+            <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+              {!isOwner && (
+                <FollowButton
+                  targetUserId={profile.userId}
+                  onFollowChange={isFollowing => setAbonnesCount(c => isFollowing ? c + 1 : Math.max(0, c - 1))}
+                />
+              )}
+              {!isOwner && (
+                <button
+                  onClick={() => router.push(`/messages?to=${profile.userId}`)}
+                  className="bg-white text-black rounded-full px-4 py-2 text-sm whitespace-nowrap"
+                >
+                  Contacter
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Rangée stats */}
+          <div className="flex border-t border-white/[0.07]">
+            <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
+              <p className="text-base font-semibold text-white">{abonnesCount}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnés</p>
+            </div>
+            <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
+              <p className="text-base font-semibold text-white">{profile.followersCount ?? 0}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
+            </div>
+            <div className="flex-1 py-3 text-center">
+              <p className="text-base font-semibold text-white">{publications.length}</p>
+              <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">publications</p>
             </div>
           </div>
 
           {specialties.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="px-5 py-3 border-t border-white/[0.07] flex flex-wrap gap-2">
               {specialties.map((s) => (
-                <span key={s} className="text-xs px-2 py-1 rounded-full bg-pink-600/20 border border-pink-600/40">
+                <span key={s} className="text-xs px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-white/55">
                   {s}
                 </span>
               ))}
@@ -265,9 +275,9 @@ export default function ProviderPublicProfilePage() {
           {/* Colonne gauche */}
           <div className="space-y-6">
 
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-              <h2 className="text-lg font-semibold">Description</h2>
-              <p className="text-neutral-200 leading-relaxed">{bio}</p>
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+              <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Description</h2>
+              <p className="text-white/70 leading-relaxed">{bio}</p>
             </section>
 
             <PublicationsSection publications={publications} title="Réalisations" />
@@ -283,9 +293,9 @@ export default function ProviderPublicProfilePage() {
             )}
 
             {profile.cvText && (
-              <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-                <h2 className="text-lg font-semibold">CV / Expérience</h2>
-                <p className="text-neutral-200 leading-relaxed whitespace-pre-line text-sm">{profile.cvText}</p>
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">CV / Expérience</h2>
+                <p className="text-white/70 leading-relaxed whitespace-pre-line text-sm">{profile.cvText}</p>
               </section>
             )}
           </div>
@@ -293,21 +303,21 @@ export default function ProviderPublicProfilePage() {
           {/* Colonne droite */}
           <aside className="space-y-6">
 
-            <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-              <h2 className="text-lg font-semibold">Avis</h2>
-              <p className="text-neutral-400 text-sm">Les avis seront ajoutés prochainement.</p>
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+              <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Avis</h2>
+              <p className="text-white/40 text-sm">Les avis seront ajoutés prochainement.</p>
             </section>
 
             {profile.feeInfo && (
-              <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-                <h2 className="text-lg font-semibold">Prestations &amp; Tarifs</h2>
-                <p className="text-neutral-200 leading-relaxed whitespace-pre-line text-sm">{profile.feeInfo}</p>
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Prestations &amp; Tarifs</h2>
+                <p className="text-white/70 leading-relaxed whitespace-pre-line text-sm">{profile.feeInfo}</p>
               </section>
             )}
 
             {profile.showYoutubeUrl !== false && youtubeEmbed && (
-              <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
                   <Youtube className="w-3.5 h-3.5 text-red-400" />
                   Vidéo de présentation
                 </h2>
@@ -326,8 +336,8 @@ export default function ProviderPublicProfilePage() {
             )}
 
             {socialLinks.length > 0 && (
-              <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-                <h2 className="text-lg font-semibold">Réseaux sociaux</h2>
+              <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+                <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Réseaux sociaux</h2>
                 <div className="flex flex-wrap gap-4">
                   {socialLinks.map(({ url, icon: Icon, label, color }) => (
                     <a
@@ -336,7 +346,7 @@ export default function ProviderPublicProfilePage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       title={label}
-                      className={`flex items-center gap-2 text-neutral-400 ${color} transition-colors`}
+                      className={`flex items-center gap-2 text-white/40 ${color} transition-colors`}
                     >
                       <Icon className="w-5 h-5" />
                       <span className="text-xs">{label}</span>
