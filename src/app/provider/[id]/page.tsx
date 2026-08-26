@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { MessageCircle, Instagram, Facebook, Globe, Music, Youtube } from 'lucide-react'
+import { Instagram, Facebook, Globe, Music, Youtube } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import AgendaCalendar from '@/components/AgendaCalendar'

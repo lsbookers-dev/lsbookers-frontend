@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { MessageCircle, Plus, X, Calendar, MapPin, Euro, Briefcase, Instagram, Facebook, Globe, Music, Youtube } from 'lucide-react'
+import { Plus, X, Calendar, MapPin, Euro, Briefcase, Instagram, Facebook, Globe, Music, Youtube } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import PublicationsSection from '@/components/PublicationsSection'
