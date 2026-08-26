@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Settings2, MessageCircle, Star, Plus, MapPin, Music,
+  Settings2, MessageCircle, Star, Plus, Music,
   Globe, Youtube, Instagram, Twitter, Facebook, Linkedin, Link,
   Pencil, Check, Users, Euro, FileText,
 } from 'lucide-react'
