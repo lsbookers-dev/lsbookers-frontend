@@ -141,11 +141,11 @@ export default function PublicationCard({ pub, onClick, showTitle = false, isOwn
           </div>
         </div>
 
-        {/* ── Bouton Tag (auteur uniquement, visible au hover) ── */}
+        {/* ── Bouton Tag (auteur uniquement, toujours visible) ── */}
         {isOwner && onTagClick && (
           <button
             onClick={e => { e.stopPropagation(); onTagClick(pub) }}
-            className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 hover:bg-violet-600 text-white rounded-full p-1.5 z-10"
+            className="absolute top-2 left-2 bg-black/60 hover:bg-violet-600 text-white rounded-full p-1.5 z-10 transition-colors"
             title="Identifier des personnes"
           >
             <Tag size={13} />
