@@ -28,7 +28,6 @@ type PopupNotif = {
   conversationId?: number | null
   offerId?: number | null
   publicationId?: number | null
-  deviceToken?: string | null
 }
 
 const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
