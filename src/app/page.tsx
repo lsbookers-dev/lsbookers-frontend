@@ -218,7 +218,7 @@ function AppSection() {
                 </span>
               </h2>
               <p className="mt-4 text-white/55 text-base leading-relaxed max-w-md mx-auto lg:mx-0">
-                Installez l'application en un clic — sans passer par l'App Store.
+                Installez l&apos;application en un clic — sans passer par l&apos;App Store.
                 Accédez à vos messages, votre agenda et vos offres où que vous soyez.
               </p>
             </div>
