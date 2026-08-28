@@ -42,6 +42,7 @@ type Post = {
   commentsCount: number
   likedByMe: boolean
   isFromFollow: boolean
+  feedType?: 'followed' | 'trending' | 'suggestion'
   additionalMedia?: PostMedia[]
   author: {
     profileId: number
@@ -88,7 +89,6 @@ type AdminPost = {
 
 type Offer = OfferDetail
 
-const POSTS_PER_PAGE = 6
 
 /* ─────────────────────────────────────────────────────────────
    HELPERS
@@ -661,14 +661,44 @@ export default function HomePage() {
   const [selectedPost, setSelectedPost]   = useState<Post | null>(null)
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null)
   const [suggested, setSuggested]         = useState<SuggestedProfile[]>([])
-  const [adminPosts, setAdminPosts] = useState<AdminPost[]>([])
+  const [adminPosts, setAdminPosts]       = useState<AdminPost[]>([])
   const [loadingFeed, setLoadingFeed]     = useState(true)
-  const [visibleCount, setVisibleCount]   = useState(POSTS_PER_PAGE)
+  const [loadingMore, setLoadingMore]     = useState(false)
+  const [feedPage, setFeedPage]           = useState(1)
+  const [hasMore, setHasMore]             = useState(true)
   const [isMuted, setIsMuted]             = useState(true)
   const toggleMute = () => setIsMuted(m => !m)
 
   // Tab mobile : 'feed' | 'top' | 'offers'
   const [mobileTab, setMobileTab] = useState<'feed' | 'top' | 'offers'>('feed')
+
+  // ── Fetch feed (page initiale ou suivante) ──────────────
+  const fetchFeed = useCallback(async (pageNum: number, replace: boolean) => {
+    if (!user) return
+    const token = getAuthToken()
+    const headers: Record<string, string> = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    if (replace) setLoadingFeed(true)
+    else setLoadingMore(true)
+    try {
+      const r = await fetch(`${API_BASE}/api/home/feed?page=${pageNum}`, { headers })
+      const d = r.ok ? await r.json() : null
+      if (!d) return
+      if (replace) {
+        setPosts(d.posts || [])
+        setAdminPosts(d.adminPosts || [])
+      } else {
+        setPosts(prev => [...prev, ...(d.posts || [])])
+      }
+      setFeedPage(pageNum)
+      setHasMore(d.hasMore ?? false)
+    } catch {
+      /* silencieux */
+    } finally {
+      if (replace) setLoadingFeed(false)
+      else setLoadingMore(false)
+    }
+  }, [user, API_BASE])
 
   // ── Chargement initial ──────────────────────────────────
   useEffect(() => {
@@ -682,16 +712,7 @@ export default function HomePage() {
       .catch(() => {})
 
     if (user) {
-      setLoadingFeed(true)
-      fetch(`${API_BASE}/api/home/feed`, { headers })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => {
-          if (!d) return
-          setPosts(d.posts || [])
-          setAdminPosts(d.adminPosts || [])
-        })
-        .catch(() => {})
-        .finally(() => setLoadingFeed(false))
+      fetchFeed(1, true)
 
       fetch(`${API_BASE}/api/home/suggested`, { headers })
         .then(r => r.ok ? r.json() : null)
@@ -700,7 +721,7 @@ export default function HomePage() {
     } else {
       setLoadingFeed(false)
     }
-  }, [user, API_BASE])
+  }, [user, API_BASE, fetchFeed])
 
   // ── Toggle like ─────────────────────────────────────────
   const handleLike = async (postId: number) => {
@@ -721,15 +742,12 @@ export default function HomePage() {
     }
   }
 
-  // Mélanger posts admin et posts normaux, triés par date décroissante
+  // Admin posts toujours en tête (priorité plateforme), puis feed algorithmique
   type FeedItem = { kind: 'post'; data: Post } | { kind: 'admin'; data: AdminPost }
   const combinedFeed: FeedItem[] = [
-    ...posts.map(p => ({ kind: 'post' as const, data: p })),
     ...adminPosts.map(p => ({ kind: 'admin' as const, data: p })),
-  ].sort((a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime())
-
-  const visibleFeed = combinedFeed.slice(0, visibleCount)
-  const hasMore = combinedFeed.length > visibleCount
+    ...posts.map(p => ({ kind: 'post' as const, data: p })),
+  ]
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 text-white">
@@ -779,20 +797,24 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {visibleFeed.map(item =>
+              {combinedFeed.map(item =>
                 item.kind === 'admin'
                   ? <AdminPostCard key={`admin-${item.data.id}`} post={item.data} />
                   : <PostCard key={item.data.id} post={item.data} onLike={handleLike} onOpenModal={setSelectedPost} currentUserId={user?.id} isMuted={isMuted} onToggleMute={toggleMute} />
               )}
 
-              {/* Bouton Charger plus */}
+              {/* Bouton Charger plus (pagination serveur) */}
               {hasMore && (
                 <button
-                  onClick={() => setVisibleCount(c => c + POSTS_PER_PAGE)}
-                  className="w-full py-3 rounded-2xl border border-white/10 bg-white/3 hover:bg-white/6 text-sm text-white/50 hover:text-white/80 transition-all flex items-center justify-center gap-2"
+                  onClick={() => fetchFeed(feedPage + 1, false)}
+                  disabled={loadingMore}
+                  className="w-full py-3 rounded-2xl border border-white/10 bg-white/3 hover:bg-white/6 text-sm text-white/50 hover:text-white/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <ChevronDown className="w-4 h-4" />
-                  Charger plus de publications
+                  {loadingMore
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <ChevronDown className="w-4 h-4" />
+                  }
+                  {loadingMore ? 'Chargement…' : 'Charger plus de publications'}
                 </button>
               )}
 
