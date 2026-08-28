@@ -404,7 +404,7 @@ export default function Header() {
                               )
                             }
                             // Notif avec publicationId → ouvre la modal sans naviguer
-                            if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE'].includes(notif.type) && notif.publicationId) {
+                            if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE', 'TAG_ON_PUBLICATION'].includes(notif.type) && notif.publicationId) {
                               return (
                                 <button key={notif.id} className="block w-full text-left" onClick={() => openPubModal(notif.publicationId!)}>
                                   {inner}

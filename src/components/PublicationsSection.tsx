@@ -7,8 +7,9 @@
  */
 
 import { useState, useCallback } from 'react'
-import PublicationCard, { type PubCardData } from './PublicationCard'
+import PublicationCard, { type PubCardData, type PubTag } from './PublicationCard'
 import PublicationModal from './PublicationModal'
+import TagModal from './TagModal'
 
 type Props = {
   publications: PubCardData[]
@@ -32,28 +33,37 @@ export default function PublicationsSection({
   ownerUserId,
   headerAction,
 }: Props) {
-  const [selected,  setSelected]  = useState<PubCardData | null>(null)
-  const [showAll,   setShowAll]   = useState(false)
-  const [pubs,      setPubs]      = useState<PubCardData[]>(publications)
-
+  const [selected,   setSelected]   = useState<PubCardData | null>(null)
+  const [tagTarget,  setTagTarget]  = useState<PubCardData | null>(null)
+  const [showAll,    setShowAll]    = useState(false)
+  const [pubs,       setPubs]       = useState<PubCardData[]>(publications)
 
   /* Sync si la prop change (ex: ajout ou suppression d'une pub) */
   if (publications.length !== pubs.length) {
     setPubs(publications)
   }
 
-  const sorted = [...pubs].sort((a, b) => b.id - a.id)
+  const sorted  = [...pubs].sort((a, b) => b.id - a.id)
   const preview = sorted.slice(0, 9)
 
   /* Mise à jour en temps réel des compteurs likes/comments */
   const handleCountChange = useCallback((pubId: number, likes: number, comments: number) => {
     setPubs(prev =>
       prev.map(p =>
-        p.id === pubId
-          ? { ...p, _count: { likes, comments } }
-          : p
+        p.id === pubId ? { ...p, _count: { likes, comments } } : p
       )
     )
+  }, [])
+
+  /* Mise à jour des tags depuis TagModal */
+  const handleTagsChange = useCallback((pubId: number, tags: PubTag[]) => {
+    setPubs(prev =>
+      prev.map(p => p.id === pubId ? { ...p, tags } : p)
+    )
+    // Mettre à jour aussi la pub sélectionnée si ouverte
+    setSelected(prev => prev?.id === pubId ? { ...prev, tags } : prev)
+    // Mettre à jour la cible du TagModal
+    setTagTarget(prev => prev?.id === pubId ? { ...prev, tags } : prev)
   }, [])
 
   return (
@@ -82,7 +92,12 @@ export default function PublicationsSection({
           <div className="grid grid-cols-3 gap-1.5">
             {preview.map(p => (
               <div key={p.id} className="relative">
-                <PublicationCard pub={p} onClick={setSelected} />
+                <PublicationCard
+                  pub={p}
+                  onClick={setSelected}
+                  isOwner={isOwner}
+                  onTagClick={isOwner ? setTagTarget : undefined}
+                />
                 {isOwner && onDelete && (
                   <button
                     onClick={e => { e.stopPropagation(); onDelete(p.id) }}
@@ -97,13 +112,23 @@ export default function PublicationsSection({
         )}
       </section>
 
-      {/* ── Modale détail ── */}
+      {/* ── Modale détail publication ── */}
       {selected && (
         <PublicationModal
           pub={selected}
           onClose={() => setSelected(null)}
           ownerUserId={ownerUserId}
           onCountChange={handleCountChange}
+        />
+      )}
+
+      {/* ── TagModal (auteur uniquement) ── */}
+      {tagTarget && (
+        <TagModal
+          pubId={tagTarget.id}
+          initialTags={tagTarget.tags ?? []}
+          onClose={() => setTagTarget(null)}
+          onTagsChange={tags => handleTagsChange(tagTarget.id, tags)}
         />
       )}
 
@@ -118,9 +143,7 @@ export default function PublicationsSection({
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">
-                {title} ({sorted.length})
-              </h3>
+              <h3 className="text-base font-semibold">{title} ({sorted.length})</h3>
               <button
                 onClick={() => setShowAll(false)}
                 className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
@@ -133,7 +156,9 @@ export default function PublicationsSection({
                 <PublicationCard
                   key={p.id}
                   pub={p}
+                  isOwner={isOwner}
                   onClick={pub => { setShowAll(false); setSelected(pub) }}
+                  onTagClick={isOwner ? pub => { setShowAll(false); setTagTarget(pub) } : undefined}
                 />
               ))}
             </div>
