@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
-import { X, Heart, Send, Trash2, MessageCircle, ChevronLeft, ChevronRight, Tag, UserPlus, Check, XCircle } from 'lucide-react'
+import { X, Heart, Send, Trash2, MessageCircle, ChevronLeft, ChevronRight, Tag, Check, XCircle } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import type { PubCardData, PubTag, PubTagUser } from './PublicationCard'
 import { getAuthToken } from '@/utils/auth'
+import TagModal from './TagModal'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -59,13 +60,6 @@ function applyCommentLike(list: Comment[], id: number, liked: boolean, count: nu
   })
 }
 
-type TagSearchUser = {
-  id: number
-  pseudo?: string | null
-  firstName?: string | null
-  lastName?: string | null
-  profile?: { id: number; avatar?: string | null }
-}
 
 type Props = {
   pub: PubCardData
@@ -97,12 +91,8 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
   const [replySubmitting, setReplySubmitting] = useState(false)
 
   // ── Tags ──
-  const [tags,            setTags]            = useState<PubTag[]>(pub.tags ?? [])
-  const [showTagInput,    setShowTagInput]    = useState(false)
-  const [tagQuery,        setTagQuery]        = useState('')
-  const [tagResults,      setTagResults]      = useState<TagSearchUser[]>([])
-  const [tagSearching,    setTagSearching]    = useState(false)
-  const [tagLoading,      setTagLoading]      = useState(false)
+  const [tags,         setTags]         = useState<PubTag[]>(pub.tags ?? [])
+  const [showTagModal, setShowTagModal] = useState(false)
 
   const isAuthor = !!user && !!ownerUserId && Number(user.id) === ownerUserId
   const myPendingTag = tags.find(t => t.taggedUser.id === Number(user?.id) && t.status === 'PENDING')
@@ -299,50 +289,6 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
     }
   }
 
-  /* ── Recherche utilisateurs pour tag ── */
-  const searchUsers = useCallback(async (q: string) => {
-    if (!q.trim() || q.length < 2) { setTagResults([]); return }
-    setTagSearching(true)
-    try {
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/api/search/users?q=${encodeURIComponent(q)}&limit=8`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (res.ok) {
-        const data = await res.json()
-        // Filtrer ceux déjà tagués
-        const taggedIds = new Set(tags.map(t => t.taggedUser.id))
-        setTagResults((data.users || data || []).filter((u: TagSearchUser) => !taggedIds.has(u.id)))
-      }
-    } catch { /* silent */ } finally { setTagSearching(false) }
-  }, [tags])
-
-  useEffect(() => {
-    const t = setTimeout(() => searchUsers(tagQuery), 300)
-    return () => clearTimeout(t)
-  }, [tagQuery, searchUsers])
-
-  /* ── Taguer un utilisateur ── */
-  const handleTag = async (targetUserId: number) => {
-    if (tagLoading || tags.length >= 5) return
-    const token = getAuthToken()
-    if (!token) return
-    setTagLoading(true)
-    try {
-      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/tags`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userIds: [targetUserId] }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setTags(prev => [...prev, ...data.tags])
-        setTagQuery('')
-        setTagResults([])
-      }
-    } catch { /* silent */ } finally { setTagLoading(false) }
-  }
-
   /* ── Supprimer un tag ── */
   const handleRemoveTag = async (tagId: number) => {
     const token = getAuthToken()
@@ -373,7 +319,7 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
     } catch { /* silent */ }
   }
 
-  const tagDisplayName = (u: PubTagUser | TagSearchUser) =>
+  const tagDisplayName = (u: PubTagUser) =>
     u.pseudo || [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Utilisateur'
 
   /* ── Rendu d'un commentaire (utilisé pour top-level ET replies) ── */
@@ -482,6 +428,7 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
   }
 
   return (
+  <>
     <div
       className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
@@ -594,53 +541,15 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
               </div>
             )}
 
-            {/* Bouton + tag (auteur seulement) */}
+            {/* Bouton tag (auteur seulement) → ouvre TagModal */}
             {isAuthor && tags.length < 5 && (
-              <div>
-                <button
-                  onClick={() => setShowTagInput(v => !v)}
-                  className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition"
-                >
-                  <UserPlus size={13} />
-                  Identifier quelqu&apos;un {tags.length > 0 ? `(${tags.length}/5)` : ''}
-                </button>
-
-                {showTagInput && (
-                  <div className="mt-2 relative">
-                    <input
-                      autoFocus
-                      value={tagQuery}
-                      onChange={e => setTagQuery(e.target.value)}
-                      placeholder="Rechercher par pseudo…"
-                      className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-violet-500/50 transition"
-                    />
-                    {tagSearching && <p className="text-[10px] text-white/30 mt-1">Recherche…</p>}
-                    {tagResults.length > 0 && (
-                      <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-neutral-900 border border-white/10 rounded-xl overflow-hidden shadow-xl">
-                        {tagResults.map(u => (
-                          <button
-                            key={u.id}
-                            onClick={() => handleTag(u.id)}
-                            disabled={tagLoading}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/8 transition text-left"
-                          >
-                            {u.profile?.avatar ? (
-                              <div className="relative h-7 w-7 rounded-full overflow-hidden shrink-0">
-                                <Image src={toAbs(u.profile.avatar)} alt="" fill className="object-cover" unoptimized />
-                              </div>
-                            ) : (
-                              <div className="h-7 w-7 rounded-full bg-white/10 shrink-0 flex items-center justify-center text-xs font-bold">
-                                {tagDisplayName(u)[0]?.toUpperCase()}
-                              </div>
-                            )}
-                            <span className="text-sm">{tagDisplayName(u)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={() => setShowTagModal(true)}
+                className="flex items-center gap-1.5 text-xs text-white/40 hover:text-violet-400 transition"
+              >
+                <Tag size={13} />
+                Identifier quelqu&apos;un {tags.length > 0 ? `(${tags.length}/5)` : ''}
+              </button>
             )}
           </div>
 
@@ -707,5 +616,16 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
         </div>
       </div>
     </div>
+
+    {/* ── TagModal (auteur uniquement) ── */}
+    {showTagModal && (
+      <TagModal
+        pubId={pub.id}
+        initialTags={tags}
+        onClose={() => setShowTagModal(false)}
+        onTagsChange={newTags => setTags(newTags)}
+      />
+    )}
+  </>
   )
 }
