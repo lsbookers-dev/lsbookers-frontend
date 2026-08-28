@@ -10,6 +10,20 @@ export type PubMediaItem = {
   order?: number
 }
 
+export type PubTagUser = {
+  id: number
+  pseudo?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  profile?: { id: number; avatar?: string | null }
+}
+
+export type PubTag = {
+  id: number
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  taggedUser: PubTagUser
+}
+
 export type PubCardData = {
   id: number
   title: string
@@ -17,6 +31,7 @@ export type PubCardData = {
   mediaType: 'image' | 'video' | string
   caption?: string
   additionalMedia?: PubMediaItem[]
+  tags?: PubTag[]
   _count?: { likes: number; comments: number }
 }
 

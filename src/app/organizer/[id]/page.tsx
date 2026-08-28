@@ -391,7 +391,7 @@ export default function OrganizerPublicProfilePage() {
               </div>
             </section>
 
-            <PublicationsSection publications={publications} title="Publications" />
+            <PublicationsSection publications={publications} title="Publications" ownerUserId={Number(userId)} />
 
             <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">

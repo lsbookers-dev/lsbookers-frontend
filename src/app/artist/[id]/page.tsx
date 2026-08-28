@@ -235,7 +235,7 @@ export default function ArtistPublicProfilePage() {
             {profile && (
               <AgendaCalendar profileId={profile.id} isOwner={false} showAvailability={true} viewerRole={viewer?.role ?? null} viewerProfileId={viewer?.profile?.id ?? null} />
             )}
-            <PublicationsSection publications={publications} title="Publications" />
+            <PublicationsSection publications={publications} title="Publications" ownerUserId={Number(userId)} />
             {profile.cvText && (
               <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
                 <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">CV / Expérience</h2>

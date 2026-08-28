@@ -464,6 +464,7 @@ export default function ArtistProfilePage() {
                 <PublicationsSection
                   publications={publications}
                   isOwner={true}
+                  ownerUserId={user?.id ? Number(user.id) : undefined}
                   onDelete={handleDeletePub}
                 />
               ) : profile ? (

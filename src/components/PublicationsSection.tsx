@@ -18,6 +18,8 @@ type Props = {
   onDelete?: (id: number) => void
   /** Affiche le bouton supprimer sur chaque carte */
   isOwner?: boolean
+  /** User ID du propriétaire (pour activer les actions auteur dans la modal) */
+  ownerUserId?: number
   /** Bouton ou élément React additionnel dans le header (ex: bouton Ajouter) */
   headerAction?: React.ReactNode
 }
@@ -27,6 +29,7 @@ export default function PublicationsSection({
   title = 'Publications',
   onDelete,
   isOwner = false,
+  ownerUserId,
   headerAction,
 }: Props) {
   const [selected,  setSelected]  = useState<PubCardData | null>(null)
@@ -99,6 +102,7 @@ export default function PublicationsSection({
         <PublicationModal
           pub={selected}
           onClose={() => setSelected(null)}
+          ownerUserId={ownerUserId}
           onCountChange={handleCountChange}
         />
       )}

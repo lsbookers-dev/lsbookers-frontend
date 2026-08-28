@@ -280,7 +280,7 @@ export default function ProviderPublicProfilePage() {
               <p className="text-white/70 leading-relaxed">{bio}</p>
             </section>
 
-            <PublicationsSection publications={publications} title="Réalisations" />
+            <PublicationsSection publications={publications} title="Réalisations" ownerUserId={Number(userId)} />
 
             {profile && (
               <AgendaCalendar

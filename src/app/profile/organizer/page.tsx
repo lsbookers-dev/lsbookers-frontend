@@ -549,6 +549,7 @@ export default function OrganizerProfilePage() {
               <PublicationsSection
                 publications={publications}
                 isOwner={true}
+                  ownerUserId={user?.id ? Number(user.id) : undefined}
                 onDelete={deletePublication}
               />
             ) : profile ? (
