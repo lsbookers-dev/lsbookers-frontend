@@ -93,14 +93,22 @@ export default function LoginPage() {
     setEmailNotVerified(false)
     setLoading(true)
     try {
+      // Envoyer le device token stocké pour identifier les appareils déjà connus
+      const storedDeviceToken = typeof window !== 'undefined'
+        ? localStorage.getItem('lsb_device_token')
+        : null
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (storedDeviceToken) reqHeaders['X-Device-Token'] = storedDeviceToken
+
       const response = await axios.post(
         `${API}/api/auth/login`,
         { email, password },
-        { headers: { 'Content-Type': 'application/json' }, withCredentials: true, timeout: 15000 }
+        { headers: reqHeaders, withCredentials: true, timeout: 15000 }
       )
-      const { user, token } = response.data
-      if (token) localStorage.setItem('token', token)
-      if (user)  localStorage.setItem('user', JSON.stringify(user))
+      const { user, token, deviceToken } = response.data
+      if (token)       localStorage.setItem('token', token)
+      if (user)        localStorage.setItem('user', JSON.stringify(user))
+      if (deviceToken) localStorage.setItem('lsb_device_token', deviceToken)
       setUser(user)
       router.replace((user?.isAdmin || user?.role === 'ADMIN') ? '/admin/dashboard' : '/home')
     } catch (err) {
