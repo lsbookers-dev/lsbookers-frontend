@@ -167,9 +167,7 @@ export default function ArtistProfilePage() {
   // ── Chargement du profil
   useEffect(() => {
     if (!user) return
-    const userId = typeof user.id === 'string' ? parseInt(user.id) : Number(user.id)
-
-    fetch(`${API}/api/profile/user/${userId}`, { credentials: 'include' })
+    fetch(`${API}/api/profile/me`, { credentials: 'include', headers: getAuthHeaders() })
       .then(r => r.json())
       .then(({ profile: p }) => {
         if (!p) return

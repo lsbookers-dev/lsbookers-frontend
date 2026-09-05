@@ -237,9 +237,7 @@ export default function ProfileSettings() {
   // ── Chargement du profil
   useEffect(() => {
     if (!user) return
-    const userId = typeof user.id === 'string' ? parseInt(user.id) : user.id
-
-    fetch(`${API}/api/profile/user/${userId}`, { credentials: 'include' })
+    fetch(`${API}/api/profile/me`, { credentials: 'include', headers: getAuthHeaders() })
       .then(r => r.json())
       .then(({ profile: p }) => {
         if (!p) return
@@ -273,7 +271,7 @@ export default function ProfileSettings() {
 
     // Charger les offres (organisateurs)
     if (user?.role === 'ORGANIZER') {
-      fetch(`${API}/api/profile/user/${userId}`, { credentials: 'include' })
+      fetch(`${API}/api/profile/me`, { credentials: 'include', headers: getAuthHeaders() })
         .then(r => r.json())
         .then(({ profile: p }) => {
           if (!p?.id) return
