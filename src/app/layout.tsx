@@ -41,7 +41,16 @@ function LayoutContent({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const publicPaths = ['/', '/login', '/register', '/forgot-password', '/reset-password']
+  const publicPaths = [
+    '/',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-email',
+    '/device-verified',
+    '/contact',
+  ]
   const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/legal/')
   const isAdminPage  = pathname.startsWith('/admin')
   const showAppNav   = !isPublicPage && !isAdminPage && !!user

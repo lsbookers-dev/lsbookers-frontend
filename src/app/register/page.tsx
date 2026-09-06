@@ -382,8 +382,6 @@ export default function RegisterPage() {
         },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       )
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
       if (data.deviceToken) localStorage.setItem('lsb_device_token', data.deviceToken)
       setStep(4)
     } catch (err) {

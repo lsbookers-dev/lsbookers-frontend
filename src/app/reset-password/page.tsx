@@ -41,6 +41,8 @@ function ResetPasswordForm() {
     setLoading(true)
     try {
       await axios.post(`${API}/api/auth/reset-password`, { token, password })
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
       setSuccess(true)
       setTimeout(() => router.push('/login'), 3000)
     } catch (err) {

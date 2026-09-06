@@ -28,20 +28,12 @@ type User = {
   avatarUrl?: string | null
 }
 
-type RegisterData = {
-  email: string
-  password: string
-  role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
-  name?: string
-}
-
 type AuthContextType = {
   user: User | null
   token: string | null
   loading: boolean
   setUser: React.Dispatch<React.SetStateAction<User | null>>
   login: (email: string, password: string) => Promise<void>
-  register: (data: RegisterData) => Promise<void>
   logout: () => void
 }
 
@@ -71,7 +63,16 @@ const normalizeUser = (raw: RawUser): User => ({
 })
 
 /* ===================== Routes publiques ===================== */
-const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/contact']
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/device-verified',
+  '/contact',
+]
 
 const isPublicPath = (pathname: string) => {
   if (PUBLIC_PATHS.includes(pathname)) return true
@@ -87,7 +88,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter()
   const pathname = usePathname()
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL
+  // Accepte une configuration avec ou sans suffixe /api.
+  const API_URL = (
+    process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app'
+  ).replace(/\/+$/, '').replace(/\/api$/, '')
 
   useEffect(() => {
     // On lit le token depuis localStorage (fallback pour Safari qui bloque les cookies cross-origin)
@@ -112,7 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   /* ===================== Login ===================== */
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${API_URL}/auth/login`, {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -143,43 +147,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  /* ===================== Register ===================== */
-  const register = async (data: RegisterData) => {
-    const res = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    })
-
-    if (!res.ok) {
-      console.error('❌ Échec de l’inscription')
-      throw new Error('Register failed')
-    }
-
-    const resData = await res.json()
-    console.log('🆕 Nouvel utilisateur inscrit :', resData.user)
-
-    const normalized = normalizeUser(resData.user)
-
-    localStorage.setItem('user', JSON.stringify(normalized))
-    localStorage.setItem('token', resData.token)
-
-    setToken(resData.token)
-    setUser(normalized)
-
-    if (normalized.role === 'ADMIN') {
-      router.replace('/admin/dashboard')
-    } else {
-      router.replace('/home')
-    }
-  }
-
   /* ===================== Logout ===================== */
   const logout = async () => {
     // Efface le cookie httpOnly côté serveur
     try {
-      await fetch(`${API_URL}/auth/logout`, {
+      await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -192,7 +164,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, setUser, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, setUser, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   )
