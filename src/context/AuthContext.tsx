@@ -80,6 +80,22 @@ const isPublicPath = (pathname: string) => {
   return false
 }
 
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app'
+).replace(/\/+$/, '').replace(/\/api$/, '')
+
+function clearLocalSession() {
+  try { localStorage.removeItem('user') } catch { }
+  try { localStorage.removeItem('token') } catch { }
+}
+
+async function clearApplicationCaches() {
+  if (!('serviceWorker' in navigator)) return
+  const registration = await navigator.serviceWorker.getRegistration()
+  const worker = navigator.serviceWorker.controller || registration?.active
+  worker?.postMessage({ type: 'CLEAR_CACHES' })
+}
+
 /* ===================== Provider ===================== */
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
@@ -88,31 +104,83 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Accepte une configuration avec ou sans suffixe /api.
-  const API_URL = (
-    process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app'
-  ).replace(/\/+$/, '').replace(/\/api$/, '')
-
   useEffect(() => {
-    // On lit le token depuis localStorage (fallback pour Safari qui bloque les cookies cross-origin)
+    let cancelled = false
     const storedToken = getAuthToken()
-    const storedUser = localStorage.getItem('user')
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 8000)
 
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-      if (storedToken) setToken(storedToken)
-      console.log('✅ AuthContext : utilisateur détecté dans le localStorage')
-    } else {
-      setToken(null)
-      setUser(null)
+    // Les pages publiques ne doivent jamais attendre le backend pour s'afficher.
+    if (isPublicPath(window.location.pathname)) setLoading(false)
 
-      if (!isPublicPath(pathname) && !pathname.startsWith('/admin')) {
-        router.replace('/login')
+    const validateSession = async () => {
+      try {
+        const headers: HeadersInit = {}
+        if (storedToken) headers.Authorization = `Bearer ${storedToken}`
+
+        const res = await fetch(`${API_URL}/api/auth/me`, {
+          headers,
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+
+        if (!res.ok) {
+          if ([401, 403, 404].includes(res.status)) clearLocalSession()
+          if (!cancelled) {
+            setToken(null)
+            setUser(null)
+          }
+          return
+        }
+
+        const data = await res.json()
+        const normalized = normalizeUser(data.user)
+
+        // Les écrans actuels utilisent le Bearer token. Une session retrouvée
+        // uniquement par cookie est fermée proprement pour éviter un état partiel.
+        if (!storedToken) {
+          await fetch(`${API_URL}/api/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+          }).catch(() => {})
+          clearLocalSession()
+          if (!cancelled) {
+            setToken(null)
+            setUser(null)
+          }
+          return
+        }
+
+        try { localStorage.setItem('user', JSON.stringify(normalized)) } catch { }
+        if (!cancelled) {
+          setToken(storedToken)
+          setUser(normalized)
+        }
+      } catch {
+        if (!cancelled) {
+          setToken(null)
+          setUser(null)
+        }
+      } finally {
+        window.clearTimeout(timeout)
+        if (!cancelled) setLoading(false)
       }
     }
 
-    setLoading(false)
-  }, [pathname, router])
+    validateSession()
+    return () => {
+      cancelled = true
+      controller.abort()
+      window.clearTimeout(timeout)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!loading && !user && !isPublicPath(pathname)) {
+      router.replace('/login')
+    }
+  }, [loading, pathname, router, user])
 
   /* ===================== Login ===================== */
   const login = async (email: string, password: string) => {
@@ -151,13 +219,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     // Efface le cookie httpOnly côté serveur
     try {
+      const headers: HeadersInit = {}
+      if (token) headers.Authorization = `Bearer ${token}`
       await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
+        headers,
         credentials: 'include',
       })
     } catch { }
-    localStorage.removeItem('user')
-    localStorage.removeItem('token') // nettoyage sécurité
+    clearLocalSession()
+    await clearApplicationCaches().catch(() => {})
     setToken(null)
     setUser(null)
     router.replace('/login')

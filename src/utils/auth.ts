@@ -1,13 +1,22 @@
 export function getAuthToken(): string | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('token')
+    try {
+      return localStorage.getItem('token')
+    } catch {
+      return null
+    }
   }
   return null
 }
 
 export function getUserId(): number | null {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token')
+    let token: string | null = null
+    try {
+      token = localStorage.getItem('token')
+    } catch {
+      return null
+    }
     if (!token) return null
 
     try {
