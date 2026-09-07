@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CalendarDays } from 'lucide-react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
@@ -24,10 +23,6 @@ export default function AgendaPage() {
 
   return (
     <div className="lsb-page lsb-agenda-page">
-      <header className="lsb-page-heading">
-        <div><span>AGENDA</span><h1>Pilotez toutes vos dates<em>.</em></h1><p>Disponibilités, événements et bookings dans un espace dédié.</p></div>
-        <div className="lsb-heading-icon"><CalendarDays /></div>
-      </header>
       {profileId ? (
         <div className="lsb-agenda-shell"><AgendaCalendar profileId={profileId} isOwner showAvailability defaultCountry={country} /></div>
       ) : (

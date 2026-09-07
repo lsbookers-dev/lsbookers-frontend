@@ -6,6 +6,7 @@ import { Plus, X, Calendar, MapPin, Euro, Briefcase, Instagram, Facebook, Globe,
 import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import PublicationsSection from '@/components/PublicationsSection'
+import AgendaCalendar from '@/components/AgendaCalendar'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
 
@@ -373,6 +374,13 @@ export default function OrganizerPublicProfilePage() {
               <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Description</h2>
               <p className="text-white/70 leading-relaxed">{description}</p>
             </section>
+
+            <AgendaCalendar
+              profileId={profile.id}
+              isOwner={false}
+              showAvailability
+              viewerRole={viewer?.role ?? null}
+            />
 
             <section className="rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.04]">
               <div className="flex items-center justify-between p-3">

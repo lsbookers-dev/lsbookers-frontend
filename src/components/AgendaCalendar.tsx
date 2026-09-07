@@ -7,7 +7,7 @@ import {
   CalEvent, AvailDay, BookingItem, EventSummary, EventDetail,
   EventOffer, EventOfferForm, LinkedBooking, EventMode,
 } from './agenda/types'
-import { MONTHS_FR, isSameDay } from './agenda/helpers'
+import { isSameDay } from './agenda/helpers'
 import BookingsPanel  from './agenda/BookingsPanel'
 import EventPanel     from './agenda/EventPanel'
 import CalendarGrid   from './agenda/CalendarGrid'
@@ -42,8 +42,7 @@ export default function AgendaCalendar({
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year,  setYear]  = useState(now.getFullYear())
+  const [focusDate, setFocusDate] = useState(() => new Date(now.getFullYear(), now.getMonth(), now.getDate()))
   const [events,       setEvents]       = useState<CalEvent[]>([])
   const [availability, setAvailability] = useState<AvailDay[]>([])
   const [selected, setSelected] = useState<Date | null>(null)
@@ -165,22 +164,34 @@ export default function AgendaCalendar({
       const headers: Record<string, string> = {}
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      const endpoint = isOwner
-        ? `${API}/api/events/my?month=${month}&year=${year}`
-        : `${API}/api/events/profile/${profileId}?month=${month}&year=${year}`
+      const monday = new Date(focusDate)
+      monday.setDate(focusDate.getDate() - ((focusDate.getDay() + 6) % 7))
+      const sunday = new Date(monday)
+      sunday.setDate(monday.getDate() + 6)
+      const periods = Array.from(new Map([monday, sunday].map((date) => [
+        `${date.getFullYear()}-${date.getMonth() + 1}`,
+        { month: date.getMonth() + 1, year: date.getFullYear() },
+      ])).values())
 
-      const [evRes, avRes] = await Promise.all([
-        fetch(endpoint, { headers }),
-        showAvailability
-          ? fetch(`${API}/api/events/availability/${profileId}?month=${month}&year=${year}`)
-          : Promise.resolve(null),
-      ])
+      const eventResponses = await Promise.all(periods.map((period) => {
+        const endpoint = isOwner
+          ? `${API}/api/events/my?month=${period.month}&year=${period.year}`
+          : `${API}/api/events/profile/${profileId}?month=${period.month}&year=${period.year}`
+        return fetch(endpoint, { headers })
+      }))
+      const eventPayloads = await Promise.all(eventResponses.filter((response) => response.ok).map((response) => response.json()))
+      const mergedEvents = Array.from(new Map(eventPayloads.flatMap((payload) => payload.events || []).map((event: CalEvent) => [event.id, event])).values())
+      setEvents(mergedEvents)
 
-      if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []) }
-      if (avRes?.ok) { const d = await avRes.json(); setAvailability(d.availability || []) }
+      if (showAvailability) {
+        const availabilityResponses = await Promise.all(periods.map((period) => fetch(`${API}/api/events/availability/${profileId}?month=${period.month}&year=${period.year}`)))
+        const availabilityPayloads = await Promise.all(availabilityResponses.filter((response) => response.ok).map((response) => response.json()))
+        const mergedAvailability = Array.from(new Map(availabilityPayloads.flatMap((payload) => payload.availability || []).map((item: AvailDay) => [item.date, item])).values())
+        setAvailability(mergedAvailability)
+      }
     } catch { /* silencieux */ }
     finally { setLoading(false) }
-  }, [API, profileId, isOwner, showAvailability, month, year])
+  }, [API, profileId, isOwner, showAvailability, focusDate])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -662,17 +673,6 @@ export default function AgendaCalendar({
     setShowBookingForm(false); setBookingMsg(''); setBookingFee(''); setBookingSent(false)
   }, [selected])
 
-  /* ── Grille du mois ── */
-  const firstDay  = new Date(year, month - 1, 1)
-  const lastDay   = new Date(year, month, 0)
-  const startDow  = (firstDay.getDay() + 6) % 7
-  const totalDays = lastDay.getDate()
-  const cells: (Date | null)[] = [
-    ...Array(startDow).fill(null),
-    ...Array.from({ length: totalDays }, (_, i) => new Date(year, month - 1, i + 1)),
-  ]
-  while (cells.length % 7 !== 0) cells.push(null)
-
   const selectedEvents = selected ? events.filter(e => isSameDay(new Date(e.start), selected)) : []
   const selectedAvail  = selected ? availability.find(a => isSameDay(new Date(a.date), selected)) : undefined
   // Un organisateur peut proposer un booking sur tout jour qui n'est pas explicitement bloqué
@@ -681,9 +681,21 @@ export default function AgendaCalendar({
     && selectedAvail?.status !== 'UNAVAILABLE'
     && selectedAvail?.status !== 'BOOKED'
 
-  /* ── Navigation mois ── */
-  const prevMonth = () => { if (month === 1) { setMonth(12); setYear(y => y - 1) } else setMonth(m => m - 1); setSelected(null) }
-  const nextMonth = () => { if (month === 12) { setMonth(1); setYear(y => y + 1) } else setMonth(m => m + 1); setSelected(null) }
+  /* ── Navigation semaine ── */
+  const moveWeek = (amount: number) => {
+    const next = new Date(focusDate)
+    next.setDate(next.getDate() + amount * 7)
+    setFocusDate(next); setSelected(null)
+  }
+  const goToday = () => {
+    const next = new Date()
+    setFocusDate(next); setSelected(next)
+  }
+  const weekStart = new Date(focusDate)
+  weekStart.setDate(focusDate.getDate() - ((focusDate.getDay() + 6) % 7))
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  const weekLabel = `${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
 
   /* ── Sauvegarder disponibilité ── */
   const saveAvailability = async (status: string) => {
@@ -741,7 +753,7 @@ export default function AgendaCalendar({
      RENDU
   ───────────────────────────────────────────────────────── */
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: '0.5px solid #1c2030', background: '#0c0f18' }}>
+    <div className={`lsb-agenda-component rounded-2xl overflow-hidden ${isOwner ? 'is-owner' : 'is-public'}`} style={{ border: '0.5px solid #1c2030', background: '#0c0f18' }}>
 
       {/* En-tête */}
       <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '0.5px solid #1c2030', background: '#111318' }}>
@@ -786,10 +798,9 @@ export default function AgendaCalendar({
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2.5">
-              <span className="font-medium" style={{ fontSize: 16, color: '#d0daf0' }}>
-                {MONTHS_FR[month - 1]} {year}
-              </span>
+            <div className="lsb-agenda-period">
+              <span>{isOwner ? 'VOTRE AGENDA' : 'DISPONIBILITÉS'}</span>
+              <strong>{weekLabel}</strong>
               {events.length > 0 && (
                 <span style={{ fontSize: 11, color: '#9ea8c8' }}>
                   {events.length} événement{events.length > 1 ? 's' : ''}
@@ -817,13 +828,14 @@ export default function AgendaCalendar({
               )}
               <div style={{ width: '0.5px', height: 16, background: '#1c2030', margin: '0 2px' }} />
               <button
-                onClick={prevMonth}
+                onClick={() => moveWeek(-1)}
                 style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#9ea8c8', cursor: 'pointer' }}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
+              <button onClick={goToday} className="lsb-agenda-today">Aujourd’hui</button>
               <button
-                onClick={nextMonth}
+                onClick={() => moveWeek(1)}
                 style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#9ea8c8', cursor: 'pointer' }}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -949,7 +961,7 @@ export default function AgendaCalendar({
       {/* Grille calendrier + panneau jour (masqués quand un panneau est ouvert) */}
       {!showPanel && !showEventPanel && (
         <CalendarGrid
-          cells={cells}
+          focusDate={focusDate}
           events={events}
           availability={availability}
           selected={selected}
