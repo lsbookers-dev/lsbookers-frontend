@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Briefcase, MapPin, Calendar, Euro, Search, SlidersHorizontal, Sparkles, Plus, X, Users, Send, Share2, Layers } from 'lucide-react'
+import { Briefcase, MapPin, Search, SlidersHorizontal, Sparkles, Plus, X, Send, Share2, Layers } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
@@ -73,22 +73,23 @@ function OfferCard({
   const date = new Date(offer.date)
   const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const day = date.toLocaleDateString('fr-FR', { day: '2-digit' })
+  const month = date.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '').toUpperCase()
   const similarHref = `/offers?${offer.specialty ? `specialty=${encodeURIComponent(offer.specialty)}&` : ''}location=${encodeURIComponent(offer.location)}`
 
   return (
-    <div className={`group relative rounded-2xl border ${cfg.border} bg-white/[0.03] hover:bg-white/[0.05] transition-all duration-200 overflow-hidden flex flex-col`}>
+    <article className={`lsb-offer-poster group ${offer.type.toLowerCase()}`}>
+      <div className="lsb-offer-art" aria-hidden="true">
+        <div className="lsb-offer-beam lsb-offer-beam-one" />
+        <div className="lsb-offer-beam lsb-offer-beam-two" />
+        <span className={`lsb-offer-type ${cfg.badge}`}>{cfg.label} recherché</span>
+        <div className="lsb-offer-date"><strong>{day}</strong><span>{month} · {timeStr}</span></div>
+      </div>
 
-      {/* Trait couleur en haut */}
-      <div className={`absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r ${cfg.gradient} opacity-60 group-hover:opacity-100 transition-opacity`} />
-
-      <div className="p-5 flex flex-col gap-4 flex-1">
-
-        {/* Organisateur (cliquable) + badge type */}
-        <div className="flex items-start justify-between gap-3">
+      <div className="lsb-offer-content">
+        <header className="lsb-offer-owner">
           <Link href={`/organizer/${offer.organizer.userId}`} className="flex items-center gap-3 min-w-0 group/link">
-            <div className="relative flex-shrink-0">
-              <div className={`absolute -inset-0.5 rounded-full bg-gradient-to-br ${cfg.gradient} opacity-0 group-hover:opacity-30 transition-opacity blur-sm`} />
-              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/10">
+            <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 flex-shrink-0">
                 {offer.organizer.avatar ? (
                   <Image src={offer.organizer.avatar} alt={offer.organizer.name} fill className="object-cover" />
                 ) : (
@@ -96,7 +97,6 @@ function OfferCard({
                     {offer.organizer.name[0]?.toUpperCase()}
                   </div>
                 )}
-              </div>
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white group-hover/link:text-white/80 transition-colors truncate">
@@ -105,58 +105,25 @@ function OfferCard({
               <p className="text-xs text-white/40">Organisateur</p>
             </div>
           </Link>
+        </header>
 
-          <span className={`text-xs px-2.5 py-1 rounded-full border font-medium flex-shrink-0 ${cfg.badge}`}>
-            {cfg.label}
-          </span>
+        <div className="lsb-offer-title">
+          <span>{offer.specialty || 'Opportunité'} · {offer.location}</span>
+          <h3>{offer.title}</h3>
         </div>
 
-        {/* Titre + spécialité */}
-        <div>
-          <h3 className="font-semibold text-white leading-snug">{offer.title}</h3>
-          {offer.specialty && (
-            <span className={`inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full border ${cfg.badge}`}>
-              {offer.specialty}
-            </span>
-          )}
+        <p className="lsb-offer-description">{offer.description}</p>
+
+        <div className="lsb-offer-stats">
+          <span><strong>{offer.fee != null ? `${offer.fee.toLocaleString('fr-FR')} €` : 'À définir'}</strong><small>Cachet</small></span>
+          <span><strong>{offer.applicantCount ?? 0}</strong><small>Candidat{(offer.applicantCount ?? 0) > 1 ? 's' : ''}</small></span>
+          <span><strong>{dateStr}</strong><small>{offer.location}, {offer.country}</small></span>
         </div>
 
-        {/* Description */}
-        <p className="text-sm text-white/60 leading-relaxed line-clamp-3 flex-1">
-          {offer.description}
-        </p>
-
-        {/* Infos : date, lieu, tarif */}
-        <div className="flex flex-wrap gap-3 text-xs text-white/50">
-          <span className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-            {dateStr} à {timeStr}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-            {offer.location}, {offer.country}
-          </span>
-          {offer.fee != null && (
-            <span className="flex items-center gap-1.5 text-green-400/80 font-medium">
-              <Euro className="w-3.5 h-3.5 flex-shrink-0" />
-              {offer.fee.toLocaleString('fr-FR')} €
-            </span>
-          )}
-          {(offer.applicantCount ?? 0) > 0 && (
-            <span className="flex items-center gap-1.5 text-white/35">
-              <Users className="w-3.5 h-3.5 flex-shrink-0" />
-              {offer.applicantCount} candidat{offer.applicantCount! > 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-white/5">
-
-          {/* Offres similaires */}
+        <footer className="lsb-offer-actions">
           <Link
             href={similarHref}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-white/50 hover:text-white/80 border border-white/10 hover:border-white/20 transition-all"
+            className="lsb-offer-secondary"
           >
             <Layers className="w-3 h-3" />
             Similaires
@@ -165,7 +132,7 @@ function OfferCard({
           {/* Partager */}
           <button
             onClick={() => onShare(offer)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-white/50 hover:text-white/80 border border-white/10 hover:border-white/20 transition-all"
+            className="lsb-offer-secondary"
           >
             <Share2 className="w-3 h-3" />
             Partager
@@ -176,15 +143,15 @@ function OfferCard({
             <button
               onClick={() => onApply(offer)}
               disabled={applying}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-white font-medium bg-gradient-to-r ${cfg.apply} hover:opacity-90 disabled:opacity-50 transition-all`}
+              className={`lsb-offer-apply bg-gradient-to-r ${cfg.apply}`}
             >
               <Send className="w-3 h-3" />
               {applying ? '…' : 'Postuler'}
             </button>
           )}
-        </div>
+        </footer>
       </div>
-    </div>
+    </article>
   )
 }
 
@@ -500,7 +467,7 @@ function OffersInner() {
         ) : (
           <>
             <p className="text-xs text-white/30 mb-4">{visibleOffers.length} offre{visibleOffers.length > 1 ? 's' : ''}</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-5">
               {visibleOffers.map(offer => (
                 <OfferCard
                   key={offer.id}
