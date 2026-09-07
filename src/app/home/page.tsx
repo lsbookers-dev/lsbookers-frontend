@@ -840,9 +840,9 @@ export default function HomePage() {
         </div>
 
         <aside className="lsb-home-rail">
-          <OffersSidebar apiBase={API_BASE} onSelectOffer={setSelectedOffer} />
-          {suggested.length > 0 && <SuggestedProfiles items={suggested} />}
           <TopList title="Artistes en tendance" role="ARTIST" apiBase={API_BASE} />
+          <TopList title="Prestataires en tendance" role="PROVIDER" apiBase={API_BASE} />
+          <OffersSidebar apiBase={API_BASE} onSelectOffer={setSelectedOffer} />
         </aside>
       </div>
 

@@ -228,7 +228,7 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
       {/* ══════════════════════════════════════════════════
           HEADER DESKTOP / MOBILE TOP BAR
       ══════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 w-full bg-neutral-950/85 backdrop-blur-md border-b border-white/8">
+      <header className="fixed top-0 left-0 right-0 z-50 w-full bg-neutral-950/85 backdrop-blur-md border-b border-white/8">
         <div className="px-4 sm:px-6">
           <div className="h-16 flex items-center justify-between gap-4">
 
