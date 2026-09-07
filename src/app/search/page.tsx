@@ -76,9 +76,9 @@ const STYLES = [
 ]
 
 const ROLE_CONFIG = {
-  ARTIST:    { label: 'Artistes',       color: 'pink',   icon: Music2,    gradient: 'from-pink-500 to-rose-600',    bg: 'bg-pink-500/10 border-pink-500/30 text-pink-300' },
-  PROVIDER:  { label: 'Prestataires',   color: 'violet', icon: Wrench,    gradient: 'from-violet-500 to-purple-600', bg: 'bg-violet-500/10 border-violet-500/30 text-violet-300' },
-  ORGANIZER: { label: 'Organisateurs',  color: 'blue',   icon: Building2, gradient: 'from-blue-500 to-cyan-600',    bg: 'bg-blue-500/10 border-blue-500/30 text-blue-300' },
+  ARTIST:    { label: 'Artistes',       color: 'pink',   icon: Music2,    gradient: 'from-pink-500 to-rose-600',    bg: 'bg-pink-500/10 border-pink-500/30 text-pink-300',   accent: '#ec4899', textColor: '#f472b6' },
+  PROVIDER:  { label: 'Prestataires',   color: 'violet', icon: Wrench,    gradient: 'from-violet-500 to-purple-600', bg: 'bg-violet-500/10 border-violet-500/30 text-violet-300', accent: '#8b5cf6', textColor: '#a78bfa' },
+  ORGANIZER: { label: 'Organisateurs',  color: 'blue',   icon: Building2, gradient: 'from-blue-500 to-cyan-600',    bg: 'bg-blue-500/10 border-blue-500/30 text-blue-300',   accent: '#3b82f6', textColor: '#60a5fa' },
 } as const
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -150,8 +150,9 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
     <article
       onClick={onClick}
       className="lsb-discover-card group cursor-pointer"
+      style={{ borderLeft: `3px solid ${cfg.accent}` }}
     >
-      <div className={`lsb-discover-visual bg-gradient-to-br ${cfg.gradient}`}>
+      <div className="lsb-discover-visual" style={{ background: `linear-gradient(135deg, ${cfg.accent}33, #0a070f)` }}>
           <div className="lsb-discover-avatar">
             <Image
               src={user.profile?.avatar || '/default-avatar.png'}
@@ -164,7 +165,7 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
           <span>Voir le profil</span>
       </div>
       <div className="lsb-discover-info">
-        <div className={`flex items-center gap-1.5 text-[10px] uppercase tracking-widest ${cfg.color === 'pink' ? 'text-pink-400' : cfg.color === 'blue' ? 'text-blue-400' : 'text-violet-400'}`}><Icon className="w-3 h-3" />{cfg.label.replace(/s$/, '')}</div>
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest" style={{ color: cfg.textColor }}><Icon className="w-3 h-3" />{cfg.label.replace(/s$/, '')}</div>
         <h2>{displayName}</h2>
         <p>{subtitle}</p>
           {(user.profile?.location || user.profile?.country) && (
@@ -200,15 +201,16 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
-  const handleSearch = useCallback((queryOverride?: string) => {
+  const handleSearch = useCallback((queryOverride?: string, roleOverride?: string) => {
     if (!token || !API_BASE) return
     setLoading(true)
     setHasSearched(true)
 
     const params = new URLSearchParams()
     const effectiveSearch = typeof queryOverride === 'string' ? queryOverride : searchTerm
+    const effectiveRole = roleOverride !== undefined ? roleOverride : typeFilter
     if (effectiveSearch.trim()) params.append('name', effectiveSearch.trim())
-    if (typeFilter)        params.append('role', typeFilter)
+    if (effectiveRole)     params.append('role', effectiveRole)
     if (zone.trim()) {
       params.append('zone', zone.trim())
       params.append('location', zone.trim())
@@ -386,7 +388,7 @@ export default function SearchPage() {
                       <button
                         key={val}
                         type="button"
-                        onClick={() => { setTypeFilter(val); setTypeFilters([]) }}
+                        onClick={() => { setTypeFilter(val); setTypeFilters([]); handleSearch(undefined, val) }}
                         className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
                           typeFilter === val
                             ? 'bg-white/10 border-white/25 text-white'

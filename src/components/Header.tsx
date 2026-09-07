@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Bell, LogOut, Mail, Search,
+  Bell, LogOut, Mail,
   Settings, UserRound, ChevronDown,
 } from 'lucide-react'
 import { getAuthToken } from '@/utils/auth'
@@ -100,8 +100,7 @@ export default function Header() {
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
   const [menuOpen, setMenuOpen]           = useState(false)
-  const [globalSearch, setGlobalSearch]   = useState('')
-  const [unreadMsg, setUnreadMsg]         = useState(0)
+const [unreadMsg, setUnreadMsg]         = useState(0)
   const [unreadNotif, setUnreadNotif]     = useState(0)
   const menuRef  = useRef<HTMLDivElement>(null)
 
@@ -238,12 +237,7 @@ export default function Header() {
               <span>LS</span><strong>LSBOOKERS</strong>
             </Link>
 
-            <form className="lsb-header-search" onSubmit={e => { e.preventDefault(); if (globalSearch.trim()) router.push(`/discover?name=${encodeURIComponent(globalSearch.trim())}`) }}>
-              <Search aria-hidden="true" />
-              <input value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} placeholder="Rechercher sur LSBookers" aria-label="Rechercher sur LSBookers" />
-            </form>
-
-            {/* ── Nav desktop ────────────────────────────── */}
+{/* ── Nav desktop ────────────────────────────── */}
             <nav className="hidden lg:flex items-center gap-1">
               {navLinks.map(link => (
                 <Link key={link.href} href={link.href}

@@ -10,6 +10,7 @@ import {
   Volume2, VolumeX,
 } from 'lucide-react'
 import PublicationModal from '@/components/PublicationModal'
+import AddPublicationModal from '@/components/AddPublicationModal'
 import OfferModal, { type OfferDetail } from '@/components/OfferModal'
 import { getAuthToken } from '@/utils/auth'
 import CityAutocomplete from '@/components/CityAutocomplete'
@@ -669,6 +670,7 @@ export default function HomePage() {
   const [isMuted, setIsMuted]             = useState(true)
   const toggleMute = () => setIsMuted(m => !m)
   const [activeTab, setActiveTab]         = useState<'forYou' | 'network' | 'nearby'>('forYou')
+  const [showAddPubModal, setShowAddPubModal] = useState(false)
 
   // ── Fetch feed (page initiale ou suivante) ──────────────
   const fetchFeed = useCallback(async (pageNum: number, replace: boolean) => {
@@ -757,12 +759,13 @@ export default function HomePage() {
   return (
     <main className="lsb-page lsb-home-page text-white">
 
+      {featured.length > 0 && <FeaturedCarousel items={featured} />}
+
       <header className="lsb-page-heading lsb-home-heading">
         <div><span>VOTRE RÉSEAU</span><h1>La scène bouge<em>.</em></h1><p>Les nouveautés de votre univers professionnel.</p></div>
-        <Link href="/studio-profile" className="lsb-primary-button">Créer</Link>
       </header>
 
-      <section className="lsb-composer">
+      <section className="lsb-composer" style={{ cursor: 'pointer' }} onClick={() => setShowAddPubModal(true)}>
         <div className="lsb-composer-avatar overflow-hidden">
           {user?.avatarUrl ? (
             <Image src={user.avatarUrl} alt="" width={40} height={40} style={{ objectFit: 'cover', width: '100%', height: '100%' }} unoptimized />
@@ -770,8 +773,7 @@ export default function HomePage() {
             user?.name ? user.name[0].toUpperCase() : 'LS'
           )}
         </div>
-        <Link href="/studio-profile">Partagez une actualité, une date, un projet…</Link>
-        <span>Média</span><span>Date</span>
+        <span className="flex-1 text-white/40">Ajouter une Publication</span>
       </section>
 
       <div className="lsb-feed-tabs" role="tablist" aria-label="Fil d'actualité">
@@ -841,9 +843,43 @@ export default function HomePage() {
           <OffersSidebar apiBase={API_BASE} onSelectOffer={setSelectedOffer} />
           {suggested.length > 0 && <SuggestedProfiles items={suggested} />}
           <TopList title="Artistes en tendance" role="ARTIST" apiBase={API_BASE} />
-          {featured.length > 0 && <FeaturedCarousel items={featured.slice(0, 2)} />}
         </aside>
       </div>
+
+      {/* ── Modale ajouter publication ─────────────────────── */}
+      {showAddPubModal && user && (
+        <AddPublicationModal
+          profileId={user.id}
+          token={getAuthToken() ?? ''}
+          accent="violet"
+          onClose={() => setShowAddPubModal(false)}
+          onPublished={(pub) => {
+            setPosts(prev => [{
+              id: pub.id,
+              media: pub.media,
+              mediaType: pub.mediaType.toUpperCase(),
+              caption: pub.caption ?? null,
+              title: pub.title ?? '',
+              createdAt: new Date().toISOString(),
+              likesCount: 0,
+              commentsCount: 0,
+              likedByMe: false,
+              isFromFollow: false,
+              additionalMedia: [],
+              author: {
+                profileId: user.id,
+                userId: null,
+                name: user.name ?? '',
+                avatar: user.avatarUrl ?? null,
+                role: null,
+                profession: null,
+                profileUrl: '/studio-profile',
+              },
+            }, ...prev])
+            setShowAddPubModal(false)
+          }}
+        />
+      )}
 
       {/* ── Modale offre ───────────────────────────────────── */}
       {selectedOffer && (
