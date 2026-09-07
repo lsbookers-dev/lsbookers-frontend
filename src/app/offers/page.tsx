@@ -350,7 +350,7 @@ function OffersInner() {
 
   return (
     <main className="min-h-screen text-white lsb-surface-page lsb-offers-page">
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
 
         {/* ── En-tête ── */}
         <div className="mb-8 flex items-start justify-between gap-4">
@@ -467,7 +467,7 @@ function OffersInner() {
         ) : (
           <>
             <p className="text-xs text-white/30 mb-4">{visibleOffers.length} offre{visibleOffers.length > 1 ? 's' : ''}</p>
-            <div className="grid grid-cols-1 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
               {visibleOffers.map(offer => (
                 <OfferCard
                   key={offer.id}
