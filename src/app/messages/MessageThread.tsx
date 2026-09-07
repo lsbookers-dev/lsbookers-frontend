@@ -10,7 +10,7 @@ import {
   ArrowLeft, MessageCircle, Loader2,
   CheckCheck, Check, Paperclip, Send, FileText, X, ExternalLink, CalendarPlus,
   UserPlus, Search,
-  MapPin, CalendarDays,
+  MapPin, CalendarDays, Info,
 } from 'lucide-react'
 import { Avatar, AttachmentBubble } from './MessageUI'
 import { BookingRequestCard, CancellationRequestCard } from './BookingCards'
@@ -45,6 +45,7 @@ interface MessageThreadProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   fetchMessages: (convId: number, silent?: boolean) => Promise<void>
+  onOpenDetails: () => void
 }
 
 export default function MessageThread({
@@ -54,6 +55,7 @@ export default function MessageThread({
   handleSend, handleMessagesScroll, handleTextareaChange,
   messagesContainerRef, messagesEndRef, fileInputRef, textareaRef,
   fetchMessages,
+  onOpenDetails,
 }: MessageThreadProps) {
   const router = useRouter()
 
@@ -279,6 +281,7 @@ export default function MessageThread({
             ? <Link href={profileLink} className="flex-1 min-w-0">{inner}</Link>
             : <div className="flex-1 min-w-0">{inner}</div>
         })()}
+        <button type="button" onClick={onOpenDetails} className="lsb-thread-info-button" aria-label="Informations sur la conversation"><Info className="w-4 h-4" /></button>
       </div>
 
       {/* Formulaire de proposition de booking (slide-down) */}
@@ -395,7 +398,7 @@ export default function MessageThread({
               // Carte booking request
               if (msg.type === 'BOOKING_REQUEST' && msg.bookingRequest) {
                 items.push(
-                  <div key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  <div id={`message-${msg.id}`} key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                     {!isMe && <div className="w-7 h-7 shrink-0 mb-1"><Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} /></div>}
                     <div className={`flex flex-col max-w-[90%] sm:max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
                       <BookingRequestCard msg={msg} currentUserId={currentUserId} token={token} onStatusUpdate={onStatusUpdate} />
@@ -412,7 +415,7 @@ export default function MessageThread({
               // Carte demande d'annulation
               if (msg.type === 'CANCELLATION_REQUEST' && msg.bookingRequest) {
                 items.push(
-                  <div key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  <div id={`message-${msg.id}`} key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                     {!isMe && <div className="w-7 h-7 shrink-0 mb-1"><Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} /></div>}
                     <div className={`flex flex-col max-w-[90%] sm:max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
                       <CancellationRequestCard msg={msg} currentUserId={currentUserId} token={token} onStatusUpdate={onStatusUpdate} />
@@ -432,7 +435,7 @@ export default function MessageThread({
                 try { shared = JSON.parse(msg.content) } catch {}
                 if (shared) {
                   items.push(
-                    <div key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div id={`message-${msg.id}`} key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                       {!isMe && <div className="w-7 h-7 shrink-0 mb-1"><Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} /></div>}
                       <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
                         <p className="text-[10px] text-white/30 mb-1 px-1">{isMe ? 'Vous avez partagé un profil' : 'A partagé un profil'}</p>
@@ -472,7 +475,7 @@ export default function MessageThread({
                     ALL: 'border-l-purple-500',
                   }
                   items.push(
-                    <div key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div id={`message-${msg.id}`} key={msg.id} className={`flex items-end gap-2 mt-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                       {!isMe && <div className="w-7 h-7 shrink-0 mb-1"><Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} /></div>}
                       <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
                         <p className="text-[10px] text-white/30 mb-1 px-1">{isMe ? 'Vous avez partagé une offre' : 'A partagé une offre'}</p>
@@ -523,7 +526,7 @@ export default function MessageThread({
               // Message normal — espace réduit si même expéditeur
               const attachmentOnly = !msg.content && !!msg.attachmentUrl
               items.push(
-                <div key={msg.id} className={`flex items-end gap-2 ${isFirst ? 'mt-3' : 'mt-0.5'} ${isMe ? 'justify-end' : 'justify-start'}`}>
+                <div id={`message-${msg.id}`} key={msg.id} className={`flex items-end gap-2 ${isFirst ? 'mt-3' : 'mt-0.5'} ${isMe ? 'justify-end' : 'justify-start'}`}>
                   {/* Avatar : affiché seulement sur le dernier message du groupe */}
                   {!isMe && (
                     <div className="w-7 h-7 shrink-0 mb-1">

@@ -16,6 +16,7 @@ export interface Participant {
 
 export interface Conversation {
   id: number
+  muted?: boolean
   participants: Participant[]
   lastMessage: string
   lastMessageMeta?: {

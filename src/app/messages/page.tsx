@@ -38,6 +38,7 @@ function MessagesContent() {
   const [contacts, setContacts] = useState<SearchUser[]>([])
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [lightbox, setLightbox] = useState<{ url: string; name?: string | null } | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -371,8 +372,9 @@ function MessagesContent() {
         fileInputRef={fileInputRef}
         textareaRef={textareaRef}
         fetchMessages={fetchMessages}
+        onOpenDetails={() => setDetailsOpen(true)}
       />
-      <ConversationDetails conversation={activeConv} currentUserId={currentUserId} />
+      <ConversationDetails conversation={activeConv} currentUserId={currentUserId} messages={messages} token={token} open={detailsOpen} onClose={() => setDetailsOpen(false)} />
       </div>
     </div>
   )
