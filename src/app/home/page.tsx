@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Heart, Star, MapPin, Users, ChevronLeft, ChevronRight,
+  Heart, Star, Users, ChevronLeft, ChevronRight,
   Briefcase, Loader2, UserPlus, Flame, MessageCircle, ChevronDown,
   Volume2, VolumeX,
 } from 'lucide-react'
@@ -88,7 +88,7 @@ type AdminPost = {
   createdAt: string
 }
 
-type Offer = OfferDetail
+type Offer = OfferDetail & { endDate?: string | null }
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -581,10 +581,10 @@ function SuggestedProfiles({ items }: { items: SuggestedProfile[] }) {
 /* ─────────────────────────────────────────────────────────────
    SIDEBAR OFFRES (colonne droite, compact)
 ───────────────────────────────────────────────────────────── */
-const OFFER_BORDER: Record<string, string> = {
-  ARTIST:   'border-l-pink-500',
-  PROVIDER: 'border-l-blue-500',
-  ALL:      'border-l-purple-500',
+const OFFER_TYPE_STYLE: Record<string, { label: string; accent: string }> = {
+  ARTIST:   { label: 'ARTISTE RECHERCHÉ', accent: 'text-pink-300' },
+  PROVIDER: { label: 'PRESTATAIRE RECHERCHÉ', accent: 'text-purple-300' },
+  ALL:      { label: 'PROFIL RECHERCHÉ', accent: 'text-violet-300' },
 }
 
 function OffersSidebar({ apiBase, onSelectOffer }: {
@@ -616,28 +616,53 @@ function OffersSidebar({ apiBase, onSelectOffer }: {
         <p className="text-center text-xs text-white/25 py-6">Aucune offre</p>
       ) : (
         <div className="p-3 flex flex-col gap-2">
-          {offers.map(o => (
-            <button
-              key={o.id}
-              onClick={() => onSelectOffer(o)}
-              className={`group rounded-xl border-l-4 border border-white/8 ${OFFER_BORDER[o.type] ?? OFFER_BORDER.ALL} bg-white/3 hover:bg-white/6 hover:border-white/15 p-3 flex flex-col gap-1.5 transition-all text-left w-full`}
-            >
-              {/* Poste recherché = specialty ou titre */}
-              <p className="text-sm font-semibold text-white leading-snug line-clamp-1 group-hover:text-purple-200 transition-colors">
-                {o.specialty || o.title}
-              </p>
-              {/* Organisateur — mis en valeur */}
-              <p className="text-xs font-medium text-white/65 truncate">{o.organizer.name}</p>
-              {/* Lieu + date */}
-              <div className="flex items-center gap-2 text-[11px] text-white/35">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />{o.location}
+          {offers.map(o => {
+            const typeStyle = OFFER_TYPE_STYLE[o.type] ?? OFFER_TYPE_STYLE.ALL
+            const start = new Date(o.date)
+            const end = o.endDate ? new Date(o.endDate) : null
+            const dateLabel = start.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).replace('.', '')
+            const startTime = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+            const endTime = end?.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+            const avatarUrl = o.organizer.avatar
+              ? (o.organizer.avatar.startsWith('http') ? o.organizer.avatar : `${apiBase}${o.organizer.avatar}`)
+              : null
+
+            return (
+              <button
+                key={o.id}
+                onClick={() => onSelectOffer(o)}
+                className="group relative h-[92px] w-full overflow-hidden rounded-xl border border-white/8 bg-[linear-gradient(115deg,#121019_0%,#1d1230_72%,#29113c_100%)] px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-purple-300/30"
+              >
+                <span className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-purple-500 to-pink-400" />
+                <span className={`block truncate text-[9px] font-semibold tracking-[0.11em] ${typeStyle.accent}`}>
+                  {typeStyle.label}
                 </span>
-                <span className="text-white/15">·</span>
-                <span>📅 {new Date(o.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-              </div>
-            </button>
-          ))}
+                <strong className="mt-1 block truncate text-[15px] font-semibold leading-tight text-white transition-colors group-hover:text-purple-100">
+                  {o.specialty || o.title}
+                </strong>
+                <span className="mt-2 grid min-w-0 grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-2">
+                  <span className="relative h-6 w-6 overflow-hidden rounded-lg bg-gradient-to-br from-purple-700 to-pink-600">
+                    {avatarUrl ? (
+                      <Image src={avatarUrl} alt="" fill sizes="24px" className="object-cover" unoptimized />
+                    ) : (
+                      <span className="grid h-full w-full place-items-center text-[8px] font-semibold text-white">
+                        {o.organizer.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[10px] font-medium leading-none text-white/90">{o.organizer.name}</span>
+                    <span className="mt-1 block truncate text-[9px] leading-none text-white/45">
+                      {o.location} · {dateLabel} · {startTime}{endTime ? `–${endTime}` : ''}
+                    </span>
+                  </span>
+                  <strong className="whitespace-nowrap text-[10px] font-semibold text-white/90">
+                    {o.fee != null ? `${o.fee} €` : 'À définir'}
+                  </strong>
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
 
