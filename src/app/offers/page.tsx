@@ -467,7 +467,7 @@ function OffersInner() {
         ) : (
           <>
             <p className="text-xs text-white/30 mb-4">{visibleOffers.length} offre{visibleOffers.length > 1 ? 's' : ''}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {visibleOffers.map(offer => (
                 <OfferCard
                   key={offer.id}
