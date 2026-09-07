@@ -5,9 +5,9 @@ import { ReactNode, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import BottomNav from '@/components/BottomNav'
 import InstallPrompt from '@/components/InstallPrompt'
+import AppSidebar from '@/components/AppSidebar'
 import { getAuthToken } from '@/utils/auth'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -58,7 +58,7 @@ function LayoutContent({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center text-white">
-        <p>Chargement de l'application...</p>
+        <p>Chargement de l&apos;application...</p>
       </div>
     )
   }
@@ -69,12 +69,13 @@ function LayoutContent({ children }: { children: ReactNode }) {
       {showAppNav && (
         <div className="hidden md:block">
           <Header />
+          <AppSidebar />
         </div>
       )}
 
       {/* Contenu principal — padding bottom sur mobile pour la BottomNav */}
       <main
-        className="flex-grow"
+        className={`flex-grow ${showAppNav ? 'lsb-app-main' : ''}`}
         style={{
           paddingBottom: showAppNav
             ? 'calc(4rem + env(safe-area-inset-bottom))'
@@ -86,12 +87,6 @@ function LayoutContent({ children }: { children: ReactNode }) {
       </main>
 
       {/* Footer → desktop uniquement */}
-      {showAppNav && (
-        <div className="hidden md:block">
-          <Footer />
-        </div>
-      )}
-
       {/* BottomNav → mobile uniquement (< md), toujours affichée si connecté */}
       {showAppNav && <BottomNav />}
 

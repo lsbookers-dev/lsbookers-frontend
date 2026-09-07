@@ -310,7 +310,7 @@ export default function SearchPage() {
   users.forEach(u => { if (u.role in counts) counts[u.role]++ })
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white">
+    <main className="min-h-screen text-white lsb-discover-page">
 
       {/* ── Hero ─────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-white/5">
@@ -323,7 +323,8 @@ export default function SearchPage() {
         <div className="relative max-w-7xl mx-auto px-6 pt-10 pb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Recherche</h1>
+              <p className="lsb-eyebrow">DÉCOUVRIR</p>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Trouvez les bonnes personnes<br className="hidden sm:block" /> pour donner vie à vos projets<span className="text-violet-400">.</span></h1>
               <p className="text-white/50 mt-1 text-sm">
                 Trouve des{' '}
                 <span className="text-pink-400">artistes</span>,{' '}

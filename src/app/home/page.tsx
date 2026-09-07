@@ -750,7 +750,12 @@ export default function HomePage() {
   ]
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 text-white">
+    <main className="lsb-page lsb-home-page text-white">
+
+      <header className="lsb-page-heading lsb-home-heading">
+        <div><span>VOTRE RÉSEAU</span><h1>La scène bouge<em>.</em></h1><p>Les nouveautés de votre univers professionnel.</p></div>
+        <Link href="/studio-profile" className="lsb-primary-button">Créer</Link>
+      </header>
 
       {/* ── Carousel ───────────────────────────────────────── */}
       <FeaturedCarousel items={featured} />
@@ -768,7 +773,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Layout 3 colonnes ──────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_260px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)_250px] gap-5 items-start">
 
         {/* ════ COLONNE GAUCHE : Tendances (sticky) ══════════ */}
         <aside className={`space-y-5 lg:sticky lg:top-20 ${mobileTab !== 'top' ? 'hidden lg:block' : ''}`}>

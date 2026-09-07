@@ -11,12 +11,8 @@ export default function ProfileRedirectPage() {
   useEffect(() => {
     if (!user) {
       router.push('/login')
-    } else if (user.role === 'ARTIST') {
-      router.push('/profile/artist')
-    } else if (user.role === 'ORGANIZER') {
-      router.push('/profile/organizer')
-    } else if (user.role === 'PROVIDER') {
-      router.push('/profile/provider')
+    } else if (['ARTIST', 'ORGANIZER', 'PROVIDER'].includes(user.role)) {
+      router.push('/space')
     } else {
       router.push('/home')
     }

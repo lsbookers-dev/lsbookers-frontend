@@ -90,13 +90,6 @@ type AuthUser = {
 ───────────────────────────────────────────────────────── */
 
 
-function profilePath(role: Role): string {
-  if (role === 'ARTIST')    return '/profile/artist'
-  if (role === 'ORGANIZER') return '/profile/organizer'
-  if (role === 'PROVIDER')  return '/profile/provider'
-  return '/admin/dashboard'
-}
-
 /* ─────────────────────────────────────────────────────────
    COMPOSANT PRINCIPAL
 ───────────────────────────────────────────────────────── */
@@ -245,12 +238,7 @@ export default function Header() {
   }, [fetchCounts])
 
   /* ── Liens de navigation desktop ───────────────────── */
-  const navLinks = [
-    { label: 'Accueil',      href: '/home',          active: pathname === '/home' },
-    { label: 'Recherche',    href: '/search',         active: pathname.startsWith('/search') },
-    { label: 'Offres',       href: '/offers',         active: pathname.startsWith('/offers') },
-    { label: 'Abonnements',  href: '/subscriptions',  active: pathname.startsWith('/subscriptions') },
-  ]
+  const navLinks: { label: string; href: string; active: boolean }[] = []
 
   /* ── Liens nav mobile (bas d'écran) ────────────────── */
   const bottomNav = [
@@ -473,10 +461,10 @@ export default function Header() {
                       {/* Items */}
                       <div className="py-1">
                         <button
-                          onClick={() => router.push(profilePath(user.role))}
+                          onClick={() => router.push('/space')}
                           className="w-full px-4 py-2.5 text-left text-sm text-white/80 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-colors"
                         >
-                          <UserRound className="h-4 w-4 text-white/50" /> Mon profil
+                          <UserRound className="h-4 w-4 text-white/50" /> Mon espace
                         </button>
                         <button
                           onClick={() => router.push('/settings/profile')}

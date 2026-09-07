@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Search, MessageCircle, Bell, User } from 'lucide-react'
+import { Home, Compass, CalendarDays, MessageCircle, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
 
@@ -14,13 +14,6 @@ type AuthUser = {
   role: Role
   avatar?: string | null
   avatarUrl?: string | null
-}
-
-function profilePath(role: Role): string {
-  if (role === 'ARTIST')    return '/profile/artist'
-  if (role === 'ORGANIZER') return '/profile/organizer'
-  if (role === 'PROVIDER')  return '/profile/provider'
-  return '/admin/dashboard'
 }
 
 export default function BottomNav() {
@@ -53,14 +46,12 @@ export default function BottomNav() {
 
   if (!user) return null
 
-  const profileHref = profilePath(user.role)
-
   const items = [
     { href: '/home',          icon: Home,          label: 'Accueil',       badge: 0 },
-    { href: '/search',        icon: Search,        label: 'Recherche',     badge: 0 },
+    { href: '/discover',      icon: Compass,       label: 'Découvrir',     badge: 0 },
+    { href: '/agenda',        icon: CalendarDays,  label: 'Agenda',        badge: 0 },
     { href: '/messages',      icon: MessageCircle, label: 'Messages',      badge: unreadMsg },
-    { href: '/notifications', icon: Bell,          label: 'Notifs',        badge: unreadNotif },
-    { href: profileHref,      icon: User,          label: 'Profil',        badge: 0 },
+    { href: '/space',         icon: LayoutDashboard,label: 'Mon espace',   badge: unreadNotif },
   ]
 
   return (
