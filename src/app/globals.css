@@ -148,7 +148,6 @@ body {
 .lsb-week-detail-empty { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:#7c7282; }.lsb-week-detail-empty h3 { margin:.7rem 0 .35rem; color:#cfc6d5; font-size:.82rem; }.lsb-week-detail-empty p { max-width:12rem; margin:0; font-size:.62rem; line-height:1.6; }
 .lsb-empty-panel { min-height: 12rem; display: grid; place-items: center; color: var(--lsb-muted); }
 .lsb-discover-page { background: radial-gradient(circle at 75% 0%,rgba(168,85,247,.13),transparent 28rem); }
-.lsb-home-page > .relative.mb-8 { border-radius: 1.2rem; }
 .lsb-header-brand { display: flex; align-items: center; gap: .75rem; min-width: 12rem; }
 .lsb-header-brand > span { width: 2.35rem; height: 2.35rem; display: grid; place-items: center; border-radius: .72rem; color: #09070c; background: linear-gradient(135deg,var(--lsb-accent),var(--lsb-pink)); font-size: .78rem; font-weight: 900; }
 .lsb-header-brand strong { color: white; font-size: .72rem; letter-spacing: .18em; }

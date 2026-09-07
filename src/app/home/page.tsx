@@ -653,7 +653,7 @@ function OffersSidebar({ apiBase, onSelectOffer }: {
    PAGE PRINCIPALE
 ───────────────────────────────────────────────────────────── */
 export default function HomePage() {
-  const { user } = useAuth() as { user: { id: number } | null }
+  const { user } = useAuth() as { user: { id: number; avatarUrl?: string | null; name?: string } | null }
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   const [featured, setFeatured]           = useState<FeaturedProfile[]>([])
@@ -668,6 +668,7 @@ export default function HomePage() {
   const [hasMore, setHasMore]             = useState(true)
   const [isMuted, setIsMuted]             = useState(true)
   const toggleMute = () => setIsMuted(m => !m)
+  const [activeTab, setActiveTab]         = useState<'forYou' | 'network' | 'nearby'>('forYou')
 
   // ── Fetch feed (page initiale ou suivante) ──────────────
   const fetchFeed = useCallback(async (pageNum: number, replace: boolean) => {
@@ -746,6 +747,13 @@ export default function HomePage() {
     ...posts.map(p => ({ kind: 'post' as const, data: p })),
   ]
 
+  // Filtrage selon l'onglet actif
+  const filteredFeed: FeedItem[] = activeTab === 'network'
+    ? combinedFeed.filter(item => item.kind === 'admin' || (item.kind === 'post' && item.data.isFromFollow))
+    : activeTab === 'nearby'
+    ? combinedFeed.filter(item => item.kind === 'admin')
+    : combinedFeed
+
   return (
     <main className="lsb-page lsb-home-page text-white">
 
@@ -755,13 +763,21 @@ export default function HomePage() {
       </header>
 
       <section className="lsb-composer">
-        <div className="lsb-composer-avatar">{user?.id ? 'VOUS' : 'LS'}</div>
+        <div className="lsb-composer-avatar overflow-hidden">
+          {user?.avatarUrl ? (
+            <Image src={user.avatarUrl} alt="" width={40} height={40} style={{ objectFit: 'cover', width: '100%', height: '100%' }} unoptimized />
+          ) : (
+            user?.name ? user.name[0].toUpperCase() : 'LS'
+          )}
+        </div>
         <Link href="/studio-profile">Partagez une actualité, une date, un projet…</Link>
         <span>Média</span><span>Date</span>
       </section>
 
-      <div className="lsb-feed-tabs" role="tablist" aria-label="Fil d’actualité">
-        <button className="is-active">Pour vous</button><button>Mon réseau</button><button>À proximité</button>
+      <div className="lsb-feed-tabs" role="tablist" aria-label="Fil d'actualité">
+        <button className={activeTab === 'forYou' ? 'is-active' : ''} onClick={() => setActiveTab('forYou')}>Pour vous</button>
+        <button className={activeTab === 'network' ? 'is-active' : ''} onClick={() => setActiveTab('network')}>Mon réseau</button>
+        <button className={activeTab === 'nearby' ? 'is-active' : ''} onClick={() => setActiveTab('nearby')}>À proximité</button>
       </div>
 
       <div className="lsb-home-grid">
@@ -771,12 +787,20 @@ export default function HomePage() {
               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
               <p className="text-sm text-white/30">Chargement du feed…</p>
             </div>
-          ) : combinedFeed.length === 0 ? (
+          ) : activeTab === 'nearby' ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-8">
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl">📍</div>
+              <div>
+                <p className="text-white/60 font-medium">Bientôt disponible</p>
+                <p className="text-white/30 text-sm mt-1">Les publications à proximité seront disponibles prochainement.</p>
+              </div>
+            </div>
+          ) : filteredFeed.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-8">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl">📸</div>
               <div>
                 <p className="text-white/60 font-medium">Aucune publication pour l&apos;instant</p>
-                <p className="text-white/30 text-sm mt-1">Suis des artistes et prestataires pour voir leurs publications ici.</p>
+                <p className="text-white/30 text-sm mt-1">{activeTab === 'network' ? 'Suis des artistes et prestataires pour voir leurs publications ici.' : 'Aucune publication pour l\'instant.'}</p>
               </div>
               <Link href="/discover" className="bg-purple-600/80 hover:bg-purple-500 text-white text-sm px-4 py-2 rounded-xl transition-colors">
                 Découvrir des profils
@@ -784,7 +808,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {combinedFeed.map(item =>
+              {filteredFeed.map(item =>
                 item.kind === 'admin'
                   ? <AdminPostCard key={`admin-${item.data.id}`} post={item.data} />
                   : <PostCard key={item.data.id} post={item.data} onLike={handleLike} onOpenModal={setSelectedPost} currentUserId={user?.id} isMuted={isMuted} onToggleMute={toggleMute} />
@@ -806,7 +830,7 @@ export default function HomePage() {
               )}
 
               {/* Fin du feed */}
-              {!hasMore && combinedFeed.length > 0 && (
+              {!hasMore && filteredFeed.length > 0 && (
                 <p className="text-center text-xs text-white/20 py-6">— Vous avez tout vu —</p>
               )}
             </div>

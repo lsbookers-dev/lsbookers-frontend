@@ -6,8 +6,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Bell, Home, LogOut, Mail, Search,
-  Settings, UserRound, Briefcase, ChevronDown,
+  Bell, LogOut, Mail, Search,
+  Settings, UserRound, ChevronDown,
 } from 'lucide-react'
 import { getAuthToken } from '@/utils/auth'
 import PublicationModal from './PublicationModal'
@@ -223,15 +223,6 @@ export default function Header() {
 
   /* ── Liens de navigation desktop ───────────────────── */
   const navLinks: { label: string; href: string; active: boolean }[] = []
-
-  /* ── Liens nav mobile (bas d'écran) ────────────────── */
-  const bottomNav = [
-    { label: 'Accueil',   href: '/home',      icon: Home,      active: pathname === '/home',             badge: 0 },
-    { label: 'Recherche', href: '/search',    icon: Search,    active: pathname.startsWith('/search'),   badge: 0 },
-    { label: 'Offres',    href: '/offers',    icon: Briefcase, active: pathname.startsWith('/offers'),   badge: 0 },
-    { label: 'Messages',  href: '/messages',  icon: Mail,      active: pathname.startsWith('/messages'), badge: unreadMsg },
-    { label: 'Notifs',    href: '/notifications', icon: Bell,  active: pathname.startsWith('/notifications'), badge: unreadNotif },
-  ]
 
   return (
     <>
@@ -477,36 +468,6 @@ export default function Header() {
           </div>
         </div>
       </header>
-
-      {/* ══════════════════════════════════════════════════
-          BARRE DE NAVIGATION MOBILE (bas d'écran)
-      ══════════════════════════════════════════════════ */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-neutral-950/95 backdrop-blur-md border-t border-white/8 safe-bottom">
-        <div className="flex items-center justify-around h-16 px-2">
-          {bottomNav.map(item => {
-            const Icon = item.icon
-            return (
-              <Link key={item.href} href={item.href}
-                className={`relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all ${
-                  item.active ? 'text-white' : 'text-white/35 hover:text-white/60'
-                }`}>
-                <div className="relative">
-                  <Icon className={`h-5 w-5 transition-transform ${item.active ? 'scale-110' : ''}`} />
-                  {item.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] px-0.5 rounded-full bg-pink-600 text-[9px] font-bold text-white grid place-items-center">
-                      {item.badge > 99 ? '99+' : item.badge}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] font-medium">{item.label}</span>
-                {item.active && (
-                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-purple-400" />
-                )}
-              </Link>
-            )
-          })}
-        </div>
-      </nav>
 
       {/* Modal publication ouverte depuis une notification */}
       {pubModal && (

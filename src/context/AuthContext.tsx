@@ -197,8 +197,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const data = await res.json()
-    console.log('👤 Utilisateur connecté :', data.user)
-
     const normalized = normalizeUser(data.user)
 
     // Cookie httpOnly posé par le backend + token en localStorage (fallback Safari)
