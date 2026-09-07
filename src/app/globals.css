@@ -153,26 +153,32 @@ body {
 .lsb-offer-secondary { border:1px solid var(--lsb-line); color:var(--lsb-muted); background:transparent; }.lsb-offer-secondary:hover { color:white; border-color:rgba(255,255,255,.18); }
 .lsb-offer-apply { border:0; color:white; font-weight:650; }.lsb-offer-actions svg { width:.85rem; height:.85rem; }
 .lsb-offer-actions .lsb-offer-apply { grid-column:auto; grid-row:auto; }
-.lsb-messages-shell { padding:1.6rem; background:radial-gradient(circle at 72% 0,rgba(168,85,247,.09),transparent 28rem); }
+.lsb-messages-shell { height:calc(100dvh - 4.5rem); padding:1.15rem; background:radial-gradient(circle at 72% 0,rgba(168,85,247,.1),transparent 28rem); }
 .lsb-section-heading { display:flex; align-items:center; justify-content:space-between; margin:0 0 1rem; }.lsb-section-heading span { color:var(--lsb-accent); font-size:.62rem; font-weight:700; letter-spacing:.17em; }.lsb-section-heading h1 { margin:.35rem 0 0; font-size:1.5rem; letter-spacing:-.025em; }.lsb-section-heading h1 em { color:var(--lsb-accent); font-style:normal; }.lsb-section-heading > svg { color:#c4b5fd; }
-.lsb-messages-page { height:calc(100dvh - 9.5rem); min-height:36rem; margin:0; border:1px solid var(--lsb-line); border-radius:1.35rem; background:#08070b; box-shadow:0 28px 80px rgba(0,0,0,.3); }
+.lsb-messages-page { height:100%; min-height:36rem; margin:0; border:1px solid var(--lsb-line); border-radius:1.35rem; background:#08070b; box-shadow:0 28px 80px rgba(0,0,0,.3); }
 .lsb-messages-page > * { border-color:var(--lsb-line) !important; }
 .lsb-messages-page input, .lsb-messages-page textarea { background-color: rgba(255,255,255,.045) !important; border-color: var(--lsb-line) !important; }
-.lsb-conversations { width:18rem !important; border-color:var(--lsb-line) !important; background:#0b0a0e !important; }
+.lsb-conversations { width:19rem !important; border-color:var(--lsb-line) !important; background:#0b0a0e !important; }
 .lsb-conversations-header { background:#0b0a0e; }
 .lsb-new-message { width:2.35rem; height:2.35rem; display:grid; place-items:center; border:0; border-radius:.75rem; color:white; background:linear-gradient(135deg,#a855f7,#7c3aed); transition:transform .2s,filter .2s; }
 .lsb-new-message:hover { transform:translateY(-1px); filter:brightness(1.1); }
-.lsb-conversation-row { margin:.15rem .45rem; padding:.75rem !important; border-radius:.9rem; }
-.lsb-conversation-row[class*="from-violet"] { background:linear-gradient(100deg,rgba(74,35,103,.72),rgba(28,19,36,.76)) !important; }
+.lsb-message-filters { display:flex; gap:.25rem; margin-top:.7rem; }
+.lsb-message-filters button { min-height:2rem; padding:0 .65rem; border:0; border-radius:999px; color:var(--lsb-muted); background:transparent; font-size:.65rem; }
+.lsb-message-filters button.is-active { color:#e9d5ff; background:#29173b; }
+.lsb-conversation-row { margin:.22rem .5rem; padding:.72rem !important; border:1px solid transparent; border-radius:1rem; }
+.lsb-conversation-row:hover { border-color:rgba(255,255,255,.055); background:rgba(255,255,255,.025) !important; }
+.lsb-conversation-row[class*="from-violet"] { border-color:rgba(168,85,247,.15); background:linear-gradient(100deg,rgba(72,34,100,.68),rgba(27,19,34,.72)) !important; }
 .lsb-message-thread,.lsb-thread-empty { position:relative; background:radial-gradient(circle at 50% 0,rgba(168,85,247,.065),transparent 34%),#09080c !important; }
-.lsb-thread-header { min-height:4.25rem; background:rgba(12,10,15,.94) !important; }
-.lsb-thread-messages { padding:1.4rem !important; }
+.lsb-thread-header { min-height:4.8rem; padding-inline:1.25rem !important; background:rgba(12,10,15,.96) !important; box-shadow:0 12px 35px rgba(0,0,0,.13); }
+.lsb-thread-messages { padding:1.6rem clamp(.9rem,3vw,2.4rem) !important; }
 .lsb-message-bubble { max-width:100%; box-shadow:none; }
 .lsb-message-bubble-them { border-color:var(--lsb-line) !important; background:#17131e !important; }
 .lsb-message-bubble-me { background:linear-gradient(135deg,#6d28d9,#9333ea) !important; }
+.lsb-message-attachment-only { overflow:hidden; padding:.28rem !important; border:1px solid var(--lsb-line) !important; background:#15111a !important; }
+.lsb-message-attachment-only video,.lsb-message-attachment-only button { margin:0; border-radius:.8rem; }
 .lsb-message-composer-wrap { background:linear-gradient(to top,#09080c 72%,transparent); }
-.lsb-message-composer { border-color:var(--lsb-line) !important; background:#131017 !important; box-shadow:0 15px 40px rgba(0,0,0,.2); }
-.lsb-conversation-details { width:15.5rem; flex:none; flex-direction:column; padding:1.2rem 1rem; border-left:1px solid var(--lsb-line); background:#0b0a0e; }
+.lsb-message-composer { min-height:3.65rem; border-color:var(--lsb-line) !important; border-radius:1.05rem !important; background:#15111a !important; box-shadow:0 15px 40px rgba(0,0,0,.24); }
+.lsb-conversation-details { width:16.5rem; flex:none; flex-direction:column; padding:1.4rem 1.1rem; border-left:1px solid var(--lsb-line); background:linear-gradient(180deg,#100c14,#0b0a0e 32%); }
 .lsb-details-profile { display:flex; flex-direction:column; align-items:center; padding:.7rem 0 1.3rem; text-align:center; }
 .lsb-details-profile > div:first-child { margin-bottom:.7rem; }.lsb-details-profile h2 { margin:0; font-size:.95rem; }.lsb-details-profile p { margin:.25rem 0 .85rem; color:var(--lsb-muted); font-size:.7rem; }
 .lsb-details-profile-link { display:inline-flex; align-items:center; gap:.4rem; min-height:2.3rem; padding:0 .75rem; border:1px solid var(--lsb-line); border-radius:.7rem; color:#ddd6e3; font-size:.7rem; transition:.2s; }
@@ -235,8 +241,8 @@ body {
   .lsb-offer-actions { grid-template-columns:1fr 1fr; }
   .lsb-offer-actions .lsb-offer-apply { grid-column:1/-1; grid-row:1; }
   .lsb-offer-secondary,.lsb-offer-apply { min-height:2.75rem; }
-  .lsb-messages-shell { padding:0; }.lsb-section-heading { padding:1rem .9rem .7rem; margin:0; }.lsb-section-heading h1 { font-size:1.2rem; }
-  .lsb-messages-page { height:calc(100dvh - 9.7rem - env(safe-area-inset-bottom)); min-height:30rem; margin:0; border:0; border-radius:0; }
+  .lsb-messages-shell { height:calc(100dvh - 8.2rem - env(safe-area-inset-bottom)); padding:0; }
+  .lsb-messages-page { height:100%; min-height:28rem; margin:0; border:0; border-radius:0; }
   .lsb-conversations { width:100% !important; }
   .lsb-thread-messages { padding:1rem .75rem !important; }
   .lsb-message-composer-wrap { padding:.5rem .65rem .75rem !important; }

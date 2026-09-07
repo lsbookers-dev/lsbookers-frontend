@@ -521,6 +521,7 @@ export default function MessageThread({
                   : 'rounded-[18px] rounded-l-[5px]'
 
               // Message normal — espace réduit si même expéditeur
+              const attachmentOnly = !msg.content && !!msg.attachmentUrl
               items.push(
                 <div key={msg.id} className={`flex items-end gap-2 ${isFirst ? 'mt-3' : 'mt-0.5'} ${isMe ? 'justify-end' : 'justify-start'}`}>
                   {/* Avatar : affiché seulement sur le dernier message du groupe */}
@@ -530,7 +531,7 @@ export default function MessageThread({
                     </div>
                   )}
                   <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
-                    <div className={`lsb-message-bubble px-4 py-2.5 ${bubbleRadius} shadow-sm ${
+                    <div className={`lsb-message-bubble ${attachmentOnly ? 'lsb-message-attachment-only' : 'px-4 py-2.5'} ${bubbleRadius} shadow-sm ${
                       isMe
                         ? 'lsb-message-bubble-me bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-violet-900/30'
                         : 'lsb-message-bubble-them bg-[#1c1c2e] border border-white/[0.06] text-white/90'

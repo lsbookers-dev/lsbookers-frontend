@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Search, MessageCircle, Loader2, Trash2, SquarePen } from 'lucide-react'
 import { Avatar } from './MessageUI'
 import { ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatTime } from './_helpers'
@@ -25,11 +26,16 @@ function getDisplayName(u: SearchUser) {
   return u.pseudo || [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Utilisateur'
 }
 
+function cleanPreview(value: string) {
+  return value.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, '').trim()
+}
+
 export default function ConversationList({
   conversations, currentUserId, search, setSearch, contacts,
   searchResults, searchLoading, activeConvId, mobileView,
   deletingId, selectConv, startConversation, deleteConversation,
 }: ConversationListProps) {
+  const [filter, setFilter] = useState<'all' | 'unread' | 'bookings'>('all')
 
   const isSearching = search.trim().length > 0
 
@@ -43,7 +49,15 @@ export default function ConversationList({
 
   // Filtrer conversations si pas en mode recherche
   const filteredConvs = !isSearching
-    ? conversations
+    ? conversations.filter((conv) => {
+        if (filter === 'unread') {
+          return !!conv.lastMessageMeta && conv.lastMessageMeta.senderId !== currentUserId && !conv.lastMessageMeta.seen
+        }
+        if (filter === 'bookings') {
+          return /booking|proposition|réservation/i.test(conv.lastMessage || '')
+        }
+        return true
+      })
     : []
 
   return (
@@ -86,6 +100,14 @@ export default function ConversationList({
             className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07] transition-all"
           />
         </div>
+
+        {!isSearching && (
+          <div className="lsb-message-filters" aria-label="Filtrer les conversations">
+            <button type="button" className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')}>Tous</button>
+            <button type="button" className={filter === 'unread' ? 'is-active' : ''} onClick={() => setFilter('unread')}>Non lus</button>
+            <button type="button" className={filter === 'bookings' ? 'is-active' : ''} onClick={() => setFilter('bookings')}>Bookings</button>
+          </div>
+        )}
 
         {/* Résultats de recherche */}
         {isSearching && (
@@ -183,7 +205,7 @@ export default function ConversationList({
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-0.5">
                       <p className={`text-xs truncate ${isUnread ? 'text-white/60' : 'text-white/30'}`}>
-                        {conv.lastMessage || <span className="italic text-white/20">Nouvelle conversation</span>}
+                        {conv.lastMessage ? cleanPreview(conv.lastMessage) : <span className="italic text-white/20">Nouvelle conversation</span>}
                       </p>
                       <button onClick={(e) => deleteConversation(conv.id, e)} disabled={deletingId === conv.id}
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-500/10 text-white/20 hover:text-red-400">

@@ -10,7 +10,7 @@ import type { Message } from './types'
 export function Avatar({ src, alt, size = 40 }: { src: string; alt: string; size?: number }) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <div className="w-full h-full rounded-full overflow-hidden ring-1 ring-white/10">
+      <div className="w-full h-full rounded-[14px] overflow-hidden ring-1 ring-white/10">
         <Image src={toAbs(src)} alt={alt} fill className="object-cover" unoptimized />
       </div>
     </div>
