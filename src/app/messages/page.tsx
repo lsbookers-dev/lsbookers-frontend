@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Loader2, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Lightbox } from './MessageUI'
 import ConversationList from './ConversationList'
@@ -321,7 +321,9 @@ function MessagesContent() {
 
   /* ══ RENDU ══════════════════════════════════════════════ */
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-[#0a0a0f] text-white overflow-hidden">
+    <div className="lsb-messages-shell">
+      <header className="lsb-section-heading"><div><span>MESSAGES</span><h1>Vos échanges professionnels<em>.</em></h1></div><MessageCircle /></header>
+      <div className="lsb-messages-page flex h-[calc(100vh-64px)] text-white overflow-hidden">
       {lightbox && (
         <Lightbox url={lightbox.url} name={lightbox.name} onClose={() => setLightbox(null)} />
       )}
@@ -370,6 +372,7 @@ function MessagesContent() {
         textareaRef={textareaRef}
         fetchMessages={fetchMessages}
       />
+      </div>
     </div>
   )
 }

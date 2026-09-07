@@ -33,7 +33,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (!user || user.role !== 'ADMIN') return null
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen text-white lsb-admin-shell">
       <AdminHeader />
       <main className="p-6">{children}</main>
     </div>

@@ -111,7 +111,7 @@ export default function ArtistPublicProfilePage() {
         const profileData = (await profileRes.json()) as { profile: ApiProfile }
         const p = profileData.profile
         setProfile(p)
-        setAbonnesCount(p?.followingCount ?? 0)
+        setAbonnesCount(p?.followersCount ?? 0)
         if (p?.id) {
           const pubsRes = await fetch(`${API_BASE}/api/publications/profile/${p.id}`, { cache: 'no-store' })
           if (pubsRes.ok) {
@@ -168,7 +168,7 @@ export default function ArtistPublicProfilePage() {
   ].filter(s => s.url?.trim())
 
   return (
-    <div className="min-h-screen bg-[#13131e] text-white">
+    <div className="min-h-screen text-white lsb-profile-page lsb-public-profile">
       {/* Bannière */}
       <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 overflow-hidden">
         <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-75" />
@@ -207,7 +207,7 @@ export default function ArtistPublicProfilePage() {
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnés</p>
             </div>
             <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
-              <p className="text-base font-semibold text-white">{profile.followersCount ?? 0}</p>
+              <p className="text-base font-semibold text-white">{profile.followingCount ?? 0}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">

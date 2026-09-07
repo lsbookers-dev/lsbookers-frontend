@@ -382,17 +382,15 @@ function OffersInner() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen text-white lsb-surface-page lsb-offers-page">
       <div className="max-w-5xl mx-auto px-4 py-8">
 
         {/* ── En-tête ── */}
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Briefcase className="w-5 h-5 text-purple-400" />
-              <h1 className="text-2xl md:text-3xl font-bold">Offres</h1>
-            </div>
-            <p className="text-white/40 text-sm">Opportunités publiées par les organisateurs</p>
+            <p className="lsb-eyebrow">OPPORTUNITÉS</p>
+            <div className="flex items-center gap-2 mb-1"><Briefcase className="w-5 h-5 text-purple-400" /><h1 className="text-2xl md:text-3xl font-bold">Trouvez votre prochaine scène<span className="text-violet-400">.</span></h1></div>
+            <p className="text-white/40 text-sm">Les projets publiés par les organisateurs du réseau.</p>
           </div>
           {isOrganizer && (
             <button

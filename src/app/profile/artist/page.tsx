@@ -313,7 +313,7 @@ export default function ArtistProfilePage() {
   ].filter(s => s.url)
 
   return (
-    <div className="min-h-screen bg-[#13131e] text-white">
+    <div className="min-h-screen text-white lsb-profile-page lsb-profile-studio">
 
       {/* ── Bannière ── */}
       <div
@@ -385,11 +385,11 @@ export default function ArtistProfilePage() {
 
           <div className="flex border-t border-white/[0.07]">
             <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
-              <p className="text-base font-semibold text-white">{profile?.followingCount ?? 0}</p>
+              <p className="text-base font-semibold text-white">{profile?.followersCount ?? 0}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnés</p>
             </div>
             <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
-              <p className="text-base font-semibold text-white">{profile?.followersCount ?? 0}</p>
+              <p className="text-base font-semibold text-white">{profile?.followingCount ?? 0}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">

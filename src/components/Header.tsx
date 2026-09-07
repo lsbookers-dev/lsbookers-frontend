@@ -99,24 +99,8 @@ export default function Header() {
   const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-  const LOGO_FALLBACK = '/logo-black.png'
-  const [logoSrc, setLogoSrc] = useState(LOGO_FALLBACK)
-
-  useEffect(() => {
-    if (!API_BASE) return
-    const cached = sessionStorage.getItem('site_logo')
-    if (cached) { setLogoSrc(cached); return }
-    fetch(`${API_BASE}/api/admin/settings`, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        const url = d?.headerLogoUrl || LOGO_FALLBACK
-        sessionStorage.setItem('site_logo', url)
-        setLogoSrc(url)
-      })
-      .catch(() => {})
-  }, [API_BASE])
-
   const [menuOpen, setMenuOpen]           = useState(false)
+  const [globalSearch, setGlobalSearch]   = useState('')
   const [unreadMsg, setUnreadMsg]         = useState(0)
   const [unreadNotif, setUnreadNotif]     = useState(0)
   const menuRef  = useRef<HTMLDivElement>(null)
@@ -255,15 +239,18 @@ export default function Header() {
           HEADER DESKTOP / MOBILE TOP BAR
       ══════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-50 w-full bg-neutral-950/85 backdrop-blur-md border-b border-white/8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-6">
           <div className="h-16 flex items-center justify-between gap-4">
 
             {/* ── Logo ───────────────────────────────────── */}
-            <Link href="/home" className="flex items-center flex-shrink-0 group">
-              <div className="relative h-14 w-56 group-hover:opacity-80 transition">
-                <Image src={logoSrc} alt="LSBookers" fill sizes="224px" className="object-contain object-left" priority unoptimized />
-              </div>
+            <Link href="/home" className="lsb-header-brand">
+              <span>LS</span><strong>LSBOOKERS</strong>
             </Link>
+
+            <form className="lsb-header-search" onSubmit={e => { e.preventDefault(); if (globalSearch.trim()) router.push(`/discover?name=${encodeURIComponent(globalSearch.trim())}`) }}>
+              <Search aria-hidden="true" />
+              <input value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} placeholder="Rechercher sur LSBookers" aria-label="Rechercher sur LSBookers" />
+            </form>
 
             {/* ── Nav desktop ────────────────────────────── */}
             <nav className="hidden lg:flex items-center gap-1">

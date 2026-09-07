@@ -164,7 +164,7 @@ export default function OrganizerPublicProfilePage() {
         const profileData = (await profileRes.json()) as { profile?: PublicProfile }
         const loadedProfile = profileData?.profile ?? null
         setProfile(loadedProfile)
-        setAbonnesCount(loadedProfile?.followingCount ?? 0)
+        setAbonnesCount(loadedProfile?.followersCount ?? 0)
 
         if (!loadedProfile) throw new Error('Profil introuvable')
 
@@ -299,7 +299,7 @@ export default function OrganizerPublicProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#13131e] text-white">
+    <main className="min-h-screen text-white lsb-profile-page lsb-public-profile">
       <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 overflow-hidden">
         <SafeImage type="banner" src={bannerUrl} alt="Bannière" priority className="opacity-75" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#13131e]/20 to-[#13131e]/70 pointer-events-none" />
@@ -344,7 +344,7 @@ export default function OrganizerPublicProfilePage() {
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnés</p>
             </div>
             <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
-              <p className="text-base font-semibold text-white">{profile.followersCount ?? 0}</p>
+              <p className="text-base font-semibold text-white">{profile.followingCount ?? 0}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">

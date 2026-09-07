@@ -156,13 +156,14 @@ export default function NotificationsPage() {
   // ── Rendu ──────────────────────────────────────────────────────────────────
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen text-white lsb-surface-page lsb-notifications-page">
       <div className="max-w-2xl mx-auto px-4 py-8">
 
         {/* En-tête */}
         <div className="flex items-center justify-between mb-6 gap-4">
           <div>
-            <h1 className="text-xl font-bold text-white">Notifications</h1>
+            <p className="lsb-eyebrow">ACTIVITÉ</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white">Notifications<span className="text-violet-400">.</span></h1>
             {unreadCount > 0 && (
               <p className="text-xs text-white/40 mt-0.5">{unreadCount} non lue{unreadCount > 1 ? 's' : ''}</p>
             )}

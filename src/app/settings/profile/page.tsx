@@ -397,7 +397,7 @@ export default function ProfileSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#0b0b10_0%,_#050508_55%)] text-white pb-20">
+    <div className="min-h-screen text-white pb-20 lsb-surface-page lsb-settings-page">
 
       {/* Header fixe */}
       <div className="sticky top-0 z-10 border-b border-white/10 bg-black/60 backdrop-blur-xl">
@@ -406,7 +406,7 @@ export default function ProfileSettings() {
             <ArrowLeft size={16} />
             Retour
           </button>
-          <span className="text-sm font-semibold">Paramètres du profil</span>
+          <span className="text-sm font-semibold">Studio profil</span>
           <button
             onClick={handleSave}
             disabled={saving}

@@ -108,7 +108,7 @@ export default function ProviderPublicProfilePage() {
         const loadedProfile = profileData?.profile ?? null
 
         setProfile(loadedProfile)
-        setAbonnesCount(loadedProfile?.followingCount ?? 0)
+        setAbonnesCount(loadedProfile?.followersCount ?? 0)
 
         if (loadedProfile?.id) {
 
@@ -200,7 +200,7 @@ export default function ProviderPublicProfilePage() {
   ].filter(s => s.url?.trim())
 
   return (
-    <main className="min-h-screen bg-[#13131e] text-white">
+    <main className="min-h-screen text-white lsb-profile-page lsb-public-profile">
 
       {/* ===== Bannière ===== */}
       <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 overflow-hidden">
@@ -249,7 +249,7 @@ export default function ProviderPublicProfilePage() {
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnés</p>
             </div>
             <div className="flex-1 py-3 text-center border-r border-white/[0.07]">
-              <p className="text-base font-semibold text-white">{profile.followersCount ?? 0}</p>
+              <p className="text-base font-semibold text-white">{profile.followingCount ?? 0}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">

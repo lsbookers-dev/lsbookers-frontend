@@ -669,9 +669,6 @@ export default function HomePage() {
   const [isMuted, setIsMuted]             = useState(true)
   const toggleMute = () => setIsMuted(m => !m)
 
-  // Tab mobile : 'feed' | 'top' | 'offers'
-  const [mobileTab, setMobileTab] = useState<'feed' | 'top' | 'offers'>('feed')
-
   // ── Fetch feed (page initiale ou suivante) ──────────────
   const fetchFeed = useCallback(async (pageNum: number, replace: boolean) => {
     if (!user) return
@@ -757,33 +754,18 @@ export default function HomePage() {
         <Link href="/studio-profile" className="lsb-primary-button">Créer</Link>
       </header>
 
-      {/* ── Carousel ───────────────────────────────────────── */}
-      <FeaturedCarousel items={featured} />
+      <section className="lsb-composer">
+        <div className="lsb-composer-avatar">{user?.id ? 'VOUS' : 'LS'}</div>
+        <Link href="/studio-profile">Partagez une actualité, une date, un projet…</Link>
+        <span>Média</span><span>Date</span>
+      </section>
 
-      {/* ── Tabs mobile ────────────────────────────────────── */}
-      <div className="flex lg:hidden gap-1 mb-6 bg-white/4 rounded-xl p-1 border border-white/8">
-        {(['feed', 'top', 'offers'] as const).map(tab => (
-          <button key={tab} onClick={() => setMobileTab(tab)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-              mobileTab === tab ? 'bg-purple-600 text-white' : 'text-white/40 hover:text-white/70'
-            }`}>
-            {tab === 'feed' ? 'Publications' : tab === 'top' ? 'Tendances' : 'Offres'}
-          </button>
-        ))}
+      <div className="lsb-feed-tabs" role="tablist" aria-label="Fil d’actualité">
+        <button className="is-active">Pour vous</button><button>Mon réseau</button><button>À proximité</button>
       </div>
 
-      {/* ── Layout 3 colonnes ──────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)_250px] gap-5 items-start">
-
-        {/* ════ COLONNE GAUCHE : Tendances (sticky) ══════════ */}
-        <aside className={`space-y-5 lg:sticky lg:top-20 ${mobileTab !== 'top' ? 'hidden lg:block' : ''}`}>
-          <TopList title="Artistes en Tendance"     role="ARTIST"   apiBase={API_BASE} />
-          <TopList title="Prestataires en Tendance" role="PROVIDER" apiBase={API_BASE} />
-          {suggested.length > 0 && <SuggestedProfiles items={suggested} />}
-        </aside>
-
-        {/* ════ COLONNE CENTRE : Feed publications ═══════════ */}
-        <div className={mobileTab !== 'feed' ? 'hidden lg:block' : ''}>
+      <div className="lsb-home-grid">
+        <div className="lsb-feed-column">
           {loadingFeed ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
@@ -796,7 +778,7 @@ export default function HomePage() {
                 <p className="text-white/60 font-medium">Aucune publication pour l&apos;instant</p>
                 <p className="text-white/30 text-sm mt-1">Suis des artistes et prestataires pour voir leurs publications ici.</p>
               </div>
-              <Link href="/search" className="bg-purple-600/80 hover:bg-purple-500 text-white text-sm px-4 py-2 rounded-xl transition-colors">
+              <Link href="/discover" className="bg-purple-600/80 hover:bg-purple-500 text-white text-sm px-4 py-2 rounded-xl transition-colors">
                 Découvrir des profils
               </Link>
             </div>
@@ -831,9 +813,11 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* ════ COLONNE DROITE : Offres (sticky) ═════════════ */}
-        <aside className={`lg:sticky lg:top-20 ${mobileTab !== 'offers' ? 'hidden lg:block' : ''}`}>
+        <aside className="lsb-home-rail">
           <OffersSidebar apiBase={API_BASE} onSelectOffer={setSelectedOffer} />
+          {suggested.length > 0 && <SuggestedProfiles items={suggested} />}
+          <TopList title="Artistes en tendance" role="ARTIST" apiBase={API_BASE} />
+          {featured.length > 0 && <FeaturedCarousel items={featured.slice(0, 2)} />}
         </aside>
       </div>
 

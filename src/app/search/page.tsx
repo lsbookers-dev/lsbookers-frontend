@@ -147,18 +147,12 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
     : user.profile?.specialties?.join(' · ') || cfg.label
 
   return (
-    <div
+    <article
       onClick={onClick}
-      className="group relative rounded-2xl border border-white/8 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/15 transition-all duration-200 cursor-pointer overflow-hidden"
+      className="lsb-discover-card group cursor-pointer"
     >
-      {/* Trait couleur en haut */}
-      <div className={`absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r ${cfg.gradient} opacity-60 group-hover:opacity-100 transition-opacity`} />
-
-      <div className="p-4 flex items-center gap-4">
-        {/* Avatar */}
-        <div className="relative shrink-0">
-          <div className={`absolute -inset-0.5 rounded-full bg-gradient-to-br ${cfg.gradient} opacity-0 group-hover:opacity-40 transition-opacity blur-sm`} />
-          <div className="relative w-14 h-14 rounded-full overflow-hidden ring-1 ring-white/10">
+      <div className={`lsb-discover-visual bg-gradient-to-br ${cfg.gradient}`}>
+          <div className="lsb-discover-avatar">
             <Image
               src={user.profile?.avatar || '/default-avatar.png'}
               alt={displayName}
@@ -167,14 +161,12 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
               unoptimized
             />
           </div>
-        </div>
-
-        {/* Infos */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-0.5">
-            <h2 className="font-semibold text-white truncate">{displayName}</h2>
-          </div>
-          <p className="text-sm text-white/50 truncate">{subtitle}</p>
+          <span>Voir le profil</span>
+      </div>
+      <div className="lsb-discover-info">
+        <div className={`flex items-center gap-1.5 text-[10px] uppercase tracking-widest ${cfg.color === 'pink' ? 'text-pink-400' : cfg.color === 'blue' ? 'text-blue-400' : 'text-violet-400'}`}><Icon className="w-3 h-3" />{cfg.label.replace(/s$/, '')}</div>
+        <h2>{displayName}</h2>
+        <p>{subtitle}</p>
           {(user.profile?.location || user.profile?.country) && (
             <div className="flex items-center gap-1 mt-1.5">
               <MapPin className="w-3 h-3 text-white/30 shrink-0" />
@@ -183,17 +175,8 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
               </span>
             </div>
           )}
-        </div>
-
-        {/* Badge rôle */}
-        <div className="shrink-0">
-          <div className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border ${cfg.bg}`}>
-            <Icon className="w-3 h-3" />
-            <span>{cfg.label.replace(/s$/, '')}</span>
-          </div>
-        </div>
       </div>
-    </div>
+    </article>
   )
 }
 
@@ -217,13 +200,14 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback((queryOverride?: string) => {
     if (!token || !API_BASE) return
     setLoading(true)
     setHasSearched(true)
 
     const params = new URLSearchParams()
-    if (searchTerm.trim()) params.append('name', searchTerm.trim())
+    const effectiveSearch = typeof queryOverride === 'string' ? queryOverride : searchTerm
+    if (effectiveSearch.trim()) params.append('name', effectiveSearch.trim())
     if (typeFilter)        params.append('role', typeFilter)
     if (zone.trim()) {
       params.append('zone', zone.trim())
@@ -282,7 +266,12 @@ export default function SearchPage() {
   }, [token, searchTerm, typeFilter, typeFilters, styleFilters, filterByDate, dateFilter, sortOrder, zone, country, radiusKm])
 
   // Chargement initial
-  useEffect(() => { if (token) handleSearch() }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!token) return
+    const initialQuery = new URLSearchParams(window.location.search).get('name') || ''
+    if (initialQuery) setSearchTerm(initialQuery)
+    handleSearch(initialQuery)
+  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReset = () => {
     setSearchTerm(''); setTypeFilter(''); setTypeFilters([])
@@ -366,7 +355,7 @@ export default function SearchPage() {
               />
             </div>
             <button
-              onClick={handleSearch}
+              onClick={() => handleSearch()}
               disabled={loading}
               className="px-6 py-3.5 rounded-xl font-semibold bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 transition disabled:opacity-50 whitespace-nowrap"
             >
@@ -538,6 +527,10 @@ export default function SearchPage() {
 
       {/* ── Résultats ────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="lsb-discover-results-title">
+          <div><span>SÉLECTION LSBOOKERS</span><h2>Profils à découvrir</h2></div>
+          <p>{users.length} profil{users.length > 1 ? 's' : ''}</p>
+        </div>
 
         {/* Loading */}
         {loading && (

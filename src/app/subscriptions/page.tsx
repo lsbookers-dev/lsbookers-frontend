@@ -19,27 +19,27 @@ export default function SubscriptionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <h1 className="text-3xl font-bold mb-6">Abonnements</h1>
+    <div className="lsb-page min-h-screen text-white lsb-subscriptions-page">
+      <header className="lsb-page-heading"><div><span>ABONNEMENTS</span><h1>Développez votre activité<em>.</em></h1><p>Choisissez les outils adaptés à votre rôle sur LSBookers.</p></div></header>
 
       {user.role === 'ARTIST' && (
         <div>
-          <h2 className="text-2xl font-semibold mb-4">Formules pour les artistes 🎤</h2>
-          <ul className="space-y-4">
-            <li className="bg-gray-800 p-4 rounded">🔹 Mise en avant sur la page d’accueil</li>
-            <li className="bg-gray-800 p-4 rounded">🔹 Accès à l’espace premium</li>
-            <li className="bg-gray-800 p-4 rounded">🔹 Boost du profil dans les résultats de recherche</li>
+          <h2 className="text-2xl font-semibold mb-4">Formules pour les artistes</h2>
+          <ul className="lsb-plan-grid">
+            <li><strong>Visibilité</strong><span>Mise en avant sur la page d’accueil</span></li>
+            <li><strong>Outils premium</strong><span>Accès à l’espace professionnel</span></li>
+            <li><strong>Découverte</strong><span>Boost du profil dans les résultats</span></li>
           </ul>
         </div>
       )}
 
       {user.role === 'ORGANIZER' && (
         <div>
-          <h2 className="text-2xl font-semibold mb-4">Formules pour les établissements 🏢</h2>
-          <ul className="space-y-4">
-            <li className="bg-gray-800 p-4 rounded">🔸 Promotion d’événements sur la page d’accueil</li>
-            <li className="bg-gray-800 p-4 rounded">🔸 Encarts publicitaires sponsorisés</li>
-            <li className="bg-gray-800 p-4 rounded">🔸 Mise en avant de vos soirées auprès des artistes</li>
+          <h2 className="text-2xl font-semibold mb-4">Formules pour les organisateurs</h2>
+          <ul className="lsb-plan-grid">
+            <li><strong>Événements</strong><span>Promotion de vos dates sur l’accueil</span></li>
+            <li><strong>Campagnes</strong><span>Encarts sponsorisés ciblés</span></li>
+            <li><strong>Recrutement</strong><span>Mise en avant auprès des artistes</span></li>
           </ul>
         </div>
       )}
