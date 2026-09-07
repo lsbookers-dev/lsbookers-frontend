@@ -4,6 +4,7 @@ import { AVAIL_OPTIONS, isSameDay, formatHour } from './helpers'
 
 interface CalendarGridProps {
   focusDate: Date
+  viewMode: 'week' | 'month'
   events: CalEvent[]
   availability: AvailDay[]
   selected: Date | null
@@ -50,7 +51,7 @@ function eventTone(event: CalEvent) {
 
 export default function CalendarGrid(props: CalendarGridProps) {
   const {
-    focusDate, events, availability, selected, loading, now, isOwner, showAvailability,
+    focusDate, viewMode, events, availability, selected, loading, now, isOwner, showAvailability,
     savingAvail, selectedEvents, selectedAvail, canBook, bookingSent, showBookingForm,
     bookingMsg, bookingFee, bookingSending, setSelected, setShowBookingForm,
     setBookingMsg, setBookingFee, saveAvailability, sendBookingRequest, openEventFromCalendar,
@@ -65,6 +66,14 @@ export default function CalendarGrid(props: CalendarGridProps) {
     return date
   })
 
+  const firstOfMonth = new Date(focusDate.getFullYear(), focusDate.getMonth(), 1)
+  const lastOfMonth = new Date(focusDate.getFullYear(), focusDate.getMonth() + 1, 0)
+  const monthCells: Array<Date | null> = [
+    ...Array.from({ length: (firstOfMonth.getDay() + 6) % 7 }, () => null),
+    ...Array.from({ length: lastOfMonth.getDate() }, (_, index) => new Date(focusDate.getFullYear(), focusDate.getMonth(), index + 1)),
+  ]
+  while (monthCells.length % 7 !== 0) monthCells.push(null)
+
   const positionFor = (dateValue: string) => {
     const date = new Date(dateValue)
     const minutes = date.getHours() * 60 + date.getMinutes()
@@ -74,58 +83,95 @@ export default function CalendarGrid(props: CalendarGridProps) {
   return (
     <div className={`lsb-week-agenda ${isOwner ? 'is-owner' : 'is-public'}`}>
       <div className="lsb-week-calendar">
-        <div className="lsb-week-days">
-          <div className="lsb-week-corner">HEURE</div>
-          {days.map((date) => {
-            const today = isSameDay(date, now)
-            const active = !!selected && isSameDay(date, selected)
-            return (
-              <button key={date.toISOString()} type="button" className={`${today ? 'is-today' : ''} ${active ? 'is-selected' : ''}`} onClick={() => setSelected(date)}>
-                <span>{date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><strong>{date.getDate()}</strong>
-              </button>
-            )
-          })}
-        </div>
-
-        {loading ? (
-          <div className="lsb-week-loading">Chargement du planning…</div>
-        ) : (
-          <div className="lsb-week-scroll">
-            <div className="lsb-week-timeline">
-              <div className="lsb-week-hours">
-                {HOURS.map((hour) => <span key={hour} style={{ top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%` }}>{String(hour).padStart(2, '0')}:00</span>)}
-              </div>
+        {viewMode === 'week' ? (
+          <>
+            <div className="lsb-week-days">
+              <div className="lsb-week-corner">HEURE</div>
               {days.map((date) => {
-                const dayEvents = events.filter((event) => isSameDay(new Date(event.start), date))
-                const avail = availability.find((item) => isSameDay(new Date(item.date), date))
+                const today = isSameDay(date, now)
+                const active = !!selected && isSameDay(date, selected)
                 return (
-                  <div key={date.toISOString()} className={`lsb-week-column ${selected && isSameDay(date, selected) ? 'is-selected' : ''}`}>
-                    <button type="button" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} className="lsb-week-day-hit" onClick={() => setSelected(date)} />
-                    {avail && <span className={`lsb-week-availability ${avail.status.toLowerCase()}`}>{statusLabel(avail.status)}</span>}
-                    {dayEvents.map((event) => {
-                      const start = positionFor(event.start)
-                      const end = event.end ? positionFor(event.end) : Math.min(100, start + 9)
-                      return (
-                        <button
-                          type="button"
-                          key={event.id}
-                          className={`lsb-week-event ${eventTone(event)}`}
-                          style={{ top: `${start}%`, height: `${Math.max(8, end - start)}%` }}
-                          onClick={() => { setSelected(date); if (isOwner) openEventFromCalendar(event.id) }}
-                        >
-                          <time>{formatHour(event.start)}{event.end ? ` – ${formatHour(event.end)}` : ''}</time>
-                          <strong>{event.title}</strong>
-                          {event.lieu && <span>{event.lieu}</span>}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <button key={date.toISOString()} type="button" className={`${today ? 'is-today' : ''} ${active ? 'is-selected' : ''}`} onClick={() => setSelected(date)}>
+                    <span>{date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><strong>{date.getDate()}</strong>
+                  </button>
                 )
               })}
-              {isSameDay(now, days.find((day) => isSameDay(day, now)) || new Date(0)) && now.getHours() >= START_HOUR && now.getHours() <= END_HOUR && (
-                <div className="lsb-week-now" style={{ top: `${positionFor(now.toISOString())}%` }} />
-              )}
             </div>
+
+            {loading ? (
+              <div className="lsb-week-loading">Chargement du planning…</div>
+            ) : (
+              <div className="lsb-week-scroll">
+                <div className="lsb-week-timeline">
+                  <div className="lsb-week-hours">
+                    {HOURS.map((hour) => <span key={hour} style={{ top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%` }}>{String(hour).padStart(2, '0')}:00</span>)}
+                  </div>
+                  {days.map((date) => {
+                    const dayEvents = events.filter((event) => isSameDay(new Date(event.start), date))
+                    const avail = availability.find((item) => isSameDay(new Date(item.date), date))
+                    return (
+                      <div key={date.toISOString()} className={`lsb-week-column ${selected && isSameDay(date, selected) ? 'is-selected' : ''}`}>
+                        <button type="button" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} className="lsb-week-day-hit" onClick={() => setSelected(date)} />
+                        {avail && <span className={`lsb-week-availability ${avail.status.toLowerCase()}`}>{statusLabel(avail.status)}</span>}
+                        {dayEvents.map((event) => {
+                          const start = positionFor(event.start)
+                          const end = event.end ? positionFor(event.end) : Math.min(100, start + 9)
+                          return (
+                            <button
+                              type="button"
+                              key={event.id}
+                              className={`lsb-week-event ${eventTone(event)}`}
+                              style={{ top: `${start}%`, height: `${Math.max(8, end - start)}%` }}
+                              onClick={() => { setSelected(date); if (isOwner) openEventFromCalendar(event.id) }}
+                            >
+                              <time>{formatHour(event.start)}{event.end ? ` – ${formatHour(event.end)}` : ''}</time>
+                              <strong>{event.title}</strong>
+                              {event.lieu && <span>{event.lieu}</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                  {isSameDay(now, days.find((day) => isSameDay(day, now)) || new Date(0)) && now.getHours() >= START_HOUR && now.getHours() <= END_HOUR && (
+                    <div className="lsb-week-now" style={{ top: `${positionFor(now.toISOString())}%` }} />
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="lsb-month-calendar">
+            <div className="lsb-month-weekdays">
+              {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((label) => <span key={label}>{label}</span>)}
+            </div>
+            {loading ? (
+              <div className="lsb-week-loading">Chargement du mois…</div>
+            ) : (
+              <div className="lsb-month-grid">
+                {monthCells.map((date, index) => {
+                  if (!date) return <div key={`empty-${index}`} className="lsb-month-day is-empty" aria-hidden="true" />
+                  const dayEvents = events.filter((event) => isSameDay(new Date(event.start), date))
+                  const avail = availability.find((item) => isSameDay(new Date(item.date), date))
+                  const active = !!selected && isSameDay(date, selected)
+                  return (
+                    <div key={date.toISOString()} className={`lsb-month-day ${isSameDay(date, now) ? 'is-today' : ''} ${active ? 'is-selected' : ''}`}>
+                      <button type="button" className="lsb-month-day-hit" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} onClick={() => setSelected(date)} />
+                      <span className="lsb-month-day-number">{date.getDate()}</span>
+                      {avail && <span className={`lsb-month-availability ${avail.status.toLowerCase()}`}><i />{statusLabel(avail.status)}</span>}
+                      <div className="lsb-month-events">
+                        {dayEvents.slice(0, 3).map((event) => (
+                          <button type="button" key={event.id} className={`lsb-month-event ${eventTone(event)}`} onClick={() => { setSelected(date); if (isOwner) openEventFromCalendar(event.id) }}>
+                            <time>{formatHour(event.start)}</time><strong>{event.title}</strong>
+                          </button>
+                        ))}
+                        {dayEvents.length > 3 && <button type="button" className="lsb-month-more" onClick={() => setSelected(date)}>+ {dayEvents.length - 3} autre{dayEvents.length - 3 > 1 ? 's' : ''}</button>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

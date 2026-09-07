@@ -101,6 +101,9 @@ body {
 .lsb-agenda-component > div:first-child button:hover { border-color:rgba(168,85,247,.35) !important; color:white !important; background:rgba(168,85,247,.1) !important; }
 .lsb-agenda-period { display:grid; gap:.15rem; }.lsb-agenda-period > span:first-child { color:#c084fc; font-size:.52rem; font-weight:700; letter-spacing:.14em; }.lsb-agenda-period strong { color:white; font-size:.9rem; font-weight:650; }.lsb-agenda-period > span:last-child:not(:first-child) { color:var(--lsb-muted) !important; font-size:.55rem !important; }
 .lsb-agenda-today { min-height:1.8rem; padding:0 .65rem; border:1px solid var(--lsb-line); border-radius:.5rem; color:#d9d1de; background:#15111a; font-size:.65rem; }
+.lsb-agenda-view-switch { display:flex; padding:.2rem; border:1px solid var(--lsb-line); border-radius:.7rem; background:#0d0b10; }
+.lsb-agenda-component > div:first-child .lsb-agenda-view-switch button { min-height:1.65rem; padding:0 .65rem; border:0 !important; border-radius:.5rem !important; color:#817887 !important; background:transparent !important; font-size:.6rem; }
+.lsb-agenda-component > div:first-child .lsb-agenda-view-switch button.is-active { color:white !important; background:linear-gradient(135deg,rgba(147,51,234,.9),rgba(168,85,247,.7)) !important; box-shadow:0 5px 16px rgba(126,34,206,.22); }
 .lsb-week-agenda { display:grid; grid-template-columns:minmax(0,1fr) 15.5rem; min-height:38rem; background:#08070b; }
 .lsb-week-calendar { min-width:0; border-right:1px solid var(--lsb-line); }
 .lsb-week-days { display:grid; grid-template-columns:3.7rem repeat(7,minmax(4.5rem,1fr)); min-width:39rem; border-bottom:1px solid var(--lsb-line); }
@@ -115,6 +118,27 @@ body {
 .lsb-week-event.booking { background:linear-gradient(135deg,#6420a0,#9134c2); }.lsb-week-event.confirmed { background:linear-gradient(135deg,#086257,#0d7c6c); }.lsb-week-event.pending { border:1px dashed #b85d2b; background:#442311; }.lsb-week-event.personal { border:1px solid #43384d; background:#211b28; }
 .lsb-week-now { position:absolute; z-index:5; left:3.7rem; right:0; height:1px; background:#f472b6; pointer-events:none; }.lsb-week-now::before { content:''; position:absolute; left:-.25rem; top:-.23rem; width:.5rem; height:.5rem; border-radius:50%; background:#f472b6; }
 .lsb-week-loading { min-height:31rem; display:grid; place-items:center; color:var(--lsb-muted); font-size:.75rem; }
+.lsb-month-calendar { min-width:0; padding:.85rem; }
+.lsb-month-weekdays,.lsb-month-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+.lsb-month-weekdays { color:#756d7b; font-size:.52rem; font-weight:700; letter-spacing:.1em; text-align:center; text-transform:uppercase; }
+.lsb-month-weekdays span { padding:.35rem .2rem .65rem; }
+.lsb-month-grid { overflow:hidden; border-top:1px solid var(--lsb-line); border-left:1px solid var(--lsb-line); border-radius:.7rem; }
+.lsb-month-day { position:relative; min-width:0; min-height:6.6rem; padding:.48rem; overflow:hidden; border-right:1px solid var(--lsb-line); border-bottom:1px solid var(--lsb-line); background:#0d0b10; }
+.lsb-month-day.is-empty { background:rgba(255,255,255,.012); }
+.lsb-month-day.is-selected { background:rgba(168,85,247,.08); box-shadow:inset 0 0 0 1px rgba(192,132,252,.28); }
+.lsb-month-day-hit { position:absolute; z-index:0; inset:0; width:100%; border:0; background:transparent; }
+.lsb-month-day-number { position:relative; z-index:1; display:grid; place-items:center; width:1.45rem; height:1.45rem; border-radius:50%; color:#d9d2df; font-size:.64rem; font-weight:650; pointer-events:none; }
+.lsb-month-day.is-today .lsb-month-day-number { color:white; background:#9333ea; }
+.lsb-month-availability { position:absolute; z-index:1; top:.62rem; right:.45rem; display:flex; align-items:center; gap:.25rem; max-width:calc(100% - 2.25rem); overflow:hidden; color:#86efac; font-size:.43rem; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
+.lsb-month-availability i { width:.35rem; height:.35rem; flex:none; border-radius:50%; background:#34d399; }
+.lsb-month-availability.unavailable { color:#fca5a5; }.lsb-month-availability.unavailable i { background:#f87171; }
+.lsb-month-availability.tentative { color:#fdba74; }.lsb-month-availability.tentative i { background:#fb923c; }
+.lsb-month-availability.booked { color:#fde68a; }.lsb-month-availability.booked i { background:#f59e0b; }
+.lsb-month-events { position:relative; z-index:2; display:grid; gap:.22rem; margin-top:.35rem; }
+.lsb-month-event { min-width:0; display:flex; align-items:center; gap:.28rem; min-height:1.25rem; padding:.2rem .3rem; overflow:hidden; border:0; border-radius:.35rem; color:#e9e2ed; background:#241d2b; text-align:left; }
+.lsb-month-event time { flex:none; color:rgba(255,255,255,.68); font-size:.42rem; }.lsb-month-event strong { min-width:0; overflow:hidden; font-size:.47rem; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.lsb-month-event.booking { background:linear-gradient(135deg,#6420a0,#7e2aad); }.lsb-month-event.confirmed { background:linear-gradient(135deg,#086257,#0b7164); }.lsb-month-event.pending { border:1px dashed #b85d2b; background:#442311; }.lsb-month-event.personal { border:1px solid #43384d; background:#211b28; }
+.lsb-month-more { position:relative; z-index:2; padding:.15rem .25rem; border:0; color:#c084fc; background:transparent; font-size:.44rem; text-align:left; }
 .lsb-week-legend { display:flex; flex-wrap:wrap; gap:.8rem; min-height:3rem; align-items:center; padding:.6rem .85rem; border-top:1px solid var(--lsb-line); color:var(--lsb-muted); font-size:.55rem; }.lsb-week-legend span { display:flex; align-items:center; gap:.35rem; }.lsb-week-legend i,.lsb-day-events i { width:.45rem; height:.45rem; flex:none; border-radius:.18rem; background:#514759; }.lsb-week-legend i.booking,.lsb-day-events i.booking { background:#9333ea; }.lsb-week-legend i.confirmed,.lsb-day-events i.confirmed { background:#10b981; }.lsb-week-legend i.pending,.lsb-day-events i.pending { background:#f97316; }
 .lsb-week-detail { min-width:0; padding:1rem; background:linear-gradient(180deg,#100c14,#0b0a0e 35%); }.lsb-week-detail-head { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; padding-bottom:.8rem; border-bottom:1px solid var(--lsb-line); }.lsb-week-detail-head span,.lsb-availability-editor > span,.lsb-public-booking > span,.lsb-day-events > span { color:#c084fc; font-size:.5rem; font-weight:700; letter-spacing:.13em; }.lsb-week-detail-head h3 { margin:.3rem 0 0; color:white; font-size:.84rem; text-transform:capitalize; }.lsb-week-detail-head button { width:2rem; height:2rem; display:grid; place-items:center; border:1px solid var(--lsb-line); border-radius:.55rem; color:var(--lsb-muted); background:#15111a; }
 .lsb-selected-status { margin:.7rem 0; padding:.5rem .65rem; border-radius:.55rem; color:#a7f3d0; background:rgba(16,185,129,.1); font-size:.62rem; }.lsb-selected-status.unavailable { color:#fecaca; background:rgba(239,68,68,.1); }.lsb-selected-status.tentative,.lsb-selected-status.booked { color:#fed7aa; background:rgba(249,115,22,.1); }
@@ -317,7 +341,18 @@ body {
   .lsb-agenda-component > div:first-child { min-height:auto; flex-wrap:wrap; gap:.65rem; padding:.8rem !important; }
   .lsb-agenda-component > div:first-child > div:last-child { margin-left:auto; flex-wrap:wrap; justify-content:flex-end; }
   .lsb-agenda-period { width:100%; }
+  .lsb-agenda-view-switch { order:-1; }
   .lsb-agenda-today { min-height:2.5rem; }
+  .lsb-month-calendar { padding:.5rem .2rem; }
+  .lsb-month-weekdays,.lsb-month-grid { min-width:0; }
+  .lsb-month-weekdays { font-size:.44rem; letter-spacing:.04em; }
+  .lsb-month-day { min-height:4.35rem; padding:.25rem; }
+  .lsb-month-day-number { width:1.25rem; height:1.25rem; font-size:.56rem; }
+  .lsb-month-availability { top:.48rem; right:.28rem; width:.35rem; font-size:0; }
+  .lsb-month-events { gap:.18rem; margin-top:.28rem; }
+  .lsb-month-event { min-height:.32rem; height:.32rem; padding:0; border-radius:999px; }
+  .lsb-month-event time,.lsb-month-event strong { display:none; }
+  .lsb-month-more { overflow:hidden; padding:.05rem 0; font-size:.38rem; text-overflow:ellipsis; white-space:nowrap; }
   .lsb-week-days,.lsb-week-timeline { min-width:38rem; }
   .lsb-week-days { grid-template-columns:3.3rem repeat(7,minmax(4.9rem,1fr)); }
   .lsb-week-timeline { grid-template-columns:3.3rem repeat(7,minmax(4.9rem,1fr)); height:28rem; }

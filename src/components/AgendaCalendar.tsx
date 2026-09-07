@@ -43,6 +43,7 @@ export default function AgendaCalendar({
 
   const now = new Date()
   const [focusDate, setFocusDate] = useState(() => new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('month')
   const [events,       setEvents]       = useState<CalEvent[]>([])
   const [availability, setAvailability] = useState<AvailDay[]>([])
   const [selected, setSelected] = useState<Date | null>(null)
@@ -168,7 +169,8 @@ export default function AgendaCalendar({
       monday.setDate(focusDate.getDate() - ((focusDate.getDay() + 6) % 7))
       const sunday = new Date(monday)
       sunday.setDate(monday.getDate() + 6)
-      const periods = Array.from(new Map([monday, sunday].map((date) => [
+      const datesToLoad = viewMode === 'month' ? [focusDate] : [monday, sunday]
+      const periods = Array.from(new Map(datesToLoad.map((date) => [
         `${date.getFullYear()}-${date.getMonth() + 1}`,
         { month: date.getMonth() + 1, year: date.getFullYear() },
       ])).values())
@@ -191,7 +193,7 @@ export default function AgendaCalendar({
       }
     } catch { /* silencieux */ }
     finally { setLoading(false) }
-  }, [API, profileId, isOwner, showAvailability, focusDate])
+  }, [API, profileId, isOwner, showAvailability, focusDate, viewMode])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -682,9 +684,13 @@ export default function AgendaCalendar({
     && selectedAvail?.status !== 'BOOKED'
 
   /* ── Navigation semaine ── */
-  const moveWeek = (amount: number) => {
+  const movePeriod = (amount: number) => {
     const next = new Date(focusDate)
-    next.setDate(next.getDate() + amount * 7)
+    if (viewMode === 'month') {
+      next.setDate(1)
+      next.setMonth(next.getMonth() + amount)
+    }
+    else next.setDate(next.getDate() + amount * 7)
     setFocusDate(next); setSelected(null)
   }
   const goToday = () => {
@@ -696,6 +702,9 @@ export default function AgendaCalendar({
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekStart.getDate() + 6)
   const weekLabel = `${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  const periodLabel = viewMode === 'month'
+    ? focusDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    : weekLabel
 
   /* ── Sauvegarder disponibilité ── */
   const saveAvailability = async (status: string) => {
@@ -800,7 +809,7 @@ export default function AgendaCalendar({
           <>
             <div className="lsb-agenda-period">
               <span>{isOwner ? 'VOTRE AGENDA' : 'DISPONIBILITÉS'}</span>
-              <strong>{weekLabel}</strong>
+              <strong>{periodLabel}</strong>
               {events.length > 0 && (
                 <span style={{ fontSize: 11, color: '#9ea8c8' }}>
                   {events.length} événement{events.length > 1 ? 's' : ''}
@@ -808,6 +817,10 @@ export default function AgendaCalendar({
               )}
             </div>
             <div className="flex items-center gap-1.5">
+              <div className="lsb-agenda-view-switch" aria-label="Affichage de l’agenda">
+                <button type="button" aria-pressed={viewMode === 'week'} className={viewMode === 'week' ? 'is-active' : ''} onClick={() => setViewMode('week')}>Semaine</button>
+                <button type="button" aria-pressed={viewMode === 'month'} className={viewMode === 'month' ? 'is-active' : ''} onClick={() => setViewMode('month')}>Mois</button>
+              </div>
               {isOwner && (
                 <button
                   onClick={openEventPanel}
@@ -828,14 +841,14 @@ export default function AgendaCalendar({
               )}
               <div style={{ width: '0.5px', height: 16, background: '#1c2030', margin: '0 2px' }} />
               <button
-                onClick={() => moveWeek(-1)}
+                onClick={() => movePeriod(-1)}
                 style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#9ea8c8', cursor: 'pointer' }}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button onClick={goToday} className="lsb-agenda-today">Aujourd’hui</button>
               <button
-                onClick={() => moveWeek(1)}
+                onClick={() => movePeriod(1)}
                 style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#9ea8c8', cursor: 'pointer' }}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -962,6 +975,7 @@ export default function AgendaCalendar({
       {!showPanel && !showEventPanel && (
         <CalendarGrid
           focusDate={focusDate}
+          viewMode={viewMode}
           events={events}
           availability={availability}
           selected={selected}
