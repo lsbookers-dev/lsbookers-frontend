@@ -10,6 +10,7 @@ import {
   ArrowLeft, MessageCircle, Loader2,
   CheckCheck, Check, Paperclip, Send, FileText, X, ExternalLink, CalendarPlus,
   UserPlus, Search,
+  MapPin, CalendarDays,
 } from 'lucide-react'
 import { Avatar, AttachmentBubble } from './MessageUI'
 import { BookingRequestCard, CancellationRequestCard } from './BookingCards'
@@ -118,12 +119,13 @@ export default function MessageThread({
 
   // ── Effet polling statut en ligne ─────────────────────────
   const other = activeConv?.participants.find((p) => p.id !== currentUserId) ?? activeConv?.participants[0]
+  const otherId = other?.id
 
   useEffect(() => {
-    if (!other || !token) return
+    if (!otherId || !token) return
     const fetchStatus = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/messages/status/${other.id}`, {
+        const res = await fetch(`${API_BASE}/api/messages/status/${otherId}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (res.ok) setOnlineStatus(await res.json())
@@ -132,7 +134,7 @@ export default function MessageThread({
     fetchStatus()
     const iv = setInterval(fetchStatus, 30000)
     return () => clearInterval(iv)
-  }, [other?.id, token])
+  }, [otherId, token])
 
   // ── Effet recherche partage profil ────────────────────────
   useEffect(() => {
@@ -210,7 +212,7 @@ export default function MessageThread({
 
   if (!activeConvId || !activeConv) {
     return (
-      <div className={`flex-1 flex-col items-center justify-center gap-5 text-center px-8 bg-gradient-to-b from-[#09090f] to-[#07070d] ${activeConvId && mobileView === 'chat' ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`lsb-thread-empty flex-1 flex-col items-center justify-center gap-5 text-center px-8 ${activeConvId && mobileView === 'chat' ? 'flex' : 'hidden md:flex'}`}>
         <div className="relative">
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-900/30 to-purple-900/20 border border-violet-500/10 flex items-center justify-center shadow-2xl shadow-violet-900/20">
             <MessageCircle className="w-9 h-9 text-violet-400/40" />
@@ -229,9 +231,9 @@ export default function MessageThread({
   const Icon = otherParticipant ? ROLE_ICON[otherParticipant.role] : null
 
   return (
-    <div className={`flex-1 flex flex-col min-w-0 bg-gradient-to-b from-[#09090f] to-[#07070d] ${activeConvId && mobileView === 'chat' ? 'flex' : 'hidden md:flex'}`}>
+    <div className={`lsb-message-thread flex-1 flex flex-col min-w-0 ${activeConvId && mobileView === 'chat' ? 'flex' : 'hidden md:flex'}`}>
       {/* Header chat */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] bg-gradient-to-b from-[#0d0d18]/90 to-[#0d0d18]/70 backdrop-blur-sm shrink-0">
+      <div className="lsb-thread-header flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] backdrop-blur-sm shrink-0">
         <button
           onClick={() => { router.push('/messages'); setMobileView('list') }}
           className="md:hidden p-2 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition"
@@ -344,7 +346,7 @@ export default function MessageThread({
                 <Loader2 className="w-4 h-4 animate-spin" /> Envoi…
               </span>
             ) : (
-              '📅 Envoyer la proposition'
+              <span className="flex items-center justify-center gap-2"><CalendarPlus className="w-4 h-4" />Envoyer la proposition</span>
             )}
           </button>
         </div>
@@ -354,7 +356,7 @@ export default function MessageThread({
       <div
         ref={messagesContainerRef}
         onScroll={handleMessagesScroll}
-        className="flex-1 overflow-y-auto px-4 py-5 space-y-0.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5"
+        className="lsb-thread-messages flex-1 overflow-y-auto px-4 py-5 space-y-0.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5"
       >
         {loadingMsgs && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
@@ -494,8 +496,8 @@ export default function MessageThread({
                             )}
                           </div>
                           <div className="flex items-center gap-3 text-xs text-white/35">
-                            <span>📍 {sharedOffer.location}</span>
-                            <span>📅 {offerDateStr}</span>
+                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{sharedOffer.location}</span>
+                            <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{offerDateStr}</span>
                           </div>
                         </button>
                         <span className="text-[10px] text-white/20 mt-1 px-1">{formatMessageTime(msg.createdAt)}</span>
@@ -528,10 +530,10 @@ export default function MessageThread({
                     </div>
                   )}
                   <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
-                    <div className={`px-4 py-2.5 ${bubbleRadius} shadow-sm ${
+                    <div className={`lsb-message-bubble px-4 py-2.5 ${bubbleRadius} shadow-sm ${
                       isMe
-                        ? 'bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-violet-900/30'
-                        : 'bg-[#1c1c2e] border border-white/[0.06] text-white/90'
+                        ? 'lsb-message-bubble-me bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-violet-900/30'
+                        : 'lsb-message-bubble-them bg-[#1c1c2e] border border-white/[0.06] text-white/90'
                     }`}>
                       {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
                       <AttachmentBubble msg={msg} onImageClick={(url, name) => setLightbox({ url, name })} />
@@ -636,8 +638,8 @@ export default function MessageThread({
       )}
 
       {/* Zone de saisie */}
-      <div className="px-4 pb-4 pt-2 shrink-0 bg-gradient-to-t from-[#09090f] to-transparent">
-        <div className="flex items-end gap-2 rounded-2xl border border-white/[0.08] bg-[#141420]/80 backdrop-blur-sm px-3 py-2.5 shadow-lg shadow-black/20 focus-within:border-violet-500/30 transition-colors">
+      <div className="lsb-message-composer-wrap px-4 pb-4 pt-2 shrink-0">
+        <div className="lsb-message-composer flex items-end gap-2 rounded-2xl border border-white/[0.08] backdrop-blur-sm px-3 py-2.5 shadow-lg shadow-black/20 focus-within:border-violet-500/30 transition-colors">
           <textarea
             ref={textareaRef}
             value={content}

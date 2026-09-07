@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, MessageCircle, Loader2, Trash2 } from 'lucide-react'
+import { Search, MessageCircle, Loader2, Trash2, SquarePen } from 'lucide-react'
 import { Avatar } from './MessageUI'
 import { ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatTime } from './_helpers'
 import type { Conversation, SearchUser } from './types'
@@ -47,29 +47,38 @@ export default function ConversationList({
     : []
 
   return (
-    <div className={`
+    <div className={`lsb-conversations
       flex flex-col border-r border-white/[0.06]
       bg-gradient-to-b from-[#0e0e1a] to-[#0b0b15]
       w-full md:w-80 lg:w-96 shrink-0
       ${activeConvId && mobileView === 'chat' ? 'hidden md:flex' : 'flex'}
     `}>
       {/* Header */}
-      <div className="px-4 pt-5 pb-3 border-b border-white/[0.05]">
+      <div className="lsb-conversations-header px-4 pt-5 pb-3 border-b border-white/[0.05]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-base font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+            <h1 className="text-base font-bold tracking-tight text-white">
               Messages
             </h1>
             {conversations.length > 0 && !isSearching && (
               <p className="text-[11px] text-white/25 mt-0.5">{conversations.length} conversation{conversations.length > 1 ? 's' : ''}</p>
             )}
           </div>
+          <button
+            type="button"
+            aria-label="Nouveau message"
+            onClick={() => document.getElementById('conversation-search')?.focus()}
+            className="lsb-new-message"
+          >
+            <SquarePen className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Barre de recherche unifiée */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
           <input
+            id="conversation-search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -154,7 +163,7 @@ export default function ConversationList({
 
               return (
                 <div key={conv.id} onClick={() => selectConv(conv.id)}
-                  className={`group relative flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-all duration-150 ${
+                  className={`lsb-conversation-row group relative flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-all duration-150 ${
                     isActive ? 'bg-gradient-to-r from-violet-600/[0.18] via-violet-500/[0.08] to-transparent' : 'hover:bg-white/[0.03]'
                   }`}
                 >

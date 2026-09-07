@@ -3,7 +3,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CalendarDays } from 'lucide-react'
+import { Ban, Banknote, CalendarDays, Check, RefreshCw, X } from 'lucide-react'
 import { API_BASE } from './_helpers'
 import type { Message, BookingRequestData } from './types'
 
@@ -103,9 +103,9 @@ export function BookingRequestCard({
         <StatusBadge status={status} />
       </div>
       <div className="px-4 py-3 space-y-1.5">
-        <p className="text-sm text-white/80 capitalize">📅 {dateLabel}</p>
+        <p className="flex items-center gap-2 text-sm text-white/80 capitalize"><CalendarDays className="w-4 h-4 text-violet-300" />{dateLabel}</p>
         {br.fee != null && (
-          <p className="text-sm text-white/80">💶 {Number(br.fee).toLocaleString('fr-FR')} €</p>
+          <p className="flex items-center gap-2 text-sm text-white/80"><Banknote className="w-4 h-4 text-violet-300" />{Number(br.fee).toLocaleString('fr-FR')} €</p>
         )}
         {br.message && (
           <p className="text-sm text-white/55 italic border-l-2 border-violet-500/40 pl-3">&ldquo;{br.message}&rdquo;</p>
@@ -139,15 +139,15 @@ export function BookingRequestCard({
               <div className="flex gap-2 mt-1">
                 <button onClick={() => updateStatus('ACCEPTED')} disabled={updating}
                   className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-500 disabled:opacity-30 transition">
-                  ✓ Accepter
+                  <Check className="inline w-4 h-4 mr-1" />Accepter
                 </button>
                 <button onClick={() => setShowCounter(true)}
                   className="flex-1 py-2 rounded-xl bg-amber-600/80 text-white text-sm font-medium hover:bg-amber-500/80 transition">
-                  ↔ Contre-offre
+                  <RefreshCw className="inline w-4 h-4 mr-1" />Contre-offre
                 </button>
                 <button onClick={() => updateStatus('DECLINED')} disabled={updating}
                   className="flex-1 py-2 rounded-xl bg-red-700/70 text-white text-sm font-medium hover:bg-red-600/70 disabled:opacity-30 transition">
-                  ✕ Refuser
+                  <X className="inline w-4 h-4 mr-1" />Refuser
                 </button>
               </div>
             )
@@ -210,31 +210,31 @@ export function CancellationRequestCard({
   return (
     <div className="max-w-sm w-full rounded-2xl border border-orange-500/30 bg-orange-900/15 overflow-hidden">
       <div className="px-4 py-3 border-b border-orange-500/20 flex items-center gap-2">
-        <span className="text-base">🚫</span>
+        <Ban className="w-4 h-4 text-orange-300" />
         <span className="text-sm font-semibold text-orange-300">Demande d&apos;annulation</span>
       </div>
       <div className="px-4 py-3 space-y-1.5">
-        <p className="text-sm text-white/80 capitalize">📅 {dateLabel}</p>
+        <p className="flex items-center gap-2 text-sm text-white/80 capitalize"><CalendarDays className="w-4 h-4 text-orange-300" />{dateLabel}</p>
         {br.cancellationNote && (
           <p className="text-sm text-white/55 italic border-l-2 border-orange-500/40 pl-3">&ldquo;{br.cancellationNote}&rdquo;</p>
         )}
       </div>
       <div className="px-4 pb-4">
         {localDone === 'accepted' ? (
-          <p className="text-xs text-green-400 font-medium">✅ Annulation confirmée</p>
+          <p className="text-xs text-green-400 font-medium"><Check className="inline w-4 h-4 mr-1" />Annulation confirmée</p>
         ) : localDone === 'denied' ? (
-          <p className="text-xs text-white/40">❌ Demande d&apos;annulation refusée</p>
+          <p className="text-xs text-white/40"><X className="inline w-4 h-4 mr-1" />Demande d&apos;annulation refusée</p>
         ) : isRequester ? (
           <p className="text-xs text-white/35">En attente de confirmation…</p>
         ) : (
           <div className="flex gap-2 mt-1">
             <button onClick={() => respond(true)} disabled={responding}
               className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-500 disabled:opacity-30 transition">
-              ✓ Confirmer l&apos;annulation
+              <Check className="inline w-4 h-4 mr-1" />Confirmer l&apos;annulation
             </button>
             <button onClick={() => respond(false)} disabled={responding}
               className="flex-1 py-2 rounded-xl bg-white/5 text-white/60 text-sm font-medium hover:bg-white/10 disabled:opacity-30 transition">
-              ✕ Refuser
+              <X className="inline w-4 h-4 mr-1" />Refuser
             </button>
           </div>
         )}

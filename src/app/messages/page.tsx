@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Lightbox } from './MessageUI'
 import ConversationList from './ConversationList'
 import MessageThread from './MessageThread'
+import ConversationDetails from './ConversationDetails'
 import { API_BASE, getHeaders } from './_helpers'
 import type { Conversation, Message, SearchUser } from './types'
 
@@ -372,6 +373,7 @@ function MessagesContent() {
         textareaRef={textareaRef}
         fetchMessages={fetchMessages}
       />
+      <ConversationDetails conversation={activeConv} currentUserId={currentUserId} />
       </div>
     </div>
   )
