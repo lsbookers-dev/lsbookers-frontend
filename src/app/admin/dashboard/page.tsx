@@ -2,6 +2,10 @@
 
 import * as React from 'react'
 import { getAuthToken } from '@/utils/auth'
+import {
+  Users, CreditCard, MessageSquare, TrendingUp,
+  Receipt, UserPlus, LogIn, type LucideIcon,
+} from 'lucide-react'
 
 type Summary = {
   usersTotal: number
@@ -98,44 +102,80 @@ export default function AdminDashboard() {
     return () => { alive = false }
   }, [authed, loginPeriod])
 
-  if (loading) return <div className="p-8 text-white">Chargement…</div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
   if (error || !summary) return <div className="p-8 text-red-400">{error ?? 'Données indisponibles'}</div>
 
   return (
-    <div className="p-6 text-white max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Tableau de bord admin</h1>
+    <div className="py-6 text-white">
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* ── En-tête ── */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Tableau de bord</h1>
+        <p className="text-sm text-white/40 mt-0.5">Vue d&apos;ensemble en temps réel</p>
+      </div>
+
+      {/* ── KPI Grid ── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KPIOnline value={summary.onlineNow ?? 0} />
         <KPI
+          icon={Users}
+          iconColor="text-violet-400"
+          iconBg="bg-violet-500/10"
           title="Utilisateurs"
           value={summary.usersTotal.toLocaleString()}
-          sub={`${summary.artists} artistes • ${summary.organizers} orga • ${summary.providers} presta`}
+          sub={`${summary.artists} artistes · ${summary.organizers} orga · ${summary.providers} presta`}
         />
         <KPI
+          icon={CreditCard}
+          iconColor="text-emerald-400"
+          iconBg="bg-emerald-500/10"
           title="Utilisateurs payants"
           value={summary.payingUsers.toLocaleString()}
           sub={`MRR ${money(summary.mrrCents)}`}
         />
         <KPI
+          icon={UserPlus}
+          iconColor="text-pink-400"
+          iconBg="bg-pink-500/10"
+          title="Inscriptions aujourd'hui"
+          value={summary.signupsToday.toLocaleString()}
+        />
+        <KPI
+          icon={MessageSquare}
+          iconColor="text-blue-400"
+          iconBg="bg-blue-500/10"
           title="Conversations / Messages"
           value={`${summary.conversations.toLocaleString()} / ${summary.messages.toLocaleString()}`}
         />
-        <KPI title="CA abonnements (mois)" value={money(summary.revenueMonthCents)} />
-        <KPI title="CA formules"            value={money(summary.revenueOffersCents)} />
-
         <KPI
-          title="Inscriptions aujourd'hui"
-          value={summary.signupsToday.toLocaleString()}
+          icon={TrendingUp}
+          iconColor="text-amber-400"
+          iconBg="bg-amber-500/10"
+          title="CA abonnements (mois)"
+          value={money(summary.revenueMonthCents)}
+        />
+        <KPI
+          icon={Receipt}
+          iconColor="text-cyan-400"
+          iconBg="bg-cyan-500/10"
+          title="CA formules"
+          value={money(summary.revenueOffersCents)}
         />
       </div>
 
       {/* ── Carte Connexions avec filtres ── */}
-      <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f0f0f] p-5">
+      <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.03] p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <p className="text-sm text-white/60">Connexions</p>
-
-          {/* Boutons de filtre */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/10">
+              <LogIn className="h-4 w-4 text-violet-400" />
+            </div>
+            <p className="text-sm font-medium text-white/70">Connexions</p>
+          </div>
           <div className="flex items-center gap-1 flex-wrap">
             {(Object.keys(PERIOD_LABELS) as LoginPeriod[]).map(p => (
               <button
@@ -152,15 +192,9 @@ export default function AdminDashboard() {
             ))}
           </div>
         </div>
-
-        <p className="text-2xl font-extrabold">
-          {loginLoading ? (
-            <span className="text-white/30">…</span>
-          ) : loginCount !== null ? (
-            loginCount.toLocaleString()
-          ) : (
-            '—'
-          )}
+        <p className="text-3xl font-extrabold">
+          {loginLoading ? <span className="text-white/20">…</span>
+            : loginCount !== null ? loginCount.toLocaleString() : '—'}
         </p>
         <p className="text-xs text-white/40 mt-1">{PERIOD_LABELS[loginPeriod]}</p>
       </div>
@@ -168,28 +202,36 @@ export default function AdminDashboard() {
   )
 }
 
-function KPI({ title, value, sub }: { title: string; value: string; sub?: string }) {
+function KPI({ icon: Icon, iconColor, iconBg, title, value, sub }: {
+  icon: LucideIcon; iconColor: string; iconBg: string
+  title: string; value: string; sub?: string
+}) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0f0f0f] p-5">
-      <p className="text-sm text-white/60">{title}</p>
-      <p className="text-2xl font-extrabold mt-1">{value}</p>
-      {sub && <p className="text-xs text-white/50 mt-1">{sub}</p>}
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5 hover:bg-white/[0.05] transition-colors">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium text-white/50 uppercase tracking-wider">{title}</p>
+        <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${iconBg}`}>
+          <Icon className={`h-4 w-4 ${iconColor}`} />
+        </div>
+      </div>
+      <p className="text-2xl font-extrabold text-white">{value}</p>
+      {sub && <p className="text-xs text-white/40 mt-1.5">{sub}</p>}
     </div>
   )
 }
 
 function KPIOnline({ value }: { value: number }) {
   return (
-    <div className="rounded-2xl border border-green-500/30 bg-[#0f0f0f] p-5">
-      <div className="flex items-center gap-2">
+    <div className="rounded-2xl border border-green-500/20 bg-green-500/[0.04] p-5 hover:bg-green-500/[0.07] transition-colors">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium text-white/50 uppercase tracking-wider">En ligne</p>
         <span className="relative flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
         </span>
-        <p className="text-sm text-white/60">En ligne maintenant</p>
       </div>
-      <p className="text-2xl font-extrabold mt-1">{value.toLocaleString()}</p>
-      <p className="text-xs text-white/40 mt-1">actifs dans les 2 dernières minutes</p>
+      <p className="text-2xl font-extrabold text-white">{value.toLocaleString()}</p>
+      <p className="text-xs text-white/40 mt-1.5">actifs ces 2 dernières minutes</p>
     </div>
   )
 }

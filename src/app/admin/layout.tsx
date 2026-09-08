@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen text-white lsb-admin-shell">
       <AdminHeader />
-      <main className="p-6">{children}</main>
+      <main className="pt-16 p-6 max-w-7xl mx-auto">{children}</main>
     </div>
   )
 }
