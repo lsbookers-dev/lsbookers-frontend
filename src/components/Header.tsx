@@ -244,7 +244,7 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
             {/* ── Logo ───────────────────────────────────── */}
             <Link href="/home" className="lsb-header-brand">
               {headerLogoUrl ? (
-                <Image src={headerLogoUrl} alt="LSBookers" width={120} height={36} className="object-contain h-9 w-auto" unoptimized />
+                <Image src={headerLogoUrl} alt="LSBookers" width={180} height={48} className="object-contain h-11 w-auto" unoptimized />
               ) : (
                 <><span>LS</span><strong>LSBOOKERS</strong></>
               )}
