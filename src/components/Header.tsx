@@ -100,6 +100,7 @@ export default function Header() {
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
   const [menuOpen, setMenuOpen]           = useState(false)
+  const [headerLogoUrl, setHeaderLogoUrl] = useState<string | null>(null)
 const [unreadMsg, setUnreadMsg]         = useState(0)
   const [unreadNotif, setUnreadNotif]     = useState(0)
   const menuRef  = useRef<HTMLDivElement>(null)
@@ -129,6 +130,14 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
 
   // Garder le ref en sync avec l'état
   useEffect(() => { notifOpenRef.current = notifOpen }, [notifOpen])
+
+  // ── Logo admin ───────────────────────────────────
+  useEffect(() => {
+    fetch(`${API_BASE}/api/admin/settings`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.headerLogoUrl) setHeaderLogoUrl(d.headerLogoUrl) })
+      .catch(() => {})
+  }, [API_BASE])
 
   // Lire aussi directement le localStorage pour les utilisateurs déjà connectés
   // (le fix de normalizeUser s'applique seulement après une reconnexion)
@@ -234,7 +243,11 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
 
             {/* ── Logo ───────────────────────────────────── */}
             <Link href="/home" className="lsb-header-brand">
-              <span>LS</span><strong>LSBOOKERS</strong>
+              {headerLogoUrl ? (
+                <Image src={headerLogoUrl} alt="LSBookers" width={120} height={36} className="object-contain h-9 w-auto" unoptimized />
+              ) : (
+                <><span>LS</span><strong>LSBOOKERS</strong></>
+              )}
             </Link>
 
 {/* ── Nav desktop ────────────────────────────── */}

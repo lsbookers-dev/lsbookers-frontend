@@ -128,8 +128,9 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  const itemsPerSlide = isMobile ? 1 : 2
-  const slidesCount = Math.ceil(items.length / itemsPerSlide)
+  // Desktop : 1 slide par profil, toujours 2 affiches en circulaire
+  // Mobile  : 1 seul profil par slide
+  const slidesCount = items.length
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -148,7 +149,10 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
 
   if (items.length === 0) return null
 
-  const visibleItems = items.slice(idx * itemsPerSlide, idx * itemsPerSlide + itemsPerSlide)
+  // Sur desktop, toujours 2 profils, avec wrap-around circulaire
+  const visibleItems = isMobile
+    ? [items[idx % items.length]]
+    : [items[idx % items.length], items[(idx + 1) % items.length]]
 
   return (
     <div className="relative mb-8">
