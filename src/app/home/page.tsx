@@ -649,9 +649,12 @@ function OffersSidebar({ apiBase, onSelectOffer }: {
                       {o.location} · {dateLabel} · {startTime}{endTime ? `–${endTime}` : ''}
                     </span>
                   </span>
-                  <strong className="whitespace-nowrap text-[10px] font-semibold text-white/90">
-                    {o.fee != null ? `${o.fee} €` : 'À définir'}
-                  </strong>
+                  <span className="text-right">
+                    <span className="block text-[8px] uppercase tracking-[0.08em] text-white/35">Tarif</span>
+                    <strong className="mt-0.5 block whitespace-nowrap text-[10px] font-semibold leading-none text-white/90">
+                      {o.fee != null ? `${o.fee} €` : 'À définir'}
+                    </strong>
+                  </span>
                 </span>
               </button>
             )
