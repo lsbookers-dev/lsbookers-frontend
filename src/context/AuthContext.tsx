@@ -184,15 +184,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   /* ===================== Login ===================== */
   const login = async (email: string, password: string) => {
+    // Envoyer le device token stocké pour identifier les appareils déjà connus
+    const storedDeviceToken = typeof window !== 'undefined'
+      ? localStorage.getItem('lsb_device_token')
+      : null
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (storedDeviceToken) headers['X-Device-Token'] = storedDeviceToken
+
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
       body: JSON.stringify({ email, password }),
     })
 
     if (!res.ok) {
-      console.error('❌ Échec de la connexion')
       throw new Error('Login failed')
     }
 
@@ -202,6 +208,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Cookie httpOnly posé par le backend + token en localStorage (fallback Safari)
     localStorage.setItem('user', JSON.stringify(normalized))
     localStorage.setItem('token', data.token)
+    // Persister le device token pour les prochaines connexions
+    if (data.deviceToken) localStorage.setItem('lsb_device_token', data.deviceToken)
 
     setToken(data.token)
     setUser(normalized)
