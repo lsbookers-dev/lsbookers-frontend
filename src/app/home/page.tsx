@@ -152,14 +152,7 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
 
   return (
     <div className="relative mb-8">
-      <div className="flex items-center gap-2 mb-3">
-        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-        <span className="text-xs font-semibold uppercase tracking-widest text-yellow-400/80">
-          Profils mis en avant
-        </span>
-      </div>
-
-      <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+<div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
         {visibleItems.map(p => (
           <Link key={p.id} href={p.profileUrl} className="group relative h-44 md:h-52 rounded-2xl overflow-hidden block border border-white/10">
             {p.banner ? (
@@ -786,29 +779,30 @@ export default function HomePage() {
 
       {featured.length > 0 && <FeaturedCarousel items={featured} />}
 
-      <header className="lsb-page-heading lsb-home-heading">
-        <div><span>VOTRE RÉSEAU</span><h1>La scène bouge<em>.</em></h1><p>Les nouveautés de votre univers professionnel.</p></div>
-      </header>
-
-      <section className="lsb-composer" style={{ cursor: 'pointer' }} onClick={() => setShowAddPubModal(true)}>
-        <div className="lsb-composer-avatar overflow-hidden">
-          {user?.avatarUrl ? (
-            <Image src={user.avatarUrl} alt="" width={40} height={40} style={{ objectFit: 'cover', width: '100%', height: '100%' }} unoptimized />
-          ) : (
-            user?.name ? user.name[0].toUpperCase() : 'LS'
-          )}
-        </div>
-        <span className="flex-1 text-white/40">Ajouter une Publication</span>
-      </section>
-
-      <div className="lsb-feed-tabs" role="tablist" aria-label="Fil d'actualité">
-        <button className={activeTab === 'forYou' ? 'is-active' : ''} onClick={() => setActiveTab('forYou')}>Pour vous</button>
-        <button className={activeTab === 'network' ? 'is-active' : ''} onClick={() => setActiveTab('network')}>Mon réseau</button>
-        <button className={activeTab === 'nearby' ? 'is-active' : ''} onClick={() => setActiveTab('nearby')}>À proximité</button>
-      </div>
-
       <div className="lsb-home-grid">
         <div className="lsb-feed-column">
+
+          <header className="lsb-page-heading lsb-home-heading">
+            <div><span>VOTRE RÉSEAU</span><h1>La scène bouge<em>.</em></h1><p>Les nouveautés de votre univers professionnel.</p></div>
+          </header>
+
+          <section className="lsb-composer" style={{ cursor: 'pointer' }} onClick={() => setShowAddPubModal(true)}>
+            <div className="lsb-composer-avatar overflow-hidden">
+              {user?.avatarUrl ? (
+                <Image src={user.avatarUrl} alt="" width={40} height={40} style={{ objectFit: 'cover', width: '100%', height: '100%' }} unoptimized />
+              ) : (
+                user?.name ? user.name[0].toUpperCase() : 'LS'
+              )}
+            </div>
+            <span className="flex-1 text-white/40">Ajouter une Publication</span>
+          </section>
+
+          <div className="lsb-feed-tabs" role="tablist" aria-label="Fil d'actualité">
+            <button className={activeTab === 'forYou' ? 'is-active' : ''} onClick={() => setActiveTab('forYou')}>Pour vous</button>
+            <button className={activeTab === 'network' ? 'is-active' : ''} onClick={() => setActiveTab('network')}>Mon réseau</button>
+            <button className={activeTab === 'nearby' ? 'is-active' : ''} onClick={() => setActiveTab('nearby')}>À proximité</button>
+          </div>
+
           {loadingFeed ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
