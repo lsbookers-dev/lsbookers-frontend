@@ -36,7 +36,15 @@ export default function AppSidebar() {
   return (
     <aside className="lsb-sidebar" aria-label="Navigation principale">
       <nav>{group(primary)}</nav>
-      <nav>{group(secondary)}</nav>
+      <div className="flex flex-col gap-3">
+        <nav>{group(secondary)}</nav>
+        <div className="lsb-sidebar-legal">
+          <Link href="/contact">Contact</Link>
+          <Link href="/legal/mentions-legales">Mentions légales</Link>
+          <Link href="/legal/confidentialite">Confidentialité</Link>
+          <span>© {new Date().getFullYear()} LSBookers</span>
+        </div>
+      </div>
     </aside>
   )
 }
