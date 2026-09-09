@@ -201,6 +201,8 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
+  const didInitRef = useRef(false)
+
   const handleSearch = useCallback((queryOverride?: string, roleOverride?: string) => {
     if (!token || !API_BASE) return
     setLoading(true)
@@ -267,13 +269,14 @@ export default function SearchPage() {
       .finally(() => setLoading(false))
   }, [token, searchTerm, typeFilter, typeFilters, styleFilters, filterByDate, dateFilter, sortOrder, zone, country, radiusKm])
 
-  // Chargement initial
+  // Chargement initial — didInitRef évite la double exécution si handleSearch change
   useEffect(() => {
-    if (!token) return
+    if (!token || didInitRef.current) return
+    didInitRef.current = true
     const initialQuery = new URLSearchParams(window.location.search).get('name') || ''
     if (initialQuery) setSearchTerm(initialQuery)
     handleSearch(initialQuery)
-  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, handleSearch])
 
   const handleReset = () => {
     setSearchTerm(''); setTypeFilter(''); setTypeFilters([])

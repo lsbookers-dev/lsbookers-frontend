@@ -283,7 +283,11 @@ function OffersInner() {
       })
       if (res.ok) {
         const data = await res.json()
-        router.push(`/messages?c=${data.conversationId}`)
+        if (data.conversationId) {
+          router.push(`/messages?c=${data.conversationId}`)
+        } else {
+          router.push('/messages')
+        }
       }
     } catch { /* silent */ } finally {
       setApplyingId(null)
