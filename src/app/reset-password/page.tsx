@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
-
-const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
+import { apiUrl } from '@/utils/api'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -40,7 +39,7 @@ function ResetPasswordForm() {
 
     setLoading(true)
     try {
-      await axios.post(`${API}/api/auth/reset-password`, { token, password })
+      await axios.post(apiUrl('auth/reset-password'), { token, password })
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       setSuccess(true)

@@ -3,12 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { apiUrl } from '@/utils/api'
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-// trust  → GET  /api/auth/device-verify?action=trust  (atomique, safe pour scanners)
-// reject → POST /api/auth/device-verify-reject        (POST seulement, scanners ne peuvent pas déclencher ça)
-type Status = 'loading' | 'trust_ok' | 'reject_confirm' | 'reject_loading' | 'reject_ok' | 'error'
+type Status = 'loading' | 'trust_confirm' | 'trust_loading' | 'trust_ok' | 'reject_confirm' | 'reject_loading' | 'reject_ok' | 'error'
 
 export default function DeviceVerifiedPage() {
   const params  = useSearchParams()
@@ -29,22 +26,7 @@ export default function DeviceVerifiedPage() {
     setToken(t)
 
     if (action === 'trust') {
-      // Trust → GET atomique (safe, le backend protège contre les doubles appels)
-      fetch(`${API_BASE}/api/auth/device-verify?token=${t}&action=trust`)
-        .then(async (res) => {
-          const data = await res.json()
-          if (!res.ok) {
-            setStatus('error')
-            setDetail(data.error || 'Une erreur est survenue.')
-          } else {
-            setStatus('trust_ok')
-            setDetail(data.deviceName || '')
-          }
-        })
-        .catch(() => {
-          setStatus('error')
-          setDetail('Impossible de joindre le serveur.')
-        })
+      setStatus('trust_confirm')
     } else {
       // Reject → NE PAS appeler l'API automatiquement.
       // On affiche d'abord une page de confirmation : l'utilisateur doit cliquer
@@ -54,10 +36,32 @@ export default function DeviceVerifiedPage() {
     }
   }, [params])
 
+  const handleConfirmTrust = async () => {
+    setStatus('trust_loading')
+    try {
+      const res = await fetch(apiUrl('auth/device-verify-trust'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setStatus('error')
+        setDetail(data.error || 'Une erreur est survenue.')
+      } else {
+        setStatus('trust_ok')
+        setDetail(data.deviceName || '')
+      }
+    } catch {
+      setStatus('error')
+      setDetail('Impossible de joindre le serveur.')
+    }
+  }
+
   const handleConfirmReject = async () => {
     setStatus('reject_loading')
     try {
-      const res = await fetch(`${API_BASE}/api/auth/device-verify-reject`, {
+      const res = await fetch(apiUrl('auth/device-verify-reject'), {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ token }),
@@ -89,6 +93,23 @@ export default function DeviceVerifiedPage() {
           <>
             <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-gray-400">Vérification en cours…</p>
+          </>
+        )}
+
+        {(status === 'trust_confirm' || status === 'trust_loading') && (
+          <>
+            <div className="text-5xl mb-4">✓</div>
+            <h1 className="text-2xl font-bold text-white mb-2">Confirmer cet appareil ?</h1>
+            <p className="text-gray-400 mb-6">
+              Confirme uniquement si tu reconnais la connexion indiquée dans l’email.
+            </p>
+            <button
+              onClick={handleConfirmTrust}
+              disabled={status === 'trust_loading'}
+              className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl transition"
+            >
+              {status === 'trust_loading' ? 'Confirmation…' : 'Oui, confirmer cet appareil'}
+            </button>
           </>
         )}
 
@@ -150,13 +171,13 @@ export default function DeviceVerifiedPage() {
               Toutes vos sessions ont été fermées et vos appareils de confiance supprimés.
             </p>
             <p className="text-amber-400 text-sm mb-6">
-              ⚠️ Changez votre mot de passe dès que possible depuis les paramètres.
+              Réinitialise ton mot de passe pour pouvoir te reconnecter.
             </p>
             <Link
-              href="/login"
+              href="/forgot-password"
               className="inline-block bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-xl transition"
             >
-              Se connecter et changer le mot de passe
+              Réinitialiser mon mot de passe
             </Link>
           </>
         )}

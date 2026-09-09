@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import axios from 'axios'
-
-const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
+import { apiUrl } from '@/utils/api'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail]     = useState('')
@@ -17,7 +16,7 @@ export default function ForgotPasswordPage() {
     setError(null)
     setLoading(true)
     try {
-      await axios.post(`${API}/api/auth/forgot-password`, { email })
+      await axios.post(apiUrl('auth/forgot-password'), { email })
       setSent(true)
     } catch {
       setError('Une erreur est survenue. Réessaie dans quelques instants.')

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
+import { apiUrl } from '@/utils/api'
+import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
 import { Eye, EyeOff } from 'lucide-react'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
@@ -18,7 +20,6 @@ type OrganizerType = 'INDIVIDUAL' | 'PROFESSIONAL'
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
 
 // ─────────────────────────────────────────────
 // Composants UI réutilisables
@@ -291,7 +292,7 @@ export default function RegisterPage() {
   const [bgUrl, setBgUrl] = useState(process.env.NEXT_PUBLIC_LANDING_BG || DEFAULT_BG)
 
   useEffect(() => {
-    fetch(`${API}/api/admin/settings`)
+    fetch(apiUrl('admin/settings'))
       .then(r => r.json())
       .then(data => { if (data?.registerBgUrl) setBgUrl(data.registerBgUrl) })
       .catch(() => {})
@@ -316,7 +317,7 @@ export default function RegisterPage() {
     if (!value || value.trim().length < 3) { setPseudoStatus('idle'); return }
     setPseudoStatus('checking')
     try {
-      const res = await fetch(`${API}/api/auth/check-pseudo?pseudo=${encodeURIComponent(value.trim())}`)
+      const res = await fetch(`${apiUrl('auth/check-pseudo')}?pseudo=${encodeURIComponent(value.trim())}`)
       const data = await res.json()
       setPseudoStatus(data.available ? 'available' : 'taken')
     } catch {
@@ -364,8 +365,12 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
     try {
+      const deviceToken = getOrCreateDeviceToken()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (deviceToken) headers['X-Device-Token'] = deviceToken
+
       const { data } = await axios.post(
-        `${API}/api/auth/register-complete`,
+        apiUrl('auth/register-complete'),
         {
           email, password, role,
           pseudo, firstName, lastName,
@@ -380,9 +385,9 @@ export default function RegisterPage() {
           city: city || undefined,
           specialties: specialties.length > 0 ? specialties : undefined,
         },
-        { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
+        { headers, withCredentials: true }
       )
-      if (data.deviceToken) localStorage.setItem('lsb_device_token', data.deviceToken)
+      if (data.deviceToken) persistDeviceToken(data.deviceToken)
       setStep(4)
     } catch (err) {
       if (isAxiosError(err)) {
@@ -819,7 +824,7 @@ export default function RegisterPage() {
                       type="button"
                       onClick={async () => {
                         try {
-                          await fetch(`${API}/api/auth/resend-verification`, {
+                          await fetch(apiUrl('auth/resend-verification'), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ email }),

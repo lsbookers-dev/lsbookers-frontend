@@ -3,6 +3,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { getAuthToken } from '@/utils/auth'
+import { apiUrl } from '@/utils/api'
+import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
 
 /* ===================== Types ===================== */
 
@@ -80,10 +82,6 @@ const isPublicPath = (pathname: string) => {
   return false
 }
 
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app'
-).replace(/\/+$/, '').replace(/\/api$/, '')
-
 function clearLocalSession() {
   try { localStorage.removeItem('user') } catch { }
   try { localStorage.removeItem('token') } catch { }
@@ -118,7 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const headers: HeadersInit = {}
         if (storedToken) headers.Authorization = `Bearer ${storedToken}`
 
-        const res = await fetch(`${API_URL}/api/auth/me`, {
+        const res = await fetch(apiUrl('auth/me'), {
           headers,
           credentials: 'include',
           cache: 'no-store',
@@ -140,7 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Les écrans actuels utilisent le Bearer token. Une session retrouvée
         // uniquement par cookie est fermée proprement pour éviter un état partiel.
         if (!storedToken) {
-          await fetch(`${API_URL}/api/auth/logout`, {
+          await fetch(apiUrl('auth/logout'), {
             method: 'POST',
             credentials: 'include',
           }).catch(() => {})
@@ -185,13 +183,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   /* ===================== Login ===================== */
   const login = async (email: string, password: string) => {
     // Envoyer le device token stocké pour identifier les appareils déjà connus
-    const storedDeviceToken = typeof window !== 'undefined'
-      ? localStorage.getItem('lsb_device_token')
-      : null
+    const storedDeviceToken = getOrCreateDeviceToken()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (storedDeviceToken) headers['X-Device-Token'] = storedDeviceToken
 
-    const res = await fetch(`${API_URL}/api/auth/login`, {
+    const res = await fetch(apiUrl('auth/login'), {
       method: 'POST',
       headers,
       credentials: 'include',
@@ -209,7 +205,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem('user', JSON.stringify(normalized))
     localStorage.setItem('token', data.token)
     // Persister le device token pour les prochaines connexions
-    if (data.deviceToken) localStorage.setItem('lsb_device_token', data.deviceToken)
+    if (data.deviceToken) persistDeviceToken(data.deviceToken)
 
     setToken(data.token)
     setUser(normalized)
@@ -227,7 +223,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const headers: HeadersInit = {}
       if (token) headers.Authorization = `Bearer ${token}`
-      await fetch(`${API_URL}/api/auth/logout`, {
+      await fetch(apiUrl('auth/logout'), {
         method: 'POST',
         headers,
         credentials: 'include',

@@ -1,38 +1,67 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
-
-const API = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
+import { apiUrl } from '@/utils/api'
+import { getOrCreateDeviceToken } from '@/utils/deviceToken'
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [status, setStatus] = useState<'confirm' | 'loading' | 'success' | 'error'>(token ? 'confirm' : 'error')
   const [message, setMessage] = useState('')
 
-  useEffect(() => {
+  const verifyEmail = async () => {
     if (!token) {
       setStatus('error')
       setMessage('Lien invalide.')
       return
     }
 
-    axios
-      .get(`${API}/api/auth/verify-email?token=${token}`)
-      .then(() => setStatus('success'))
-      .catch(err => {
-        setStatus('error')
+    setStatus('loading')
+    const deviceToken = getOrCreateDeviceToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (deviceToken) headers['X-Device-Token'] = deviceToken
+
+    try {
+      await axios.post(apiUrl('auth/verify-email'), { token }, { headers, withCredentials: true })
+      setStatus('success')
+    } catch (err) {
+      setStatus('error')
+      if (axios.isAxiosError(err)) {
         setMessage(err.response?.data?.error || 'Lien invalide ou déjà utilisé.')
-      })
-  }, [token])
+      } else {
+        setMessage('Impossible de joindre le serveur.')
+      }
+    }
+  }
 
   return (
     <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl text-center">
+
+      {status === 'confirm' && (
+        <>
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-purple-600/20 ring-2 ring-purple-500/50">
+            <svg className="h-8 w-8 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.6-4.4A11.9 11.9 0 0112 3a11.9 11.9 0 01-8.6 2.6A12 12 0 003 9c0 5.6 3.8 10.3 9 11.6 5.2-1.3 9-6 9-11.6 0-1.2-.1-2.3-.4-3.4z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold">Confirmer ton adresse email</h2>
+          <p className="mt-2 text-sm text-white/60">
+            Confirme cette action pour activer ton compte et reconnaître cet appareil s’il s’agit de celui utilisé à l’inscription.
+          </p>
+          <button
+            onClick={verifyEmail}
+            className="mt-6 w-full rounded-xl bg-purple-600 px-4 py-2.5 font-semibold text-white transition hover:bg-purple-500"
+          >
+            Confirmer mon email
+          </button>
+        </>
+      )}
 
       {status === 'loading' && (
         <>

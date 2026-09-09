@@ -7,6 +7,8 @@ import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { apiUrl } from '@/utils/api'
+import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
 
 /* ─────────────────────────────────────────────────────────
    HELPERS
@@ -75,17 +77,14 @@ export default function LoginPage() {
   const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
   const [bgUrl, setBgUrl] = useState(process.env.NEXT_PUBLIC_LANDING_BG || DEFAULT_BG)
 
-  const API = (process.env.NEXT_PUBLIC_API_URL ||
-    'https://lsbookers-backend-production.up.railway.app').replace(/\/$/, '')
-
   useEffect(() => { setGreeting(getGreeting()) }, [])
 
   useEffect(() => {
-    fetch(`${API}/api/admin/settings`)
+    fetch(apiUrl('admin/settings'))
       .then(r => r.json())
       .then(data => { if (data?.loginBgUrl) setBgUrl(data.loginBgUrl) })
       .catch(() => {})
-  }, [API])
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,21 +93,19 @@ export default function LoginPage() {
     setLoading(true)
     try {
       // Envoyer le device token stocké pour identifier les appareils déjà connus
-      const storedDeviceToken = typeof window !== 'undefined'
-        ? localStorage.getItem('lsb_device_token')
-        : null
+      const storedDeviceToken = getOrCreateDeviceToken()
       const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
       if (storedDeviceToken) reqHeaders['X-Device-Token'] = storedDeviceToken
 
       const response = await axios.post(
-        `${API}/api/auth/login`,
+        apiUrl('auth/login'),
         { email, password },
         { headers: reqHeaders, withCredentials: true, timeout: 15000 }
       )
       const { user, token, deviceToken } = response.data
       if (token)       localStorage.setItem('token', token)
       if (user)        localStorage.setItem('user', JSON.stringify(user))
-      if (deviceToken) localStorage.setItem('lsb_device_token', deviceToken)
+      if (deviceToken) persistDeviceToken(deviceToken)
       setUser(user)
       router.replace((user?.isAdmin || user?.role === 'ADMIN') ? '/admin/dashboard' : '/home')
     } catch (err) {
@@ -120,6 +117,8 @@ export default function LoginPage() {
           setEmailNotVerified(true)
           setLoading(false)
           return
+        } else if (err.response?.status === 403 && err.response?.data?.error === 'PASSWORD_RESET_REQUIRED') {
+          message = 'Ce compte a été sécurisé après une connexion refusée. Réinitialise ton mot de passe pour continuer.'
         } else if (err.response?.status === 429) {
           message = 'Trop de tentatives. Réessayez dans 5 minutes.'
         } else if (err.message?.includes('Network')) {
@@ -135,7 +134,7 @@ export default function LoginPage() {
   const handleResendVerification = async () => {
     setResendLoading(true)
     try {
-      await axios.post(`${API}/api/auth/resend-verification`, { email })
+      await axios.post(apiUrl('auth/resend-verification'), { email })
       setResendSent(true)
     } catch {
       setResendSent(true)
