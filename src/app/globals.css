@@ -172,7 +172,7 @@ body {
 .lsb-discover-page > .relative:first-child > .relative { max-width: 75rem; margin-top: 0; border: 1px solid var(--lsb-line); border-top: 0; border-radius: 0 0 1.35rem 1.35rem; background: radial-gradient(circle at 85% 5%,rgba(244,114,182,.16),transparent 38%),radial-gradient(circle at 5% 100%,rgba(168,85,247,.2),transparent 42%),rgba(17,16,22,.88); }
 .lsb-discover-page > div:last-child { max-width: 75rem; }
 .lsb-discover-card { overflow: hidden; border: 1px solid var(--lsb-line); border-radius: 1rem; background: rgba(17,16,22,.9); transition: transform .2s, border-color .2s, box-shadow .2s; }
-.lsb-discover-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--card-accent, #a855f7) 60%, transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--card-accent, #a855f7) 22%, transparent), 0 0 6px color-mix(in srgb, var(--card-accent, #a855f7) 14%, transparent); }
+.lsb-discover-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--card-accent, #a855f7) 80%, transparent); box-shadow: 0 0 28px color-mix(in srgb, var(--card-accent, #a855f7) 45%, transparent), 0 0 8px color-mix(in srgb, var(--card-accent, #a855f7) 30%, transparent); }
 .lsb-discover-visual { position: relative; min-height: 13rem; overflow: hidden; }
 .lsb-discover-visual::after { content:''; position:absolute; inset:0; background:linear-gradient(to top,rgba(8,7,11,.55),transparent 55%); }
 .lsb-discover-avatar { position:absolute; inset:0; }.lsb-discover-avatar img { object-fit:cover; transition:transform .4s ease; }.lsb-discover-card:hover img { transform:scale(1.035); }
