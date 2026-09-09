@@ -169,7 +169,7 @@ body {
 .lsb-home-page article, .lsb-home-page aside > div { border-color: var(--lsb-line); background-color: rgba(17,16,22,.86); }
 
 .lsb-discover-page > .relative:first-child { border: 0; }
-.lsb-discover-page > .relative:first-child > .relative { max-width: 75rem; margin-top: 1.6rem; border: 1px solid var(--lsb-line); border-radius: 1.35rem; background: radial-gradient(circle at 85% 5%,rgba(244,114,182,.16),transparent 38%),radial-gradient(circle at 5% 100%,rgba(168,85,247,.2),transparent 42%),rgba(17,16,22,.88); }
+.lsb-discover-page > .relative:first-child > .relative { max-width: 75rem; margin-top: 0; border: 1px solid var(--lsb-line); border-top: 0; border-radius: 0 0 1.35rem 1.35rem; background: radial-gradient(circle at 85% 5%,rgba(244,114,182,.16),transparent 38%),radial-gradient(circle at 5% 100%,rgba(168,85,247,.2),transparent 42%),rgba(17,16,22,.88); }
 .lsb-discover-page > div:last-child { max-width: 75rem; }
 .lsb-discover-card { overflow: hidden; border: 1px solid var(--lsb-line); border-radius: 1rem; background: rgba(17,16,22,.9); transition: transform .2s,border-color .2s; }
 .lsb-discover-card:hover { transform: translateY(-3px); border-color: rgba(168,85,247,.35); }
@@ -322,7 +322,7 @@ body {
   .lsb-home-rail { display:none; }
   .lsb-composer { grid-template-columns:2.5rem 1fr; }.lsb-composer > span { display:none; }
   .lsb-feed-tabs { gap:1.2rem; overflow-x:auto; }
-  .lsb-discover-page > .relative:first-child > .relative { margin:.8rem; padding:1.2rem; border-radius:1rem; }
+  .lsb-discover-page > .relative:first-child > .relative { margin:0 .8rem .8rem; padding:1.2rem; border-radius:0 0 1rem 1rem; }
   .lsb-discover-page > div:last-child { padding:1rem .85rem 5rem; }
   .lsb-discover-page .mt-6.flex { flex-wrap:wrap; }.lsb-discover-page .mt-6.flex > div:first-child { flex:0 0 100%; }.lsb-discover-page .mt-6.flex > button:nth-of-type(1) { flex:1; }
   .lsb-plan-grid { grid-template-columns:1fr; }

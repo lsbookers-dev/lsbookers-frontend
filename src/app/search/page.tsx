@@ -314,7 +314,7 @@ export default function SearchPage() {
           <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-blue-600/8 blur-3xl" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 pt-10 pb-8">
+        <div className="relative max-w-7xl mx-auto px-6 pt-6 pb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <p className="lsb-eyebrow">DÉCOUVRIR</p>
