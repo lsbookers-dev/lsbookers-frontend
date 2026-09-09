@@ -150,7 +150,7 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
     <article
       onClick={onClick}
       className="lsb-discover-card group cursor-pointer"
-      style={{ borderLeft: `3px solid ${cfg.accent}` }}
+      style={{ '--card-accent': cfg.accent, border: `1px solid ${cfg.accent}55` } as React.CSSProperties}
     >
       <div className="lsb-discover-visual" style={{ background: `linear-gradient(135deg, ${cfg.accent}33, #0a070f)` }}>
           <div className="lsb-discover-avatar">
