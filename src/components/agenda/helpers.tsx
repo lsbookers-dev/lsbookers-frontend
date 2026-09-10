@@ -1,5 +1,6 @@
 // agenda/helpers.tsx — Composants utilitaires, constantes et fonctions helper
 
+import React from 'react'
 import { DocumentItem } from './types'
 
 /* ── Constantes ── */
@@ -8,9 +9,9 @@ export const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juil
 export const DAYS_FR   = ['L','M','M','J','V','S','D']
 
 export const AVAIL_OPTIONS = [
-  { status: 'AVAILABLE',   label: 'Disponible',       color: 'bg-green-500',  ring: 'ring-green-500/50',  text: 'text-green-400'  },
-  { status: 'TENTATIVE',   label: 'Booking en cours', color: 'bg-orange-500', ring: 'ring-orange-500/50', text: 'text-orange-400' },
-  { status: 'UNAVAILABLE', label: 'Indisponible',     color: 'bg-red-500',    ring: 'ring-red-500/50',    text: 'text-red-400'    },
+  { status: 'AVAILABLE',   label: 'Disponible',       color: 'bg-green-500', ring: 'ring-green-500/50', text: 'text-green-400' },
+  { status: 'TENTATIVE',   label: 'Booking en cours', color: 'bg-blue-500',  ring: 'ring-blue-500/50',  text: 'text-blue-400'  },
+  { status: 'UNAVAILABLE', label: 'Indisponible',     color: 'bg-red-500',   ring: 'ring-red-500/50',   text: 'text-red-400'   },
 ]
 
 /* ── Fonctions utilitaires ── */
@@ -35,11 +36,24 @@ export function categoryColor(cat?: string | null) {
 }
 
 export function availBg(status?: string) {
-  if (status === 'AVAILABLE')   return 'bg-green-500/20 ring-1 ring-green-500/30'
-  if (status === 'UNAVAILABLE') return 'bg-red-500/20   ring-1 ring-red-500/30'
-  if (status === 'TENTATIVE')   return 'bg-orange-500/20 ring-1 ring-orange-500/30'
-  if (status === 'BOOKED')      return 'bg-amber-500/20  ring-1 ring-amber-500/30'
+  if (status === 'AVAILABLE')                        return 'bg-green-500/20 ring-1 ring-green-500/30'
+  if (status === 'UNAVAILABLE')                      return 'bg-red-500/20   ring-1 ring-red-500/30'
+  if (status === 'TENTATIVE' || status === 'BOOKED') return 'bg-blue-500/20  ring-1 ring-blue-500/30'
   return ''
+}
+
+export function availCellStyle(status?: string): React.CSSProperties {
+  if (status === 'AVAILABLE')                        return { background: 'rgba(34,197,94,0.13)',  borderColor: 'rgba(34,197,94,0.28)' }
+  if (status === 'UNAVAILABLE')                      return { background: 'rgba(239,68,68,0.13)',  borderColor: 'rgba(239,68,68,0.28)' }
+  if (status === 'TENTATIVE' || status === 'BOOKED') return { background: 'rgba(59,130,246,0.13)', borderColor: 'rgba(59,130,246,0.28)' }
+  return {}
+}
+
+export function availDotColor(status?: string): string {
+  if (status === 'AVAILABLE')                        return '#22c55e'
+  if (status === 'UNAVAILABLE')                      return '#ef4444'
+  if (status === 'TENTATIVE' || status === 'BOOKED') return '#3b82f6'
+  return 'transparent'
 }
 
 /* ── Badges de statut ── */

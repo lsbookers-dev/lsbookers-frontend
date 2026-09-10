@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, BookOpen, Plus, X } from 'lucide-react'
 
 import {
@@ -48,6 +48,10 @@ export default function AgendaCalendar({
   const [availability, setAvailability] = useState<AvailDay[]>([])
   const [selected, setSelected] = useState<Date | null>(null)
   const [loading,  setLoading]  = useState(true)
+
+  // Multi-sélection
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
+  const [bulkDates, setBulkDates] = useState<Set<string>>(new Set())
 
   // UI states
   const [savingAvail, setSavingAvail] = useState(false)
@@ -706,9 +710,22 @@ export default function AgendaCalendar({
     ? focusDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
     : weekLabel
 
-  /* ── Sauvegarder disponibilité ── */
+  /* ── Toggle bulk date ── */
+  const toggleBulkDate = useCallback((date: Date) => {
+    const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
+    setBulkDates(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  /* ── Sauvegarder disponibilité (single day) — toggle si même statut ── */
   const saveAvailability = async (status: string) => {
     if (!selected || !isOwner) return
+    // Toggle : cliquer sur le statut actif le supprime
+    const effectiveStatus = selectedAvail?.status === status ? 'NONE' : status
     setSavingAvail(true)
     try {
       const token = getAuthToken()
@@ -717,18 +734,56 @@ export default function AgendaCalendar({
       const res = await fetch(`${API}/api/events/availability`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ date: dateStr, status }),
+        body: JSON.stringify({ date: dateStr, status: effectiveStatus }),
       })
       if (res.ok) {
-        const d2 = await res.json()
-        setAvailability(prev => {
-          const filtered = prev.filter(a => !isSameDay(new Date(a.date), selected))
-          return [...filtered, d2.availability]
-        })
+        if (effectiveStatus === 'NONE') {
+          setAvailability(prev => prev.filter(a => !isSameDay(new Date(a.date), selected)))
+        } else {
+          const d2 = await res.json()
+          if (d2.availability) {
+            setAvailability(prev => {
+              const filtered = prev.filter(a => !isSameDay(new Date(a.date), selected))
+              return [...filtered, d2.availability]
+            })
+          }
+        }
       }
     } catch {}
     finally { setSavingAvail(false) }
   }
+
+  /* ── Sauvegarder disponibilité en masse (multi-sélection) ── */
+  const saveBulkAvailability = useCallback(async (status: string) => {
+    if (bulkDates.size === 0) return
+    setSavingAvail(true)
+    try {
+      const token = getAuthToken()
+      const dates = Array.from(bulkDates).map(d => `${d}T00:00:00.000Z`)
+      const res = await fetch(`${API}/api/events/availability/bulk`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ dates, status }),
+      })
+      if (res.ok) {
+        setAvailability(prev => {
+          const filtered = prev.filter(a => {
+            const aKey = (() => { const dt = new Date(a.date); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}` })()
+            return !bulkDates.has(aKey)
+          })
+          if (status === 'NONE') return filtered
+          const newEntries: AvailDay[] = Array.from(bulkDates).map(d => ({
+            date: `${d}T00:00:00.000Z`,
+            status,
+          }))
+          return [...filtered, ...newEntries]
+        })
+        setBulkDates(new Set())
+        setMultiSelectMode(false)
+      }
+    } catch {}
+    finally { setSavingAvail(false) }
+  }, [API, bulkDates])
 
   /* ── Envoyer demande de booking ── */
   const sendBookingRequest = async () => {
@@ -992,6 +1047,11 @@ export default function AgendaCalendar({
           bookingMsg={bookingMsg}
           bookingFee={bookingFee}
           bookingSending={bookingSending}
+          multiSelectMode={multiSelectMode}
+          bulkDates={bulkDates}
+          setMultiSelectMode={setMultiSelectMode}
+          toggleBulkDate={toggleBulkDate}
+          saveBulkAvailability={saveBulkAvailability}
           setSelected={setSelected}
           setShowBookingForm={setShowBookingForm}
           setBookingMsg={setBookingMsg}
