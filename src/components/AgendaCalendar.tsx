@@ -774,7 +774,7 @@ export default function AgendaCalendar({
           if (status === 'NONE') return filtered
           const newEntries: AvailDay[] = Array.from(bulkDates).map(d => ({
             date: `${d}T00:00:00.000Z`,
-            status,
+            status: status as AvailDay['status'],
           }))
           return [...filtered, ...newEntries]
         })
