@@ -425,7 +425,7 @@ export default function ArtistProfilePage() {
             {profile && (
               <AgendaCalendar
                 profileId={profile.id}
-                isOwner={true}
+                isOwner={false}
                 showAvailability={true}
               />
             )}

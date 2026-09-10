@@ -477,7 +477,7 @@ export default function ProviderProfilePage() {
 
           {/* Agenda */}
           {profile && (
-            <AgendaCalendar profileId={profile.id} isOwner={true} showAvailability={true} />
+            <AgendaCalendar profileId={profile.id} isOwner={false} showAvailability={true} />
           )}
 
           {/* Publications + Albums (onglets) */}
