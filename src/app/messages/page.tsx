@@ -214,7 +214,6 @@ function MessagesContent() {
 
   /* ── Auto-ouvrir conversation via ?to= ── */
   const autoStartedRef = useRef(false)
-  const [convLoaded, setConvLoaded] = useState(false)
 
   /* ── Démarrer une conversation ── */
   const startConversation = useCallback(async (recipientId: number) => {
