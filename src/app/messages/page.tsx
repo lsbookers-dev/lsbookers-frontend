@@ -75,14 +75,10 @@ function MessagesContent() {
       list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       setConversations(list)
       setConvLoaded(true)
-      if (activeConvId) {
-        const found = list.find((c) => c.id === activeConvId)
-        if (found) setActiveConv(found)
-      }
     } catch (err) {
       console.error('fetchConversations:', err)
     }
-  }, [token, activeConvId])
+  }, [token])
 
   /* ── Fetch messages ── */
   const fetchMessages = useCallback(async (convId: number, silent = false) => {

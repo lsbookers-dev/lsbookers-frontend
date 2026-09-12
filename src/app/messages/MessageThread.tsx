@@ -212,9 +212,9 @@ export default function MessageThread({
     }))
   }
 
-  if (!activeConvId || !activeConv) {
+  if (!activeConvId) {
     return (
-      <div className={`lsb-thread-empty flex-1 flex-col items-center justify-center gap-5 text-center px-8 ${activeConvId && mobileView === 'chat' ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`lsb-thread-empty flex-1 flex-col items-center justify-center gap-5 text-center px-8 hidden md:flex`}>
         <div className="relative">
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-900/30 to-purple-900/20 border border-violet-500/10 flex items-center justify-center shadow-2xl shadow-violet-900/20">
             <MessageCircle className="w-9 h-9 text-violet-400/40" />
@@ -229,7 +229,9 @@ export default function MessageThread({
     )
   }
 
-  const otherParticipant = activeConv.participants.find((p) => p.id !== currentUserId) ?? activeConv.participants[0]
+  const otherParticipant = activeConv
+    ? (activeConv.participants.find((p) => p.id !== currentUserId) ?? activeConv.participants[0])
+    : null
   const Icon = otherParticipant ? ROLE_ICON[otherParticipant.role] : null
 
   return (
@@ -242,6 +244,12 @@ export default function MessageThread({
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
+        {!otherParticipant && (
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-white/5 animate-pulse shrink-0" />
+            <div className="h-4 w-32 rounded bg-white/5 animate-pulse" />
+          </div>
+        )}
         {otherParticipant && (() => {
           const profileLink = getProfileLink(otherParticipant.role, otherParticipant.id)
           const inner = (
