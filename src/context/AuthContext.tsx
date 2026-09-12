@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { getAuthToken } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
+import { disconnectSocket } from '@/lib/socket'
 
 /* ===================== Types ===================== */
 
@@ -129,7 +130,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         })
 
         if (!res.ok) {
-          if ([401, 403, 404].includes(res.status)) clearLocalSession()
+          if ([401, 403, 404].includes(res.status)) { clearLocalSession(); disconnectSocket() }
           if (!cancelled) {
             setToken(null)
             setUser(null)
@@ -238,6 +239,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         credentials: 'include',
       })
     } catch { }
+    disconnectSocket()
     clearLocalSession()
     await clearApplicationCaches().catch(() => {})
     setToken(null)

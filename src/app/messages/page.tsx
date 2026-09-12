@@ -44,6 +44,9 @@ function MessagesContent() {
 
   const [hasMoreMessages, setHasMoreMessages] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [otherTyping, setOtherTyping] = useState(false)
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isTypingRef = useRef(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -197,9 +200,44 @@ function MessagesContent() {
       setMessages(prev => prev.map(m => ({ ...m, seen: true })))
     }
 
+    // Indicateur de frappe
+    const handleTyping = ({ conversationId: convId, isTyping }: { conversationId: number; userId: number; isTyping: boolean }) => {
+      if (convId !== activeConvId) return
+      setOtherTyping(isTyping)
+      // Auto-reset si on ne reçoit plus rien au bout de 4s (sécurité)
+      if (isTyping) {
+        setTimeout(() => setOtherTyping(false), 4000)
+      }
+    }
+
+    // Reconnexion : rattraper les messages manqués pendant la coupure
+    const handleReconnect = () => {
+      fetchConversations()
+      if (activeConvId) {
+        const lastId = messages[messages.length - 1]?.id
+        if (lastId && !String(lastId).startsWith('temp-')) {
+          fetch(`${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`, {
+            headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
+          })
+            .then(r => r.json())
+            .then((missed: Message[]) => {
+              if (!Array.isArray(missed) || missed.length === 0) return
+              setMessages(prev => {
+                const existingIds = new Set(prev.map(m => m.id))
+                const newOnes = missed.filter(m => !existingIds.has(String(m.id))).map(m => ({ ...m, id: String(m.id) }))
+                return newOnes.length > 0 ? [...prev, ...newOnes] : prev
+              })
+            })
+            .catch(() => {})
+        }
+      }
+    }
+
     socket.on('new_message', handleNewMessage)
     socket.on('conversation_updated', handleConvUpdated)
     socket.on('messages_seen', handleMessagesSeen)
+    socket.on('typing', handleTyping)
+    socket.on('reconnect', handleReconnect)
 
     // Fallback polling 30s (si le socket perd des events en offline court)
     const fallbackConv = setInterval(() => { fetchConversations() }, 30000)
@@ -208,6 +246,8 @@ function MessagesContent() {
       socket.off('new_message', handleNewMessage)
       socket.off('conversation_updated', handleConvUpdated)
       socket.off('messages_seen', handleMessagesSeen)
+      socket.off('typing', handleTyping)
+      socket.off('reconnect', handleReconnect)
       clearInterval(fallbackConv)
     }
   }, [token, activeConvId, fetchConversations, markSeen])
@@ -413,11 +453,24 @@ function MessagesContent() {
     finally { setDeletingId(null) }
   }, [token, activeConvId, router])
 
-  /* ── Resize textarea ── */
+  /* ── Resize textarea + émission typing ── */
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value)
     e.target.style.height = 'auto'
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+
+    // Émettre typing via socket (debounced — une seule émission par rafale)
+    if (!token || !activeConvId) return
+    const socket = getSocket(token)
+    if (!isTypingRef.current) {
+      isTypingRef.current = true
+      socket.emit('typing', { conversationId: activeConvId, isTyping: true })
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false
+      socket.emit('typing', { conversationId: activeConvId, isTyping: false })
+    }, 2000)
   }
 
   /* ══ RENDU ══════════════════════════════════════════════ */
@@ -475,6 +528,7 @@ function MessagesContent() {
         hasMoreMessages={hasMoreMessages}
         loadingMore={loadingMore}
         onLoadMore={loadMoreMessages}
+        otherTyping={otherTyping}
         onOpenDetails={() => setDetailsOpen(true)}
       />
       <ConversationDetails conversation={activeConv} currentUserId={currentUserId} messages={messages} token={token} open={detailsOpen} onClose={() => setDetailsOpen(false)} />

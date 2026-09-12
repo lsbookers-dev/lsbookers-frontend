@@ -48,6 +48,7 @@ interface MessageThreadProps {
   hasMoreMessages?: boolean
   loadingMore?: boolean
   onLoadMore?: () => void
+  otherTyping?: boolean
   onOpenDetails: () => void
 }
 
@@ -59,6 +60,7 @@ export default function MessageThread({
   messagesContainerRef, messagesEndRef, fileInputRef, textareaRef,
   fetchMessages,
   hasMoreMessages = false, loadingMore = false, onLoadMore,
+  otherTyping = false,
   onOpenDetails,
 }: MessageThreadProps) {
   const router = useRouter()
@@ -589,6 +591,16 @@ export default function MessageThread({
 
             return items
           })()
+        )}
+        {/* Indicateur "X est en train d'écrire..." */}
+        {otherTyping && (
+          <div className="flex items-end gap-2 px-1 py-1">
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl rounded-bl-sm bg-[#1c1c2e] border border-white/[0.06]">
+              <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>
