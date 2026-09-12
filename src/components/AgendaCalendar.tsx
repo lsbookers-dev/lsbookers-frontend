@@ -332,10 +332,10 @@ export default function AgendaCalendar({
     setCreateDate(`${y}-${m}-${d}`)
     setShowEventPanel(true)
     setShowPanel(false)
-    setEventMode('create')
+    setEventMode('list')
     setSelectedEventId(null)
     setEventDetail(null)
-  }, [setCreateDate, setEventMode])
+  }, [setCreateDate])
 
   /* ── createEvent ── */
   const createEvent = useCallback(async () => {

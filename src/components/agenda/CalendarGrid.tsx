@@ -229,68 +229,71 @@ export default function CalendarGrid(props: CalendarGridProps) {
         </div>
       </div>
 
-      {/* Barre de sélection multiple flottante */}
-      {multiSelectMode && (
-        <div style={{
-          position: 'sticky', bottom: 0,
-          background: '#181c28', borderTop: '1px solid #2a3050',
-          padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-        }}>
-          <span style={{ fontSize: 12, color: '#8891b0', marginRight: 4 }}>
-            {bulkDates.size} jour{bulkDates.size > 1 ? 's' : ''} sélectionné{bulkDates.size > 1 ? 's' : ''}
-          </span>
-          {AVAIL_OPTIONS.map(opt => (
-            <button
-              key={opt.status}
-              onClick={() => saveBulkAvailability(opt.status)}
-              disabled={savingAvail || bulkDates.size === 0}
-              style={{
-                padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-                border: 'none', cursor: bulkDates.size === 0 ? 'not-allowed' : 'pointer',
-                background: opt.status === 'AVAILABLE' ? 'rgba(34,197,94,0.2)'
-                           : opt.status === 'UNAVAILABLE' ? 'rgba(239,68,68,0.2)'
-                           : 'rgba(59,130,246,0.2)',
-                color: opt.status === 'AVAILABLE' ? '#86efac'
-                     : opt.status === 'UNAVAILABLE' ? '#fca5a5'
-                     : '#93c5fd',
-                opacity: bulkDates.size === 0 ? 0.5 : 1,
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
-          <button
-            onClick={() => saveBulkAvailability('NONE')}
-            disabled={savingAvail || bulkDates.size === 0}
-            style={{ padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(255,255,255,0.06)', color: '#8891b0', border: 'none', cursor: 'pointer' }}
-          >
-            Réinitialiser
-          </button>
-          <button
-            onClick={() => { setMultiSelectMode(false) }}
-            style={{ marginLeft: 'auto', padding: '5px 12px', borderRadius: 8, fontSize: 12, color: '#8891b0', background: 'rgba(255,255,255,0.04)', border: '1px solid #2a3050', cursor: 'pointer' }}
-          >
-            Annuler
-          </button>
-        </div>
-      )}
 
       <aside className="lsb-week-detail">
         {multiSelectMode ? (
-          <div style={{ padding: 20 }}>
-            <div style={{ fontSize: 11, color: '#6b7494', letterSpacing: '0.08em', marginBottom: 12 }}>SÉLECTION MULTIPLE</div>
-            <p style={{ fontSize: 13, color: '#9ea8c8', marginBottom: 16 }}>
-              Clique sur les jours du calendrier pour les sélectionner, puis applique un statut à tous d'un coup.
+          <div style={{ padding: '20px 16px' }}>
+            <div style={{ fontSize: 11, color: '#6b7494', letterSpacing: '0.08em', marginBottom: 4 }}>SÉLECTION MULTIPLE</div>
+            <p style={{ fontSize: 13, color: '#9ea8c8', marginBottom: 20, lineHeight: 1.5 }}>
+              Clique sur les jours pour les sélectionner, puis applique un statut à tous d&apos;un coup.
             </p>
-            <p style={{ fontSize: 12, color: '#6b7494' }}>
+
+            {/* Compteur */}
+            <div style={{
+              background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+              borderRadius: 10, padding: '10px 14px', marginBottom: 16,
+              fontSize: 13, color: bulkDates.size > 0 ? '#a5b4fc' : '#6b7494', fontWeight: 500,
+            }}>
               {bulkDates.size === 0 ? 'Aucun jour sélectionné' : `${bulkDates.size} jour${bulkDates.size > 1 ? 's' : ''} sélectionné${bulkDates.size > 1 ? 's' : ''}`}
-            </p>
-            <button
-              onClick={() => setMultiSelectMode(false)}
-              style={{ marginTop: 16, padding: '7px 14px', borderRadius: 8, fontSize: 12, color: '#8891b0', background: 'rgba(255,255,255,0.04)', border: '1px solid #2a3050', cursor: 'pointer' }}
-            >
-              Annuler
-            </button>
+            </div>
+
+            {/* Boutons statut */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {AVAIL_OPTIONS.map(opt => (
+                <button
+                  key={opt.status}
+                  onClick={() => saveBulkAvailability(opt.status)}
+                  disabled={savingAvail || bulkDates.size === 0}
+                  style={{
+                    padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 500,
+                    textAlign: 'left', border: 'none', cursor: bulkDates.size === 0 ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: opt.status === 'AVAILABLE' ? 'rgba(34,197,94,0.12)'
+                               : opt.status === 'UNAVAILABLE' ? 'rgba(239,68,68,0.12)'
+                               : 'rgba(59,130,246,0.12)',
+                    color: opt.status === 'AVAILABLE' ? '#86efac'
+                         : opt.status === 'UNAVAILABLE' ? '#fca5a5'
+                         : '#93c5fd',
+                    opacity: bulkDates.size === 0 ? 0.4 : 1,
+                  }}
+                >
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: opt.status === 'AVAILABLE' ? '#22c55e'
+                               : opt.status === 'UNAVAILABLE' ? '#ef4444'
+                               : '#3b82f6',
+                  }} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Actions secondaires */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => saveBulkAvailability('NONE')}
+                disabled={savingAvail || bulkDates.size === 0}
+                style={{ flex: 1, padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 500, background: 'rgba(255,255,255,0.05)', color: '#6b7494', border: '1px solid #2a3050', cursor: 'pointer', opacity: bulkDates.size === 0 ? 0.4 : 1 }}
+              >
+                Réinitialiser
+              </button>
+              <button
+                onClick={() => setMultiSelectMode(false)}
+                style={{ flex: 1, padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 500, background: 'rgba(255,255,255,0.04)', color: '#8891b0', border: '1px solid #2a3050', cursor: 'pointer' }}
+              >
+                Annuler
+              </button>
+            </div>
           </div>
         ) : selected ? (
           <>
