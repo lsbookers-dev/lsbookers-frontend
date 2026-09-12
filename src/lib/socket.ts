@@ -12,15 +12,16 @@ let socket: Socket | null = null
 let currentToken: string | null = null
 
 /**
- * Retourne le socket existant s'il est connecté avec le bon token,
- * sinon crée un nouveau socket (déconnecte l'ancien si besoin).
+ * Retourne le socket existant s'il est connecté (ou en cours de connexion) avec le bon token.
+ * Évite la race condition où Header + messages/page.tsx créent deux sockets simultanément.
  */
 export function getSocket(token: string): Socket {
-  if (socket && currentToken === token && socket.connected) {
+  // socket.active = true si connecté OU en cours de connexion/reconnexion
+  if (socket && currentToken === token && (socket.connected || socket.active)) {
     return socket
   }
 
-  // Déconnecter l'ancien socket si le token a changé ou si déconnecté
+  // Token différent ou socket définitivement fermé → recréer
   if (socket) {
     socket.disconnect()
     socket = null

@@ -54,6 +54,9 @@ function MessagesContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const prevMsgCountRef = useRef(0)
   const isNearBottomRef = useRef(true)
+  // Point 4 — debounce pour éviter les double-fetch quand new_message + conversation_updated arrivent en même temps
+  const fetchConvTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fetchConversationsRef = useRef<() => void>(() => {})
 
   const currentUserId = user?.id ? Number(user.id) : null
   const isOrganizer = user?.role === 'ORGANIZER'
@@ -87,6 +90,9 @@ function MessagesContent() {
       console.error('fetchConversations:', err)
     }
   }, [token])
+
+  // Garder la ref à jour pour le debounce
+  fetchConversationsRef.current = fetchConversations
 
   /* ── Fetch messages (initial ou silent refresh) ── */
   const fetchMessages = useCallback(async (convId: number, silent = false) => {
@@ -167,6 +173,15 @@ function MessagesContent() {
 
     const socket = getSocket(token)
 
+    // Helper debounce local (stable — sans dépendances)
+    const debouncedFetchConv = () => {
+      if (fetchConvTimerRef.current) clearTimeout(fetchConvTimerRef.current)
+      fetchConvTimerRef.current = setTimeout(() => {
+        fetchConvTimerRef.current = null
+        fetchConversationsRef.current()
+      }, 150)
+    }
+
     // Recevoir un nouveau message
     const handleNewMessage = (msg: Message & { conversationId?: number }) => {
       const convId = msg.conversationId
@@ -176,22 +191,22 @@ function MessagesContent() {
       if (convId === activeConvId) {
         setMessages(prev => {
           const msgId = String(msg.id)
-          // Déjà présent (pas de doublon)
+          // Déjà présent (pas de doublon — ex: on reçoit notre propre message via socket)
           if (prev.some(m => m.id === msgId)) return prev
-          // Remplacer le(s) message(s) temporaire(s) par le vrai message
+          // Retirer les messages temporaires et insérer le vrai
           const withoutTemp = prev.filter(m => !String(m.id).startsWith('temp-'))
           return [...withoutTemp, { ...msg, id: msgId }]
         })
         markSeen(convId)
       }
 
-      // Rafraîchir la liste de conversations (lastMessage, badge unread)
-      fetchConversations()
+      // Point 4 — debounce : new_message + conversation_updated arrivent en même temps → 1 seul fetch
+      debouncedFetchConv()
     }
 
     // La liste des conversations doit être rafraîchie (ex: nouvelle conv, partage)
     const handleConvUpdated = () => {
-      fetchConversations()
+      debouncedFetchConv()
     }
 
     // L'autre personne a lu nos messages → passer ✓ en ✓✓ immédiatement
@@ -428,8 +443,20 @@ function MessagesContent() {
         if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
         return
       }
-      // Le socket 'new_message' se charge de remplacer le message temporaire
-      // et 'conversation_updated' rafraîchit la liste — pas besoin de polling ici
+      // Point 6 — Remplacer le message temp par la réponse HTTP immédiatement
+      // (sans attendre le socket — évite les 30s de message "fantôme" si l'event est perdu)
+      try {
+        const data = await res.json()
+        const saved = data?.message ?? data
+        if (saved?.id) {
+          const savedId = String(saved.id)
+          setMessages(prev => {
+            // Déjà remplacé par le socket ? → ne rien faire
+            if (prev.some(m => m.id === savedId)) return prev.filter(m => m.id !== tempId)
+            return prev.map(m => m.id === tempId ? { ...m, ...saved, id: savedId } : m)
+          })
+        }
+      } catch { /* Le socket prendra le relais si le parsing échoue */ }
     } catch (err) {
       console.error('handleSend:', err)
       if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
