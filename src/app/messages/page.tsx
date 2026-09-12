@@ -39,6 +39,7 @@ function MessagesContent() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [lightbox, setLightbox] = useState<{ url: string; name?: string | null } | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [convLoaded, setConvLoaded] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
