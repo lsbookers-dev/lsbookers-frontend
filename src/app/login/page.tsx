@@ -1,12 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import axios, { isAxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth, type LoginError } from '@/context/AuthContext'
 import { apiUrl } from '@/utils/api'
 
 /* ─────────────────────────────────────────────────────────
@@ -60,8 +58,7 @@ function BrandingPanel() {
    PAGE PRINCIPALE
 ───────────────────────────────────────────────────────── */
 export default function LoginPage() {
-  const router = useRouter()
-  const { setUser } = useAuth()
+  const { login } = useAuth()
 
   const [email, setEmail]                       = useState('')
   const [password, setPassword]                 = useState('')
@@ -91,32 +88,24 @@ export default function LoginPage() {
     setEmailNotVerified(false)
     setLoading(true)
     try {
-      const response = await axios.post(
-        apiUrl('auth/login'),
-        { email, password },
-        { headers: { 'Content-Type': 'application/json' }, withCredentials: true, timeout: 15000 }
-      )
-      const { user, token } = response.data
-      if (token) localStorage.setItem('token', token)
-      if (user)  localStorage.setItem('user', JSON.stringify(user))
-      setUser(user)
-      router.replace((user?.isAdmin || user?.role === 'ADMIN') ? '/admin/dashboard' : '/home')
+      await login(email, password)
     } catch (err) {
       let message = 'Échec de la connexion.'
-      if (isAxiosError(err)) {
-        if (err.response?.status === 401) {
+      const authError = err as LoginError
+      if (authError?.status) {
+        if (authError.status === 401) {
           message = 'Identifiants incorrects.'
-        } else if (err.response?.status === 403 && err.response?.data?.error === 'EMAIL_NOT_VERIFIED') {
+        } else if (authError.status === 403 && authError.code === 'EMAIL_NOT_VERIFIED') {
           setEmailNotVerified(true)
           setLoading(false)
           return
-        } else if (err.response?.status === 403 && err.response?.data?.error === 'PASSWORD_RESET_REQUIRED') {
+        } else if (authError.status === 403 && authError.code === 'PASSWORD_RESET_REQUIRED') {
           message = 'Ce compte a été sécurisé après une connexion refusée. Réinitialise ton mot de passe pour continuer.'
-        } else if (err.response?.status === 429) {
+        } else if (authError.status === 429) {
           message = 'Trop de tentatives. Réessayez dans 5 minutes.'
-        } else if (err.message?.includes('Network')) {
-          message = 'Erreur réseau.'
         }
+      } else if (authError instanceof TypeError) {
+        message = 'Erreur réseau.'
       }
       setError(message)
     } finally {
@@ -127,7 +116,12 @@ export default function LoginPage() {
   const handleResendVerification = async () => {
     setResendLoading(true)
     try {
-      await axios.post(apiUrl('auth/resend-verification'), { email })
+      await fetch(apiUrl('auth/resend-verification'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      })
       setResendSent(true)
     } catch {
       setResendSent(true)

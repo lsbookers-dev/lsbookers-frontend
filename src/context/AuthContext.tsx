@@ -39,6 +39,11 @@ type AuthContextType = {
   logout: () => void
 }
 
+export type LoginError = Error & {
+  status?: number
+  code?: string
+}
+
 /* ===================== Context ===================== */
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -195,7 +200,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     })
 
     if (!res.ok) {
-      throw new Error('Login failed')
+      const data = await res.json().catch(() => ({}))
+      const error = new Error(data?.error || 'Login failed') as LoginError
+      error.status = res.status
+      error.code = data?.error
+      throw error
     }
 
     const data = await res.json()
