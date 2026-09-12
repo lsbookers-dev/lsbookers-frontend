@@ -8,6 +8,7 @@ import type { Conversation, SearchUser } from './types'
 
 interface ConversationListProps {
   conversations: Conversation[]
+  convLoaded: boolean
   currentUserId: number | null
   search: string
   setSearch: (v: string) => void
@@ -31,7 +32,7 @@ function cleanPreview(value: string) {
 }
 
 export default function ConversationList({
-  conversations, currentUserId, search, setSearch, contacts,
+  conversations, convLoaded, currentUserId, search, setSearch, contacts,
   searchResults, searchLoading, activeConvId, mobileView,
   deletingId, selectConv, startConversation, deleteConversation,
 }: ConversationListProps) {
@@ -171,11 +172,17 @@ export default function ConversationList({
         <div className="flex-1 overflow-y-auto py-1">
           {filteredConvs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
-              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-white/15" />
-              </div>
-              <p className="text-sm text-white/25">Aucune conversation</p>
-              <p className="text-xs text-white/15">Recherche un utilisateur pour démarrer</p>
+              {!convLoaded ? (
+                <Loader2 className="w-6 h-6 text-violet-400/40 animate-spin" />
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+                    <MessageCircle className="w-5 h-5 text-white/15" />
+                  </div>
+                  <p className="text-sm text-white/25">Aucune conversation</p>
+                  <p className="text-xs text-white/15">Recherche un utilisateur pour démarrer</p>
+                </>
+              )}
             </div>
           ) : (
             filteredConvs.map((conv) => {

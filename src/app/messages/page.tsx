@@ -113,12 +113,19 @@ function MessagesContent() {
   }, [token])
 
   /* ── Polling conversations ── */
+  /* Retry agressif (2s) jusqu'à premier chargement réussi, puis 5s */
   useEffect(() => {
     if (!token) return
     fetchConversations()
-    const iv = setInterval(fetchConversations, 5000)
+    let iv: ReturnType<typeof setInterval>
+    const startPolling = () => {
+      iv = setInterval(() => {
+        fetchConversations()
+      }, convLoaded ? 5000 : 2000)
+    }
+    startPolling()
     return () => clearInterval(iv)
-  }, [token, fetchConversations])
+  }, [token, fetchConversations, convLoaded])
 
   /* ── Polling messages + mark seen automatique ── */
   useEffect(() => {
@@ -327,6 +334,7 @@ function MessagesContent() {
 
       <ConversationList
         conversations={conversations}
+        convLoaded={convLoaded}
         currentUserId={currentUserId}
         search={search}
         setSearch={setSearch}
