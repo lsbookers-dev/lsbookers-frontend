@@ -42,6 +42,9 @@ function MessagesContent() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [convLoaded, setConvLoaded] = useState(false)
 
+  const [hasMoreMessages, setHasMoreMessages] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -82,24 +85,55 @@ function MessagesContent() {
     }
   }, [token])
 
-  /* ── Fetch messages ── */
+  /* ── Fetch messages (initial ou silent refresh) ── */
   const fetchMessages = useCallback(async (convId: number, silent = false) => {
     if (!token || !convId) return
     if (!silent) setLoadingMsgs(true)
     try {
-      const res = await fetch(`${API_BASE}/api/messages/messages/${convId}?t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
+      const res = await fetch(`${API_BASE}/api/messages/messages/${convId}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
       })
       if (!res.ok) return
-      const data = await res.json()
-      setMessages(Array.isArray(data) ? data : [])
+      const data: Message[] = await res.json()
+      const list = Array.isArray(data) ? data : []
+      setMessages(list)
+      // S'il y a exactement 50 messages, il y en a probablement des plus anciens
+      setHasMoreMessages(list.length >= 50)
     } catch (err) {
       console.error('fetchMessages:', err)
     } finally {
       setLoadingMsgs(false)
     }
   }, [token])
+
+  /* ── Charger les messages précédents (pagination) ── */
+  const loadMoreMessages = useCallback(async () => {
+    if (!token || !activeConvId || loadingMore) return
+    const firstId = messages[0]?.id
+    if (!firstId) return
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/messages/messages/${activeConvId}?before=${firstId}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
+      })
+      if (!res.ok) return
+      const older: Message[] = await res.json()
+      if (!Array.isArray(older) || older.length === 0) { setHasMoreMessages(false); return }
+      // Préserver la position de scroll
+      const container = messagesContainerRef.current
+      const prevScrollHeight = container?.scrollHeight ?? 0
+      setMessages(prev => [...older, ...prev])
+      setHasMoreMessages(older.length >= 50)
+      // Restaurer la position de scroll après le rendu
+      requestAnimationFrame(() => {
+        if (container) container.scrollTop = container.scrollHeight - prevScrollHeight
+      })
+    } catch (err) {
+      console.error('loadMoreMessages:', err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [token, activeConvId, messages, loadingMore])
 
   /* ── Mark seen ── */
   const markSeen = useCallback(async (convId: number) => {
@@ -157,8 +191,15 @@ function MessagesContent() {
       fetchConversations()
     }
 
+    // L'autre personne a lu nos messages → passer ✓ en ✓✓ immédiatement
+    const handleMessagesSeen = ({ conversationId: convId }: { conversationId: number }) => {
+      if (convId !== activeConvId) return
+      setMessages(prev => prev.map(m => ({ ...m, seen: true })))
+    }
+
     socket.on('new_message', handleNewMessage)
     socket.on('conversation_updated', handleConvUpdated)
+    socket.on('messages_seen', handleMessagesSeen)
 
     // Fallback polling 30s (si le socket perd des events en offline court)
     const fallbackConv = setInterval(() => { fetchConversations() }, 30000)
@@ -166,6 +207,7 @@ function MessagesContent() {
     return () => {
       socket.off('new_message', handleNewMessage)
       socket.off('conversation_updated', handleConvUpdated)
+      socket.off('messages_seen', handleMessagesSeen)
       clearInterval(fallbackConv)
     }
   }, [token, activeConvId, fetchConversations, markSeen])
@@ -430,6 +472,9 @@ function MessagesContent() {
         fileInputRef={fileInputRef}
         textareaRef={textareaRef}
         fetchMessages={fetchMessages}
+        hasMoreMessages={hasMoreMessages}
+        loadingMore={loadingMore}
+        onLoadMore={loadMoreMessages}
         onOpenDetails={() => setDetailsOpen(true)}
       />
       <ConversationDetails conversation={activeConv} currentUserId={currentUserId} messages={messages} token={token} open={detailsOpen} onClose={() => setDetailsOpen(false)} />

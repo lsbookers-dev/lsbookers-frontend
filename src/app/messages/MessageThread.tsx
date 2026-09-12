@@ -45,6 +45,9 @@ interface MessageThreadProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   fetchMessages: (convId: number, silent?: boolean) => Promise<void>
+  hasMoreMessages?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
   onOpenDetails: () => void
 }
 
@@ -55,6 +58,7 @@ export default function MessageThread({
   handleSend, handleMessagesScroll, handleTextareaChange,
   messagesContainerRef, messagesEndRef, fileInputRef, textareaRef,
   fetchMessages,
+  hasMoreMessages = false, loadingMore = false, onLoadMore,
   onOpenDetails,
 }: MessageThreadProps) {
   const router = useRouter()
@@ -369,6 +373,22 @@ export default function MessageThread({
         onScroll={handleMessagesScroll}
         className="lsb-thread-messages flex-1 overflow-y-auto px-4 py-5 space-y-0.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5"
       >
+        {/* Bouton charger les messages précédents */}
+        {hasMoreMessages && messages.length > 0 && (
+          <div className="flex justify-center pb-3">
+            <button
+              onClick={onLoadMore}
+              disabled={loadingMore}
+              className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-white/40 hover:text-white/70 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition disabled:opacity-50"
+            >
+              {loadingMore
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : null}
+              {loadingMore ? 'Chargement…' : 'Afficher les messages précédents'}
+            </button>
+          </div>
+        )}
+
         {loadingMsgs && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-5 h-5 text-violet-500/40 animate-spin" />
