@@ -54,9 +54,11 @@ function MessagesContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const prevMsgCountRef = useRef(0)
   const isNearBottomRef = useRef(true)
-  // Point 4 — debounce pour éviter les double-fetch quand new_message + conversation_updated arrivent en même temps
+  // Debounce fetchConversations (évite double-fetch new_message + conversation_updated simultanés)
   const fetchConvTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fetchConversationsRef = useRef<() => void>(() => {})
+  // Ref vers le dernier message non-temp pour la récupération après reconnexion
+  const lastMsgIdRef = useRef<string | null>(null)
 
   const currentUserId = user?.id ? Number(user.id) : null
   const isOrganizer = user?.role === 'ORGANIZER'
@@ -91,8 +93,11 @@ function MessagesContent() {
     }
   }, [token])
 
-  // Garder la ref à jour pour le debounce
+  // Garder les refs à jour à chaque rendu
   fetchConversationsRef.current = fetchConversations
+  // lastMsgIdRef = dernier message non-temp (pour reconnect recovery)
+  const lastRealMsg = [...messages].reverse().find(m => !String(m.id).startsWith('temp-'))
+  lastMsgIdRef.current = lastRealMsg ? String(lastRealMsg.id) : null
 
   /* ── Fetch messages (initial ou silent refresh) ── */
   const fetchMessages = useCallback(async (convId: number, silent = false) => {
@@ -225,47 +230,54 @@ function MessagesContent() {
       }
     }
 
-    // Reconnexion : rattraper les messages manqués pendant la coupure
+    // Reconnexion — socket.io émet 'reconnect' sur le MANAGER (socket.io), pas sur le socket
+    // Après coupure : rejoindre la room + rattraper les messages manqués via ?after=lastId
     const handleReconnect = () => {
-      fetchConversations()
-      if (activeConvId) {
-        const lastId = messages[messages.length - 1]?.id
-        if (lastId && !String(lastId).startsWith('temp-')) {
-          fetch(`${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`, {
-            headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
+      fetchConversationsRef.current()
+      if (!activeConvId) return
+
+      // Rejoindre la room à nouveau (les rooms sont perdues côté serveur après reconnexion)
+      socket.emit('join_conversation', activeConvId)
+
+      // Rattraper les messages manqués — on utilise la ref pour éviter le stale closure
+      const lastId = lastMsgIdRef.current
+      if (!lastId) return
+      fetch(`${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
+      })
+        .then(r => r.json())
+        .then((missed: Message[]) => {
+          if (!Array.isArray(missed) || missed.length === 0) return
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.id))
+            const newOnes = missed
+              .filter(m => !existingIds.has(String(m.id)))
+              .map(m => ({ ...m, id: String(m.id) }))
+            return newOnes.length > 0 ? [...prev, ...newOnes] : prev
           })
-            .then(r => r.json())
-            .then((missed: Message[]) => {
-              if (!Array.isArray(missed) || missed.length === 0) return
-              setMessages(prev => {
-                const existingIds = new Set(prev.map(m => m.id))
-                const newOnes = missed.filter(m => !existingIds.has(String(m.id))).map(m => ({ ...m, id: String(m.id) }))
-                return newOnes.length > 0 ? [...prev, ...newOnes] : prev
-              })
-            })
-            .catch(() => {})
-        }
-      }
+        })
+        .catch(() => {})
     }
 
     socket.on('new_message', handleNewMessage)
     socket.on('conversation_updated', handleConvUpdated)
     socket.on('messages_seen', handleMessagesSeen)
     socket.on('typing', handleTyping)
-    socket.on('reconnect', handleReconnect)
+    // 'reconnect' est émis par le manager Socket.IO, pas par le socket lui-même
+    socket.io.on('reconnect', handleReconnect)
 
     // Fallback polling 30s (si le socket perd des events en offline court)
-    const fallbackConv = setInterval(() => { fetchConversations() }, 30000)
+    const fallbackConv = setInterval(() => { fetchConversationsRef.current() }, 30000)
 
     return () => {
       socket.off('new_message', handleNewMessage)
       socket.off('conversation_updated', handleConvUpdated)
       socket.off('messages_seen', handleMessagesSeen)
       socket.off('typing', handleTyping)
-      socket.off('reconnect', handleReconnect)
+      socket.io.off('reconnect', handleReconnect)
       clearInterval(fallbackConv)
     }
-  }, [token, activeConvId, fetchConversations, markSeen])
+  }, [token, activeConvId, markSeen])
 
   /* ── Rejoindre / quitter la room de conversation ── */
   useEffect(() => {
@@ -282,14 +294,32 @@ function MessagesContent() {
   }, [activeConvId, token, fetchMessages, markSeen])
 
   /* ── Fallback polling messages (si socket KO) ── */
+  /* Utilise ?after=lastId pour ne charger QUE ce qui manque, pas 50 messages complets */
   useEffect(() => {
     if (!activeConvId || !token) return
     const iv = setInterval(async () => {
-      await fetchMessages(activeConvId, true)
-      markSeen(activeConvId)
+      const lastId = lastMsgIdRef.current
+      if (!lastId) return
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`,
+          { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' } }
+        )
+        if (!res.ok) return
+        const missed: Message[] = await res.json()
+        if (!Array.isArray(missed) || missed.length === 0) return
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const newOnes = missed
+            .filter(m => !existingIds.has(String(m.id)))
+            .map(m => ({ ...m, id: String(m.id) }))
+          return newOnes.length > 0 ? [...prev, ...newOnes] : prev
+        })
+        await markSeen(activeConvId)
+      } catch { /* silencieux */ }
     }, 30000)
     return () => clearInterval(iv)
-  }, [activeConvId, token, fetchMessages, markSeen])
+  }, [activeConvId, token, markSeen])
 
   /* ── Sync activeConv ── */
   useEffect(() => {
