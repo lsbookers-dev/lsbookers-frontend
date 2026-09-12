@@ -8,7 +8,6 @@ import axios, { isAxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { apiUrl } from '@/utils/api'
-import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
 
 /* ─────────────────────────────────────────────────────────
    HELPERS
@@ -92,20 +91,14 @@ export default function LoginPage() {
     setEmailNotVerified(false)
     setLoading(true)
     try {
-      // Envoyer le device token stocké pour identifier les appareils déjà connus
-      const storedDeviceToken = getOrCreateDeviceToken()
-      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (storedDeviceToken) reqHeaders['X-Device-Token'] = storedDeviceToken
-
       const response = await axios.post(
         apiUrl('auth/login'),
         { email, password },
-        { headers: reqHeaders, withCredentials: true, timeout: 15000 }
+        { headers: { 'Content-Type': 'application/json' }, withCredentials: true, timeout: 15000 }
       )
-      const { user, token, deviceToken } = response.data
-      if (token)       localStorage.setItem('token', token)
-      if (user)        localStorage.setItem('user', JSON.stringify(user))
-      if (deviceToken) persistDeviceToken(deviceToken)
+      const { user, token } = response.data
+      if (token) localStorage.setItem('token', token)
+      if (user)  localStorage.setItem('user', JSON.stringify(user))
       setUser(user)
       router.replace((user?.isAdmin || user?.role === 'ADMIN') ? '/admin/dashboard' : '/home')
     } catch (err) {

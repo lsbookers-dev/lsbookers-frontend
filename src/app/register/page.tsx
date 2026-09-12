@@ -6,7 +6,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 import { apiUrl } from '@/utils/api'
-import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
 import { Eye, EyeOff } from 'lucide-react'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
@@ -365,10 +364,6 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
     try {
-      const deviceToken = getOrCreateDeviceToken()
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (deviceToken) headers['X-Device-Token'] = deviceToken
-
       const { data } = await axios.post(
         apiUrl('auth/register-complete'),
         {
@@ -385,9 +380,8 @@ export default function RegisterPage() {
           city: city || undefined,
           specialties: specialties.length > 0 ? specialties : undefined,
         },
-        { headers, withCredentials: true }
+        { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       )
-      if (data.deviceToken) persistDeviceToken(data.deviceToken)
       setStep(4)
     } catch (err) {
       if (isAxiosError(err)) {

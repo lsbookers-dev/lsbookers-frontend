@@ -5,8 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
 import { apiUrl } from '@/utils/api'
-import { getOrCreateDeviceToken } from '@/utils/deviceToken'
-
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -23,12 +21,8 @@ function VerifyEmailContent() {
     }
 
     setStatus('loading')
-    const deviceToken = getOrCreateDeviceToken()
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (deviceToken) headers['X-Device-Token'] = deviceToken
-
     try {
-      await axios.post(apiUrl('auth/verify-email'), { token }, { headers, withCredentials: true })
+      await axios.post(apiUrl('auth/verify-email'), { token }, { headers: { 'Content-Type': 'application/json' }, withCredentials: true })
       setStatus('success')
     } catch (err) {
       setStatus('error')
@@ -52,7 +46,7 @@ function VerifyEmailContent() {
           </div>
           <h2 className="text-xl font-bold">Confirmer ton adresse email</h2>
           <p className="mt-2 text-sm text-white/60">
-            Confirme cette action pour activer ton compte et reconnaître cet appareil s’il s’agit de celui utilisé à l’inscription.
+            Confirme cette action pour activer ton compte.
           </p>
           <button
             onClick={verifyEmail}
