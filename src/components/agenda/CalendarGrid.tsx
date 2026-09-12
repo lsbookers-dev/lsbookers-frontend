@@ -317,7 +317,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                 onClick={() => onCreateFromDate(selected)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
-                  width: '100%', padding: '8px 12px', marginBottom: 12,
+                  width: '100%', padding: '8px 12px', marginTop: 16, marginBottom: 12,
                   background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)',
                   borderRadius: 10, color: '#a5b4fc', fontSize: 12, fontWeight: 500, cursor: 'pointer',
                 }}
