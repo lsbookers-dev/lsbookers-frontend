@@ -9,6 +9,7 @@ import ConversationList from './ConversationList'
 import MessageThread from './MessageThread'
 import ConversationDetails from './ConversationDetails'
 import { API_BASE, getHeaders } from './_helpers'
+import { getSocket, disconnectSocket } from '@/lib/socket'
 import type { Conversation, Message, SearchUser } from './types'
 
 /* ══════════════════════════════════════════════════════════
@@ -113,30 +114,83 @@ function MessagesContent() {
     }))
   }, [token])
 
-  /* ── Polling conversations ── */
-  /* Retry agressif (2s) jusqu'à premier chargement réussi, puis 5s */
+  /* ── Chargement initial conversations ── */
+  /* Retry agressif (2s) jusqu'au premier chargement, puis le socket prend le relais */
   useEffect(() => {
     if (!token) return
     fetchConversations()
-    let iv: ReturnType<typeof setInterval>
-    const startPolling = () => {
-      iv = setInterval(() => {
-        fetchConversations()
-      }, convLoaded ? 5000 : 2000)
-    }
-    startPolling()
+    if (convLoaded) return // socket gère les updates une fois chargé
+    const iv = setInterval(() => { fetchConversations() }, 2000)
     return () => clearInterval(iv)
   }, [token, fetchConversations, convLoaded])
 
-  /* ── Polling messages + mark seen automatique ── */
+  /* ── WebSocket — connexion + events temps réel ── */
+  useEffect(() => {
+    if (!token) return
+
+    const socket = getSocket(token)
+
+    // Recevoir un nouveau message
+    const handleNewMessage = (msg: Message & { conversationId?: number }) => {
+      const convId = msg.conversationId
+      if (!convId) return
+
+      // Ajouter le message au thread si c'est la conv active
+      if (convId === activeConvId) {
+        setMessages(prev => {
+          const msgId = String(msg.id)
+          // Déjà présent (pas de doublon)
+          if (prev.some(m => m.id === msgId)) return prev
+          // Remplacer le(s) message(s) temporaire(s) par le vrai message
+          const withoutTemp = prev.filter(m => !String(m.id).startsWith('temp-'))
+          return [...withoutTemp, { ...msg, id: msgId }]
+        })
+        markSeen(convId)
+      }
+
+      // Rafraîchir la liste de conversations (lastMessage, badge unread)
+      fetchConversations()
+    }
+
+    // La liste des conversations doit être rafraîchie (ex: nouvelle conv, partage)
+    const handleConvUpdated = () => {
+      fetchConversations()
+    }
+
+    socket.on('new_message', handleNewMessage)
+    socket.on('conversation_updated', handleConvUpdated)
+
+    // Fallback polling 30s (si le socket perd des events en offline court)
+    const fallbackConv = setInterval(() => { fetchConversations() }, 30000)
+
+    return () => {
+      socket.off('new_message', handleNewMessage)
+      socket.off('conversation_updated', handleConvUpdated)
+      clearInterval(fallbackConv)
+    }
+  }, [token, activeConvId, fetchConversations, markSeen])
+
+  /* ── Rejoindre / quitter la room de conversation ── */
+  useEffect(() => {
+    if (!token) return
+    const socket = getSocket(token)
+    if (activeConvId) {
+      socket.emit('join_conversation', activeConvId)
+      fetchMessages(activeConvId)
+      markSeen(activeConvId)
+    }
+    return () => {
+      if (activeConvId) socket.emit('leave_conversation', activeConvId)
+    }
+  }, [activeConvId, token, fetchMessages, markSeen])
+
+  /* ── Fallback polling messages (si socket KO) ── */
   useEffect(() => {
     if (!activeConvId || !token) return
-    fetchMessages(activeConvId)
-    markSeen(activeConvId)
     const iv = setInterval(async () => {
       await fetchMessages(activeConvId, true)
       markSeen(activeConvId)
-    }, 3000)
+    }, 30000)
     return () => clearInterval(iv)
   }, [activeConvId, token, fetchMessages, markSeen])
 
@@ -292,14 +346,14 @@ function MessagesContent() {
         if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
         return
       }
-      await fetchMessages(activeConvId)
-      await fetchConversations()
+      // Le socket 'new_message' se charge de remplacer le message temporaire
+      // et 'conversation_updated' rafraîchit la liste — pas besoin de polling ici
     } catch (err) {
       console.error('handleSend:', err)
       if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
     }
     finally { setSending(false) }
-  }, [activeConvId, token, content, file, sending, currentUserId, user, fetchMessages, fetchConversations])
+  }, [activeConvId, token, content, file, sending, currentUserId, user])
 
   /* ── Supprimer une conversation ── */
   const deleteConversation = useCallback(async (convId: number, e: React.MouseEvent) => {

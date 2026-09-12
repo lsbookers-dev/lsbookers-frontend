@@ -10,6 +10,7 @@ import {
   Settings, UserRound, ChevronDown,
 } from 'lucide-react'
 import { getAuthToken } from '@/utils/auth'
+import { getSocket } from '@/lib/socket'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
 
@@ -218,7 +219,8 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
 
   useEffect(() => {
     fetchCounts()
-    const id = setInterval(fetchCounts, 5000)
+    // Fallback polling 30s (le socket couvre les updates en temps réel)
+    const id = setInterval(fetchCounts, 30000)
     const onVisible = () => { if (document.visibilityState === 'visible') fetchCounts() }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('focus', fetchCounts)
@@ -228,6 +230,23 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
       window.removeEventListener('focus', fetchCounts)
     }
   }, [fetchCounts])
+
+  /* ── Socket — badge messages en temps réel ─────────── */
+  useEffect(() => {
+    if (!user?.id) return
+    const token = getAuthToken()
+    if (!token) return
+    const socket = getSocket(token)
+
+    const refresh = () => fetchCounts()
+    socket.on('conversation_updated', refresh)
+    socket.on('new_message', refresh)
+
+    return () => {
+      socket.off('conversation_updated', refresh)
+      socket.off('new_message', refresh)
+    }
+  }, [user?.id, fetchCounts])
 
   /* ── Liens de navigation desktop ───────────────────── */
   const navLinks: { label: string; href: string; active: boolean }[] = []
