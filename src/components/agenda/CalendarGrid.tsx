@@ -1,4 +1,4 @@
-import { CalendarCheck, Clock, MapPin, Send, X, CheckSquare } from 'lucide-react'
+import { CalendarCheck, Clock, MapPin, Send, X, Plus } from 'lucide-react'
 import { CalEvent, AvailDay } from './types'
 import { AVAIL_OPTIONS, isSameDay, formatHour, availCellStyle, availDotColor } from './helpers'
 
@@ -28,6 +28,7 @@ interface CalendarGridProps {
   toggleBulkDate: (d: Date) => void
   saveBulkAvailability: (status: string) => void
   // Actions
+  onCreateFromDate?: (date: Date) => void
   setSelected: (d: Date | null) => void
   setShowBookingForm: (v: boolean) => void
   setBookingMsg: (v: string) => void
@@ -66,7 +67,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
     savingAvail, selectedEvents, selectedAvail, canBook, bookingSent, showBookingForm,
     bookingMsg, bookingFee, bookingSending,
     multiSelectMode, bulkDates, setMultiSelectMode, toggleBulkDate, saveBulkAvailability,
-    setSelected, setShowBookingForm, setBookingMsg, setBookingFee,
+    onCreateFromDate, setSelected, setShowBookingForm, setBookingMsg, setBookingFee,
     saveAvailability, sendBookingRequest, openEventFromCalendar,
   } = props
 
@@ -155,9 +156,6 @@ export default function CalendarGrid(props: CalendarGridProps) {
                       </div>
                     )
                   })}
-                  {isSameDay(now, days.find((day) => isSameDay(day, now)) || new Date(0)) && now.getHours() >= START_HOUR && now.getHours() <= END_HOUR && (
-                    <div className="lsb-week-now" style={{ top: `${positionFor(now.toISOString())}%` }} />
-                  )}
                 </div>
               </div>
             )}
@@ -310,21 +308,25 @@ export default function CalendarGrid(props: CalendarGridProps) {
               </div>
             )}
 
+            {isOwner && onCreateFromDate && selected && (
+              <button
+                type="button"
+                onClick={() => onCreateFromDate(selected)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  width: '100%', padding: '8px 12px', marginBottom: 12,
+                  background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)',
+                  borderRadius: 10, color: '#a5b4fc', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                <Plus size={14} /> Créer un événement
+              </button>
+            )}
+
             {isOwner && showAvailability && (
               <div className="lsb-availability-editor">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ marginBottom: 8 }}>
                   <span>MA DISPONIBILITÉ</span>
-                  {/* Bouton multi-sélection */}
-                  <button
-                    onClick={() => { setMultiSelectMode(true); setSelected(null) }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      fontSize: 10, color: '#6b7494', background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid #2a3050', borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
-                    }}
-                  >
-                    <CheckSquare size={11} /> Multi
-                  </button>
                 </div>
                 {AVAIL_OPTIONS.map((option) => (
                   <button

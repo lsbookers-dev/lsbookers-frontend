@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, BookOpen, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, BookOpen, Plus, X, CheckSquare } from 'lucide-react'
 
 import {
   CalEvent, AvailDay, BookingItem, EventSummary, EventDetail,
@@ -323,6 +323,19 @@ export default function AgendaCalendar({
     setShowPanel(false); setShowEventPanel(true)
     openEventDetail(id)
   }, [openEventDetail])
+
+  /* ── openCreateFromDate : ouvre le formulaire créer événement pré-rempli ── */
+  const openCreateFromDate = useCallback((date: Date) => {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    setCreateDate(`${y}-${m}-${d}`)
+    setShowEventPanel(true)
+    setShowPanel(false)
+    setEventMode('create')
+    setSelectedEventId(null)
+    setEventDetail(null)
+  }, [setCreateDate, setEventMode])
 
   /* ── createEvent ── */
   const createEvent = useCallback(async () => {
@@ -894,6 +907,19 @@ export default function AgendaCalendar({
                   <BookOpen className="h-3 w-3" /> Bookings
                 </button>
               )}
+              {isOwner && showAvailability && (
+                <button
+                  onClick={() => { setMultiSelectMode(m => !m); setSelected(null) }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition hover:opacity-80"
+                  style={{
+                    background: multiSelectMode ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)',
+                    border: multiSelectMode ? '0.5px solid rgba(99,102,241,0.6)' : '0.5px solid #2a3050',
+                    color: multiSelectMode ? '#a5b4fc' : '#6b7494',
+                  }}
+                >
+                  <CheckSquare className="h-3 w-3" /> Sélection multiple
+                </button>
+              )}
               <div style={{ width: '0.5px', height: 16, background: '#1c2030', margin: '0 2px' }} />
               <button
                 onClick={() => movePeriod(-1)}
@@ -1056,6 +1082,7 @@ export default function AgendaCalendar({
           setShowBookingForm={setShowBookingForm}
           setBookingMsg={setBookingMsg}
           setBookingFee={setBookingFee}
+          onCreateFromDate={isOwner ? openCreateFromDate : undefined}
           saveAvailability={saveAvailability}
           sendBookingRequest={sendBookingRequest}
           openEventFromCalendar={openEventFromCalendar}
