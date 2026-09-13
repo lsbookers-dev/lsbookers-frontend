@@ -1,5 +1,6 @@
 // agenda/EventPanel.tsx — Panneau "Événements" (liste + détail avec 6 onglets)
 
+import { CalendarDays } from 'lucide-react'
 import {
   EventSummary, EventDetail, EventOffer, EventOfferForm,
   LinkedBooking, EventMode,
@@ -159,30 +160,65 @@ export default function EventPanel(p: EventPanelProps) {
   if (eventMode === 'list') {
     void createCategory; void setCreateCategory; void createBudget; void setCreateBudget
     void allEvents; void eventsLoading; void eventsError; void lastCreatedId; void fetchAllEvents; void openEventDetail
+
+    // Sélecteurs heure (remplace type="time" — galère sur Safari/mobile)
+    const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+    const MINS  = ['00', '15', '30', '45']
+    const startH = createStartTime.split(':')[0] || ''
+    const startM = createStartTime.split(':')[1] || '00'
+    const endH   = createEndTime.split(':')[0] || ''
+    const endM   = createEndTime.split(':')[1] || '00'
+
+    const selectCls = 'bg-transparent text-sm text-white outline-none cursor-pointer flex-1 min-w-0'
+    const optCls    = 'bg-[#111318]'
+
     return (
-      <div className="p-4 space-y-3">
-        {/* Formulaire création */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4 space-y-3">
-          <p className="text-xs font-semibold text-white/60 uppercase tracking-wide">Nouvel événement</p>
+      <div className="p-4">
+        <div className="bg-white/5 rounded-2xl border border-white/10 p-4 space-y-3">
+
+          {/* En-tête */}
+          <div className="flex items-center gap-2 pb-1">
+            <CalendarDays className="h-4 w-4 text-green-400 shrink-0" />
+            <p className="text-sm font-bold text-white">Nouvel événement</p>
+          </div>
 
           {/* Nom */}
-          <input
-            type="text" value={createTitle} onChange={e => setCreateTitle(e.target.value)}
-            placeholder="Nom de l'événement *"
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40"
-          />
+          <div>
+            <p className="text-[11px] text-white/50 mb-1.5">
+              Nom de l&apos;événement <span className="text-green-400">*</span>
+            </p>
+            <input
+              type="text" value={createTitle} onChange={e => setCreateTitle(e.target.value)}
+              placeholder="Soirée anniversaire…"
+              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40"
+            />
+          </div>
 
-          {/* Date + Heure (2 colonnes) */}
+          {/* Date + Heure */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <p className="text-[10px] text-white/35 mb-1">Date *</p>
+              <p className="text-[11px] text-white/50 mb-1.5">
+                Date <span className="text-green-400">*</span>
+              </p>
               <input type="date" value={createDate} onChange={e => setCreateDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
             </div>
             <div>
-              <p className="text-[10px] text-white/35 mb-1">Heure *</p>
-              <input type="time" value={createStartTime} onChange={e => setCreateStartTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+              <p className="text-[11px] text-white/50 mb-1.5">Heure</p>
+              <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10">
+                <select value={startH}
+                  onChange={e => setCreateStartTime(`${e.target.value}:${startM}`)}
+                  className={selectCls}>
+                  <option value="" className={optCls}>--</option>
+                  {HOURS.map(h => <option key={h} value={h} className={optCls}>{h}</option>)}
+                </select>
+                <span className="text-white/30 text-sm select-none">:</span>
+                <select value={startM}
+                  onChange={e => setCreateStartTime(`${startH || '00'}:${e.target.value}`)}
+                  className={selectCls}>
+                  {MINS.map(m => <option key={m} value={m} className={optCls}>{m}</option>)}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -206,22 +242,39 @@ export default function EventPanel(p: EventPanelProps) {
           {createWithEndDate && (
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className="text-[10px] text-white/35 mb-1">Date de fin</p>
+                <p className="text-[11px] text-white/50 mb-1.5">Date de fin</p>
                 <input type="date" value={createEndDate} onChange={e => setCreateEndDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
               </div>
               <div>
-                <p className="text-[10px] text-white/35 mb-1">Heure de fin</p>
-                <input type="time" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                <p className="text-[11px] text-white/50 mb-1.5">Heure de fin</p>
+                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10">
+                  <select value={endH}
+                    onChange={e => setCreateEndTime(`${e.target.value}:${endM}`)}
+                    className={selectCls}>
+                    <option value="" className={optCls}>--</option>
+                    {HOURS.map(h => <option key={h} value={h} className={optCls}>{h}</option>)}
+                  </select>
+                  <span className="text-white/30 text-sm select-none">:</span>
+                  <select value={endM}
+                    onChange={e => setCreateEndTime(`${endH || '00'}:${e.target.value}`)}
+                    className={selectCls}>
+                    {MINS.map(m => <option key={m} value={m} className={optCls}>{m}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Lieu (obligatoire) */}
-          <input type="text" value={createLieu} onChange={e => setCreateLieu(e.target.value)}
-            placeholder="Lieu *"
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40" />
+          {/* Lieu */}
+          <div>
+            <p className="text-[11px] text-white/50 mb-1.5">
+              Lieu <span className="text-green-400">*</span>
+            </p>
+            <input type="text" value={createLieu} onChange={e => setCreateLieu(e.target.value)}
+              placeholder="Salle des fêtes, Paris…"
+              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40" />
+          </div>
 
           {createError && (
             <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{createError}</p>
@@ -230,9 +283,9 @@ export default function EventPanel(p: EventPanelProps) {
           <button
             onClick={createEvent}
             disabled={creating || !createTitle.trim() || !createDate || !createLieu.trim()}
-            className="w-full py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium disabled:opacity-40 transition"
+            className="w-full py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-40 transition"
           >
-            {creating ? 'Création…' : '+ Créer l\'événement'}
+            {creating ? 'Création…' : 'Créer l\'événement'}
           </button>
         </div>
       </div>
