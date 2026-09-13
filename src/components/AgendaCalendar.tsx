@@ -140,6 +140,7 @@ export default function AgendaCalendar({
   const [editError, setEditError] = useState('')
 
   // Personnel
+  const [newStaffName, setNewStaffName] = useState('')
   const [newStaffRole, setNewStaffRole] = useState('')
   const [newStaffFee, setNewStaffFee] = useState('')
   const [newStaffNotes, setNewStaffNotes] = useState('')
@@ -531,6 +532,20 @@ export default function AgendaCalendar({
     finally { setEditSaving(false) }
   }, [API, selectedEventId, editTitle, editLieu, editCategory, editBudget, editStatus, editCapacity, editDescription, editStart, editStartTime, editEnd, editEndTime, fetchAllEvents, fetchData])
 
+  /* ── updateStaffStatus ── */
+  const updateStaffStatus = useCallback(async (staffId: number, status: string) => {
+    if (!selectedEventId) return
+    try {
+      const token = getAuthToken()
+      await fetch(`${API}/api/events/${selectedEventId}/staff/${staffId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      })
+      fetchEventDetail(selectedEventId)
+    } catch { /* silently ignore */ }
+  }, [API, selectedEventId, fetchEventDetail])
+
   /* ── addStaff ── */
   const addStaff = useCallback(async (staffProfileId?: number) => {
     if (!newStaffRole.trim() || !selectedEventId) return
@@ -541,14 +556,17 @@ export default function AgendaCalendar({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          role: newStaffRole.trim(), fee: newStaffFee ? parseFloat(newStaffFee) : null,
-          notes: newStaffNotes.trim() || null, profileId: staffProfileId || null,
+          role: newStaffRole.trim(),
+          name: staffProfileId ? null : (newStaffName.trim() || null),
+          fee: newStaffFee ? parseFloat(newStaffFee) : null,
+          notes: newStaffNotes.trim() || null,
+          profileId: staffProfileId || null,
         }),
       })
       if (res.ok) {
         const d = await res.json()
         setEventDetail(prev => prev ? { ...prev, staff: [...prev.staff, d.staff] } : prev)
-        setNewStaffRole(''); setNewStaffFee(''); setNewStaffNotes('')
+        setNewStaffName(''); setNewStaffRole(''); setNewStaffFee(''); setNewStaffNotes('')
         setStaffSearchQ(''); setStaffSearchResults([])
       } else {
         const err = await res.json().catch(() => ({}))
@@ -556,7 +574,7 @@ export default function AgendaCalendar({
       }
     } catch { setStaffError('Erreur réseau') }
     finally { setAddingStaff(false) }
-  }, [API, selectedEventId, newStaffRole, newStaffFee, newStaffNotes])
+  }, [API, selectedEventId, newStaffName, newStaffRole, newStaffFee, newStaffNotes])
 
   /* ── deleteStaff ── */
   const deleteStaff = useCallback(async (staffId: number) => {
@@ -1016,16 +1034,16 @@ export default function AgendaCalendar({
           newPurchaseQty={newPurchaseQty}     setNewPurchaseQty={setNewPurchaseQty}
           newPurchasePrice={newPurchasePrice} setNewPurchasePrice={setNewPurchasePrice}
           addingPurchase={addingPurchase}
+          newStaffName={newStaffName}   setNewStaffName={setNewStaffName}
           newStaffRole={newStaffRole}   setNewStaffRole={setNewStaffRole}
           newStaffFee={newStaffFee}     setNewStaffFee={setNewStaffFee}
           newStaffNotes={newStaffNotes} setNewStaffNotes={setNewStaffNotes}
           addingStaff={addingStaff}
           staffError={staffError}
           deletingStaffId={deletingStaffId}
-          staffSearchQ={staffSearchQ}
           staffSearchResults={staffSearchResults}
           staffSearchLoading={staffSearchLoading}
-          staffAddMode={staffAddMode}   setStaffAddMode={setStaffAddMode}
+          updateStaffStatus={updateStaffStatus}
           uploadingDoc={uploadingDoc}
           docError={docError}
           docFilter={docFilter}         setDocFilter={setDocFilter}

@@ -74,16 +74,16 @@ interface EventPanelProps {
   newPurchasePrice: string; setNewPurchasePrice: (v: string) => void
   addingPurchase: boolean
   /* Personnel */
+  newStaffName: string;  setNewStaffName:  (v: string) => void
   newStaffRole: string;  setNewStaffRole:  (v: string) => void
   newStaffFee: string;   setNewStaffFee:   (v: string) => void
   newStaffNotes: string; setNewStaffNotes: (v: string) => void
   addingStaff: boolean
   staffError: string
   deletingStaffId: number | null
-  staffSearchQ: string
   staffSearchResults: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null }[]
   staffSearchLoading: boolean
-  staffAddMode: 'manual' | 'pseudo'; setStaffAddMode: (v: 'manual' | 'pseudo') => void
+  updateStaffStatus: (staffId: number, status: string) => void
   /* Documents */
   uploadingDoc: boolean
   docError: string
@@ -144,9 +144,10 @@ export default function EventPanel(p: EventPanelProps) {
     newExpenseCategory, setNewExpenseCategory, addingExpense, expenseError,
     newPurchaseItem, setNewPurchaseItem, newPurchaseQty, setNewPurchaseQty,
     newPurchasePrice, setNewPurchasePrice, addingPurchase,
+    newStaffName, setNewStaffName,
     newStaffRole, setNewStaffRole, newStaffFee, setNewStaffFee,
     newStaffNotes, setNewStaffNotes, addingStaff, staffError, deletingStaffId,
-    staffSearchQ, staffSearchResults, staffSearchLoading, staffAddMode, setStaffAddMode,
+    staffSearchResults, staffSearchLoading, updateStaffStatus,
     uploadingDoc, docError, docFilter, setDocFilter,
     eventOffers, showEventOfferForm, setShowEventOfferForm,
     submittingEventOffer, eventOfferError, setEventOfferError, eventOfferForm, setEventOfferForm,
@@ -403,22 +404,23 @@ export default function EventPanel(p: EventPanelProps) {
             isBookedEvent={isBookedEvent}
             staff={eventDetail.staff}
             totalStaffFee={totalStaffFee}
+            eventOffers={eventOffers}
             notesText={notesText} setNotesText={setNotesText}
             notesSaving={notesSaving}
             saveNotes={saveNotes}
+            newStaffName={newStaffName} setNewStaffName={setNewStaffName}
             newStaffRole={newStaffRole} setNewStaffRole={setNewStaffRole}
             newStaffFee={newStaffFee} setNewStaffFee={setNewStaffFee}
             newStaffNotes={newStaffNotes} setNewStaffNotes={setNewStaffNotes}
             addingStaff={addingStaff}
             staffError={staffError}
             deletingStaffId={deletingStaffId}
-            staffAddMode={staffAddMode} setStaffAddMode={setStaffAddMode}
-            staffSearchQ={staffSearchQ}
             staffSearchResults={staffSearchResults}
             staffSearchLoading={staffSearchLoading}
             addStaff={addStaff}
             deleteStaff={deleteStaff}
             searchStaff={searchStaff}
+            updateStaffStatus={updateStaffStatus}
           />
         )}
 

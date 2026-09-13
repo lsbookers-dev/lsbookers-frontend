@@ -45,6 +45,7 @@ export type EventSummary = {
 export type StaffItem = {
   id: number
   role: string
+  name?: string | null
   fee?: number | null
   status: string
   notes?: string | null
