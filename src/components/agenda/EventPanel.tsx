@@ -287,6 +287,15 @@ export default function EventPanel(p: EventPanelProps) {
 
   const isBookedEvent = !!linkedBooking
 
+  const STATUS_LABEL: Record<string, string> = { DRAFT: 'Brouillon', PUBLISHED: 'Publié', CANCELLED: 'Annulé', COMPLETED: 'Terminé' }
+  const STATUS_CLS: Record<string, string> = {
+    DRAFT:     'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+    PUBLISHED: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+    CANCELLED: 'bg-red-500/10 text-red-400 border border-red-500/20',
+    COMPLETED: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  }
+  const startTime = new Date(eventDetail.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+
   const ORGANIZER_TABS = [
     { key: 'details'   as const, label: 'Détail' },
     { key: 'staff'     as const, label: 'Personnel' },
@@ -313,11 +322,17 @@ export default function EventPanel(p: EventPanelProps) {
 
   return (
     <div className="max-h-[600px] overflow-y-auto">
-      {/* En-tête événement */}
-      <div className="px-4 pt-3 pb-2 border-b border-white/8">
-        <p className="text-sm font-semibold text-white truncate">{eventDetail.title}</p>
-        <p className="text-xs text-white/40 mt-0.5">
-          📅 {new Date(eventDetail.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+      {/* En-tête événement — Concept C */}
+      <div className="px-4 pt-3 pb-2.5 border-b border-white/8">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <p className="text-sm font-semibold text-white truncate">{eventDetail.title}</p>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${STATUS_CLS[eventDetail.status] || 'bg-white/10 text-white/40 border border-white/10'}`}>
+            {STATUS_LABEL[eventDetail.status] || eventDetail.status}
+          </span>
+        </div>
+        <p className="text-[11px] text-white/40">
+          {new Date(eventDetail.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          {startTime !== '00:00' ? ` · ${startTime}` : ''}
           {eventDetail.lieu ? ` · ${eventDetail.lieu}` : ''}
         </p>
       </div>
@@ -329,7 +344,7 @@ export default function EventPanel(p: EventPanelProps) {
             key={tab.key}
             onClick={() => setDetailTab(tab.key)}
             className={`px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition ${
-              detailTab === tab.key ? 'border-violet-500 text-violet-300' : 'border-transparent text-white/40 hover:text-white/70'
+              detailTab === tab.key ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-white/40 hover:text-white/70'
             }`}
           >
             {tab.label}

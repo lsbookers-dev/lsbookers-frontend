@@ -1,4 +1,4 @@
-// agenda/EventTabDetail.tsx — Onglet "Détail" du panneau événement
+// agenda/EventTabDetail.tsx — Onglet "Détail" du panneau événement — Concept C
 
 import { EventDetail, LinkedBooking } from './types'
 
@@ -38,25 +38,19 @@ export default function EventTabDetail(p: Props) {
   if (isBookedEvent) {
     return (
       <div className="space-y-3">
-        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-3 space-y-1.5">
-          <p className="text-[10px] text-violet-300 font-medium uppercase tracking-wide">Organisateur</p>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-1.5">
+          <p className="text-[10px] text-emerald-400 font-medium uppercase tracking-wide">Organisateur</p>
           <p className="text-sm font-medium text-white">
             {linkedBooking?.requester?.user?.pseudo ||
               [linkedBooking?.requester?.user?.firstName, linkedBooking?.requester?.user?.lastName].filter(Boolean).join(' ') || '?'}
           </p>
         </div>
-        {[
-          { label: 'Titre',     value: eventDetail.title },
-          { label: 'Date',      value: new Date(eventDetail.start).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
-          { label: 'Lieu',      value: eventDetail.lieu || '—' },
-          { label: 'Catégorie', value: eventDetail.category || '—' },
-          { label: 'Cachet',    value: linkedBooking?.fee ? `${Number(linkedBooking.fee).toLocaleString('fr-FR')} €` : '—' },
-        ].map(({ label, value }) => (
-          <div key={label} className="flex items-start justify-between gap-4">
-            <span className="text-xs text-white/40 shrink-0">{label}</span>
-            <span className="text-xs text-white text-right">{value}</span>
-          </div>
-        ))}
+        <div className="grid grid-cols-2 gap-2">
+          <MiniCard label="Date" value={new Date(eventDetail.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })} />
+          <MiniCard label="Heure" value={new Date(eventDetail.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} />
+          <MiniCard label="Lieu" value={eventDetail.lieu || '—'} />
+          <MiniCard label="Cachet" value={linkedBooking?.fee ? `${Number(linkedBooking.fee).toLocaleString('fr-FR')} €` : '—'} />
+        </div>
       </div>
     )
   }
@@ -66,7 +60,7 @@ export default function EventTabDetail(p: Props) {
       <div className="space-y-2">
         <input type="text" value={p.editTitle} onChange={e => p.setEditTitle(e.target.value)}
           placeholder="Titre *"
-          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40" />
+          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-emerald-500/40" />
         <div className="grid grid-cols-2 gap-2">
           <div>
             <p className="text-[10px] text-white/35 mb-1">Date début *</p>
@@ -75,29 +69,30 @@ export default function EventTabDetail(p: Props) {
           </div>
           <div>
             <p className="text-[10px] text-white/35 mb-1">Heure début</p>
-            <input type="time" value={p.editStartTime} onChange={e => p.setEditStartTime(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
+            <input type="text" value={p.editStartTime} onChange={e => p.setEditStartTime(e.target.value)}
+              placeholder="20:00" maxLength={5}
+              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/20 outline-none" />
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] text-white/35">Date fin <span className="text-white/20">(optionnel)</span></p>
+              <p className="text-[10px] text-white/35">Date fin <span className="text-white/20">(opt.)</span></p>
               {p.editEnd && (
-                <button onClick={() => { p.setEditEnd(''); p.setEditEndTime('') }} className="text-[10px] text-white/30 hover:text-white/60 transition">✕ effacer</button>
+                <button onClick={() => { p.setEditEnd(''); p.setEditEndTime('') }} className="text-[10px] text-white/30 hover:text-white/60 transition">✕</button>
               )}
             </div>
             <input type="date" value={p.editEnd} onChange={e => p.setEditEnd(e.target.value)}
               className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
           </div>
           <div>
-            <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(optionnel)</span></p>
-            <input type="time" value={p.editEndTime} onChange={e => p.setEditEndTime(e.target.value)}
-              disabled={!p.editEnd}
-              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none disabled:opacity-30" />
+            <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(opt.)</span></p>
+            <input type="text" value={p.editEndTime} onChange={e => p.setEditEndTime(e.target.value)}
+              placeholder="23:00" maxLength={5} disabled={!p.editEnd}
+              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/20 outline-none disabled:opacity-30" />
           </div>
         </div>
         <input type="text" value={p.editLieu} onChange={e => p.setEditLieu(e.target.value)}
           placeholder="Lieu"
-          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40" />
+          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-emerald-500/40" />
         <div className="grid grid-cols-2 gap-2">
           <select value={p.editCategory} onChange={e => p.setEditCategory(e.target.value)}
             className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none">
@@ -122,7 +117,7 @@ export default function EventTabDetail(p: Props) {
         </div>
         <textarea value={p.editDescription} onChange={e => p.setEditDescription(e.target.value)}
           placeholder="Description…" rows={3}
-          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-violet-500/40 resize-none" />
+          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-emerald-500/40 resize-none" />
         {p.editError && <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{p.editError}</p>}
         <div className="flex gap-2">
           <button onClick={() => { p.setEditMode(false); p.setEditError('') }}
@@ -130,7 +125,7 @@ export default function EventTabDetail(p: Props) {
             Annuler
           </button>
           <button onClick={p.saveEventDetails} disabled={p.editSaving || !p.editTitle.trim() || !p.editStart}
-            className="flex-1 py-2 rounded-xl bg-violet-600 text-white text-xs font-medium hover:bg-violet-500 disabled:opacity-40 transition">
+            className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-500 disabled:opacity-40 transition">
             {p.editSaving ? 'Sauvegarde…' : 'Sauvegarder'}
           </button>
         </div>
@@ -138,38 +133,64 @@ export default function EventTabDetail(p: Props) {
     )
   }
 
+  // — Vue mode — grille 2×2 Concept C
+  const startDate = new Date(eventDetail.start)
+  const startTime = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const dateLabel = startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const endLabel = eventDetail.end
+    ? new Date(eventDetail.end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    : null
+
   return (
     <div className="space-y-3">
-      {[
-        { label: 'Titre',        value: eventDetail.title },
-        { label: 'Date',         value: new Date(eventDetail.start).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (eventDetail.end ? ` → ${new Date(eventDetail.end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}` : '') },
-        { label: 'Lieu',         value: eventDetail.lieu || '—' },
-        { label: 'Catégorie',    value: eventDetail.category || '—' },
-        { label: 'Budget',       value: eventDetail.budget ? `${Number(eventDetail.budget).toLocaleString('fr-FR')} €` : '—' },
-        { label: 'Statut',       value: STATUS_LABEL[eventDetail.status] || eventDetail.status },
-        { label: 'Capacité max', value: eventDetail.maxCapacity?.toString() || '—' },
-      ].map(({ label, value }) => (
-        <div key={label} className="flex items-start justify-between gap-4">
-          <span className="text-xs text-white/40 shrink-0">{label}</span>
-          <span className="text-xs text-white text-right">{value}</span>
-        </div>
-      ))}
-      {eventDetail.description && (
-        <div>
-          <p className="text-xs text-white/40 mb-1">Description</p>
-          <p className="text-xs text-white/70">{eventDetail.description}</p>
+      {/* Grille 2×2 */}
+      <div className="grid grid-cols-2 gap-2">
+        <MiniCard label="Date" value={dateLabel} sub={endLabel ? `→ ${endLabel}` : undefined} />
+        <MiniCard label="Heure" value={startTime !== '00:00' ? startTime : '—'} />
+        <MiniCard label="Lieu" value={eventDetail.lieu || '—'} />
+        <MiniCard label="Catégorie" value={eventDetail.category || STATUS_LABEL[eventDetail.status] || eventDetail.status} />
+      </div>
+
+      {/* Infos secondaires */}
+      {(eventDetail.budget || eventDetail.maxCapacity || eventDetail.description) && (
+        <div className="space-y-2 pt-1">
+          {(eventDetail.budget || eventDetail.maxCapacity) && (
+            <div className="flex gap-2">
+              {eventDetail.budget && (
+                <div className="flex-1 bg-white/4 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-white/35 mb-0.5">Budget</p>
+                  <p className="text-xs text-white font-medium">{Number(eventDetail.budget).toLocaleString('fr-FR')} €</p>
+                </div>
+              )}
+              {eventDetail.maxCapacity && (
+                <div className="flex-1 bg-white/4 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-white/35 mb-0.5">Capacité max</p>
+                  <p className="text-xs text-white font-medium">{eventDetail.maxCapacity}</p>
+                </div>
+              )}
+            </div>
+          )}
+          {eventDetail.description && (
+            <div className="bg-white/4 rounded-xl px-3 py-2.5">
+              <p className="text-[10px] text-white/35 mb-1">Description</p>
+              <p className="text-xs text-white/70 leading-relaxed">{eventDetail.description}</p>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Bouton modifier */}
       <button onClick={() => p.setEditMode(true)}
-        className="w-full py-2 rounded-xl border border-white/15 text-white/60 text-xs hover:bg-white/8 transition mt-1">
-        ✏️ Modifier les informations
+        className="w-full py-2.5 rounded-xl bg-emerald-600/15 border border-emerald-500/25 text-emerald-400 text-xs font-medium hover:bg-emerald-600/25 transition">
+        Modifier les informations
       </button>
 
-      <div className="pt-3 border-t border-white/8 mt-3">
+      {/* Suppression */}
+      <div className="pt-1 border-t border-white/8">
         {!p.confirmDelete ? (
           <button onClick={() => p.setConfirmDelete(true)}
-            className="w-full py-2 rounded-xl border border-red-500/30 text-red-400 text-xs hover:bg-red-500/10 transition">
-            🗑 Supprimer l&apos;événement
+            className="w-full py-2 rounded-xl border border-red-500/20 text-red-400/70 text-xs hover:bg-red-500/10 hover:text-red-400 transition">
+            Supprimer l&apos;événement
           </button>
         ) : (
           <div className="space-y-2">
@@ -187,6 +208,17 @@ export default function EventTabDetail(p: Props) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// Composant mini-carte réutilisable
+function MiniCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="bg-white/4 rounded-xl px-3 py-2.5">
+      <p className="text-[10px] text-white/35 mb-0.5">{label}</p>
+      <p className="text-xs text-white font-medium leading-snug">{value}</p>
+      {sub && <p className="text-[10px] text-white/40 mt-0.5">{sub}</p>}
     </div>
   )
 }
