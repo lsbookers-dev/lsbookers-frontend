@@ -11,12 +11,6 @@ import EventTabPurchases from './EventTabPurchases'
 import EventTabBookings  from './EventTabBookings'
 import EventTabOffers    from './EventTabOffers'
 
-const CATEGORIES   = ['Club', 'Mariage', 'Corporate', 'Festival', 'Concert', 'Privé', 'Autre']
-const STATUS_LABEL: Record<string, string> = { DRAFT: 'Brouillon', PUBLISHED: 'Publié', CANCELLED: 'Annulé', COMPLETED: 'Terminé' }
-const STATUS_CLS: Record<string, string>   = {
-  DRAFT: 'bg-white/10 text-white/40', PUBLISHED: 'bg-green-500/20 text-green-300',
-  CANCELLED: 'bg-red-500/20 text-red-300', COMPLETED: 'bg-blue-500/20 text-blue-300',
-}
 
 interface EventPanelProps {
   /* Mode */
@@ -35,6 +29,7 @@ interface EventPanelProps {
   createLieu: string;     setCreateLieu:     (v: string) => void
   createCategory: string; setCreateCategory: (v: string) => void
   createBudget: string;   setCreateBudget:   (v: string) => void
+  createWithEndDate: boolean; setCreateWithEndDate: (v: boolean) => void
   creating: boolean
   createError: string
   /* Détail événement */
@@ -130,6 +125,7 @@ export default function EventPanel(p: EventPanelProps) {
     createEndDate, setCreateEndDate, createStartTime, setCreateStartTime,
     createEndTime, setCreateEndTime, createLieu, setCreateLieu,
     createCategory, setCreateCategory, createBudget, setCreateBudget,
+    createWithEndDate, setCreateWithEndDate,
     creating, createError,
     selectedEventId, eventDetail, eventDetailLoading, eventDetailError,
     linkedBooking, detailTab, setDetailTab,
@@ -161,113 +157,84 @@ export default function EventPanel(p: EventPanelProps) {
 
   /* ── LIST MODE ── */
   if (eventMode === 'list') {
+    void createCategory; void setCreateCategory; void createBudget; void setCreateBudget
+    void allEvents; void eventsLoading; void eventsError; void lastCreatedId; void fetchAllEvents; void openEventDetail
     return (
-      <div className="p-4 max-h-[580px] overflow-y-auto space-y-3">
+      <div className="p-4 space-y-3">
         {/* Formulaire création */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-3 space-y-2">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-4 space-y-3">
           <p className="text-xs font-semibold text-white/60 uppercase tracking-wide">Nouvel événement</p>
+
+          {/* Nom */}
           <input
             type="text" value={createTitle} onChange={e => setCreateTitle(e.target.value)}
-            placeholder="Titre de l'événement *"
+            placeholder="Nom de l'événement *"
             className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40"
           />
+
+          {/* Date + Heure (2 colonnes) */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <p className="text-[10px] text-white/35 mb-1">Date début *</p>
+              <p className="text-[10px] text-white/35 mb-1">Date *</p>
               <input type="date" value={createDate} onChange={e => setCreateDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
             </div>
             <div>
-              <p className="text-[10px] text-white/35 mb-1">Heure début</p>
+              <p className="text-[10px] text-white/35 mb-1">Heure *</p>
               <input type="time" value={createStartTime} onChange={e => setCreateStartTime(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] text-white/35">Date fin <span className="text-white/20">(optionnel)</span></p>
-                {createEndDate && (
-                  <button onClick={() => { setCreateEndDate(''); setCreateEndTime('') }} className="text-[10px] text-white/30 hover:text-white/60 transition">✕ effacer</button>
-                )}
+          </div>
+
+          {/* Checkbox date de fin */}
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={createWithEndDate}
+              onChange={e => {
+                setCreateWithEndDate(e.target.checked)
+                if (!e.target.checked) { setCreateEndDate(''); setCreateEndTime('') }
+              }}
+              className="w-3.5 h-3.5 rounded accent-green-500 cursor-pointer"
+            />
+            <span className="text-xs text-white/50 group-hover:text-white/70 transition select-none">
+              Ajouter une date de fin
+            </span>
+          </label>
+
+          {/* Date de fin + Heure de fin (conditionnels) */}
+          {createWithEndDate && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <p className="text-[10px] text-white/35 mb-1">Date de fin</p>
+                <input type="date" value={createEndDate} onChange={e => setCreateEndDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
               </div>
-              <input type="date" value={createEndDate} onChange={e => setCreateEndDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+              <div>
+                <p className="text-[10px] text-white/35 mb-1">Heure de fin</p>
+                <input type="time" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(optionnel)</span></p>
-              <input type="time" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
-                disabled={!createEndDate}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40 disabled:opacity-30" />
-            </div>
-          </div>
+          )}
+
+          {/* Lieu (obligatoire) */}
           <input type="text" value={createLieu} onChange={e => setCreateLieu(e.target.value)}
-            placeholder="Lieu (optionnel)"
+            placeholder="Lieu *"
             className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40" />
-          <div className="flex gap-2">
-            <select value={createCategory} onChange={e => setCreateCategory(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40">
-              <option value="">Catégorie…</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <input type="number" value={createBudget} onChange={e => setCreateBudget(e.target.value)}
-              placeholder="Budget (€)"
-              className="w-28 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-green-500/40" />
-          </div>
+
           {createError && (
             <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{createError}</p>
           )}
+
           <button
             onClick={createEvent}
-            disabled={creating || !createTitle.trim() || !createDate}
+            disabled={creating || !createTitle.trim() || !createDate || !createLieu.trim()}
             className="w-full py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-medium disabled:opacity-40 transition"
           >
             {creating ? 'Création…' : '+ Créer l\'événement'}
           </button>
         </div>
-
-        {/* Liste des événements */}
-        {eventsLoading ? (
-          <p className="text-center text-white/30 text-sm py-4">Chargement…</p>
-        ) : eventsError ? (
-          <div className="text-center py-4 space-y-2">
-            <p className="text-xs text-red-400/70">Impossible de charger les événements.</p>
-            <button onClick={fetchAllEvents} className="text-xs text-white/50 underline">Réessayer</button>
-          </div>
-        ) : allEvents.length === 0 ? (
-          <p className="text-xs text-white/25 italic text-center py-2">Aucun événement créé</p>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-[11px] text-white/40 uppercase tracking-wide font-medium">Événements existants ({allEvents.length})</p>
-            {allEvents.map(ev => (
-              <div
-                key={ev.id}
-                className={`rounded-xl border overflow-hidden ${
-                  ev.id === lastCreatedId ? 'bg-green-500/10 border-green-500/30' : 'bg-white/5 border-white/10'
-                }`}
-              >
-                <div className="p-3">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{ev.title}</p>
-                      <p className="text-xs text-white/40 mt-0.5">
-                        📅 {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {ev.lieu ? ` · ${ev.lieu}` : ''}
-                      </p>
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${STATUS_CLS[ev.status] || 'bg-white/10 text-white/40'}`}>
-                      {STATUS_LABEL[ev.status] || ev.status}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => openEventDetail(ev.id)}
-                    className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-xs font-medium transition flex items-center justify-center gap-1"
-                  >
-                    Gérer l&apos;événement →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     )
   }

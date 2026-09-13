@@ -87,6 +87,7 @@ export default function AgendaCalendar({
   const [createLieu, setCreateLieu] = useState('')
   const [createCategory, setCreateCategory] = useState('')
   const [createBudget, setCreateBudget] = useState('')
+  const [createWithEndDate, setCreateWithEndDate] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   const [lastCreatedId, setLastCreatedId] = useState<number | null>(null)
@@ -339,7 +340,7 @@ export default function AgendaCalendar({
 
   /* ── createEvent ── */
   const createEvent = useCallback(async () => {
-    if (!createTitle.trim() || !createDate) return
+    if (!createTitle.trim() || !createDate || !createLieu.trim()) return
     setCreating(true); setCreateError('')
     try {
       const token = getAuthToken()
@@ -359,6 +360,7 @@ export default function AgendaCalendar({
         const d = await res.json()
         setCreateTitle(''); setCreateDate(''); setCreateEndDate(''); setCreateStartTime('')
         setCreateEndTime(''); setCreateLieu(''); setCreateCategory(''); setCreateBudget('')
+        setCreateWithEndDate(false)
         setLastCreatedId(d.event.id)
         await fetchAllEvents(); fetchData()
       } else {
@@ -367,7 +369,7 @@ export default function AgendaCalendar({
       }
     } catch { setCreateError('Impossible de joindre le serveur') }
     finally { setCreating(false) }
-  }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, fetchAllEvents, fetchData])
+  }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, createWithEndDate, fetchAllEvents, fetchData])
 
   /* ── deleteEvent ── */
   const deleteEvent = useCallback(async () => {
@@ -976,6 +978,7 @@ export default function AgendaCalendar({
           createLieu={createLieu}       setCreateLieu={setCreateLieu}
           createCategory={createCategory} setCreateCategory={setCreateCategory}
           createBudget={createBudget}   setCreateBudget={setCreateBudget}
+          createWithEndDate={createWithEndDate} setCreateWithEndDate={setCreateWithEndDate}
           creating={creating}
           createError={createError}
           selectedEventId={selectedEventId}
