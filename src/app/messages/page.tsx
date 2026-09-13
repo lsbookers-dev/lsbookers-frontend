@@ -241,7 +241,11 @@ function MessagesContent() {
 
       // Rattraper les messages manqués — on utilise la ref pour éviter le stale closure
       const lastId = lastMsgIdRef.current
-      if (!lastId) return
+      // Point 2 — Si le chargement initial a échoué (lastId null), recharger complètement
+      if (!lastId) {
+        fetchMessages(activeConvId)
+        return
+      }
       fetch(`${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`, {
         headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
       })
@@ -299,7 +303,8 @@ function MessagesContent() {
     if (!activeConvId || !token) return
     const iv = setInterval(async () => {
       const lastId = lastMsgIdRef.current
-      if (!lastId) return
+      // Si chargement initial raté → recharger complètement plutôt qu'abandonner
+      if (!lastId) { fetchMessages(activeConvId, true); return }
       try {
         const res = await fetch(
           `${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`,
