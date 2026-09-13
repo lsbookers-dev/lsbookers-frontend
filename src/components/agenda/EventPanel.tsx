@@ -161,17 +161,6 @@ export default function EventPanel(p: EventPanelProps) {
     void createCategory; void setCreateCategory; void createBudget; void setCreateBudget
     void allEvents; void eventsLoading; void eventsError; void lastCreatedId; void fetchAllEvents; void openEventDetail
 
-    // Sélecteurs heure (remplace type="time" — galère sur Safari/mobile)
-    const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
-    const MINS  = ['00', '15', '30', '45']
-    const startH = createStartTime.split(':')[0] || ''
-    const startM = createStartTime.split(':')[1] || '00'
-    const endH   = createEndTime.split(':')[0] || ''
-    const endM   = createEndTime.split(':')[1] || '00'
-
-    const selectCls = 'bg-transparent text-sm text-white outline-none cursor-pointer flex-1 min-w-0'
-    const optCls    = 'bg-[#111318]'
-
     return (
       <div className="p-4">
         <div className="bg-white/5 rounded-2xl border border-white/10 p-4 space-y-3">
@@ -205,20 +194,13 @@ export default function EventPanel(p: EventPanelProps) {
             </div>
             <div>
               <p className="text-[11px] text-white/50 mb-1.5">Heure</p>
-              <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10">
-                <select value={startH}
-                  onChange={e => setCreateStartTime(`${e.target.value}:${startM}`)}
-                  className={selectCls}>
-                  <option value="" className={optCls}>--</option>
-                  {HOURS.map(h => <option key={h} value={h} className={optCls}>{h}</option>)}
-                </select>
-                <span className="text-white/30 text-sm select-none">:</span>
-                <select value={startM}
-                  onChange={e => setCreateStartTime(`${startH || '00'}:${e.target.value}`)}
-                  className={selectCls}>
-                  {MINS.map(m => <option key={m} value={m} className={optCls}>{m}</option>)}
-                </select>
-              </div>
+              <input
+                type="text" value={createStartTime}
+                onChange={e => setCreateStartTime(e.target.value)}
+                placeholder="20:00"
+                maxLength={5}
+                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40"
+              />
             </div>
           </div>
 
@@ -248,20 +230,13 @@ export default function EventPanel(p: EventPanelProps) {
               </div>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Heure de fin</p>
-                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10">
-                  <select value={endH}
-                    onChange={e => setCreateEndTime(`${e.target.value}:${endM}`)}
-                    className={selectCls}>
-                    <option value="" className={optCls}>--</option>
-                    {HOURS.map(h => <option key={h} value={h} className={optCls}>{h}</option>)}
-                  </select>
-                  <span className="text-white/30 text-sm select-none">:</span>
-                  <select value={endM}
-                    onChange={e => setCreateEndTime(`${endH || '00'}:${e.target.value}`)}
-                    className={selectCls}>
-                    {MINS.map(m => <option key={m} value={m} className={optCls}>{m}</option>)}
-                  </select>
-                </div>
+                <input
+                  type="text" value={createEndTime}
+                  onChange={e => setCreateEndTime(e.target.value)}
+                  placeholder="23:00"
+                  maxLength={5}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40"
+                />
               </div>
             </div>
           )}
