@@ -333,7 +333,7 @@ export default function AgendaCalendar({
     setCreateDate(`${y}-${m}-${d}`)
     setShowEventPanel(true)
     setShowPanel(false)
-    setEventMode('list')
+    setEventMode('create')
     setSelectedEventId(null)
     setEventDetail(null)
   }, [setCreateDate])
@@ -363,13 +363,14 @@ export default function AgendaCalendar({
         setCreateWithEndDate(false)
         setLastCreatedId(d.event.id)
         await fetchAllEvents(); fetchData()
+        openEventDetail(d.event.id)
       } else {
         const err = await res.json().catch(() => ({}))
         setCreateError(err.error || 'Erreur lors de la création')
       }
     } catch { setCreateError('Impossible de joindre le serveur') }
     finally { setCreating(false) }
-  }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, createWithEndDate, fetchAllEvents, fetchData])
+  }, [API, createTitle, createDate, createEndDate, createStartTime, createEndTime, createLieu, createCategory, createBudget, createWithEndDate, fetchAllEvents, fetchData, openEventDetail])
 
   /* ── deleteEvent ── */
   const deleteEvent = useCallback(async () => {
@@ -966,6 +967,7 @@ export default function AgendaCalendar({
       {showEventPanel && (
         <EventPanel
           eventMode={eventMode}
+          onCreateNew={() => setEventMode('create')}
           allEvents={allEvents}
           eventsLoading={eventsLoading}
           eventsError={eventsError}

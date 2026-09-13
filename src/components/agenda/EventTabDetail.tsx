@@ -2,8 +2,6 @@
 
 import { EventDetail, LinkedBooking } from './types'
 
-const CATEGORIES   = ['Club', 'Mariage', 'Corporate', 'Festival', 'Concert', 'Privé', 'Autre']
-const STATUS_LABEL: Record<string, string> = { DRAFT: 'Brouillon', PUBLISHED: 'Publié', CANCELLED: 'Annulé', COMPLETED: 'Terminé' }
 
 interface Props {
   isBookedEvent: boolean
@@ -56,76 +54,94 @@ export default function EventTabDetail(p: Props) {
   }
 
   if (p.editMode) {
+    void p.editCategory; void p.setEditCategory
+    void p.editStatus; void p.setEditStatus
+    void p.editCapacity; void p.setEditCapacity
+
+    const hasEndDate = p.editEnd !== ''
+
     return (
-      <div className="space-y-2">
-        <input type="text" value={p.editTitle} onChange={e => p.setEditTitle(e.target.value)}
-          placeholder="Titre *"
-          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-emerald-500/40" />
+      <div className="space-y-3">
+        {/* Nom */}
+        <div>
+          <p className="text-[11px] text-white/50 mb-1.5">Nom de l&apos;événement <span className="text-green-400">*</span></p>
+          <input type="text" value={p.editTitle} onChange={e => p.setEditTitle(e.target.value)}
+            placeholder="Soirée anniversaire…"
+            className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-emerald-500/40" />
+        </div>
+
+        {/* Date + Heure */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-[10px] text-white/35 mb-1">Date début *</p>
+            <p className="text-[11px] text-white/50 mb-1.5">Date <span className="text-green-400">*</span></p>
             <input type="date" value={p.editStart} onChange={e => p.setEditStart(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
+              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-emerald-500/40" />
           </div>
           <div>
-            <p className="text-[10px] text-white/35 mb-1">Heure début</p>
+            <p className="text-[11px] text-white/50 mb-1.5">Heure</p>
             <input type="text" value={p.editStartTime} onChange={e => p.setEditStartTime(e.target.value)}
               placeholder="20:00" maxLength={5}
-              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/20 outline-none" />
+              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-emerald-500/40" />
           </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] text-white/35">Date fin <span className="text-white/20">(opt.)</span></p>
-              {p.editEnd && (
-                <button onClick={() => { p.setEditEnd(''); p.setEditEndTime('') }} className="text-[10px] text-white/30 hover:text-white/60 transition">✕</button>
-              )}
+        </div>
+
+        {/* Checkbox date de fin */}
+        <label className="flex items-center gap-2 cursor-pointer group">
+          <input type="checkbox" checked={hasEndDate}
+            onChange={e => { if (!e.target.checked) { p.setEditEnd(''); p.setEditEndTime('') } else { p.setEditEnd(p.editStart) } }}
+            className="w-3.5 h-3.5 rounded accent-green-500 cursor-pointer" />
+          <span className="text-xs text-white/50 group-hover:text-white/70 transition select-none">Ajouter une date de fin</span>
+        </label>
+
+        {hasEndDate && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[11px] text-white/50 mb-1.5">Date de fin</p>
+              <input type="date" value={p.editEnd} onChange={e => p.setEditEnd(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-emerald-500/40" />
             </div>
-            <input type="date" value={p.editEnd} onChange={e => p.setEditEnd(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
+            <div>
+              <p className="text-[11px] text-white/50 mb-1.5">Heure de fin</p>
+              <input type="text" value={p.editEndTime} onChange={e => p.setEditEndTime(e.target.value)}
+                placeholder="23:00" maxLength={5}
+                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-emerald-500/40" />
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] text-white/35 mb-1">Heure fin <span className="text-white/20">(opt.)</span></p>
-            <input type="text" value={p.editEndTime} onChange={e => p.setEditEndTime(e.target.value)}
-              placeholder="23:00" maxLength={5} disabled={!p.editEnd}
-              className="w-full px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/20 outline-none disabled:opacity-30" />
-          </div>
+        )}
+
+        {/* Lieu */}
+        <div>
+          <p className="text-[11px] text-white/50 mb-1.5">Lieu</p>
+          <input type="text" value={p.editLieu} onChange={e => p.setEditLieu(e.target.value)}
+            placeholder="Salle des fêtes, Paris…"
+            className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-emerald-500/40" />
         </div>
-        <input type="text" value={p.editLieu} onChange={e => p.setEditLieu(e.target.value)}
-          placeholder="Lieu"
-          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-emerald-500/40" />
-        <div className="grid grid-cols-2 gap-2">
-          <select value={p.editCategory} onChange={e => p.setEditCategory(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none">
-            <option value="">Catégorie…</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={p.editStatus} onChange={e => p.setEditStatus(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none">
-            <option value="DRAFT">Brouillon</option>
-            <option value="PUBLISHED">Publié</option>
-            <option value="COMPLETED">Terminé</option>
-            <option value="CANCELLED">Annulé</option>
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
+
+        {/* Budget */}
+        <div>
+          <p className="text-[11px] text-white/50 mb-1.5">Budget (€)</p>
           <input type="number" value={p.editBudget} onChange={e => p.setEditBudget(e.target.value)}
-            placeholder="Budget (€)"
-            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none" />
-          <input type="number" value={p.editCapacity} onChange={e => p.setEditCapacity(e.target.value)}
-            placeholder="Capacité max"
-            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none" />
+            placeholder="0"
+            className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-emerald-500/40" />
         </div>
-        <textarea value={p.editDescription} onChange={e => p.setEditDescription(e.target.value)}
-          placeholder="Description…" rows={3}
-          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:ring-1 focus:ring-emerald-500/40 resize-none" />
+
+        {/* Description */}
+        <div>
+          <p className="text-[11px] text-white/50 mb-1.5">Description</p>
+          <textarea value={p.editDescription} onChange={e => p.setEditDescription(e.target.value)}
+            placeholder="Description de l'événement…" rows={3}
+            className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-emerald-500/40 resize-none" />
+        </div>
+
         {p.editError && <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{p.editError}</p>}
+
         <div className="flex gap-2">
           <button onClick={() => { p.setEditMode(false); p.setEditError('') }}
-            className="flex-1 py-2 rounded-xl bg-white/10 text-white/60 text-xs hover:bg-white/15 transition">
+            className="flex-1 py-2.5 rounded-xl bg-white/10 text-white/60 text-sm hover:bg-white/15 transition">
             Annuler
           </button>
           <button onClick={p.saveEventDetails} disabled={p.editSaving || !p.editTitle.trim() || !p.editStart}
-            className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-500 disabled:opacity-40 transition">
+            className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 disabled:opacity-40 transition">
             {p.editSaving ? 'Sauvegarde…' : 'Sauvegarder'}
           </button>
         </div>
@@ -133,7 +149,7 @@ export default function EventTabDetail(p: Props) {
     )
   }
 
-  // — Vue mode — grille 2×2 Concept C
+  // — Vue mode — Concept C
   const startDate = new Date(eventDetail.start)
   const startTime = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const dateLabel = startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -143,13 +159,13 @@ export default function EventTabDetail(p: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Grille 2×2 */}
+      {/* Date + Heure */}
       <div className="grid grid-cols-2 gap-2">
         <MiniCard label="Date" value={dateLabel} sub={endLabel ? `→ ${endLabel}` : undefined} />
         <MiniCard label="Heure" value={startTime !== '00:00' ? startTime : '—'} />
-        <MiniCard label="Lieu" value={eventDetail.lieu || '—'} />
-        <MiniCard label="Catégorie" value={eventDetail.category || STATUS_LABEL[eventDetail.status] || eventDetail.status} />
       </div>
+      {/* Lieu (pleine largeur) */}
+      <MiniCard label="Lieu" value={eventDetail.lieu || '—'} />
 
       {/* Infos secondaires */}
       {(eventDetail.budget || eventDetail.maxCapacity || eventDetail.description) && (
