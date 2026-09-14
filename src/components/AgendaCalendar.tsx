@@ -407,7 +407,7 @@ export default function AgendaCalendar({
   }, [API, selectedEventId, notesText])
 
   /* ── addExpense ── */
-  const addExpense = useCallback(async () => {
+  const addExpense = useCallback(async (paid = false) => {
     if (!newExpenseLabel.trim() || !selectedEventId) return
     setAddingExpense(true); setExpenseError('')
     try {
@@ -415,7 +415,12 @@ export default function AgendaCalendar({
       const res = await fetch(`${API}/api/events/${selectedEventId}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ label: newExpenseLabel.trim(), amount: newExpenseAmount || null, category: newExpenseCategory || null }),
+        body: JSON.stringify({
+          label:    newExpenseLabel.trim(),
+          amount:   newExpenseAmount || null,
+          category: newExpenseCategory.trim() || null,
+          paid,
+        }),
       })
       if (res.ok) {
         const d = await res.json()

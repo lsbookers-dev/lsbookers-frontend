@@ -104,7 +104,7 @@ interface EventPanelProps {
   createEvent: () => void
   deleteEvent: () => void
   saveNotes: () => void
-  addExpense: () => void
+  addExpense: (paid?: boolean) => void
   toggleExpensePaid: (id: number, paid: boolean) => void
   deleteExpense: (id: number) => void
   addPurchase: () => void
@@ -322,7 +322,7 @@ export default function EventPanel(p: EventPanelProps) {
   const ORGANIZER_TABS = [
     { key: 'details'   as const, label: 'Détail' },
     { key: 'staff'     as const, label: 'Personnel' },
-    { key: 'notes'     as const, label: 'Notes & Frais' },
+    { key: 'notes'     as const, label: 'Dépenses' },
     { key: 'purchases' as const, label: 'Achats' },
     { key: 'bookings'  as const, label: 'Bookings' },
     { key: 'offers'    as const, label: 'Offres' },
