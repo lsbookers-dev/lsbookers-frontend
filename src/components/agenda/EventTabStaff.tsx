@@ -184,11 +184,17 @@ export default function EventTabStaff(p: Props) {
                     {s.status === 'BOOKED' ? 'Confirmé' : s.status === 'NEEDED' ? 'À pourvoir' : 'Annulé'}
                   </span>
                 ) : (
-                  /* Manuel → dropdown modifiable */
+                  /* Manuel → dropdown modifiable avec code couleur */
                   <select
                     value={s.status}
                     onChange={e => p.updateStaffStatus(s.id, e.target.value)}
-                    className="text-[9px] rounded-md bg-white/5 border border-white/10 text-white/70 outline-none px-1 py-0.5 cursor-pointer"
+                    className={`text-[9px] rounded-full outline-none px-1.5 py-0.5 cursor-pointer font-medium border ${
+                      s.status === 'BOOKED'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                        : s.status === 'NEEDED'
+                        ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+                        : 'bg-red-500/20 text-red-300 border-red-500/30'
+                    }`}
                   >
                     <option value="BOOKED">Confirmé</option>
                     <option value="NEEDED">À confirmer</option>

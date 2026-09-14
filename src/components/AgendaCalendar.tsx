@@ -597,12 +597,20 @@ export default function AgendaCalendar({
     setStaffSearchLoading(true)
     try {
       const token = getAuthToken()
-      const res = await fetch(`${API}/api/search?q=${encodeURIComponent(q.trim())}`, {
+      const res = await fetch(`${API}/api/search/users?q=${encodeURIComponent(q.trim())}&limit=5`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         const d = await res.json()
-        setStaffSearchResults((d.results || d.profiles || []).slice(0, 5))
+        // L'API retourne { users: [{ id, pseudo, firstName, lastName, role, profile: { id, avatar } }] }
+        // On mappe vers StaffSearchResult en utilisant profile.id comme identifiant
+        setStaffSearchResults(
+          (d.users || []).map((u: { id: number; pseudo?: string|null; firstName?: string|null; lastName?: string|null; role?: string|null; profile?: { id: number; avatar?: string|null } | null }) => ({
+            id: u.profile?.id ?? 0,
+            avatar: u.profile?.avatar ?? null,
+            user: { pseudo: u.pseudo, firstName: u.firstName, lastName: u.lastName, role: u.role },
+          })).filter((r: { id: number }) => r.id > 0)
+        )
       }
     } catch {}
     finally { setStaffSearchLoading(false) }
