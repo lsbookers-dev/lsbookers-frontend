@@ -552,8 +552,9 @@ export default function AgendaCalendar({
   }, [API, selectedEventId, fetchEventDetail])
 
   /* ── addStaff ── */
-  const addStaff = useCallback(async (staffProfileId?: number) => {
-    if (!newStaffRole.trim() || !selectedEventId) return
+  const addStaff = useCallback(async (staffProfileId?: number, roleOverride?: string) => {
+    const role = roleOverride || newStaffRole.trim()
+    if (!role || !selectedEventId) return
     setAddingStaff(true); setStaffError('')
     try {
       const token = getAuthToken()
@@ -561,7 +562,7 @@ export default function AgendaCalendar({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          role: newStaffRole.trim(),
+          role,
           name: staffProfileId ? null : (newStaffName.trim() || null),
           fee: newStaffFee ? parseFloat(newStaffFee) : null,
           notes: newStaffNotes.trim() || null,

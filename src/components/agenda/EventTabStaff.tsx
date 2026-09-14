@@ -28,7 +28,7 @@ interface Props {
   staffSearchResults: StaffSearchResult[]
   staffSearchLoading: boolean
   /* Actions */
-  addStaff: (profileId?: number) => void
+  addStaff: (profileId?: number, roleOverride?: string) => void
   deleteStaff: (id: number) => void
   searchStaff: (q: string) => void
   updateStaffStatus: (staffId: number, status: string) => void
@@ -97,7 +97,11 @@ export default function EventTabStaff(p: Props) {
               )}
               {p.staffSearchResults.map(r => (
                 <button key={r.id} type="button"
-                  onClick={() => p.addStaff(r.id)}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => {
+                    const roleLabel = p.newStaffRole.trim() || r.user?.role || 'À définir'
+                    p.addStaff(r.id, roleLabel)
+                  }}
                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition text-left">
                   {r.avatar && (
                     <img src={r.avatar} className="h-6 w-6 rounded-full object-cover shrink-0" alt="" />
@@ -125,7 +129,8 @@ export default function EventTabStaff(p: Props) {
 
         {/* Salaire */}
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           value={p.newStaffFee}
           onChange={e => p.setNewStaffFee(e.target.value)}
           placeholder="Salaire (€)"
