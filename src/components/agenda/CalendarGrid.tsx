@@ -131,7 +131,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                     key={date.toISOString()}
                     type="button"
                     className={`${today ? 'is-today' : ''} ${active ? 'is-selected' : ''} ${inBulk ? 'is-selected' : ''}`}
-                    style={!today && !active && !inBulk && (weekend || holidayName) ? { background: holidayName ? 'rgba(251,191,36,0.07)' : 'rgba(255,255,255,0.025)' } : undefined}
+                    style={!today && !active && !inBulk && (weekend || holidayName) ? { background: holidayName ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.07)' } : undefined}
                     onClick={() => handleDayClick(date)}
                   >
                     <span>{date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span>
@@ -159,7 +159,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                     const avail = availability.find((item) => isSameDay(new Date(item.date), date))
                     const weekend = isWeekend(date)
                     const holidayName = getHolidayName(date)
-                    const colBg = holidayName ? 'rgba(251,191,36,0.04)' : weekend ? 'rgba(255,255,255,0.02)' : undefined
+                    const colBg = holidayName ? 'rgba(251,191,36,0.09)' : weekend ? 'rgba(255,255,255,0.06)' : undefined
                     return (
                       <div key={date.toISOString()} className={`lsb-week-column ${!multiSelectMode && selected && isSameDay(date, selected) ? 'is-selected' : ''}`} style={colBg ? { background: colBg } : undefined}>
                         <button type="button" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} className="lsb-week-day-hit" onClick={() => handleDayClick(date)} />
@@ -214,7 +214,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                   const holidayName = getHolidayName(date)
                   // Weekend/férié : tint de fond visible seulement quand pas de statut dispo (qui prendrait le dessus)
                   const weekendStyle: React.CSSProperties = !avail && (weekend || holidayName)
-                    ? { background: holidayName ? 'rgba(251,191,36,0.07)' : 'rgba(255,255,255,0.025)' }
+                    ? { background: holidayName ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.07)' }
                     : {}
                   const cellStyle = { ...weekendStyle, ...availStyle }
                   return (
@@ -224,7 +224,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                       style={cellStyle}
                     >
                       <button type="button" className="lsb-month-day-hit" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} onClick={() => handleDayClick(date)} />
-                      <span className="lsb-month-day-number" style={weekend && !isSameDay(date, now) ? { color: 'rgba(200,200,220,0.55)' } : undefined}>{date.getDate()}</span>
+                      <span className="lsb-month-day-number" style={weekend && !isSameDay(date, now) ? { color: 'rgba(148,163,210,0.85)' } : undefined}>{date.getDate()}</span>
                       {holidayName && (
                         <span style={{ display: 'block', fontSize: 8, color: 'rgba(251,191,36,0.70)', lineHeight: 1.2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 4, paddingRight: 4 }}>
                           {holidayName}
