@@ -131,7 +131,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                     key={date.toISOString()}
                     type="button"
                     className={`${today ? 'is-today' : ''} ${active ? 'is-selected' : ''} ${inBulk ? 'is-selected' : ''}`}
-                    style={!today && !active && !inBulk && (weekend || holidayName) ? { background: holidayName ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.15)' } : undefined}
+                    style={!today && !active && !inBulk && (weekend || holidayName) ? { background: holidayName ? 'rgba(251,191,36,0.14)' : 'rgba(255,255,255,0.10)' } : undefined}
                     onClick={() => handleDayClick(date)}
                   >
                     <span>{date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span>
@@ -159,7 +159,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                     const avail = availability.find((item) => isSameDay(new Date(item.date), date))
                     const weekend = isWeekend(date)
                     const holidayName = getHolidayName(date)
-                    const colBg = holidayName ? 'rgba(251,191,36,0.14)' : weekend ? 'rgba(255,255,255,0.13)' : undefined
+                    const colBg = holidayName ? 'rgba(251,191,36,0.11)' : weekend ? 'rgba(255,255,255,0.09)' : undefined
                     return (
                       <div key={date.toISOString()} className={`lsb-week-column ${!multiSelectMode && selected && isSameDay(date, selected) ? 'is-selected' : ''}`} style={colBg ? { background: colBg } : undefined}>
                         <button type="button" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} className="lsb-week-day-hit" onClick={() => handleDayClick(date)} />
@@ -214,7 +214,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                   const holidayName = getHolidayName(date)
                   // Weekend/férié : tint de fond visible seulement quand pas de statut dispo (qui prendrait le dessus)
                   const weekendStyle: React.CSSProperties = !avail && (weekend || holidayName)
-                    ? { background: holidayName ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.15)' }
+                    ? { background: holidayName ? 'rgba(251,191,36,0.14)' : 'rgba(255,255,255,0.10)' }
                     : {}
                   const cellStyle = { ...weekendStyle, ...availStyle }
                   return (
