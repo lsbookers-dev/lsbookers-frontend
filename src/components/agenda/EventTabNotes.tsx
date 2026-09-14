@@ -107,7 +107,8 @@ export default function EventTabNotes(p: Props) {
         {/* Montant + Catégorie */}
         <div className="flex gap-2">
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             value={p.newExpenseAmount}
             onChange={e => p.setNewExpenseAmount(e.target.value)}
             placeholder="Montant (€)"
