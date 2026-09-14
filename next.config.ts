@@ -21,10 +21,10 @@ const nextConfig = {
         pathname: '/uploads/**',
       },
 
-      // ✅ Vercel Blob (bannières/avatars/publications uploadées)
+      // ✅ Cloudflare R2 (tous les médias — avatars, bannières, publications, messages, logos)
       {
         protocol: 'https',
-        hostname: 'public.blob.vercel-storage.com',
+        hostname: '*.r2.dev',
         pathname: '/**',
       },
     ],
