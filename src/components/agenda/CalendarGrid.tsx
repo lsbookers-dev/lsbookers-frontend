@@ -224,7 +224,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                       style={cellStyle}
                     >
                       <button type="button" className="lsb-month-day-hit" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} onClick={() => handleDayClick(date)} />
-                      <span className="lsb-month-day-number" style={weekend && !isSameDay(date, now) ? { color: 'rgba(148,163,210,0.85)' } : undefined}>{date.getDate()}</span>
+                      <span className="lsb-month-day-number" style={weekend && !isSameDay(date, now) ? { color: 'rgba(170,195,245,0.95)' } : undefined}>{date.getDate()}</span>
                       {holidayName && (
                         <span style={{ display: 'block', fontSize: 8, color: 'rgba(251,191,36,0.70)', lineHeight: 1.2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 4, paddingRight: 4 }}>
                           {holidayName}
