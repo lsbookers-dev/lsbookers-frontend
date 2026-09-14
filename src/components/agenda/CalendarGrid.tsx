@@ -1,6 +1,7 @@
+import React from 'react'
 import { CalendarCheck, Clock, MapPin, Send, X, Plus } from 'lucide-react'
 import { CalEvent, AvailDay } from './types'
-import { AVAIL_OPTIONS, isSameDay, formatHour, availCellStyle, availDotColor } from './helpers'
+import { AVAIL_OPTIONS, isSameDay, formatHour, availCellStyle, availDotColor, isWeekend, getFrenchHolidays } from './helpers'
 
 interface CalendarGridProps {
   focusDate: Date
@@ -88,6 +89,16 @@ export default function CalendarGrid(props: CalendarGridProps) {
   ]
   while (monthCells.length % 7 !== 0) monthCells.push(null)
 
+  /* ── Jours fériés — calculés pour l'année en cours et la suivante (semaine peut chevauchner) ── */
+  const year = focusDate.getFullYear()
+  const holidays = new Map([...getFrenchHolidays(year), ...getFrenchHolidays(year + 1)])
+  function dateKey2(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }
+  function getHolidayName(d: Date): string | undefined {
+    return holidays.get(dateKey2(d))
+  }
+
   const positionFor = (dateValue: string) => {
     const date = new Date(dateValue)
     const minutes = date.getHours() * 60 + date.getMinutes()
@@ -113,9 +124,23 @@ export default function CalendarGrid(props: CalendarGridProps) {
                 const today = isSameDay(date, now)
                 const active = !multiSelectMode && !!selected && isSameDay(date, selected)
                 const inBulk = multiSelectMode && bulkDates.has(dateKey(date))
+                const weekend = isWeekend(date)
+                const holidayName = getHolidayName(date)
                 return (
-                  <button key={date.toISOString()} type="button" className={`${today ? 'is-today' : ''} ${active ? 'is-selected' : ''} ${inBulk ? 'is-selected' : ''}`} onClick={() => handleDayClick(date)}>
-                    <span>{date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><strong>{date.getDate()}</strong>
+                  <button
+                    key={date.toISOString()}
+                    type="button"
+                    className={`${today ? 'is-today' : ''} ${active ? 'is-selected' : ''} ${inBulk ? 'is-selected' : ''}`}
+                    style={!today && !active && !inBulk && (weekend || holidayName) ? { background: holidayName ? 'rgba(251,191,36,0.07)' : 'rgba(255,255,255,0.025)' } : undefined}
+                    onClick={() => handleDayClick(date)}
+                  >
+                    <span>{date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span>
+                    <strong>{date.getDate()}</strong>
+                    {holidayName && (
+                      <em style={{ display: 'block', fontSize: 8, fontStyle: 'normal', color: 'rgba(251,191,36,0.75)', lineHeight: 1.2, marginTop: 2, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {holidayName}
+                      </em>
+                    )}
                   </button>
                 )
               })}
@@ -132,9 +157,17 @@ export default function CalendarGrid(props: CalendarGridProps) {
                   {days.map((date) => {
                     const dayEvents = events.filter((event) => isSameDay(new Date(event.start), date))
                     const avail = availability.find((item) => isSameDay(new Date(item.date), date))
+                    const weekend = isWeekend(date)
+                    const holidayName = getHolidayName(date)
+                    const colBg = holidayName ? 'rgba(251,191,36,0.04)' : weekend ? 'rgba(255,255,255,0.02)' : undefined
                     return (
-                      <div key={date.toISOString()} className={`lsb-week-column ${!multiSelectMode && selected && isSameDay(date, selected) ? 'is-selected' : ''}`}>
+                      <div key={date.toISOString()} className={`lsb-week-column ${!multiSelectMode && selected && isSameDay(date, selected) ? 'is-selected' : ''}`} style={colBg ? { background: colBg } : undefined}>
                         <button type="button" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} className="lsb-week-day-hit" onClick={() => handleDayClick(date)} />
+                        {holidayName && (
+                          <span style={{ position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center', fontSize: 9, color: 'rgba(251,191,36,0.65)', pointerEvents: 'none', zIndex: 1 }}>
+                            {holidayName}
+                          </span>
+                        )}
                         {avail && <span className={`lsb-week-availability ${avail.status.toLowerCase()}`}>{statusLabel(avail.status)}</span>}
                         {dayEvents.map((event) => {
                           const start = positionFor(event.start)
@@ -175,8 +208,15 @@ export default function CalendarGrid(props: CalendarGridProps) {
                   const avail = availability.find((item) => isSameDay(new Date(item.date), date))
                   const active = !multiSelectMode && !!selected && isSameDay(date, selected)
                   const inBulk = multiSelectMode && bulkDates.has(dateKey(date))
-                  const cellStyle = availCellStyle(avail?.status)
+                  const availStyle = availCellStyle(avail?.status)
                   const dotColor = availDotColor(avail?.status)
+                  const weekend = isWeekend(date)
+                  const holidayName = getHolidayName(date)
+                  // Weekend/férié : tint de fond visible seulement quand pas de statut dispo (qui prendrait le dessus)
+                  const weekendStyle: React.CSSProperties = !avail && (weekend || holidayName)
+                    ? { background: holidayName ? 'rgba(251,191,36,0.07)' : 'rgba(255,255,255,0.025)' }
+                    : {}
+                  const cellStyle = { ...weekendStyle, ...availStyle }
                   return (
                     <div
                       key={date.toISOString()}
@@ -184,7 +224,12 @@ export default function CalendarGrid(props: CalendarGridProps) {
                       style={cellStyle}
                     >
                       <button type="button" className="lsb-month-day-hit" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} onClick={() => handleDayClick(date)} />
-                      <span className="lsb-month-day-number">{date.getDate()}</span>
+                      <span className="lsb-month-day-number" style={weekend && !isSameDay(date, now) ? { color: 'rgba(200,200,220,0.55)' } : undefined}>{date.getDate()}</span>
+                      {holidayName && (
+                        <span style={{ display: 'block', fontSize: 8, color: 'rgba(251,191,36,0.70)', lineHeight: 1.2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 4, paddingRight: 4 }}>
+                          {holidayName}
+                        </span>
+                      )}
                       {/* Indicateur de disponibilité — point coloré */}
                       {avail && dotColor !== 'transparent' && (
                         <span

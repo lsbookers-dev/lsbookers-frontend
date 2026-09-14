@@ -14,6 +14,55 @@ export const AVAIL_OPTIONS = [
   { status: 'UNAVAILABLE', label: 'Indisponible',     color: 'bg-red-500',   ring: 'ring-red-500/50',   text: 'text-red-400'   },
 ]
 
+/* ── Jours fériés France ── */
+
+/** Algorithme de Gauss pour calculer la date de Pâques */
+function getEasterDate(year: number): Date {
+  const a = year % 19
+  const b = Math.floor(year / 100)
+  const c = year % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const month = Math.floor((h + l - 7 * m + 114) / 31)
+  const day = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(year, month - 1, day)
+}
+
+function dk(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+/** Retourne une Map dateKey → nom du jour férié pour une année donnée */
+export function getFrenchHolidays(year: number): Map<string, string> {
+  const easter = getEasterDate(year)
+  const plus = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
+  const m = new Map<string, string>()
+  m.set(dk(new Date(year, 0, 1)),   'Jour de l\'An')
+  m.set(dk(plus(easter, 1)),        'Lundi de Pâques')
+  m.set(dk(new Date(year, 4, 1)),   'Fête du Travail')
+  m.set(dk(new Date(year, 4, 8)),   'Victoire 1945')
+  m.set(dk(plus(easter, 39)),       'Ascension')
+  m.set(dk(plus(easter, 50)),       'Lundi de Pentecôte')
+  m.set(dk(new Date(year, 6, 14)),  'Fête Nationale')
+  m.set(dk(new Date(year, 7, 15)),  'Assomption')
+  m.set(dk(new Date(year, 10, 1)),  'Toussaint')
+  m.set(dk(new Date(year, 10, 11)), 'Armistice')
+  m.set(dk(new Date(year, 11, 25)), 'Noël')
+  return m
+}
+
+export function isWeekend(d: Date): boolean {
+  const day = d.getDay()
+  return day === 0 || day === 6 // Dimanche ou Samedi
+}
+
 /* ── Fonctions utilitaires ── */
 
 export function isSameDay(a: Date, b: Date) {
