@@ -29,6 +29,9 @@ type PopupNotif = {
   conversationId?: number | null
   offerId?: number | null
   publicationId?: number | null
+  staffId?: number | null
+  eventId?: number | null
+  staffStatus?: string | null
 }
 
 const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
@@ -48,6 +51,9 @@ const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
   NEW_COMMENT_LIKE:      { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
   NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
   NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300' },
+  STAFF_INVITATION:      { icon: '🎤', color: 'bg-violet-500/15 text-violet-300' },
+  STAFF_ACCEPTED:        { icon: '✅', color: 'bg-green-500/15 text-green-300' },
+  STAFF_REFUSED:         { icon: '❌', color: 'bg-red-500/15 text-red-300' },
   DEFAULT:               { icon: '🔔', color: 'bg-white/10 text-white/50' },
 }
 
@@ -113,8 +119,26 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
   const [notifList, setNotifList]       = useState<PopupNotif[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
   const [pubModal, setPubModal]         = useState<PubCardData | null>(null)
+  const [respondingStaff, setRespondingStaff] = useState<Record<number, boolean>>({})
 
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+
+  const respondStaffInvitation = useCallback(async (notifId: number, staffId: number, eventId: number, response: 'ACCEPT' | 'REFUSE') => {
+    setRespondingStaff(prev => ({ ...prev, [notifId]: true }))
+    try {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE}/api/events/${eventId}/staff/${staffId}/respond`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ response }),
+      })
+      if (res.ok) {
+        const newStatus = response === 'ACCEPT' ? 'BOOKED' : 'CANCELLED'
+        setNotifList(prev => prev.map(n => n.id === notifId ? { ...n, staffStatus: newStatus } : n))
+      }
+    } catch { /* silencieux */ }
+    finally { setRespondingStaff(prev => { const copy = { ...prev }; delete copy[notifId]; return copy }) }
+  }, [API_BASE])
 
   const openPubModal = useCallback(async (pubId: number) => {
     setNotifOpen(false)
@@ -372,6 +396,48 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
                                 )}
                               </div>
                             )
+                            // Notif STAFF_INVITATION → boutons Accept/Refuse inline
+                            if (notif.type === 'STAFF_INVITATION' && notif.staffId && notif.eventId) {
+                              return (
+                                <div key={notif.id} className={`flex items-start gap-3 px-3 py-2.5 rounded-xl ${notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'}`}>
+                                  <div className="shrink-0 mt-0.5">
+                                    {notif.actor?.avatar
+                                      ? <img src={notif.actor.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                                      : <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${cfg.color}`}>{cfg.icon}</div>
+                                    }
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-white/75 leading-relaxed line-clamp-2">{notif.content}</p>
+                                    <p className="text-[10px] text-white/30 mt-1">
+                                      {new Date(notif.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                    {notif.staffStatus === 'BOOKED' ? (
+                                      <p className="mt-2 text-[10px] text-emerald-400 font-medium">✓ Invitation acceptée</p>
+                                    ) : notif.staffStatus === 'CANCELLED' ? (
+                                      <p className="mt-2 text-[10px] text-red-400 font-medium">✕ Invitation refusée</p>
+                                    ) : (
+                                      <div className="mt-2 flex gap-1.5">
+                                        <button
+                                          onClick={() => respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'ACCEPT')}
+                                          disabled={!!respondingStaff[notif.id]}
+                                          className="flex-1 py-1 rounded-lg bg-emerald-600/70 hover:bg-emerald-600 text-white text-[10px] font-medium transition disabled:opacity-40"
+                                        >
+                                          {respondingStaff[notif.id] ? '…' : '✓ Accepter'}
+                                        </button>
+                                        <button
+                                          onClick={() => respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'REFUSE')}
+                                          disabled={!!respondingStaff[notif.id]}
+                                          className="flex-1 py-1 rounded-lg bg-red-600/50 hover:bg-red-600/80 text-white text-[10px] font-medium transition disabled:opacity-40"
+                                        >
+                                          {respondingStaff[notif.id] ? '…' : '✕ Refuser'}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {!notif.read && <span className="shrink-0 w-2 h-2 rounded-full bg-violet-400 mt-1" />}
+                                </div>
+                              )
+                            }
                             // Notif NEW_DEVICE_LOGIN → lien vers la page notifications complète
                             if (notif.type === 'NEW_DEVICE_LOGIN') {
                               return (

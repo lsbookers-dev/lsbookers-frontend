@@ -52,6 +52,8 @@ function statusLabel(status?: string) {
 }
 
 function eventTone(event: CalEvent) {
+  if (event.staffStatus === 'PENDING') return 'staff-pending'
+  if (event.staffStatus === 'BOOKED')  return 'staff-booked'
   if (event.status === 'CONFIRMED' || event.status === 'PUBLISHED') return 'confirmed'
   if (/festival|concert|club/i.test(event.category || '')) return 'booking'
   if (/tentative|pending|draft/i.test(event.status || '')) return 'pending'

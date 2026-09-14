@@ -188,7 +188,24 @@ export default function AgendaCalendar({
         return fetch(endpoint, { headers })
       }))
       const eventPayloads = await Promise.all(eventResponses.filter((response) => response.ok).map((response) => response.json()))
-      const mergedEvents = Array.from(new Map(eventPayloads.flatMap((payload) => payload.events || []).map((event: CalEvent) => [event.id, event])).values())
+      const myEvents: CalEvent[] = eventPayloads.flatMap((payload) => payload.events || [])
+
+      // Aussi charger les événements où l'utilisateur est membre du staff (invité ou confirmé)
+      let assignedEvents: CalEvent[] = []
+      if (isOwner) {
+        try {
+          const assignedRes = await fetch(`${API}/api/events/assigned`, { headers })
+          if (assignedRes.ok) {
+            const assignedData = await assignedRes.json()
+            assignedEvents = (assignedData.events || []) as CalEvent[]
+          }
+        } catch { /* silencieux */ }
+      }
+
+      // Fusionner — les événements "assigned" n'écrasent pas les événements dont l'utilisateur est propriétaire
+      const ownEventIds = new Set(myEvents.map((e) => e.id))
+      const uniqueAssigned = assignedEvents.filter((e) => !ownEventIds.has(e.id))
+      const mergedEvents = Array.from(new Map([...myEvents, ...uniqueAssigned].map((event: CalEvent) => [event.id, event])).values())
       setEvents(mergedEvents)
 
       if (showAvailability) {

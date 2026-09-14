@@ -9,6 +9,8 @@ export type CalEvent = {
   lieu?: string | null
   category?: string | null
   status: string
+  staffStatus?: string | null  // BOOKED | PENDING — présent si l'utilisateur est membre du staff
+  staffRole?: string | null    // Rôle de l'utilisateur dans cet événement
 }
 
 export type AvailDay = {
