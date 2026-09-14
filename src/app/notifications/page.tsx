@@ -15,6 +15,9 @@ type Notif = {
   actor?: { id: number; name?: string | null; avatar?: string | null; role?: string | null } | null
   conversationId?: number | null
   offerId?: number | null
+  staffId?: number | null
+  eventId?: number | null
+  staffStatus?: string | null
 }
 
 // ─── Config types visuels ────────────────────────────────────────────────────
@@ -41,6 +44,10 @@ const TYPE_CONFIG: Record<string, TypeConfig> = {
   NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300',     label: 'Like' },
   // Sécurité
   NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300',   label: 'Sécurité' },
+  // Invitations staff événement
+  STAFF_INVITATION:      { icon: '🎪', color: 'bg-violet-500/15 text-violet-300', label: 'Invitation événement' },
+  STAFF_ACCEPTED:        { icon: '✅', color: 'bg-emerald-500/15 text-emerald-300', label: 'Invitation acceptée' },
+  STAFF_REFUSED:         { icon: '❌', color: 'bg-red-500/15 text-red-300',        label: 'Invitation refusée' },
   // Fallback
   DEFAULT:               { icon: '🔔', color: 'bg-white/10 text-white/50',        label: 'Notification' },
 }
@@ -124,6 +131,22 @@ export default function NotificationsPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       setAll(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+    } catch { /* silencieux */ }
+  }
+
+  const respondStaffInvitation = async (notifId: number, staffId: number, eventId: number, response: 'ACCEPT' | 'REFUSE') => {
+    try {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE}/api/events/${eventId}/staff/${staffId}/respond`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ response }),
+      })
+      if (res.ok) {
+        const newStatus = response === 'ACCEPT' ? 'BOOKED' : 'CANCELLED'
+        setAll(prev => prev.map(n => n.id === notifId ? { ...n, read: true, staffStatus: newStatus } : n))
+        markAsRead(notifId)
+      }
     } catch { /* silencieux */ }
   }
 
@@ -267,6 +290,30 @@ export default function NotificationsPage() {
                         <p className="mt-2 text-xs text-amber-400/80">
                           📧 Un email a été envoyé à votre adresse pour confirmer ou sécuriser votre compte.
                         </p>
+                      )}
+
+                      {/* Invitation staff — boutons Accepter / Refuser */}
+                      {notif.type === 'STAFF_INVITATION' && notif.staffId && notif.eventId && (
+                        notif.staffStatus === 'BOOKED' ? (
+                          <p className="mt-2 text-xs text-emerald-400">✓ Invitation acceptée</p>
+                        ) : notif.staffStatus === 'CANCELLED' ? (
+                          <p className="mt-2 text-xs text-red-400">✕ Invitation refusée</p>
+                        ) : (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              onClick={e => { e.preventDefault(); respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'ACCEPT') }}
+                              className="flex-1 py-1.5 rounded-lg bg-emerald-600/70 hover:bg-emerald-600 text-white text-xs font-medium transition"
+                            >
+                              ✓ Accepter
+                            </button>
+                            <button
+                              onClick={e => { e.preventDefault(); respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'REFUSE') }}
+                              className="flex-1 py-1.5 rounded-lg bg-red-600/50 hover:bg-red-600/80 text-white text-xs font-medium transition"
+                            >
+                              ✕ Refuser
+                            </button>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>

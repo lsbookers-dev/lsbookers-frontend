@@ -196,11 +196,12 @@ export default function EventTabStaff(p: Props) {
                 {/* Plateforme → badge statique */}
                 {s.profile ? (
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full whitespace-nowrap ${
-                    s.status === 'BOOKED'    ? 'bg-emerald-500/20 text-emerald-300'
+                    s.status === 'BOOKED'   ? 'bg-emerald-500/20 text-emerald-300'
+                    : s.status === 'PENDING' ? 'bg-violet-500/20 text-violet-300'
                     : s.status === 'NEEDED' ? 'bg-yellow-500/20 text-yellow-300'
                     : 'bg-red-500/20 text-red-300'
                   }`}>
-                    {s.status === 'BOOKED' ? 'Confirmé' : s.status === 'NEEDED' ? 'À pourvoir' : 'Annulé'}
+                    {s.status === 'BOOKED' ? 'Confirmé' : s.status === 'PENDING' ? 'En attente' : s.status === 'NEEDED' ? 'À pourvoir' : 'Annulé'}
                   </span>
                 ) : (
                   /* Manuel → dropdown modifiable avec code couleur */
