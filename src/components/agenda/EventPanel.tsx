@@ -111,7 +111,7 @@ interface EventPanelProps {
   togglePurchaseDone: (id: number, done: boolean) => void
   deletePurchase: (id: number) => void
   saveEventDetails: () => void
-  addStaff: (profileId?: number) => void
+  addStaff: (profileId?: number, roleOverride?: string) => void
   deleteStaff: (id: number) => void
   searchStaff: (q: string) => void
   addDocument: (file: File, type: string) => void
