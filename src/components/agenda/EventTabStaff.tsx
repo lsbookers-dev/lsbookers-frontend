@@ -1,5 +1,6 @@
 // agenda/EventTabStaff.tsx — Onglet Personnel (2 colonnes)
 
+import { useState, useEffect } from 'react'
 import { EventOffer, StaffItem } from './types'
 
 interface StaffSearchResult {
@@ -42,6 +43,14 @@ function personName(s: StaffItem) {
 }
 
 export default function EventTabStaff(p: Props) {
+  /* ── Profil sélectionné via @ ── */
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+
+  // Reset quand le formulaire est vidé après un ajout réussi
+  useEffect(() => {
+    if (!p.newStaffName) setSelectedProfileId(null)
+  }, [p.newStaffName])
+
   /* ── Vue artiste/prestataire booké ── */
   if (p.isBookedEvent) {
     return (
@@ -66,11 +75,19 @@ export default function EventTabStaff(p: Props) {
 
   const handleNameChange = (val: string) => {
     p.setNewStaffName(val)
+    setSelectedProfileId(null) // réinitialise la sélection si l'utilisateur retape
     if (val.startsWith('@')) {
       p.searchStaff(val.slice(1))
     } else {
       p.searchStaff('')
     }
+  }
+
+  const handleSelectResult = (r: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null }) => {
+    const displayName = r.user?.pseudo || [r.user?.firstName, r.user?.lastName].filter(Boolean).join(' ') || ''
+    p.setNewStaffName(displayName)
+    setSelectedProfileId(r.id)
+    p.searchStaff('') // ferme la dropdown
   }
 
   return (
@@ -98,10 +115,7 @@ export default function EventTabStaff(p: Props) {
               {p.staffSearchResults.map(r => (
                 <button key={r.id} type="button"
                   onMouseDown={e => e.preventDefault()}
-                  onClick={() => {
-                    const roleLabel = p.newStaffRole.trim() || r.user?.role || 'À définir'
-                    p.addStaff(r.id, roleLabel)
-                  }}
+                  onClick={() => handleSelectResult(r)}
                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition text-left">
                   {r.avatar && (
                     <img src={r.avatar} className="h-6 w-6 rounded-full object-cover shrink-0" alt="" />
@@ -151,7 +165,7 @@ export default function EventTabStaff(p: Props) {
         )}
 
         <button
-          onClick={() => p.addStaff()}
+          onClick={() => p.addStaff(selectedProfileId ?? undefined)}
           disabled={p.addingStaff || !p.newStaffRole.trim() || isSearchMode}
           className="w-full py-2 rounded-xl bg-emerald-600/70 hover:bg-emerald-600 text-white text-xs font-medium disabled:opacity-40 transition"
         >
