@@ -160,11 +160,11 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
         {visibleItems.map(p => (
           <Link key={p.id} href={p.profileUrl} className="group relative h-44 md:h-52 rounded-2xl overflow-hidden block border border-white/10">
             {p.banner ? (
-              <Image src={p.banner} alt={p.name} fill className="object-cover opacity-60 group-hover:opacity-70 transition-opacity" />
+              <Image src={p.banner} alt={p.name} fill className="object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/60 via-[#0a0a0f] to-pink-900/40" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
             {p.isPremium && (
               <div className="absolute top-3 right-3 flex items-center gap-1 bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 text-xs px-2 py-1 rounded-full backdrop-blur-sm">
                 <Star className="w-3 h-3 fill-yellow-300" /> Premium
