@@ -5,7 +5,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { X, MapPin, Calendar, Clock, Tag, Briefcase, FileText, Download, Euro } from 'lucide-react'
-import { getAuthToken } from '@/lib/getToken'
+import { getAuthToken } from '@/utils/auth'
 
 type EventDocument = {
   id: number
