@@ -897,7 +897,8 @@ export default function AgendaCalendar({
   return (
     <div className={`lsb-agenda-component rounded-2xl overflow-hidden ${isOwner ? 'is-owner' : 'is-public'}`} style={{ border: '0.5px solid #1c2030', background: '#0c0f18' }}>
 
-      {/* En-tête */}
+      {/* En-tête (masqué quand StaffEventView est actif — il a son propre header) */}
+      {!showStaffEventPanel && (
       <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '0.5px solid #1c2030', background: '#111318' }}>
         {showEventPanel ? (
           <div className="flex items-center justify-between w-full">
@@ -1003,6 +1004,7 @@ export default function AgendaCalendar({
           </>
         )}
       </div>
+      )}
 
       {/* Panneau "Mes Bookings" */}
       {showPanel && (
@@ -1027,13 +1029,11 @@ export default function AgendaCalendar({
 
       {/* Panneau vue staff — événement assigné (lecture seule) */}
       {showStaffEventPanel && staffEventId && (
-        <div className="absolute inset-0 overflow-hidden rounded-2xl" style={{ zIndex: 10 }}>
-          <StaffEventView
-            eventId={staffEventId}
-            api={API}
-            onClose={() => { setShowStaffEventPanel(false); setStaffEventId(null) }}
-          />
-        </div>
+        <StaffEventView
+          eventId={staffEventId}
+          api={API}
+          onClose={() => { setShowStaffEventPanel(false); setStaffEventId(null) }}
+        />
       )}
 
       {/* Panneau "Événements" */}
@@ -1131,7 +1131,7 @@ export default function AgendaCalendar({
       )}
 
       {/* Grille calendrier + panneau jour (masqués quand un panneau est ouvert) */}
-      {!showPanel && !showEventPanel && (
+      {!showPanel && !showEventPanel && !showStaffEventPanel && (
         <CalendarGrid
           focusDate={focusDate}
           viewMode={viewMode}
