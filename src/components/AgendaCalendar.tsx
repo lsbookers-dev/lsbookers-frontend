@@ -8,9 +8,10 @@ import {
   EventOffer, EventOfferForm, LinkedBooking, EventMode,
 } from './agenda/types'
 import { isSameDay } from './agenda/helpers'
-import BookingsPanel  from './agenda/BookingsPanel'
-import EventPanel     from './agenda/EventPanel'
-import CalendarGrid   from './agenda/CalendarGrid'
+import BookingsPanel    from './agenda/BookingsPanel'
+import EventPanel       from './agenda/EventPanel'
+import CalendarGrid     from './agenda/CalendarGrid'
+import StaffEventView   from './agenda/StaffEventView'
 import { getAuthToken } from '@/utils/auth'
 
 /* ─────────────────────────────────────────────────────────
@@ -73,6 +74,8 @@ export default function AgendaCalendar({
 
   // Panel événements
   const [showEventPanel, setShowEventPanel] = useState(false)
+  const [showStaffEventPanel, setShowStaffEventPanel] = useState(false)
+  const [staffEventId, setStaffEventId] = useState<number | null>(null)
   const [eventMode, setEventMode] = useState<EventMode>('list')
   const [allEvents, setAllEvents] = useState<EventSummary[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
@@ -339,9 +342,19 @@ export default function AgendaCalendar({
 
   /* ── openEventFromCalendar (pour CalendarGrid) ── */
   const openEventFromCalendar = useCallback((id: number) => {
-    setShowPanel(false); setShowEventPanel(true)
-    openEventDetail(id)
-  }, [openEventDetail])
+    const clicked = events.find(e => e.id === id)
+    if (clicked?.staffStatus === 'BOOKED') {
+      // Événement où je suis membre du staff → vue lecture seule
+      setShowPanel(false)
+      setShowEventPanel(false)
+      setShowStaffEventPanel(true)
+      setStaffEventId(id)
+    } else {
+      setShowPanel(false); setShowEventPanel(true)
+      setShowStaffEventPanel(false)
+      openEventDetail(id)
+    }
+  }, [events, openEventDetail])
 
   /* ── openCreateFromDate : ouvre le formulaire créer événement pré-rempli ── */
   const openCreateFromDate = useCallback((date: Date) => {
@@ -1010,6 +1023,17 @@ export default function AgendaCalendar({
           requestCancellation={requestCancellation}
           updatePaymentStatus={updatePaymentStatus}
         />
+      )}
+
+      {/* Panneau vue staff — événement assigné (lecture seule) */}
+      {showStaffEventPanel && staffEventId && (
+        <div className="absolute inset-0 overflow-hidden rounded-2xl" style={{ zIndex: 10 }}>
+          <StaffEventView
+            eventId={staffEventId}
+            api={API}
+            onClose={() => { setShowStaffEventPanel(false); setStaffEventId(null) }}
+          />
+        </div>
       )}
 
       {/* Panneau "Événements" */}
