@@ -126,8 +126,8 @@ function ProgressBar({ current }: { current: number }) {
             <div key={i} className="flex flex-col items-center gap-1.5 z-10">
               <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all
                 ${done   ? 'bg-violet-600 text-white ring-2 ring-violet-500/30'
-                : active ? 'bg-neutral-900 text-white ring-2 ring-violet-500'
-                :          'bg-white/8 text-white/35 ring-1 ring-white/10'}`}>
+                : active ? 'bg-[#1a1525] text-white ring-2 ring-violet-500'
+                :          'bg-[#1a1525] text-white/35 ring-1 ring-white/10'}`}>
                 {done ? <Check className="h-3.5 w-3.5" /> : n}
               </div>
               <span className={`hidden sm:block text-[10px] font-medium transition
@@ -428,9 +428,16 @@ export default function RegisterPage() {
                       <Link href="/login" className="text-violet-400 hover:text-violet-300 font-medium transition">Se connecter</Link>
                     </p>
                   </div>
-                  <Link href="/" className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white transition">
-                    ← Retour
-                  </Link>
+                  {step === 1 ? (
+                    <Link href="/" className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white transition">
+                      ← Retour
+                    </Link>
+                  ) : (
+                    <button type="button" onClick={() => go(step - 1)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white transition">
+                      ← Retour
+                    </button>
+                  )}
                 </div>
               )}
 
