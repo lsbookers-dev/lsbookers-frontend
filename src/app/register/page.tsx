@@ -515,15 +515,18 @@ export default function RegisterPage() {
                   {role && (
                     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-white/80">Tes spécialités</p>
+                        <div>
+                          <p className="text-sm font-semibold text-white/80">Tes spécialités <span className="text-white/30 font-normal">(optionnel)</span></p>
+                        </div>
                         {specialties.length > 0 && (
-                          <span className="rounded-full bg-violet-500/20 border border-violet-400/30 px-2 py-0.5 text-[10px] text-violet-200 font-medium">
-                            {specialties.length} sélectionnée{specialties.length > 1 ? 's' : ''}
+                          <span className="rounded-full bg-violet-500/20 border border-violet-400/30 px-2 py-0.5 text-[10px] text-violet-200 font-medium flex-shrink-0">
+                            {specialties.length} ✓
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-white/35">Optionnel — tu pourras modifier ça dans tes réglages.</p>
-                      <TagSelector options={SPECIALTIES[role]} selected={specialties} onChange={setSpecialties} />
+                      <div className="max-h-28 overflow-y-auto pr-1 scrollbar-thin">
+                        <TagSelector options={SPECIALTIES[role]} selected={specialties} onChange={setSpecialties} />
+                      </div>
                     </div>
                   )}
 
