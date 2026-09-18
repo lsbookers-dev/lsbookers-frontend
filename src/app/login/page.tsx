@@ -71,15 +71,15 @@ export default function LoginPage() {
   const [greeting, setGreeting]                 = useState('')
 
   const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl] = useState(process.env.NEXT_PUBLIC_LANDING_BG || DEFAULT_BG)
+  const [bgUrl, setBgUrl] = useState('')
 
   useEffect(() => { setGreeting(getGreeting()) }, [])
 
   useEffect(() => {
     fetch(apiUrl('admin/settings'))
       .then(r => r.json())
-      .then(data => { if (data?.loginBgUrl) setBgUrl(data.loginBgUrl) })
-      .catch(() => {})
+      .then(data => setBgUrl(data?.loginBgUrl || DEFAULT_BG))
+      .catch(() => setBgUrl(DEFAULT_BG))
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,17 +131,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden text-white">
+    <div className="relative min-h-screen w-full overflow-hidden text-white" style={{ background: '#0c0a14' }}>
 
-      {/* Photo de fond */}
-      <Image
-        src={bgUrl}
-        alt="LSBookers"
-        fill
-        priority
-        sizes="100vw"
-        className="z-0 object-cover"
-      />
+      {/* Photo de fond — chargée seulement après fetch (évite le flash bleu) */}
+      {bgUrl && (
+        <Image
+          src={bgUrl}
+          alt="LSBookers"
+          fill
+          priority
+          sizes="100vw"
+          className="z-0 object-cover"
+        />
+      )}
       <div className="absolute inset-0 z-10 bg-black/60" />
       <div className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl" />

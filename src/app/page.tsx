@@ -322,15 +322,15 @@ export default function LandingPage() {
   const router = useRouter()
 
   const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl] = useState(process.env.NEXT_PUBLIC_LANDING_BG || DEFAULT_BG)
+  const [bgUrl, setBgUrl] = useState('')
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   useEffect(() => {
     fetch(`${API_BASE}/api/admin/settings`)
       .then(r => r.json())
-      .then(data => { if (data?.landingBgUrl) setBgUrl(data.landingBgUrl) })
-      .catch(() => {})
+      .then(data => setBgUrl(data?.landingBgUrl || DEFAULT_BG))
+      .catch(() => setBgUrl(DEFAULT_BG))
   }, [API_BASE])
 
   return (
@@ -339,17 +339,19 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════
           SECTION 1 — HERO PLEIN ÉCRAN
       ══════════════════════════════════════════════════ */}
-      <section className="relative w-full min-h-screen flex flex-col overflow-hidden">
+      <section className="relative w-full min-h-screen flex flex-col overflow-hidden" style={{ background: '#0c0a14' }}>
 
-        {/* Photo de fond */}
-        <Image
-          src={bgUrl}
-          alt="LSBookers — Plateforme événementielle"
-          fill
-          priority
-          sizes="100vw"
-          className="z-0 object-cover"
-        />
+        {/* Photo de fond — chargée seulement après fetch (évite le flash bleu) */}
+        {bgUrl && (
+          <Image
+            src={bgUrl}
+            alt="LSBookers — Plateforme événementielle"
+            fill
+            priority
+            sizes="100vw"
+            className="z-0 object-cover"
+          />
+        )}
 
         {/* Overlays */}
         <div className="absolute inset-0 z-10 bg-black/55" />
