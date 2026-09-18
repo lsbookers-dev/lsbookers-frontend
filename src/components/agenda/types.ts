@@ -75,8 +75,39 @@ export type BookingItem2 = {
   startDate: string
   fee?: number | null
   status: string
+  paymentStatus?: string | null
   message?: string | null
-  target?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null } | null
+  sharedNotes?: string | null
+  target?: { id: number; avatar?: string | null; specialty?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null; role?: string | null } | null } | null
+}
+
+export type BookingLogistic = {
+  id: number
+  type: 'HOTEL' | 'TRANSPORT'
+  title: string
+  fileUrl?: string | null
+  fileName?: string | null
+  createdAt: string
+}
+
+export type BookingMedia = {
+  id: number
+  url: string
+  mediaType: string
+  name?: string | null
+  createdAt: string
+}
+
+export type BookingDetail = {
+  id: number
+  fee?: number | null
+  status: string
+  paymentStatus?: string | null
+  sharedNotes?: string | null
+  logistics: BookingLogistic[]
+  media: BookingMedia[]
+  requester?: { id: number; user?: { id: number; pseudo?: string | null } | null } | null
+  target?: { id: number; specialty?: string | null; user?: { id: number; pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
 }
 
 export type DocumentItem = {
