@@ -5,12 +5,11 @@ import {
   EventSummary, EventDetail, EventOffer, EventOfferForm,
   LinkedBooking, EventMode,
 } from './types'
-import EventTabDetail    from './EventTabDetail'
-import EventTabStaff     from './EventTabStaff'
-import EventTabNotes     from './EventTabNotes'
-import EventTabPurchases from './EventTabPurchases'
-import EventTabBookings  from './EventTabBookings'
-import EventTabOffers    from './EventTabOffers'
+import EventTabDetail   from './EventTabDetail'
+import EventTabStaff    from './EventTabStaff'
+import EventTabNotes    from './EventTabNotes'
+import EventTabBookings from './EventTabBookings'
+import EventTabOffers   from './EventTabOffers'
 
 
 interface EventPanelProps {
@@ -320,19 +319,17 @@ export default function EventPanel(p: EventPanelProps) {
   const startTime = new Date(eventDetail.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
   const ORGANIZER_TABS = [
-    { key: 'details'   as const, label: 'Détail' },
-    { key: 'staff'     as const, label: 'Personnel' },
-    { key: 'notes'     as const, label: 'Dépenses' },
-    { key: 'purchases' as const, label: 'Achats' },
-    { key: 'bookings'  as const, label: 'Bookings' },
-    { key: 'offers'    as const, label: 'Offres' },
+    { key: 'details'  as const, label: 'Détail' },
+    { key: 'staff'    as const, label: 'Personnel' },
+    { key: 'notes'    as const, label: 'Dépenses' },
+    { key: 'bookings' as const, label: 'Bookings' },
+    { key: 'offers'   as const, label: 'Offres' },
   ]
   const BOOKED_TABS = [
-    { key: 'details'   as const, label: 'Détails' },
-    { key: 'staff'     as const, label: 'Matériel' },
-    { key: 'notes'     as const, label: 'Contrat' },
-    { key: 'purchases' as const, label: 'Transports' },
-    { key: 'bookings'  as const, label: 'Paiement' },
+    { key: 'details'  as const, label: 'Détails' },
+    { key: 'staff'    as const, label: 'Matériel' },
+    { key: 'notes'    as const, label: 'Contrat' },
+    { key: 'bookings' as const, label: 'Paiement' },
   ]
   const DETAIL_TABS = isBookedEvent ? BOOKED_TABS : ORGANIZER_TABS
 
@@ -449,37 +446,15 @@ export default function EventPanel(p: EventPanelProps) {
           />
         )}
 
-        {detailTab === 'purchases' && (
-          <EventTabPurchases
-            isBookedEvent={isBookedEvent}
-            purchases={eventDetail.purchases}
-            allDocs={allDocs}
-            newPurchaseItem={newPurchaseItem} setNewPurchaseItem={setNewPurchaseItem}
-            newPurchaseQty={newPurchaseQty} setNewPurchaseQty={setNewPurchaseQty}
-            newPurchasePrice={newPurchasePrice} setNewPurchasePrice={setNewPurchasePrice}
-            addingPurchase={addingPurchase}
-            uploadingDoc={uploadingDoc}
-            docError={docError}
-            addPurchase={addPurchase}
-            togglePurchaseDone={togglePurchaseDone}
-            deletePurchase={deletePurchase}
-            addDocument={addDocument}
-            deleteDocument={deleteDocument}
-          />
-        )}
-
         {detailTab === 'bookings' && (
           <EventTabBookings
             isBookedEvent={isBookedEvent}
             bookingRequests={eventDetail.bookingRequests}
             linkedBooking={linkedBooking}
             allDocs={allDocs}
-            filteredDocs={filteredDocs}
-            docFilter={docFilter} setDocFilter={setDocFilter}
             uploadingDoc={uploadingDoc}
             docError={docError}
             addDocument={addDocument}
-            deleteDocument={deleteDocument}
           />
         )}
 
