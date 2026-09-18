@@ -437,6 +437,7 @@ export default function EventTabBookings(p: Props) {
   const [activeTab,   setActiveTab]   = useState<InnerTab>('pay')
   const [detail,      setDetail]      = useState<BookingDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [fetchError,  setFetchError]  = useState<string | null>(null)
 
   // Vue artiste/prestataire booké
   if (p.isBookedEvent) {
@@ -469,14 +470,20 @@ export default function EventTabBookings(p: Props) {
     setSelectedId(id)
     setActiveTab('pay')
     setDetail(null)
+    setFetchError(null)
     setLoadingDetail(true)
     try {
       const res = await fetch(`${API_BASE}/api/bookings/${id}`, { headers: authHeaders() })
       if (res.ok) {
         const d = await res.json()
         setDetail(d.booking)
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        setFetchError(`HTTP ${res.status}: ${(errData as { error?: string }).error || 'Erreur inconnue'}`)
       }
-    } catch { /* silent */ }
+    } catch (e) {
+      setFetchError(`Network: ${e instanceof Error ? e.message : String(e)}`)
+    }
     finally { setLoadingDetail(false) }
   }
 
@@ -655,7 +662,10 @@ export default function EventTabBookings(p: Props) {
                   )}
                 </>
               ) : (
-                <p className="text-xs text-white/20 italic text-center py-8">Impossible de charger le détail.</p>
+                <div className="py-8 text-center space-y-1">
+                  <p className="text-xs text-white/20 italic">Impossible de charger le détail.</p>
+                  {fetchError && <p className="text-[10px] text-red-400/60 font-mono break-all">{fetchError}</p>}
+                </div>
               )}
             </div>
           </>
