@@ -106,8 +106,8 @@ export type BookingDetail = {
   sharedNotes?: string | null
   logistics: BookingLogistic[]
   media: BookingMedia[]
-  requester?: { id: number; user?: { id: number; pseudo?: string | null } | null } | null
-  target?: { id: number; specialty?: string | null; user?: { id: number; pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
+  requester?: { id: number; user?: { id: number; pseudo?: string | null; avatar?: string | null } | null } | null
+  target?: { id: number; specialty?: string | null; user?: { id: number; pseudo?: string | null; firstName?: string | null; lastName?: string | null; avatar?: string | null } | null } | null
 }
 
 export type DocumentItem = {

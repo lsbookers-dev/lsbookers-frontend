@@ -40,6 +40,10 @@ function displayName(b: BookingItem2): string {
   return u?.pseudo || [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'Inconnu'
 }
 
+function avatarUrl(b: BookingItem2): string | null {
+  return b.target?.avatar ?? null
+}
+
 /* ─── sous-composants ─────────────────────────────────────────────────────── */
 
 // Paiement
@@ -535,8 +539,11 @@ export default function EventTabBookings(p: Props) {
                     <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-emerald-500" />
                   )}
                   {/* Avatar */}
-                  <div className="w-8 h-8 rounded-[10px] bg-violet-500/20 text-violet-300 flex items-center justify-center text-[11px] font-semibold shrink-0">
-                    {initials(b)}
+                  <div className="w-8 h-8 rounded-[10px] bg-violet-500/20 text-violet-300 flex items-center justify-center text-[11px] font-semibold shrink-0 overflow-hidden border border-white/5">
+                    {avatarUrl(b)
+                      ? <img src={avatarUrl(b)!} alt="" className="w-full h-full object-cover" />
+                      : initials(b)
+                    }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[12.5px] font-medium text-white/85 truncate">{displayName(b)}</p>
@@ -564,8 +571,11 @@ export default function EventTabBookings(p: Props) {
           <>
             {/* Hero compact */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-white/6">
-              <div className="w-9 h-9 rounded-xl bg-violet-500/20 text-violet-300 flex items-center justify-center text-[13px] font-semibold shrink-0 border border-violet-500/20">
-                {selectedBooking ? initials(selectedBooking) : '?'}
+              <div className="w-9 h-9 rounded-xl bg-violet-500/20 text-violet-300 flex items-center justify-center text-[13px] font-semibold shrink-0 border border-violet-500/20 overflow-hidden">
+                {selectedBooking && avatarUrl(selectedBooking)
+                  ? <img src={avatarUrl(selectedBooking)!} alt="" className="w-full h-full object-cover" />
+                  : selectedBooking ? initials(selectedBooking) : '?'
+                }
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13.5px] font-medium text-white/90 truncate">
