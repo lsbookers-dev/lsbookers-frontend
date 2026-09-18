@@ -662,10 +662,7 @@ export default function EventTabBookings(p: Props) {
                   )}
                 </>
               ) : (
-                <div className="py-8 text-center space-y-1">
-                  <p className="text-xs text-white/20 italic">Impossible de charger le détail.</p>
-                  {fetchError && <p className="text-[10px] text-red-400/60 font-mono break-all">{fetchError}</p>}
-                </div>
+                <p className="text-xs text-white/20 italic text-center py-8">Impossible de charger le détail.</p>
               )}
             </div>
           </>
