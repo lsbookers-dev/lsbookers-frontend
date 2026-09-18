@@ -2,6 +2,7 @@
 
 import { BookingItem } from './types'
 import { BkStatusBadge, PayBadge } from './helpers'
+import { BellRing, CalendarDays, Clock3, MessageCircle, Send, WalletCards } from 'lucide-react'
 
 interface BookingsPanelProps {
   panelData: { received: BookingItem[]; sent: BookingItem[] } | null
@@ -65,38 +66,45 @@ export default function BookingsPanel({
   const currentItems = tabItems[panelTab]
 
   return (
-    <div className="p-4 max-h-[580px] overflow-y-auto space-y-4">
+    <div className="max-h-[580px] space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.11),transparent_34%),linear-gradient(180deg,rgba(14,17,28,0.98),rgba(9,10,16,0.98))] p-4 sm:p-5">
       {panelLoading ? (
-        <p className="text-center text-white/30 text-sm py-8">Chargement…</p>
+        <div className="flex min-h-36 items-center justify-center rounded-2xl border border-white/8 bg-white/[0.025]">
+          <p className="text-center text-sm text-white/45">Chargement…</p>
+        </div>
       ) : (
         <>
           {/* Stats financières */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-3">
             {[
-              { label: 'Ce mois',     value: fmt(thisMonthEarnings) },
-              { label: 'Cette année', value: fmt(thisYearEarnings)  },
-              { label: 'Total',       value: fmt(totalEarnings)     },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-white/5 rounded-xl p-3 text-center">
-                <p className="text-[10px] text-white/40 mb-1">{label}</p>
-                <p className="text-sm font-bold text-white">{value}</p>
+              { label: 'Ce mois',     value: fmt(thisMonthEarnings),  cls: 'from-violet-500/18 to-fuchsia-500/5 border-violet-300/15', icon: 'text-violet-300' },
+              { label: 'Cette année', value: fmt(thisYearEarnings),   cls: 'from-cyan-500/14 to-blue-500/5 border-cyan-300/15', icon: 'text-cyan-300' },
+              { label: 'Total',       value: fmt(totalEarnings),      cls: 'from-emerald-500/14 to-teal-500/5 border-emerald-300/15', icon: 'text-emerald-300' },
+            ].map(({ label, value, cls, icon }) => (
+              <div key={label} className={`rounded-2xl border bg-gradient-to-br p-3.5 ${cls}`}>
+                <div className="mb-2 flex items-center gap-1.5">
+                  <WalletCards className={`h-3.5 w-3.5 ${icon}`} aria-hidden="true" />
+                  <p className="text-[11px] font-medium text-white/55">{label}</p>
+                </div>
+                <p className="text-base font-semibold tracking-tight text-white">{value}</p>
               </div>
             ))}
           </div>
 
           {/* Sous-onglets */}
-          <div className="grid grid-cols-4 gap-1 bg-white/5 rounded-xl p-1">
+          <div className="flex gap-1 overflow-x-auto rounded-2xl border border-white/8 bg-black/20 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {TABS.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setPanelTab(tab.key)}
-                className={`flex flex-col items-center py-1.5 px-1 rounded-lg text-[10px] font-medium transition ${
-                  panelTab === tab.key ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white/70'
+                className={`flex min-h-11 min-w-[76px] flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-[11px] font-medium transition ${
+                  panelTab === tab.key
+                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_8px_24px_rgba(124,58,237,0.24)]'
+                    : 'text-white/50 hover:bg-white/5 hover:text-white/80'
                 }`}
               >
-                <span className="truncate w-full text-center">{tab.label}</span>
+                <span className="truncate text-center">{tab.label}</span>
                 {tab.count > 0 && (
-                  <span className={`mt-0.5 text-[9px] ${panelTab === tab.key ? 'text-white/70' : 'text-white/30'}`}>
+                  <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1 text-[10px] ${panelTab === tab.key ? 'bg-white/15 text-white' : 'bg-white/5 text-white/45'}`}>
                     {tab.count}
                   </span>
                 )}
@@ -106,7 +114,10 @@ export default function BookingsPanel({
 
           {/* Liste de la tab active */}
           {currentItems.length === 0 ? (
-            <p className="text-xs text-white/25 italic text-center py-4">Aucun booking dans cette catégorie</p>
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.025] px-4 py-8 text-center">
+              <CalendarDays className="mx-auto mb-2 h-5 w-5 text-violet-300/45" aria-hidden="true" />
+              <p className="text-xs text-white/40">Aucun booking dans cette catégorie</p>
+            </div>
           ) : (
             <div className="space-y-2">
               {currentItems.map(b => {
@@ -118,18 +129,20 @@ export default function BookingsPanel({
                 const showCancelNoteForm = cancelNoteFor === b.id
 
                 return (
-                  <div key={`${b.direction}-${b.id}`} className="bg-white/5 rounded-xl p-3 border border-white/8 space-y-2">
+                  <div key={`${b.direction}-${b.id}`} className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.065] to-white/[0.025] p-3.5 shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
                     {/* Entête */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${isSent ? 'bg-blue-500/20 text-blue-300' : 'bg-violet-500/20 text-violet-300'}`}>
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <span className={`inline-flex min-h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[10px] font-medium ${isSent ? 'border-cyan-400/20 bg-cyan-400/10 text-cyan-200' : 'border-violet-400/20 bg-violet-400/10 text-violet-200'}`}>
+                            <Send className="h-2.5 w-2.5" aria-hidden="true" />
                             {isSent ? 'Envoyé' : 'Reçu'}
                           </span>
                           <p className="text-sm font-medium text-white truncate">{name}</p>
                         </div>
-                        <p className="text-xs text-white/50">
-                          📅 {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <p className="flex items-center gap-1.5 text-xs text-white/55">
+                          <CalendarDays className="h-3.5 w-3.5 shrink-0 text-violet-300/80" aria-hidden="true" />
+                          {new Date(b.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                           {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
                         </p>
                       </div>
@@ -152,7 +165,7 @@ export default function BookingsPanel({
                                 key={opt.key}
                                 onClick={() => updatePaymentStatus(b.id, opt.key)}
                                 disabled={updatingPayment === b.id || b.paymentStatus === opt.key}
-                                className={`text-[9px] px-1.5 py-0.5 rounded-full border border-white/10 transition disabled:opacity-40 ${
+                                className={`min-h-8 rounded-full border border-white/10 px-2.5 text-[10px] transition disabled:opacity-40 ${
                                   b.paymentStatus === opt.key ? 'opacity-40 cursor-default' : 'hover:brightness-125'
                                 } ${opt.cls}`}
                               >
@@ -166,8 +179,8 @@ export default function BookingsPanel({
 
                     {/* Lien conversation */}
                     {b.conversationId && (
-                      <a href={`/messages?c=${b.conversationId}`} className="text-[10px] text-violet-400 hover:text-violet-300 transition block">
-                        → Voir la conversation
+                      <a href={`/messages?c=${b.conversationId}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-1 text-[11px] font-medium text-violet-300 transition hover:text-violet-200">
+                        <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /> Voir la conversation
                       </a>
                     )}
 
@@ -176,7 +189,7 @@ export default function BookingsPanel({
                       <button
                         onClick={() => cancelBooking(b.id)}
                         disabled={cancelingId === b.id}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500/20 text-red-400 hover:bg-red-600/30 disabled:opacity-40 transition w-full"
+                        className="min-h-11 w-full rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 text-xs font-medium text-rose-200 transition hover:bg-rose-500/15 disabled:opacity-40"
                       >
                         {cancelingId === b.id ? 'Annulation…' : 'Annuler ma demande'}
                       </button>
@@ -185,15 +198,16 @@ export default function BookingsPanel({
                     {/* Demander l'annulation d'un booking ACCEPTED futur */}
                     {b.status === 'ACCEPTED' && isFuture && !showCancelNoteForm && (
                       hasCancelRequest ? (
-                        <p className={`text-[10px] ${isMyCancel ? 'text-white/30' : 'text-orange-400'}`}>
+                        <p className={`flex items-start gap-1.5 rounded-xl border px-3 py-2 text-[11px] leading-relaxed ${isMyCancel ? 'border-white/8 bg-white/[0.025] text-white/45' : 'border-amber-400/15 bg-amber-400/5 text-amber-200'}`}>
+                          {isMyCancel ? <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <BellRing className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
                           {isMyCancel
-                            ? '🔄 Annulation demandée — en attente de l\'autre partie'
-                            : '🔔 Annulation demandée — voir la conversation'}
+                            ? 'Annulation demandée — en attente de l\'autre partie'
+                            : 'Annulation demandée — voir la conversation'}
                         </p>
                       ) : (
                         <button
                           onClick={() => { setCancelNoteFor(b.id); setCancelNoteText('') }}
-                          className="text-[10px] text-white/35 hover:text-orange-400 transition block"
+                          className="min-h-9 rounded-lg px-1 text-[11px] text-white/45 transition hover:text-amber-300"
                         >
                           Demander l&apos;annulation…
                         </button>
@@ -214,13 +228,13 @@ export default function BookingsPanel({
                           <button
                             onClick={() => requestCancellation(b.id)}
                             disabled={cancelRequestingId === b.id}
-                            className="flex-1 py-1.5 rounded-lg bg-orange-600/80 text-white text-xs font-medium hover:bg-orange-500/80 disabled:opacity-40 transition"
+                          className="min-h-11 flex-1 rounded-xl bg-amber-500/85 px-3 text-xs font-medium text-slate-950 transition hover:bg-amber-400 disabled:opacity-40"
                           >
                             {cancelRequestingId === b.id ? 'Envoi…' : 'Envoyer la demande'}
                           </button>
                           <button
                             onClick={() => { setCancelNoteFor(null); setCancelNoteText('') }}
-                            className="px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs hover:bg-white/10 transition"
+                            className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-xs text-white/55 transition hover:bg-white/10"
                           >
                             Annuler
                           </button>

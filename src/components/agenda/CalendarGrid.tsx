@@ -132,14 +132,13 @@ export default function CalendarGrid(props: CalendarGridProps) {
                   <button
                     key={date.toISOString()}
                     type="button"
-                    className={`${today ? 'is-today' : ''} ${active ? 'is-selected' : ''} ${inBulk ? 'is-selected' : ''}`}
-                    style={!today && !active && !inBulk && (weekend || holidayName) ? { background: holidayName ? 'rgba(251,191,36,0.11)' : 'rgba(255,255,255,0.08)' } : undefined}
+                    className={`${today ? 'is-today' : ''} ${active ? 'is-selected' : ''} ${inBulk ? 'is-selected' : ''} ${weekend ? 'is-weekend' : ''} ${holidayName ? 'is-holiday' : ''}`}
                     onClick={() => handleDayClick(date)}
                   >
                     <span>{date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span>
                     <strong>{date.getDate()}</strong>
                     {holidayName && (
-                      <em style={{ display: 'block', fontSize: 8, fontStyle: 'normal', color: 'rgba(251,191,36,0.75)', lineHeight: 1.2, marginTop: 2, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <em className="lsb-week-holiday-label">
                         {holidayName}
                       </em>
                     )}
@@ -161,12 +160,11 @@ export default function CalendarGrid(props: CalendarGridProps) {
                     const avail = availability.find((item) => isSameDay(new Date(item.date), date))
                     const weekend = isWeekend(date)
                     const holidayName = getHolidayName(date)
-                    const colBg = holidayName ? 'rgba(251,191,36,0.09)' : weekend ? 'rgba(255,255,255,0.07)' : undefined
                     return (
-                      <div key={date.toISOString()} className={`lsb-week-column ${!multiSelectMode && selected && isSameDay(date, selected) ? 'is-selected' : ''}`} style={colBg ? { background: colBg } : undefined}>
+                      <div key={date.toISOString()} className={`lsb-week-column ${!multiSelectMode && selected && isSameDay(date, selected) ? 'is-selected' : ''} ${weekend ? 'is-weekend' : ''} ${holidayName ? 'is-holiday' : ''}`}>
                         <button type="button" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} className="lsb-week-day-hit" onClick={() => handleDayClick(date)} />
                         {holidayName && (
-                          <span style={{ position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center', fontSize: 9, color: 'rgba(251,191,36,0.65)', pointerEvents: 'none', zIndex: 1 }}>
+                          <span className="lsb-week-holiday-marker">
                             {holidayName}
                           </span>
                         )}
@@ -214,21 +212,16 @@ export default function CalendarGrid(props: CalendarGridProps) {
                   const dotColor = availDotColor(avail?.status)
                   const weekend = isWeekend(date)
                   const holidayName = getHolidayName(date)
-                  // Weekend/férié : tint de fond visible seulement quand pas de statut dispo (qui prendrait le dessus)
-                  const weekendStyle: React.CSSProperties = !avail && (weekend || holidayName)
-                    ? { background: holidayName ? 'rgba(251,191,36,0.11)' : 'rgba(255,255,255,0.08)' }
-                    : {}
-                  const cellStyle = { ...weekendStyle, ...availStyle }
                   return (
                     <div
                       key={date.toISOString()}
-                      className={`lsb-month-day ${isSameDay(date, now) ? 'is-today' : ''} ${active ? 'is-selected' : ''} ${inBulk ? 'is-selected' : ''}`}
-                      style={cellStyle}
+                      className={`lsb-month-day ${isSameDay(date, now) ? 'is-today' : ''} ${active ? 'is-selected' : ''} ${inBulk ? 'is-selected' : ''} ${weekend ? 'is-weekend' : ''} ${holidayName ? 'is-holiday' : ''} ${avail ? 'has-availability' : ''}`}
+                      style={availStyle}
                     >
                       <button type="button" className="lsb-month-day-hit" aria-label={`Sélectionner le ${date.toLocaleDateString('fr-FR')}`} onClick={() => handleDayClick(date)} />
-                      <span className="lsb-month-day-number" style={weekend && !isSameDay(date, now) ? { color: 'rgba(170,195,245,0.95)' } : undefined}>{date.getDate()}</span>
+                      <span className="lsb-month-day-number">{date.getDate()}</span>
                       {holidayName && (
-                        <span style={{ display: 'block', fontSize: 8, color: 'rgba(251,191,36,0.70)', lineHeight: 1.2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 4, paddingRight: 4 }}>
+                        <span className="lsb-month-holiday-label">
                           {holidayName}
                         </span>
                       )}
@@ -236,20 +229,13 @@ export default function CalendarGrid(props: CalendarGridProps) {
                       {avail && dotColor !== 'transparent' && (
                         <span
                           title={statusLabel(avail.status) || ''}
-                          style={{
-                            position: 'absolute', top: 5, right: 5,
-                            width: 7, height: 7, borderRadius: '50%',
-                            background: dotColor, flexShrink: 0,
-                          }}
+                          className="lsb-month-availability-dot"
+                          style={{ background: dotColor }}
                         />
                       )}
                       {/* Coche multi-sélection */}
                       {inBulk && (
-                        <span style={{
-                          position: 'absolute', top: 3, left: 3,
-                          background: 'rgba(99,102,241,0.9)', borderRadius: 4,
-                          width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
+                        <span className="lsb-month-selection-check">
                           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 2.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         </span>
                       )}
@@ -270,73 +256,51 @@ export default function CalendarGrid(props: CalendarGridProps) {
         )}
 
         <div className="lsb-week-legend">
-          <span><i style={{ background:'#22c55e', width:8, height:8, borderRadius:'50%', display:'inline-block', marginRight:4 }} />Disponible</span>
-          <span><i style={{ background:'#3b82f6', width:8, height:8, borderRadius:'50%', display:'inline-block', marginRight:4 }} />Booking</span>
-          <span><i style={{ background:'#ef4444', width:8, height:8, borderRadius:'50%', display:'inline-block', marginRight:4 }} />Indisponible</span>
+          <span><i className="is-available" />Disponible</span>
+          <span><i className="is-booking" />Booking</span>
+          <span><i className="is-unavailable" />Indisponible</span>
         </div>
       </div>
 
 
       <aside className="lsb-week-detail">
         {multiSelectMode ? (
-          <div style={{ padding: '20px 16px' }}>
-            <div style={{ fontSize: 11, color: '#6b7494', letterSpacing: '0.08em', marginBottom: 4 }}>SÉLECTION MULTIPLE</div>
-            <p style={{ fontSize: 13, color: '#9ea8c8', marginBottom: 20, lineHeight: 1.5 }}>
+          <div className="lsb-bulk-editor">
+            <div className="lsb-bulk-kicker">SÉLECTION MULTIPLE</div>
+            <p className="lsb-bulk-copy">
               Clique sur les jours pour les sélectionner, puis applique un statut à tous d&apos;un coup.
             </p>
 
             {/* Compteur */}
-            <div style={{
-              background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
-              borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-              fontSize: 13, color: bulkDates.size > 0 ? '#a5b4fc' : '#6b7494', fontWeight: 500,
-            }}>
+            <div className={`lsb-bulk-count ${bulkDates.size > 0 ? 'has-selection' : ''}`}>
               {bulkDates.size === 0 ? 'Aucun jour sélectionné' : `${bulkDates.size} jour${bulkDates.size > 1 ? 's' : ''} sélectionné${bulkDates.size > 1 ? 's' : ''}`}
             </div>
 
             {/* Boutons statut */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            <div className="lsb-bulk-options">
               {AVAIL_OPTIONS.map(opt => (
                 <button
                   key={opt.status}
                   onClick={() => saveBulkAvailability(opt.status)}
                   disabled={savingAvail || bulkDates.size === 0}
-                  style={{
-                    padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 500,
-                    textAlign: 'left', border: 'none', cursor: bulkDates.size === 0 ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    background: opt.status === 'AVAILABLE' ? 'rgba(34,197,94,0.12)'
-                               : opt.status === 'UNAVAILABLE' ? 'rgba(239,68,68,0.12)'
-                               : 'rgba(59,130,246,0.12)',
-                    color: opt.status === 'AVAILABLE' ? '#86efac'
-                         : opt.status === 'UNAVAILABLE' ? '#fca5a5'
-                         : '#93c5fd',
-                    opacity: bulkDates.size === 0 ? 0.4 : 1,
-                  }}
+                  className={`lsb-bulk-option ${opt.status.toLowerCase()}`}
                 >
-                  <span style={{
-                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                    background: opt.status === 'AVAILABLE' ? '#22c55e'
-                               : opt.status === 'UNAVAILABLE' ? '#ef4444'
-                               : '#3b82f6',
-                  }} />
+                  <span />
                   {opt.label}
                 </button>
               ))}
             </div>
 
             {/* Actions secondaires */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="lsb-bulk-actions">
               <button
                 onClick={() => saveBulkAvailability('NONE')}
                 disabled={savingAvail || bulkDates.size === 0}
-                style={{ flex: 1, padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 500, background: 'rgba(255,255,255,0.05)', color: '#6b7494', border: '1px solid #2a3050', cursor: 'pointer', opacity: bulkDates.size === 0 ? 0.4 : 1 }}
               >
                 Réinitialiser
               </button>
               <button
                 onClick={() => setMultiSelectMode(false)}
-                style={{ flex: 1, padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 500, background: 'rgba(255,255,255,0.04)', color: '#8891b0', border: '1px solid #2a3050', cursor: 'pointer' }}
               >
                 Annuler
               </button>
@@ -362,12 +326,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
               <button
                 type="button"
                 onClick={() => onCreateFromDate(selected)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  width: '100%', padding: '8px 12px', marginTop: 16, marginBottom: 12,
-                  background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)',
-                  borderRadius: 10, color: '#a5b4fc', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                }}
+                className="lsb-day-create"
               >
                 <Plus size={14} /> Créer un événement
               </button>
@@ -375,7 +334,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
 
             {isOwner && showAvailability && (
               <div className="lsb-availability-editor">
-                <div style={{ marginBottom: 8 }}>
+                <div className="lsb-availability-heading">
                   <span>MA DISPONIBILITÉ</span>
                 </div>
                 {AVAIL_OPTIONS.map((option) => (
@@ -390,7 +349,7 @@ export default function CalendarGrid(props: CalendarGridProps) {
                     <i className={option.status.toLowerCase()} />
                     {option.label}
                     {selectedAvail?.status === option.status && (
-                      <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.6 }}>✕</span>
+                      <X className="lsb-availability-reset" size={11} aria-hidden="true" />
                     )}
                   </button>
                 ))}

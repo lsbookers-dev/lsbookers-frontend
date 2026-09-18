@@ -5,7 +5,8 @@ import { useState, useEffect, useRef } from 'react'
 import { getAuthToken } from '@/utils/auth'
 import {
   CreditCard, FileText, MapPin, Image as ImageIcon, StickyNote,
-  Plus, Download, Eye, Trash2, Bed, Plane, Loader2, X,
+  Plus, Download, Eye, Trash2, Bed, Plane, Loader2, Paperclip,
+  CheckCircle2, CalendarDays,
 } from 'lucide-react'
 import { BookingItem2, BookingDetail, BookingLogistic, BookingMedia, DocumentItem, LinkedBooking } from './types'
 
@@ -18,15 +19,15 @@ function authHeaders(): Record<string, string> {
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
 const PAYMENT_LABEL: Record<string, { label: string; cls: string }> = {
-  UNPAID:  { label: 'Non payé',   cls: 'bg-red-500/10 text-red-400' },
-  DEPOSIT: { label: 'Acompte',    cls: 'bg-yellow-500/10 text-yellow-300' },
-  PAID:    { label: 'Payé',       cls: 'bg-emerald-500/10 text-emerald-400' },
+  UNPAID:  { label: 'Non payé', cls: 'border border-amber-400/20 bg-amber-400/10 text-amber-200' },
+  DEPOSIT: { label: 'Acompte',  cls: 'border border-cyan-400/20 bg-cyan-400/10 text-cyan-200' },
+  PAID:    { label: 'Payé',     cls: 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-200' },
 }
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  PENDING:   { label: 'En cours',  cls: 'bg-yellow-500/10 text-yellow-300' },
-  ACCEPTED:  { label: 'Confirmé',  cls: 'bg-emerald-500/10 text-emerald-400' },
-  DECLINED:  { label: 'Refusé',    cls: 'bg-red-500/10 text-red-400' },
-  CANCELLED: { label: 'Annulé',    cls: 'bg-white/5 text-white/30' },
+  PENDING:   { label: 'En cours', cls: 'border border-amber-400/20 bg-amber-400/10 text-amber-200' },
+  ACCEPTED:  { label: 'Confirmé', cls: 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-200' },
+  DECLINED:  { label: 'Refusé',   cls: 'border border-rose-400/20 bg-rose-400/10 text-rose-200' },
+  CANCELLED: { label: 'Annulé',   cls: 'border border-white/10 bg-white/5 text-white/40' },
 }
 
 function initials(b: BookingItem2): string {
@@ -57,29 +58,29 @@ function TabPayment({ booking, isOrganizer }: { booking: BookingDetail; isOrgani
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <div className="bg-white/4 border border-white/7 rounded-xl p-3">
-          <p className="text-[10px] text-white/25 uppercase tracking-wider mb-1">Payé</p>
-          <p className="text-base font-semibold text-emerald-400">{paid.toLocaleString('fr-FR')} €</p>
-          {booking.paymentStatus === 'DEPOSIT' && <p className="text-[10px] text-white/20 mt-0.5">Acompte 50 %</p>}
+        <div className="rounded-2xl border border-emerald-300/15 bg-gradient-to-br from-emerald-500/15 to-cyan-500/5 p-3.5">
+          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-100/55">Payé</p>
+          <p className="text-lg font-semibold text-emerald-200">{paid.toLocaleString('fr-FR')} €</p>
+          {booking.paymentStatus === 'DEPOSIT' && <p className="mt-0.5 text-[11px] text-white/40">Acompte 50 %</p>}
         </div>
-        <div className="bg-white/4 border border-white/7 rounded-xl p-3">
-          <p className="text-[10px] text-white/25 uppercase tracking-wider mb-1">Restant</p>
-          <p className={`text-base font-semibold ${remaining > 0 ? 'text-yellow-300' : 'text-white/30'}`}>
+        <div className="rounded-2xl border border-amber-300/15 bg-gradient-to-br from-amber-500/12 to-violet-500/5 p-3.5">
+          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-100/55">Restant</p>
+          <p className={`text-lg font-semibold ${remaining > 0 ? 'text-amber-200' : 'text-white/40'}`}>
             {remaining.toLocaleString('fr-FR')} €
           </p>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`text-xs px-2.5 py-1 rounded-full ${pay.cls}`}>{pay.label}</span>
+        <span className={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${pay.cls}`}>{pay.label}</span>
       </div>
       {isOrganizer && (
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#635BFF] hover:bg-[#5248e8] text-white text-sm font-medium transition-colors">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13.98 2.01c-3.85-.34-7.41 1.54-9.24 4.88a9.01 9.01 0 0 0 3.31 12.27A9 9 0 0 0 21.01 10c0-4.48-3.27-8.2-7.03-7.99zm.02 2.99a6 6 0 1 1 0 12A6 6 0 0 1 14 5zm-1 3v4l3.5 2-.75 1.23L12 13.5V8h1z"/></svg>
+        <button className="flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 text-sm font-medium text-white shadow-[0_10px_28px_rgba(124,58,237,0.25)] transition hover:from-violet-500 hover:to-fuchsia-500">
+          <CreditCard className="h-4 w-4" aria-hidden="true" />
           Réaliser le paiement
         </button>
       )}
       {!isOrganizer && (
-        <p className="text-[10px] text-white/25 italic">Le paiement est géré par l&apos;organisateur.</p>
+        <p className="text-[11px] text-white/40">Le paiement est géré par l&apos;organisateur.</p>
       )}
     </div>
   )
@@ -98,14 +99,14 @@ function TabContrat({ docs, isOrganizer, onUpload, uploading }: {
   return (
     <div className="space-y-3">
       {contracts.length === 0 && (
-        <p className="text-xs text-white/20 italic">Aucun contrat pour cet événement.</p>
+        <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-4 text-center text-xs text-white/35">Aucun contrat pour cet événement.</p>
       )}
       {contracts.map(d => (
-        <div key={d.id} className="flex items-center gap-2 px-3 py-2.5 bg-white/4 rounded-xl border border-white/7">
+        <div key={d.id} className="flex items-center gap-2.5 rounded-xl border border-violet-300/10 bg-gradient-to-r from-violet-500/10 to-cyan-500/5 px-3 py-2.5">
           <FileText className="w-4 h-4 text-violet-400 shrink-0" />
-          <span className="flex-1 min-w-0 text-xs text-white/55 truncate">{d.name}</span>
+          <span className="flex-1 min-w-0 text-xs text-white/70 truncate">{d.name}</span>
           <a href={d.url} target="_blank" rel="noreferrer"
-            className="flex items-center gap-1 text-[11px] text-violet-400 border border-violet-500/25 rounded-md px-2 py-0.5 hover:bg-violet-500/10 transition-colors shrink-0">
+            className="flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-violet-400/20 px-2.5 text-[11px] text-violet-200 transition-colors hover:bg-violet-500/10">
             <Eye className="w-3 h-3" /> Voir
           </a>
         </div>
@@ -115,13 +116,13 @@ function TabContrat({ docs, isOrganizer, onUpload, uploading }: {
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="w-full border border-dashed border-white/10 hover:border-violet-500/40 rounded-xl py-4 flex flex-col items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+            className="flex min-h-24 w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-violet-300/20 bg-violet-500/5 py-4 transition-colors hover:border-violet-300/40 hover:bg-violet-500/10 disabled:opacity-50"
           >
             {uploading
               ? <Loader2 className="w-5 h-5 text-white/20 animate-spin" />
               : <Plus className="w-5 h-5 text-white/15" />
             }
-            <p className="text-xs text-white/20">{uploading ? 'Upload en cours…' : 'Envoyer un contrat PDF'}</p>
+            <p className="text-xs text-white/45">{uploading ? 'Upload en cours…' : 'Envoyer un contrat PDF'}</p>
           </button>
           <input ref={fileRef} type="file" accept=".pdf" className="hidden"
             onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = '' }} />
@@ -180,10 +181,10 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
       {/* Formulaire ajout */}
       {isOrganizer && (
         <div className="flex items-center justify-between">
-          <p className="text-[10px] text-white/30 uppercase tracking-wider">Hébergement &amp; Transport</p>
+          <p className="text-[11px] font-semibold text-cyan-100/65 uppercase tracking-[0.15em]">Hébergement &amp; Transport</p>
           {!showForm && (
             <button onClick={() => setShowForm(true)}
-              className="flex items-center gap-1 text-[11px] text-violet-400 border border-violet-500/25 rounded-md px-2 py-0.5 hover:bg-violet-500/10 transition-colors">
+              className="flex min-h-9 items-center gap-1 rounded-lg border border-violet-400/20 bg-violet-500/5 px-2.5 text-[11px] text-violet-200 transition-colors hover:bg-violet-500/10">
               <Plus className="w-3 h-3" /> Ajouter
             </button>
           )}
@@ -191,16 +192,16 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
       )}
 
       {showForm && (
-        <div className="bg-white/3 border border-white/8 rounded-xl p-3 space-y-2.5">
+        <div className="space-y-3 rounded-2xl border border-cyan-300/10 bg-gradient-to-br from-cyan-500/8 to-violet-500/5 p-3.5">
           <div className="grid grid-cols-2 gap-2">
             {(['HOTEL', 'TRANSPORT'] as const).map(t => (
               <button key={t} onClick={() => setType(t)}
-                className={`py-1.5 rounded-lg border text-xs transition-colors ${
+                className={`min-h-10 rounded-xl border px-2 text-xs transition-colors ${
                   type === t
                     ? t === 'HOTEL'
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                      : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                    : 'bg-white/3 border-white/8 text-white/35 hover:bg-white/6'
+                      ? 'bg-emerald-500/10 border-emerald-400/25 text-emerald-200'
+                      : 'bg-cyan-500/10 border-cyan-400/25 text-cyan-200'
+                    : 'bg-white/[0.025] border-white/10 text-white/50 hover:bg-white/5'
                 }`}>
                 {t === 'HOTEL' ? <><Bed className="w-3 h-3 inline mr-1" />Logement</> : <><Plane className="w-3 h-3 inline mr-1" />Transport</>}
               </button>
@@ -210,22 +211,23 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder={type === 'HOTEL' ? 'Ex : Ibis Lyon Centre, ch. 214' : 'Ex : Vol AF1234 · départ 14h30'}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/70 placeholder-white/20 outline-none focus:border-emerald-500/35"
+            className="min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/75 outline-none placeholder:text-white/30 focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/10"
           />
           <button onClick={() => fileRef.current?.click()}
-            className="w-full border border-dashed border-white/10 rounded-lg py-2 text-xs text-white/25 hover:border-violet-500/35 transition-colors">
-            {file ? <span className="text-violet-400">{file.name}</span> : '📎 Joindre un PDF (optionnel)'}
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.025] px-3 text-xs text-white/45 transition-colors hover:border-violet-400/35 hover:text-violet-200">
+            <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+            {file ? <span className="text-violet-300">{file.name}</span> : 'Joindre un PDF (optionnel)'}
           </button>
           <input ref={fileRef} type="file" accept=".pdf" className="hidden"
             onChange={e => setFile(e.target.files?.[0] ?? null)} />
           {error && <p className="text-xs text-red-400">{error}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setShowForm(false); setTitle(''); setFile(null); setError('') }}
-              className="flex-1 py-1.5 rounded-lg border border-white/10 text-xs text-white/30 hover:bg-white/5 transition-colors">
+              className="min-h-11 flex-1 rounded-xl border border-white/10 text-xs text-white/50 transition-colors hover:bg-white/5">
               Annuler
             </button>
             <button onClick={handleSave} disabled={saving}
-              className="flex-1 py-1.5 rounded-lg bg-emerald-600/70 hover:bg-emerald-600 text-white text-xs font-medium transition-colors disabled:opacity-50">
+              className="min-h-11 flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 text-xs font-medium text-white transition hover:from-violet-500 hover:to-fuchsia-500 disabled:opacity-50">
               {saving ? 'Enregistrement…' : 'Enregistrer'}
             </button>
           </div>
@@ -234,28 +236,28 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
 
       {/* Liste items */}
       {logistics.length === 0 && !showForm && (
-        <p className="text-xs text-white/20 italic">Aucun élément logistique.</p>
+        <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-4 text-center text-xs text-white/35">Aucun élément logistique.</p>
       )}
       {logistics.map(l => (
-        <div key={l.id} className="bg-white/4 border border-white/7 rounded-xl p-3">
+        <div key={l.id} className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-cyan-500/[0.035] p-3.5">
           <div className="flex items-center gap-2 mb-2">
             <span className={`text-[10px] px-2 py-0.5 rounded-full ${
               l.type === 'HOTEL'
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : 'bg-blue-500/10 text-blue-400'
+                ? 'border border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
+                : 'border border-cyan-400/20 bg-cyan-500/10 text-cyan-200'
             }`}>
               {l.type === 'HOTEL' ? 'Logement' : 'Transport'}
             </span>
             <span className="text-xs font-medium text-white/75 flex-1 truncate">{l.title}</span>
             {isOrganizer && (
-              <button onClick={() => onDelete(l.id)} className="text-white/20 hover:text-red-400 transition-colors">
+              <button onClick={() => onDelete(l.id)} aria-label={`Supprimer ${l.title}`} className="grid h-9 w-9 place-items-center rounded-lg text-white/35 transition-colors hover:bg-rose-500/10 hover:text-rose-300">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
           {l.fileUrl && (
             <a href={l.fileUrl} target="_blank" rel="noreferrer" download={l.fileName || true}
-              className="flex items-center gap-1.5 text-[11px] text-violet-400 hover:text-violet-300 transition-colors">
+              className="inline-flex min-h-9 items-center gap-1.5 text-[11px] text-violet-300 transition-colors hover:text-violet-200">
               <Download className="w-3 h-3" /> {l.fileName || 'Télécharger le document'}
             </a>
           )}
@@ -306,22 +308,22 @@ function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] text-white/30 uppercase tracking-wider">Médias promo</p>
+        <p className="text-[11px] font-semibold text-fuchsia-100/65 uppercase tracking-[0.15em]">Médias promo</p>
         {media.length > 0 && (
           <button onClick={downloadAll}
-            className="flex items-center gap-1 text-[11px] text-violet-400 border border-violet-500/25 rounded-md px-2 py-0.5 hover:bg-violet-500/10 transition-colors">
+            className="flex min-h-9 items-center gap-1 rounded-lg border border-violet-400/20 bg-violet-500/5 px-2.5 text-[11px] text-violet-200 transition-colors hover:bg-violet-500/10">
             <Download className="w-3 h-3" /> Tout télécharger
           </button>
         )}
       </div>
 
-      <p className="text-[11px] text-white/20">
+      <p className="text-[11px] leading-relaxed text-white/40">
         Photos et vidéos partagées par l&apos;organisateur pour promouvoir l&apos;événement.
       </p>
 
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-2 min-[460px]:grid-cols-3">
         {media.map(m => (
-          <div key={m.id} className="relative aspect-square bg-white/4 border border-white/7 rounded-lg overflow-hidden group">
+          <div key={m.id} className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5">
             {m.mediaType === 'IMAGE'
               ? <img src={m.url} alt={m.name || ''} className="w-full h-full object-cover" />
               : (
@@ -350,7 +352,7 @@ function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="aspect-square border border-dashed border-white/10 hover:border-violet-500/35 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50"
+            className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-violet-300/20 bg-violet-500/5 transition-colors hover:border-violet-300/40 hover:bg-violet-500/10 disabled:opacity-50"
           >
             {uploading
               ? <Loader2 className="w-5 h-5 text-white/20 animate-spin" />
@@ -395,16 +397,17 @@ function TabNotes({ bookingId, initialNotes, targetName }: { bookingId: number; 
 
   return (
     <div className="space-y-2">
-      <p className="text-[10px] text-white/25">Visibles par l&apos;organisateur et {targetName}</p>
+      <p className="text-[11px] text-white/45">Visibles par l&apos;organisateur et {targetName}</p>
       <textarea
         value={notes}
         onChange={e => handleChange(e.target.value)}
         rows={6}
         placeholder="Écrivez vos notes ici…"
-        className="w-full bg-white/4 border border-white/8 rounded-xl px-3 py-2.5 text-xs text-white/60 placeholder-white/15 resize-none outline-none focus:border-emerald-500/35 transition-colors"
+        className="w-full resize-none rounded-2xl border border-violet-300/10 bg-gradient-to-br from-white/[0.055] to-violet-500/[0.035] px-3.5 py-3 text-sm leading-relaxed text-white/70 outline-none placeholder:text-white/25 focus:border-violet-400/35 focus:ring-2 focus:ring-violet-500/10"
       />
-      <p className="text-[10px] text-white/20">
-        {saving ? 'Sauvegarde…' : saved ? '✓ Sauvegardé' : 'Sauvegarde automatique'}
+      <p className="flex min-h-6 items-center gap-1.5 text-[11px] text-white/35">
+        {saved && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" aria-hidden="true" />}
+        {saving ? 'Sauvegarde…' : saved ? 'Sauvegardé' : 'Sauvegarde automatique'}
       </p>
     </div>
   )
@@ -443,11 +446,16 @@ export default function EventTabBookings(p: Props) {
   if (p.isBookedEvent) {
     return (
       <div className="space-y-4">
-        <div className="bg-white/5 rounded-xl p-4 border border-white/8 space-y-3">
-          <p className="text-xs text-white/40 uppercase tracking-wide">Informations paiement</p>
+        <div className="space-y-4 rounded-2xl border border-violet-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_42%),linear-gradient(135deg,rgba(139,92,246,0.14),rgba(255,255,255,0.035))] p-4 sm:p-5">
+          <div className="flex items-center gap-2">
+            <div className="grid h-9 w-9 place-items-center rounded-xl border border-violet-300/15 bg-violet-500/10">
+              <CreditCard className="h-4 w-4 text-violet-200" aria-hidden="true" />
+            </div>
+            <p className="text-[11px] font-semibold text-violet-100/70 uppercase tracking-[0.15em]">Informations paiement</p>
+          </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-white/50">Cachet convenu</span>
-            <span className="text-sm font-semibold text-white">
+            <span className="text-xs text-white/55">Cachet convenu</span>
+            <span className="text-base font-semibold text-white">
               {p.linkedBooking?.fee ? `${Number(p.linkedBooking.fee).toLocaleString('fr-FR')} €` : '—'}
             </span>
           </div>
@@ -455,11 +463,11 @@ export default function EventTabBookings(p: Props) {
             <span className="text-xs text-white/50">Statut</span>
             {(() => {
               const pay = PAYMENT_LABEL[p.linkedBooking?.paymentStatus || 'UNPAID']
-              return <span className={`text-xs px-2.5 py-0.5 rounded-full ${pay.cls}`}>{pay.label}</span>
+              return <span className={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${pay.cls}`}>{pay.label}</span>
             })()}
           </div>
         </div>
-        <p className="text-[10px] text-white/25 text-center">Le paiement est géré par l&apos;organisateur.</p>
+        <p className="text-center text-[11px] text-white/40">Le paiement est géré par l&apos;organisateur.</p>
       </div>
     )
   }
@@ -519,16 +527,21 @@ export default function EventTabBookings(p: Props) {
   const uploadContract = (file: File) => p.addDocument(file, 'CONTRACT')
 
   return (
-    <div className="flex h-full min-h-[420px]" style={{ margin: '-16px' }}>
+    <div
+      className="-m-3 flex h-auto min-h-[420px] flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.10),transparent_38%),linear-gradient(180deg,rgba(13,15,25,0.98),rgba(8,9,15,0.98))] sm:-m-4 sm:h-full sm:flex-row"
+    >
       {/* ── Colonne gauche ── */}
-      <div className="w-[188px] shrink-0 border-r border-white/7 flex flex-col">
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/6">
-          <span className="text-[10px] font-medium text-white/35 uppercase tracking-wider">Bookings</span>
-          <span className="text-[10px] bg-white/7 text-white/35 rounded-full px-1.5 py-0.5">{p.bookingRequests.length}</span>
+      <div className="flex max-h-[220px] w-full shrink-0 flex-col border-b border-white/8 bg-black/10 sm:max-h-none sm:w-[204px] sm:border-b-0 sm:border-r">
+        <div className="flex min-h-12 items-center justify-between border-b border-white/8 bg-violet-500/[0.035] px-3.5">
+          <span className="text-[11px] font-semibold text-violet-100/65 uppercase tracking-[0.15em]">Bookings</span>
+          <span className="grid h-6 min-w-6 place-items-center rounded-full border border-violet-300/10 bg-violet-500/10 px-1.5 text-[11px] font-medium text-violet-200">{p.bookingRequests.length}</span>
         </div>
 
         {p.bookingRequests.length === 0 ? (
-          <p className="text-xs text-white/20 italic text-center py-6 px-3">Aucun booking lié à cet événement</p>
+          <div className="px-3 py-5 text-center">
+            <CalendarDays className="mx-auto mb-2 h-5 w-5 text-violet-300/35" aria-hidden="true" />
+            <p className="text-xs leading-relaxed text-white/35">Aucun booking lié à cet événement</p>
+          </div>
         ) : (
           <div className="flex-1 overflow-y-auto">
             {p.bookingRequests.map(b => {
@@ -537,26 +550,26 @@ export default function EventTabBookings(p: Props) {
                 <button
                   key={b.id}
                   onClick={() => selectBooking(b.id)}
-                  className={`w-full text-left flex items-center gap-2 px-3 py-2.5 border-b border-white/4 transition-colors relative ${
-                    selectedId === b.id ? 'bg-white/5' : 'hover:bg-white/3'
+                  className={`relative flex min-h-[62px] w-full items-center gap-2.5 border-b border-white/5 px-3 py-2.5 text-left transition-colors ${
+                    selectedId === b.id ? 'bg-gradient-to-r from-violet-500/15 to-cyan-500/5' : 'hover:bg-white/[0.035]'
                   }`}
                 >
                   {/* Barre active */}
                   {selectedId === b.id && (
-                    <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-emerald-500" />
+                    <div className="absolute bottom-2 left-0 top-2 w-0.5 rounded-r bg-gradient-to-b from-violet-400 to-cyan-300" />
                   )}
                   {/* Avatar */}
-                  <div className="w-8 h-8 rounded-[10px] bg-violet-500/20 text-violet-300 flex items-center justify-center text-[11px] font-semibold shrink-0 overflow-hidden border border-white/5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-violet-300/15 bg-gradient-to-br from-violet-500/25 to-cyan-500/15 text-[11px] font-semibold text-violet-100">
                     {avatarUrl(b)
                       ? <img src={avatarUrl(b)!} alt="" className="w-full h-full object-cover" />
                       : initials(b)
                     }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12.5px] font-medium text-white/85 truncate">{displayName(b)}</p>
-                    <p className="text-[10.5px] text-white/30 truncate">{b.target?.specialty || 'Artiste'}</p>
+                    <p className="truncate text-[12.5px] font-medium text-white/90">{displayName(b)}</p>
+                    <p className="truncate text-[11px] text-white/45">{b.target?.specialty || 'Artiste'}</p>
                   </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${st.cls}`}>{st.label}</span>
+                  <span className={`inline-flex min-h-6 shrink-0 items-center rounded-full px-2 text-[10px] font-medium ${st.cls}`}>{st.label}</span>
                 </button>
               )
             })}
@@ -565,59 +578,59 @@ export default function EventTabBookings(p: Props) {
       </div>
 
       {/* ── Colonne droite ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex min-h-[390px] min-w-0 flex-1 flex-col overflow-hidden sm:min-h-0">
         {!selectedId ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
-            <div className="w-10 h-10 rounded-xl bg-white/4 flex items-center justify-center mb-1">
-              <CreditCard className="w-5 h-5 text-white/15" />
+            <div className="mb-1 grid h-12 w-12 place-items-center rounded-2xl border border-violet-300/10 bg-gradient-to-br from-violet-500/12 to-cyan-500/8">
+              <CreditCard className="h-5 w-5 text-violet-200/55" />
             </div>
-            <p className="text-sm text-white/25">Sélectionnez un booking</p>
-            <p className="text-xs text-white/15">pour voir le détail</p>
+            <p className="text-sm font-medium text-white/50">Sélectionnez un booking</p>
+            <p className="text-xs text-white/30">pour voir le détail</p>
           </div>
         ) : (
           <>
             {/* Hero compact */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/6">
-              <div className="w-9 h-9 rounded-xl bg-violet-500/20 text-violet-300 flex items-center justify-center text-[13px] font-semibold shrink-0 border border-violet-500/20 overflow-hidden">
+            <div className="flex min-h-[68px] items-center gap-3 border-b border-white/8 bg-gradient-to-r from-violet-500/[0.08] to-cyan-500/[0.035] px-4 py-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-violet-300/20 bg-gradient-to-br from-violet-500/25 to-cyan-500/15 text-[13px] font-semibold text-violet-100">
                 {selectedBooking && avatarUrl(selectedBooking)
                   ? <img src={avatarUrl(selectedBooking)!} alt="" className="w-full h-full object-cover" />
                   : selectedBooking ? initials(selectedBooking) : '?'
                 }
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13.5px] font-medium text-white/90 truncate">
+                <p className="truncate text-sm font-semibold text-white/95">
                   {selectedBooking ? displayName(selectedBooking) : '…'}
                 </p>
-                <p className="text-[11px] text-white/30">
+                <p className="text-[11px] text-white/50">
                   {selectedBooking?.target?.specialty || 'Artiste'} · {STATUS_LABEL[selectedBooking?.status || '']?.label || '—'}
                 </p>
               </div>
               {selectedBooking?.fee && (
                 <div className="text-right shrink-0">
-                  <p className="text-[15px] font-semibold text-white/85">{Number(selectedBooking.fee).toLocaleString('fr-FR')} €</p>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wider">Cachet</p>
+                  <p className="text-base font-semibold text-white/90">{Number(selectedBooking.fee).toLocaleString('fr-FR')} €</p>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-white/40">Cachet</p>
                 </div>
               )}
             </div>
 
             {/* Onglets */}
-            <div className="flex border-b border-white/6 overflow-x-auto px-2">
+            <div className="flex shrink-0 overflow-x-auto border-b border-white/8 bg-black/10 px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {INNER_TABS.map(({ key, label, Icon }) => (
                 <button key={key} onClick={() => setActiveTab(key)}
-                  className={`flex items-center gap-1 px-2.5 py-2 text-[11.5px] border-b-2 whitespace-nowrap transition-colors ${
+                  className={`flex min-h-12 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-xs font-medium transition-colors ${
                     activeTab === key
-                      ? 'border-emerald-500 text-emerald-400'
-                      : 'border-transparent text-white/30 hover:text-white/55'
+                      ? 'border-violet-400 bg-violet-500/[0.055] text-violet-200'
+                      : 'border-transparent text-white/45 hover:bg-white/[0.025] hover:text-white/75'
                   }`}
                   style={{ marginBottom: '-1px' }}>
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="h-4 w-4" />
                   {label}
                 </button>
               ))}
             </div>
 
             {/* Contenu onglets */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
               {loadingDetail ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="w-5 h-5 text-white/20 animate-spin" />
@@ -662,7 +675,7 @@ export default function EventTabBookings(p: Props) {
                   )}
                 </>
               ) : (
-                <p className="text-xs text-white/20 italic text-center py-8">Impossible de charger le détail.</p>
+                <p className="rounded-xl border border-rose-400/10 bg-rose-500/5 px-3 py-6 text-center text-xs text-rose-200/70">Impossible de charger le détail.</p>
               )}
             </div>
           </>

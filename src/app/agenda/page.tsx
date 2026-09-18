@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/utils/auth'
+import { CalendarDays } from 'lucide-react'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -24,7 +25,16 @@ export default function AgendaPage() {
   return (
     <div className="lsb-page lsb-agenda-page">
       {profileId ? (
-        <div className="lsb-agenda-shell"><AgendaCalendar profileId={profileId} isOwner showAvailability defaultCountry={country} /></div>
+        <div className="lsb-agenda-shell">
+          <div className="lsb-agenda-intro">
+            <div className="lsb-agenda-intro-copy">
+              <span className="lsb-agenda-kicker">Votre organisation</span>
+              <h1><CalendarDays aria-hidden="true" /> Agenda</h1>
+              <p>Votre mois, vos équipes et vos bookings au même endroit.</p>
+            </div>
+          </div>
+          <AgendaCalendar profileId={profileId} isOwner showAvailability defaultCountry={country} />
+        </div>
       ) : (
         <div className="lsb-panel lsb-empty-panel">Votre profil doit être complété pour utiliser l’agenda.</div>
       )}

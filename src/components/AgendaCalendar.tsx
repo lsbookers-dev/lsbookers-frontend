@@ -895,46 +895,43 @@ export default function AgendaCalendar({
      RENDU
   ───────────────────────────────────────────────────────── */
   return (
-    <div className={`lsb-agenda-component rounded-2xl overflow-hidden ${isOwner ? 'is-owner' : 'is-public'}`} style={{ border: '0.5px solid #1c2030', background: '#0c0f18' }}>
+    <div className={`lsb-agenda-component rounded-2xl overflow-hidden ${isOwner ? 'is-owner' : 'is-public'}`}>
 
       {/* En-tête (masqué quand StaffEventView est actif — il a son propre header) */}
       {!showStaffEventPanel && (
-      <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '0.5px solid #1c2030', background: '#111318' }}>
+      <div className="lsb-agenda-toolbar flex items-center justify-between px-5 py-3.5">
         {showEventPanel ? (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" style={{ color: '#6366f1' }} />
-              <span className="font-medium text-sm" style={{ color: '#d0daf0' }}>Mes événements</span>
+          <div className="lsb-agenda-panel-toolbar flex items-center justify-between w-full">
+            <div className="lsb-agenda-toolbar-heading flex items-center gap-2">
+              <span className="lsb-agenda-toolbar-icon"><CalendarDays className="h-4 w-4" /></span>
+              <span className="font-medium text-sm">Mes événements</span>
             </div>
             <div className="flex items-center gap-2">
               {eventMode === 'detail' && (
                 <button
                   onClick={() => { setEventMode('list'); setSelectedEventId(null); setEventDetail(null) }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition hover:opacity-80"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '0.5px solid #2a3050', color: '#8891b0' }}
+                  className="lsb-agenda-action is-secondary flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition"
                 >
                   ← Retour
                 </button>
               )}
               <button
                 onClick={() => { setShowEventPanel(false); setEventMode('list') }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition hover:opacity-80"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '0.5px solid #2a3050', color: '#8891b0' }}
+                className="lsb-agenda-action is-secondary flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition"
               >
                 <X className="h-3 w-3" /> Fermer
               </button>
             </div>
           </div>
         ) : showPanel ? (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" style={{ color: '#6366f1' }} />
-              <span className="font-medium text-sm" style={{ color: '#d0daf0' }}>Mes bookings</span>
+          <div className="lsb-agenda-panel-toolbar flex items-center justify-between w-full">
+            <div className="lsb-agenda-toolbar-heading flex items-center gap-2">
+              <span className="lsb-agenda-toolbar-icon"><BookOpen className="h-4 w-4" /></span>
+              <span className="font-medium text-sm">Mes bookings</span>
             </div>
             <button
               onClick={() => setShowPanel(false)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition hover:opacity-80"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '0.5px solid #2a3050', color: '#8891b0' }}
+              className="lsb-agenda-action is-secondary flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition"
             >
               <X className="h-3 w-3" /> Fermer
             </button>
@@ -945,12 +942,12 @@ export default function AgendaCalendar({
               <span>{isOwner ? 'VOTRE AGENDA' : 'DISPONIBILITÉS'}</span>
               <strong>{periodLabel}</strong>
               {events.length > 0 && (
-                <span style={{ fontSize: 11, color: '#9ea8c8' }}>
+                <span className="lsb-agenda-count">
                   {events.length} événement{events.length > 1 ? 's' : ''}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="lsb-agenda-toolbar-controls flex items-center gap-1.5">
               <div className="lsb-agenda-view-switch" aria-label="Affichage de l’agenda">
                 <button type="button" aria-pressed={viewMode === 'week'} className={viewMode === 'week' ? 'is-active' : ''} onClick={() => setViewMode('week')}>Semaine</button>
                 <button type="button" aria-pressed={viewMode === 'month'} className={viewMode === 'month' ? 'is-active' : ''} onClick={() => setViewMode('month')}>Mois</button>
@@ -958,8 +955,7 @@ export default function AgendaCalendar({
               {isOwner && (
                 <button
                   onClick={openEventPanel}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition hover:opacity-80"
-                  style={{ background: 'rgba(99,102,241,0.12)', border: '0.5px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}
+                  className="lsb-agenda-action is-primary flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition"
                 >
                   <Plus className="h-3 w-3" /> Événement
                 </button>
@@ -967,8 +963,7 @@ export default function AgendaCalendar({
               {isOwner && (
                 <button
                   onClick={openPanel}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition hover:opacity-80"
-                  style={{ background: 'rgba(99,102,241,0.12)', border: '0.5px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}
+                  className="lsb-agenda-action is-secondary flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition"
                 >
                   <BookOpen className="h-3 w-3" /> Bookings
                 </button>
@@ -976,27 +971,24 @@ export default function AgendaCalendar({
               {isOwner && showAvailability && (
                 <button
                   onClick={() => { setMultiSelectMode(m => !m); setSelected(null) }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition hover:opacity-80"
-                  style={{
-                    background: multiSelectMode ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)',
-                    border: multiSelectMode ? '0.5px solid rgba(99,102,241,0.6)' : '0.5px solid #2a3050',
-                    color: multiSelectMode ? '#a5b4fc' : '#6b7494',
-                  }}
+                  className={`lsb-agenda-action is-secondary flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition ${multiSelectMode ? 'is-active' : ''}`}
                 >
                   <CheckSquare className="h-3 w-3" /> Sélection multiple
                 </button>
               )}
-              <div style={{ width: '0.5px', height: 16, background: '#1c2030', margin: '0 2px' }} />
+              <div className="lsb-agenda-divider" />
               <button
                 onClick={() => movePeriod(-1)}
-                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#9ea8c8', cursor: 'pointer' }}
+                className="lsb-agenda-nav-button"
+                aria-label={viewMode === 'month' ? 'Mois précédent' : 'Semaine précédente'}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button onClick={goToday} className="lsb-agenda-today">Aujourd’hui</button>
               <button
                 onClick={() => movePeriod(1)}
-                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '0.5px solid #2a3050', borderRadius: 8, color: '#9ea8c8', cursor: 'pointer' }}
+                className="lsb-agenda-nav-button"
+                aria-label={viewMode === 'month' ? 'Mois suivant' : 'Semaine suivante'}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

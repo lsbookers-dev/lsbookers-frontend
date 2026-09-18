@@ -1,6 +1,17 @@
 // agenda/EventPanel.tsx — Panneau "Événements" (liste + détail avec 6 onglets)
 
-import { CalendarDays } from 'lucide-react'
+import {
+  BriefcaseBusiness,
+  CalendarDays,
+  CalendarRange,
+  Handshake,
+  ListChecks,
+  MapPin,
+  ReceiptText,
+  Sparkles,
+  UsersRound,
+  WalletCards,
+} from 'lucide-react'
 import {
   EventSummary, EventDetail, EventOffer, EventOfferForm,
   LinkedBooking, EventMode,
@@ -159,6 +170,10 @@ export default function EventPanel(p: EventPanelProps) {
     submitEventOffer, deleteEventOffer,
   } = p
 
+  void newPurchaseItem; void setNewPurchaseItem; void newPurchaseQty; void setNewPurchaseQty
+  void newPurchasePrice; void setNewPurchasePrice; void addingPurchase
+  void addPurchase; void togglePurchaseDone; void deletePurchase; void setDocFilter
+
   /* ── LIST MODE — liste des événements ── */
   if (eventMode === 'list') {
     void createCategory; void setCreateCategory; void createBudget; void setCreateBudget
@@ -168,7 +183,7 @@ export default function EventPanel(p: EventPanelProps) {
     void createWithEndDate; void setCreateWithEndDate; void creating; void createError; void createEvent
 
     return (
-      <div className="p-4 space-y-2.5">
+      <div className="p-3 sm:p-4 space-y-2.5">
         {eventsLoading && (
           <div className="text-center py-10 text-white/30 text-sm">Chargement…</div>
         )}
@@ -179,26 +194,54 @@ export default function EventPanel(p: EventPanelProps) {
           </div>
         )}
         {!eventsLoading && !eventsError && allEvents.length === 0 && (
-          <div className="text-center py-12 space-y-3">
-            <p className="text-white/30 text-sm">Aucun événement pour l&apos;instant.</p>
+          <div className="text-center py-12 px-4 space-y-3 rounded-2xl border border-dashed border-violet-400/20 bg-gradient-to-br from-violet-500/10 via-indigo-500/5 to-cyan-500/10">
+            <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-300">
+              <CalendarDays className="h-4 w-4" />
+            </div>
+            <p className="text-white/55 text-sm">Aucun événement pour l&apos;instant.</p>
             <button onClick={onCreateNew}
-              className="text-xs bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 px-4 py-2 rounded-xl hover:bg-emerald-600/30 transition">
+              className="text-xs bg-violet-500/20 border border-violet-400/30 text-violet-200 px-4 py-2 rounded-xl hover:bg-violet-500/30 transition">
               Créer mon premier événement
             </button>
           </div>
         )}
         {!eventsLoading && !eventsError && allEvents.map(ev => (
           <button key={ev.id} onClick={() => openEventDetail(ev.id)}
-            className={`w-full text-left rounded-xl px-3.5 py-3 transition border ${
+            className={`group relative w-full overflow-hidden text-left rounded-2xl px-3.5 py-3.5 transition border ${
               ev.id === lastCreatedId
-                ? 'bg-emerald-500/10 border-emerald-500/30'
-                : 'bg-white/4 border-white/8 hover:bg-white/8'
+                ? 'bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-transparent border-emerald-400/30'
+                : 'bg-gradient-to-r from-violet-500/[0.09] via-indigo-500/[0.05] to-cyan-500/[0.04] border-white/10 hover:border-violet-400/25 hover:from-violet-500/[0.14]'
             }`}>
-            <p className="text-sm font-medium text-white truncate">{ev.title}</p>
-            <p className="text-[11px] text-white/40 mt-0.5">
-              {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-              {ev.lieu ? ` · ${ev.lieu}` : ''}
-            </p>
+            <span className={`absolute inset-y-3 left-0 w-0.5 rounded-r-full ${ev.id === lastCreatedId ? 'bg-emerald-400' : 'bg-violet-400/70'}`} />
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
+                <span className="text-sm font-semibold tabular-nums">
+                  {new Date(ev.start).toLocaleDateString('fr-FR', { day: '2-digit' })}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-semibold text-white/90 group-hover:text-white">{ev.title}</p>
+                  {ev.category && (
+                    <span className="hidden sm:inline rounded-full border border-cyan-400/15 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200/70">
+                      {ev.category}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/45">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarRange className="h-3 w-3 text-violet-300/70" />
+                    {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                  {ev.lieu && (
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <MapPin className="h-3 w-3 shrink-0 text-cyan-300/70" />
+                      <span className="truncate">{ev.lieu}</span>
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
           </button>
         ))}
       </div>
@@ -211,39 +254,45 @@ export default function EventPanel(p: EventPanelProps) {
     void allEvents; void eventsLoading; void eventsError; void lastCreatedId; void fetchAllEvents; void openEventDetail
 
     return (
-      <div className="p-4">
-        <div className="bg-white/5 rounded-2xl border border-white/10 p-4 space-y-3">
+      <div className="p-3 sm:p-4">
+        <div className="relative overflow-hidden bg-gradient-to-br from-violet-500/15 via-indigo-500/[0.07] to-cyan-500/10 rounded-2xl border border-violet-400/20 p-4 space-y-3 shadow-[0_24px_70px_-42px_rgba(139,92,246,0.9)]">
+          <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-violet-500/20 blur-3xl" />
 
           {/* En-tête */}
-          <div className="flex items-center gap-2 pb-1">
-            <CalendarDays className="h-4 w-4 text-green-400 shrink-0" />
-            <p className="text-sm font-bold text-white">Nouvel événement</p>
+          <div className="relative flex items-center gap-3 pb-1">
+            <div className="grid h-9 w-9 place-items-center rounded-xl border border-violet-300/20 bg-violet-500/20 text-violet-200">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Nouvel événement</p>
+              <p className="text-[11px] text-white/45">Posez les informations essentielles, vous pourrez compléter ensuite.</p>
+            </div>
           </div>
 
           {/* Nom */}
           <div>
             <p className="text-[11px] text-white/50 mb-1.5">
-              Nom de l&apos;événement <span className="text-green-400">*</span>
+              Nom de l&apos;événement <span className="text-violet-300">*</span>
             </p>
             <input
               type="text" value={createTitle} onChange={e => setCreateTitle(e.target.value)}
               placeholder="Soirée anniversaire…"
-              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40"
+              className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/75 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15"
             />
           </div>
 
           {/* Date + Heure */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
-              <p className="text-[11px] text-white/50 mb-1.5">Date <span className="text-green-400">*</span></p>
+              <p className="text-[11px] text-white/50 mb-1.5">Date <span className="text-violet-300">*</span></p>
               <input type="date" value={createDate} onChange={e => setCreateDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/75 border border-white/10 text-sm text-white outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
             </div>
             <div>
               <p className="text-[11px] text-white/50 mb-1.5">Heure</p>
               <input type="text" value={createStartTime} onChange={e => setCreateStartTime(e.target.value)}
                 placeholder="20:00" maxLength={5}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40" />
+                className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/75 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
             </div>
           </div>
 
@@ -254,32 +303,32 @@ export default function EventPanel(p: EventPanelProps) {
                 setCreateWithEndDate(e.target.checked)
                 if (!e.target.checked) { setCreateEndDate(''); setCreateEndTime('') }
               }}
-              className="w-3.5 h-3.5 rounded accent-green-500 cursor-pointer" />
+              className="w-3.5 h-3.5 rounded accent-violet-500 cursor-pointer" />
             <span className="text-xs text-white/50 group-hover:text-white/70 transition select-none">Ajouter une date de fin</span>
           </label>
 
           {createWithEndDate && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Date de fin</p>
                 <input type="date" value={createEndDate} onChange={e => setCreateEndDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:ring-1 focus:ring-green-500/40" />
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/75 border border-white/10 text-sm text-white outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
               </div>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Heure de fin</p>
                 <input type="text" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
                   placeholder="23:00" maxLength={5}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40" />
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/75 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
               </div>
             </div>
           )}
 
           {/* Lieu */}
           <div>
-            <p className="text-[11px] text-white/50 mb-1.5">Lieu <span className="text-green-400">*</span></p>
+            <p className="text-[11px] text-white/50 mb-1.5">Lieu <span className="text-violet-300">*</span></p>
             <input type="text" value={createLieu} onChange={e => setCreateLieu(e.target.value)}
               placeholder="Salle des fêtes, Paris…"
-              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-green-500/40" />
+              className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/75 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
           </div>
 
           {createError && (
@@ -288,7 +337,7 @@ export default function EventPanel(p: EventPanelProps) {
 
           <button onClick={createEvent}
             disabled={creating || !createTitle.trim() || !createDate || !createLieu.trim()}
-            className="w-full py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-40 transition">
+            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white text-sm font-semibold disabled:opacity-40 transition shadow-[0_12px_30px_-14px_rgba(139,92,246,0.9)]">
             {creating ? 'Création…' : 'Créer l\'événement'}
           </button>
         </div>
@@ -319,17 +368,17 @@ export default function EventPanel(p: EventPanelProps) {
   const startTime = new Date(eventDetail.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
   const ORGANIZER_TABS = [
-    { key: 'details'  as const, label: 'Détail' },
-    { key: 'staff'    as const, label: 'Personnel' },
-    { key: 'notes'    as const, label: 'Dépenses' },
-    { key: 'bookings' as const, label: 'Bookings' },
-    { key: 'offers'   as const, label: 'Offres' },
+    { key: 'details'  as const, label: 'Détail', icon: ListChecks },
+    { key: 'staff'    as const, label: 'Personnel', icon: UsersRound },
+    { key: 'notes'    as const, label: 'Dépenses', icon: ReceiptText },
+    { key: 'bookings' as const, label: 'Bookings', icon: Handshake },
+    { key: 'offers'   as const, label: 'Offres', icon: BriefcaseBusiness },
   ]
   const BOOKED_TABS = [
-    { key: 'details'  as const, label: 'Détails' },
-    { key: 'staff'    as const, label: 'Matériel' },
-    { key: 'notes'    as const, label: 'Contrat' },
-    { key: 'bookings' as const, label: 'Paiement' },
+    { key: 'details'  as const, label: 'Détails', icon: ListChecks },
+    { key: 'staff'    as const, label: 'Matériel', icon: UsersRound },
+    { key: 'notes'    as const, label: 'Contrat', icon: ReceiptText },
+    { key: 'bookings' as const, label: 'Paiement', icon: WalletCards },
   ]
   const DETAIL_TABS = isBookedEvent ? BOOKED_TABS : ORGANIZER_TABS
 
@@ -339,36 +388,63 @@ export default function EventPanel(p: EventPanelProps) {
 
   const allDocs      = eventDetail.documents || []
   const filteredDocs = docFilter === 'ALL' ? allDocs : allDocs.filter(d => d.fileType === docFilter)
+  void filteredDocs
 
   return (
-    <div className="max-h-[600px] overflow-y-auto">
+    <div className="max-h-[min(680px,76vh)] overflow-y-auto bg-[#0b0a12]/70">
       {/* En-tête événement */}
-      <div className="px-4 pt-3 pb-2.5 border-b border-white/8">
-        <p className="text-sm font-semibold text-white truncate mb-0.5">{eventDetail.title}</p>
-        <p className="text-[11px] text-white/40">
-          {new Date(eventDetail.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-          {startTime !== '00:00' ? ` · ${startTime}` : ''}
-          {eventDetail.lieu ? ` · ${eventDetail.lieu}` : ''}
-        </p>
+      <div className="relative overflow-hidden border-b border-violet-300/15 bg-gradient-to-br from-violet-500/25 via-indigo-500/12 to-cyan-500/10 px-4 py-4 sm:px-5">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-36 w-36 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="relative flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-violet-300/20 bg-violet-500/20 text-violet-100 shadow-[0_12px_36px_-18px_rgba(139,92,246,0.9)]">
+            <CalendarDays className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <p className="truncate text-base font-semibold text-white">{eventDetail.title}</p>
+              {eventDetail.category && (
+                <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-medium text-cyan-100/80">
+                  {eventDetail.category}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/55">
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarRange className="h-3.5 w-3.5 text-violet-200/80" />
+                {new Date(eventDetail.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {startTime !== '00:00' ? ` · ${startTime}` : ''}
+              </span>
+              {eventDetail.lieu && (
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-cyan-200/80" />
+                  <span className="truncate">{eventDetail.lieu}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Onglets */}
-      <div className="flex border-b border-white/8 overflow-x-auto">
+      <div className="flex gap-1 overflow-x-auto border-b border-white/8 bg-[#11101a]/85 px-2 py-2 sm:px-3">
         {DETAIL_TABS.map(tab => (
           <button
             key={tab.key}
             onClick={() => setDetailTab(tab.key)}
-            className={`px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition ${
-              detailTab === tab.key ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-white/40 hover:text-white/70'
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-[11px] font-medium transition sm:px-3 ${
+              detailTab === tab.key
+                ? 'border-violet-400/25 bg-gradient-to-r from-violet-500/25 to-indigo-500/15 text-violet-100 shadow-[0_8px_24px_-16px_rgba(139,92,246,0.8)]'
+                : 'border-transparent text-white/45 hover:border-white/8 hover:bg-white/5 hover:text-white/75'
             }`}
           >
+            <tab.icon className="h-3.5 w-3.5" />
             {tab.label}
           </button>
         ))}
       </div>
 
       {/* Contenu onglets */}
-      <div className="p-4 space-y-3">
+      <div className="p-3 sm:p-4 space-y-3">
 
         {detailTab === 'details' && (
           <EventTabDetail
