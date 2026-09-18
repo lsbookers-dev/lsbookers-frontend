@@ -4,7 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from 'react'
 import { getAuthToken } from '@/utils/auth'
-import { Loader2, Trash2, ToggleLeft, ToggleRight, Plus, X } from 'lucide-react'
+import { Loader2, Trash2, ToggleLeft, ToggleRight, Plus, X, Pin, PinOff } from 'lucide-react'
 
 type AdminPost = {
   id: number
@@ -13,6 +13,7 @@ type AdminPost = {
   mediaUrl: string | null
   mediaType: string | null
   active: boolean
+  pinned: boolean
   createdAt: string
 }
 
@@ -44,6 +45,7 @@ export default function AdminPublicationsPage() {
   // Form state
   const [title, setTitle]               = useState('')
   const [content, setContent]           = useState('')
+  const [pinned, setPinned]             = useState(false)
   const [mediaFile, setMediaFile]       = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [uploading, setUploading]       = useState(false)
@@ -127,6 +129,7 @@ export default function AdminPublicationsPage() {
           content:   content.trim() || null,
           mediaUrl,
           mediaType,
+          pinned,
         }),
       })
       if (!res.ok) {
@@ -137,6 +140,7 @@ export default function AdminPublicationsPage() {
       // Reset form
       setTitle('')
       setContent('')
+      setPinned(false)
       setMediaFile(null)
       setMediaPreview(null)
       showNotice('Publication créée avec succès.')
@@ -161,6 +165,20 @@ export default function AdminPublicationsPage() {
       showNotice('Publication supprimée.')
     } catch {
       setError('Erreur lors de la suppression.')
+    }
+  }
+
+  const handlePin = async (id: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/posts/${id}/pin`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+      })
+      if (!res.ok) throw new Error()
+      const d = await res.json()
+      setPosts(prev => prev.map(p => p.id === id ? d.post : p))
+    } catch {
+      setError('Erreur lors de la mise à jour.')
     }
   }
 
@@ -254,6 +272,23 @@ export default function AdminPublicationsPage() {
           </div>
         )}
 
+        {/* Pin option */}
+        <label className="flex items-center gap-3 cursor-pointer select-none group">
+          <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${pinned ? 'bg-amber-500 border-amber-500' : 'border-white/20 bg-white/5 group-hover:border-white/40'}`}>
+            {pinned && <Pin className="w-3 h-3 text-white" />}
+          </div>
+          <input
+            type="checkbox"
+            checked={pinned}
+            onChange={e => setPinned(e.target.checked)}
+            className="sr-only"
+          />
+          <span className="text-sm text-white/70 group-hover:text-white/90 transition-colors">
+            Épingler en tête de feed
+            <span className="ml-2 text-xs text-white/35">(restera tout en haut pour tous les utilisateurs)</span>
+          </span>
+        </label>
+
         <button
           type="submit"
           disabled={creating || uploading}
@@ -290,9 +325,21 @@ export default function AdminPublicationsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {post.pinned && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-400">
+                      Épinglé
+                    </span>
+                  )}
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${post.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/40'}`}>
                     {post.active ? 'Actif' : 'Inactif'}
                   </span>
+                  <button
+                    onClick={() => handlePin(post.id)}
+                    className={`transition-colors ${post.pinned ? 'text-amber-400 hover:text-amber-300' : 'text-white/30 hover:text-amber-400'}`}
+                    title={post.pinned ? 'Désépingler' : 'Épingler en tête de feed'}
+                  >
+                    {post.pinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+                  </button>
                   <button
                     onClick={() => handleToggle(post.id)}
                     className="text-white/40 hover:text-purple-400 transition-colors"

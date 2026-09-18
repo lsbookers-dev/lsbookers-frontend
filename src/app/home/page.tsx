@@ -85,6 +85,7 @@ type AdminPost = {
   content: string | null
   mediaUrl: string | null
   mediaType: string | null
+  pinned: boolean
   createdAt: string
 }
 
@@ -767,12 +768,19 @@ export default function HomePage() {
     }
   }
 
-  // Admin posts toujours en tête (priorité plateforme), puis feed algorithmique
+  // Posts épinglés en tête, les autres mélangés chronologiquement
   type FeedItem = { kind: 'post'; data: Post } | { kind: 'admin'; data: AdminPost }
-  const combinedFeed: FeedItem[] = [
-    ...adminPosts.map(p => ({ kind: 'admin' as const, data: p })),
+
+  const pinnedItems: FeedItem[] = adminPosts
+    .filter(p => p.pinned)
+    .map(p => ({ kind: 'admin' as const, data: p }))
+
+  const mixedItems: FeedItem[] = [
+    ...adminPosts.filter(p => !p.pinned).map(p => ({ kind: 'admin' as const, data: p })),
     ...posts.map(p => ({ kind: 'post' as const, data: p })),
-  ]
+  ].sort((a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime())
+
+  const combinedFeed: FeedItem[] = [...pinnedItems, ...mixedItems]
 
   // Filtrage selon l'onglet actif
   const filteredFeed: FeedItem[] = activeTab === 'network'
