@@ -158,6 +158,7 @@ export type EventOffer = {
   location: string
   country: string
   fee?: number | null
+  applicantCount?: number
 }
 
 export type EventOfferForm = {
