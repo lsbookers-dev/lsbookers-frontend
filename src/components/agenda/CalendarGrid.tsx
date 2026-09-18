@@ -153,7 +153,16 @@ export default function CalendarGrid(props: CalendarGridProps) {
               <div className="lsb-week-scroll">
                 <div className="lsb-week-timeline">
                   <div className="lsb-week-hours">
-                    {HOURS.map((hour) => <span key={hour} style={{ top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%` }}>{String(hour).padStart(2, '0')}:00</span>)}
+                    {HOURS.map((hour) => {
+                      const topPct = ((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100
+                      const isLast = hour === END_HOUR
+                      const label = hour === 24 ? '00:00' : `${String(hour).padStart(2, '0')}:00`
+                      return (
+                        <span key={hour} style={{ top: `${topPct}%`, transform: isLast ? 'translateY(-115%)' : 'translateY(3px)' }}>
+                          {label}
+                        </span>
+                      )
+                    })}
                   </div>
                   {days.map((date) => {
                     const dayEvents = events.filter((event) => isSameDay(new Date(event.start), date))

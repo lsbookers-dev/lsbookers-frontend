@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, BookOpen, Plus, X, CheckSquare } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, BookOpen, X, CheckSquare } from 'lucide-react'
 
 import {
   CalEvent, AvailDay, BookingItem, EventSummary, EventDetail,
@@ -957,7 +957,7 @@ export default function AgendaCalendar({
                   onClick={openEventPanel}
                   className="lsb-agenda-action is-primary flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition"
                 >
-                  <Plus className="h-3 w-3" /> Événement
+                  Événements
                 </button>
               )}
               {isOwner && (

@@ -408,7 +408,6 @@ body {
 .lsb-week-hours span {
   position: absolute;
   right: .58rem;
-  transform: translateY(-50%);
   color: #81788b;
   font-size: .57rem;
 }

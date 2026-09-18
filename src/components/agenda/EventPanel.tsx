@@ -205,45 +205,102 @@ export default function EventPanel(p: EventPanelProps) {
             </button>
           </div>
         )}
-        {!eventsLoading && !eventsError && allEvents.map(ev => (
-          <button key={ev.id} onClick={() => openEventDetail(ev.id)}
-            className={`group relative w-full overflow-hidden text-left rounded-2xl px-3.5 py-3.5 transition border ${
-              ev.id === lastCreatedId
-                ? 'bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-transparent border-emerald-400/30'
-                : 'bg-gradient-to-r from-violet-500/[0.09] via-indigo-500/[0.05] to-cyan-500/[0.04] border-white/10 hover:border-violet-400/25 hover:from-violet-500/[0.14]'
-            }`}>
-            <span className={`absolute inset-y-3 left-0 w-0.5 rounded-r-full ${ev.id === lastCreatedId ? 'bg-emerald-400' : 'bg-violet-400/70'}`} />
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
-                <span className="text-sm font-semibold tabular-nums">
-                  {new Date(ev.start).toLocaleDateString('fr-FR', { day: '2-digit' })}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-white/90 group-hover:text-white">{ev.title}</p>
-                  {ev.category && (
-                    <span className="hidden sm:inline rounded-full border border-cyan-400/15 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200/70">
-                      {ev.category}
+        {!eventsLoading && !eventsError && (() => {
+          const now = new Date(); now.setHours(0, 0, 0, 0)
+          const upcoming = allEvents.filter(ev => new Date(ev.start) >= now).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+          const past     = allEvents.filter(ev => new Date(ev.start) <  now).sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime())
+
+          function groupByMonth(evs: EventSummary[]) {
+            const map = new Map<string, { label: string; events: EventSummary[] }>()
+            for (const ev of evs) {
+              const d = new Date(ev.start)
+              const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+              const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+              if (!map.has(key)) map.set(key, { label, events: [] })
+              map.get(key)!.events.push(ev)
+            }
+            return [...map.values()]
+          }
+
+          function renderCard(ev: EventSummary) {
+            return (
+              <button key={ev.id} onClick={() => openEventDetail(ev.id)}
+                className={`group relative w-full overflow-hidden text-left rounded-2xl px-3.5 py-3.5 transition border ${
+                  ev.id === lastCreatedId
+                    ? 'bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-transparent border-emerald-400/30'
+                    : 'bg-gradient-to-r from-violet-500/[0.09] via-indigo-500/[0.05] to-cyan-500/[0.04] border-white/10 hover:border-violet-400/25 hover:from-violet-500/[0.14]'
+                }`}>
+                <span className={`absolute inset-y-3 left-0 w-0.5 rounded-r-full ${ev.id === lastCreatedId ? 'bg-emerald-400' : 'bg-violet-400/70'}`} />
+                <div className="flex items-start gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
+                    <span className="text-sm font-semibold tabular-nums">
+                      {new Date(ev.start).toLocaleDateString('fr-FR', { day: '2-digit' })}
                     </span>
-                  )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-white/90 group-hover:text-white">{ev.title}</p>
+                      {ev.category && (
+                        <span className="hidden sm:inline rounded-full border border-cyan-400/15 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200/70">
+                          {ev.category}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/45">
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarRange className="h-3 w-3 text-violet-300/70" />
+                        {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                      {ev.lieu && (
+                        <span className="inline-flex min-w-0 items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0 text-cyan-300/70" />
+                          <span className="truncate">{ev.lieu}</span>
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/45">
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarRange className="h-3 w-3 text-violet-300/70" />
-                    {new Date(ev.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </span>
-                  {ev.lieu && (
-                    <span className="inline-flex min-w-0 items-center gap-1">
-                      <MapPin className="h-3 w-3 shrink-0 text-cyan-300/70" />
-                      <span className="truncate">{ev.lieu}</span>
-                    </span>
+              </button>
+            )
+          }
+
+          const upcomingGroups = groupByMonth(upcoming)
+          const pastGroups     = groupByMonth(past)
+
+          return (
+            <>
+              {upcomingGroups.length === 0 && pastGroups.length === 0 ? null : (
+                <>
+                  {upcomingGroups.map(group => (
+                    <div key={group.label} className="space-y-2">
+                      <p className="text-[10px] uppercase tracking-widest text-violet-300/60 font-semibold px-0.5 pt-1">
+                        {group.label.charAt(0).toUpperCase() + group.label.slice(1)}
+                      </p>
+                      {group.events.map(renderCard)}
+                    </div>
+                  ))}
+                  {past.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 pt-2">
+                        <div className="h-px flex-1 bg-white/8" />
+                        <p className="text-[10px] uppercase tracking-widest text-white/25 font-semibold">Passés</p>
+                        <div className="h-px flex-1 bg-white/8" />
+                      </div>
+                      {pastGroups.map(group => (
+                        <div key={group.label} className="space-y-2">
+                          <p className="text-[10px] uppercase tracking-widest text-white/30 font-semibold px-0.5">
+                            {group.label.charAt(0).toUpperCase() + group.label.slice(1)}
+                          </p>
+                          {group.events.map(renderCard)}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </p>
-              </div>
-            </div>
-          </button>
-        ))}
+                </>
+              )}
+            </>
+          )
+        })()}
       </div>
     )
   }
