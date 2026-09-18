@@ -12,6 +12,7 @@ import {
   UsersRound,
   WalletCards,
 } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import {
   EventSummary, EventDetail, EventOffer, EventOfferForm,
   LinkedBooking, EventMode,
@@ -174,6 +175,10 @@ export default function EventPanel(p: EventPanelProps) {
   void newPurchasePrice; void setNewPurchasePrice; void addingPurchase
   void addPurchase; void togglePurchaseDone; void deletePurchase; void setDocFilter
 
+  const PAGE_SIZE = 6
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [eventMode])
+
   /* ── LIST MODE — liste des événements ── */
   if (eventMode === 'list') {
     void createCategory; void setCreateCategory; void createBudget; void setCreateBudget
@@ -209,6 +214,10 @@ export default function EventPanel(p: EventPanelProps) {
           const now = new Date(); now.setHours(0, 0, 0, 0)
           const upcoming = allEvents.filter(ev => new Date(ev.start) >= now).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
           const past     = allEvents.filter(ev => new Date(ev.start) <  now).sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime())
+          // liste ordonnée complète : à venir en premier, passés ensuite
+          const ordered  = [...upcoming, ...past]
+          const visible  = ordered.slice(0, visibleCount)
+          const remaining = ordered.length - visibleCount
 
           function groupByMonth(evs: EventSummary[]) {
             const map = new Map<string, { label: string; events: EventSummary[] }>()
@@ -264,39 +273,46 @@ export default function EventPanel(p: EventPanelProps) {
             )
           }
 
-          const upcomingGroups = groupByMonth(upcoming)
-          const pastGroups     = groupByMonth(past)
+          // séparer les visibles entre à venir et passés
+          const visibleUpcoming = visible.filter(ev => new Date(ev.start) >= now)
+          const visiblePast     = visible.filter(ev => new Date(ev.start) <  now)
+          const upcomingGroups  = groupByMonth(visibleUpcoming)
+          const pastGroups      = groupByMonth(visiblePast)
 
           return (
             <>
-              {upcomingGroups.length === 0 && pastGroups.length === 0 ? null : (
-                <>
-                  {upcomingGroups.map(group => (
+              {upcomingGroups.map(group => (
+                <div key={group.label} className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-widest text-violet-300/60 font-semibold px-0.5 pt-1">
+                    {group.label.charAt(0).toUpperCase() + group.label.slice(1)}
+                  </p>
+                  {group.events.map(renderCard)}
+                </div>
+              ))}
+              {visiblePast.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 pt-2">
+                    <div className="h-px flex-1 bg-white/8" />
+                    <p className="text-[10px] uppercase tracking-widest text-white/25 font-semibold">Passés</p>
+                    <div className="h-px flex-1 bg-white/8" />
+                  </div>
+                  {pastGroups.map(group => (
                     <div key={group.label} className="space-y-2">
-                      <p className="text-[10px] uppercase tracking-widest text-violet-300/60 font-semibold px-0.5 pt-1">
+                      <p className="text-[10px] uppercase tracking-widest text-white/30 font-semibold px-0.5">
                         {group.label.charAt(0).toUpperCase() + group.label.slice(1)}
                       </p>
                       {group.events.map(renderCard)}
                     </div>
                   ))}
-                  {past.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 pt-2">
-                        <div className="h-px flex-1 bg-white/8" />
-                        <p className="text-[10px] uppercase tracking-widest text-white/25 font-semibold">Passés</p>
-                        <div className="h-px flex-1 bg-white/8" />
-                      </div>
-                      {pastGroups.map(group => (
-                        <div key={group.label} className="space-y-2">
-                          <p className="text-[10px] uppercase tracking-widest text-white/30 font-semibold px-0.5">
-                            {group.label.charAt(0).toUpperCase() + group.label.slice(1)}
-                          </p>
-                          {group.events.map(renderCard)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
+                </div>
+              )}
+              {remaining > 0 && (
+                <button
+                  onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                  className="w-full py-2.5 rounded-xl border border-white/10 bg-white/[0.03] text-xs text-white/45 hover:text-white/70 hover:bg-white/[0.06] hover:border-white/15 transition"
+                >
+                  Afficher plus <span className="text-white/25">({remaining} restant{remaining > 1 ? 's' : ''})</span>
+                </button>
               )}
             </>
           )
