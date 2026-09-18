@@ -322,14 +322,18 @@ export default function LandingPage() {
   const router = useRouter()
 
   const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl] = useState('')
+  const [bgUrl, setBgUrl]       = useState('')
+  const [logoUrl, setLogoUrl]   = useState<string | null>(null)
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   useEffect(() => {
     fetch(`${API_BASE}/api/admin/settings`)
       .then(r => r.json())
-      .then(data => setBgUrl(data?.landingBgUrl || DEFAULT_BG))
+      .then(data => {
+        setBgUrl(data?.landingBgUrl || DEFAULT_BG)
+        if (data?.headerLogoUrl) setLogoUrl(data.headerLogoUrl)
+      })
       .catch(() => setBgUrl(DEFAULT_BG))
   }, [API_BASE])
 
@@ -370,13 +374,19 @@ export default function LandingPage() {
           {/* ── Header ── */}
           <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6">
             <Link href="/" className="inline-flex items-center gap-3 group" aria-label="LSBookers">
-              <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition overflow-hidden flex items-center justify-center">
-                <span className="font-black text-base tracking-widest">LS</span>
-              </div>
-              <div className="leading-tight hidden sm:block">
-                <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
-                <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
-              </div>
+              {logoUrl ? (
+                <Image src={logoUrl} alt="LSBookers" width={220} height={56} className="object-contain h-12 w-auto" unoptimized />
+              ) : (
+                <>
+                  <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition overflow-hidden flex items-center justify-center">
+                    <span className="font-black text-base tracking-widest">LS</span>
+                  </div>
+                  <div className="leading-tight hidden sm:block">
+                    <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
+                    <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
+                  </div>
+                </>
+              )}
             </Link>
 
             <div className="flex items-center gap-2">
