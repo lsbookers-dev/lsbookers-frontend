@@ -221,22 +221,41 @@ function BrandingPanel({ step }: { step: number }) {
 }
 
 // ─── Composant Tag ────────────────────────────────────────────────────────────
+const MAX_SPECIALTIES = 20
+
 function TagSelector({ options, selected, onChange }: {
   options: string[]; selected: string[]; onChange: (v: string[]) => void
 }) {
-  const toggle = (tag: string) =>
-    onChange(selected.includes(tag) ? selected.filter(t => t !== tag) : [...selected, tag])
+  const toggle = (tag: string) => {
+    if (selected.includes(tag)) {
+      onChange(selected.filter(t => t !== tag))
+    } else if (selected.length < MAX_SPECIALTIES) {
+      onChange([...selected, tag])
+    }
+  }
+  const atLimit = selected.length >= MAX_SPECIALTIES
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map(tag => (
-        <button key={tag} type="button" onClick={() => toggle(tag)}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition border
-            ${selected.includes(tag)
-              ? 'bg-violet-600 border-violet-500 text-white'
-              : 'bg-white/5 border-white/10 text-white/50 hover:border-white/25 hover:text-white/80'}`}>
-          {tag}
-        </button>
-      ))}
+    <div className="space-y-2">
+      {atLimit && (
+        <p className="text-xs text-amber-400/80">Maximum {MAX_SPECIALTIES} spécialités atteint.</p>
+      )}
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(tag => {
+          const isSelected = selected.includes(tag)
+          const isDisabled = !isSelected && atLimit
+          return (
+            <button key={tag} type="button" onClick={() => toggle(tag)} disabled={isDisabled}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition border
+                ${isSelected
+                  ? 'bg-violet-600 border-violet-500 text-white'
+                  : isDisabled
+                    ? 'bg-white/[0.02] border-white/5 text-white/20 cursor-not-allowed'
+                    : 'bg-white/5 border-white/10 text-white/50 hover:border-white/25 hover:text-white/80'}`}>
+              {tag}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -609,12 +628,19 @@ export default function RegisterPage() {
                   </Field>
 
                   {/* Case majorité */}
-                  <label className="flex items-start gap-3 cursor-pointer group">
-                    <div
-                      onClick={() => setIsAdult(v => !v)}
-                      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition
+                  <label htmlFor="is-adult" className="flex items-start gap-3 cursor-pointer group">
+                    <div className="relative mt-0.5 flex-shrink-0">
+                      <input
+                        id="is-adult"
+                        type="checkbox"
+                        checked={isAdult}
+                        onChange={e => setIsAdult(e.target.checked)}
+                        className="sr-only"
+                      />
+                      <div className={`flex h-5 w-5 items-center justify-center rounded border-2 transition
                         ${isAdult ? 'border-violet-500 bg-violet-600' : 'border-white/25 bg-white/5 group-hover:border-white/40'}`}>
-                      {isAdult && <Check className="h-3 w-3 text-white" />}
+                        {isAdult && <Check className="h-3 w-3 text-white" />}
+                      </div>
                     </div>
                     <span className="text-xs text-white/55 leading-relaxed">
                       Je certifie avoir <strong className="text-white/75">18 ans ou plus</strong> et être autorisé à m&apos;inscrire sur cette plateforme.
