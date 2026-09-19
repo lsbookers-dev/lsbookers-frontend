@@ -5,7 +5,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { useAuth, type LoginError } from '@/context/AuthContext'
+import { usePublicSettings } from '@/context/PublicSettingsContext'
 import { apiUrl } from '@/utils/api'
+import PublicBrand from '@/components/PublicBrand'
+import { PUBLIC_IMAGE_BLUR } from '@/lib/publicSettings.shared'
 
 /* ─────────────────────────────────────────────────────────
    HELPERS
@@ -26,21 +29,7 @@ function BrandingPanel({ logoUrl }: { logoUrl?: string | null }) {
     <aside className="hidden lg:flex flex-col justify-between border-r border-white/8">
 
       <div className="p-10">
-        <Link href="/" className="inline-flex items-center gap-3 group">
-          {logoUrl ? (
-            <Image src={logoUrl} alt="LSBookers" width={44} height={44} className="object-contain h-11 w-11 rounded-xl" unoptimized />
-          ) : (
-            <>
-              <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
-                <span className="font-black text-base tracking-widest">LS</span>
-              </div>
-              <div className="leading-tight">
-                <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
-                <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
-              </div>
-            </>
-          )}
-        </Link>
+        <PublicBrand logoUrl={logoUrl} />
 
         <div className="mt-16">
           <h1 className="text-5xl font-black tracking-tight leading-[1.1]">
@@ -65,6 +54,7 @@ function BrandingPanel({ logoUrl }: { logoUrl?: string | null }) {
 ───────────────────────────────────────────────────────── */
 export default function LoginPage() {
   const { login } = useAuth()
+  const { loginBgUrl: bgUrl, landingLogoUrl: logoUrl } = usePublicSettings()
 
   const [email, setEmail]                       = useState('')
   const [password, setPassword]                 = useState('')
@@ -74,23 +64,9 @@ export default function LoginPage() {
   const [emailNotVerified, setEmailNotVerified] = useState(false)
   const [resendLoading, setResendLoading]       = useState(false)
   const [resendSent, setResendSent]             = useState(false)
-  const [greeting, setGreeting]                 = useState('')
-
-  const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl] = useState(DEFAULT_BG)
-  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [greeting, setGreeting]                 = useState('Bienvenue')
 
   useEffect(() => { setGreeting(getGreeting()) }, [])
-
-  useEffect(() => {
-    fetch(apiUrl('admin/settings'))
-      .then(r => r.json())
-      .then(data => {
-        if (data?.loginBgUrl) setBgUrl(data.loginBgUrl)
-        if (data?.landingLogoUrl) setLogoUrl(data.landingLogoUrl)
-      })
-      .catch(() => {})
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -143,7 +119,17 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white" style={{ background: '#0c0a14' }}>
 
-      <Image src={bgUrl} alt="LSBookers" fill priority sizes="100vw" className="z-0 object-cover" />
+      <Image
+        src={bgUrl}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        quality={82}
+        placeholder="blur"
+        blurDataURL={PUBLIC_IMAGE_BLUR}
+        className="z-0 object-cover"
+      />
       <div className="absolute inset-0 z-10 bg-black/60" />
       <div className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl" />
@@ -160,11 +146,8 @@ export default function LoginPage() {
           <div className="w-full max-w-md">
 
             {/* En-tête mobile */}
-            <div className="lg:hidden flex items-center gap-3 mb-8">
-              <div className="h-9 w-9 rounded-xl bg-white/10 backdrop-blur ring-1 ring-white/15 flex items-center justify-center">
-                <span className="font-black text-sm tracking-widest">LS</span>
-              </div>
-              <span className="font-extrabold text-base">LSBookers</span>
+            <div className="mb-8 lg:hidden">
+              <PublicBrand logoUrl={logoUrl} size="small" showTagline={false} />
             </div>
 
             <form

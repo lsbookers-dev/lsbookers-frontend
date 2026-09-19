@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import PublicBrand from '@/components/PublicBrand'
+import { usePublicSettings } from '@/context/PublicSettingsContext'
+import { PUBLIC_IMAGE_BLUR } from '@/lib/publicSettings.shared'
 import {
   Mic2, CalendarDays, Camera, Lock, CreditCard, Globe,
   Smartphone, Bell, Zap, WifiOff, ArrowUp, Plus, CheckCircle2,
@@ -329,23 +331,7 @@ function AppSection() {
    PAGE PRINCIPALE
 ───────────────────────────────────────────────────────── */
 export default function LandingPage() {
-  const router = useRouter()
-
-  const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl]       = useState(DEFAULT_BG)
-  const [logoUrl, setLogoUrl]   = useState<string | null>(null)
-
-  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-  useEffect(() => {
-    fetch(`${API_BASE}/api/admin/settings`)
-      .then(r => r.json())
-      .then(data => {
-        if (data?.landingBgUrl) setBgUrl(data.landingBgUrl)
-        if (data?.landingLogoUrl) setLogoUrl(data.landingLogoUrl)
-      })
-      .catch(() => {})
-  }, [API_BASE])
+  const { landingBgUrl: bgUrl, landingLogoUrl: logoUrl } = usePublicSettings()
 
   return (
     <div className="w-full bg-neutral-950 text-white overflow-x-hidden">
@@ -362,6 +348,9 @@ export default function LandingPage() {
           fill
           priority
           sizes="100vw"
+          quality={82}
+          placeholder="blur"
+          blurDataURL={PUBLIC_IMAGE_BLUR}
           className="z-0 object-cover"
         />
 
@@ -381,35 +370,21 @@ export default function LandingPage() {
 
           {/* ── Header ── */}
           <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6">
-            <Link href="/" className="inline-flex items-center gap-3 group" aria-label="LSBookers">
-              {logoUrl ? (
-                <Image src={logoUrl} alt="LSBookers" width={48} height={48} className="object-contain h-12 w-12 rounded-xl" unoptimized />
-              ) : (
-                <>
-                  <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition overflow-hidden flex items-center justify-center">
-                    <span className="font-black text-base tracking-widest">LS</span>
-                  </div>
-                  <div className="leading-tight hidden sm:block">
-                    <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
-                    <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
-                  </div>
-                </>
-              )}
-            </Link>
+            <PublicBrand logoUrl={logoUrl} size="large" hideTextOnMobile />
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => router.push('/login')}
-                className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition backdrop-blur"
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition backdrop-blur"
               >
                 Se connecter
-              </button>
-              <button
-                onClick={() => router.push('/register')}
-                className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 transition shadow-lg shadow-purple-900/40"
+              </Link>
+              <Link
+                href="/register"
+                className="inline-flex items-center justify-center rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 transition shadow-lg shadow-purple-900/40"
               >
                 Créer un compte
-              </button>
+              </Link>
             </div>
           </header>
 
@@ -434,18 +409,18 @@ export default function LandingPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
-                <button
-                  onClick={() => router.push('/register')}
-                  className="w-full sm:w-auto rounded-xl bg-purple-600 px-7 py-3 text-base font-semibold text-white hover:bg-purple-500 transition shadow-lg shadow-purple-900/40"
+                <Link
+                  href="/register"
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-purple-600 px-7 py-3 text-base font-semibold text-white hover:bg-purple-500 transition shadow-lg shadow-purple-900/40 sm:w-auto"
                 >
                   Rejoindre gratuitement
-                </button>
-                <button
-                  onClick={() => router.push('/login')}
-                  className="w-full sm:w-auto rounded-xl border border-white/15 bg-white/5 px-7 py-3 text-base text-white/80 hover:bg-white/10 hover:text-white transition backdrop-blur"
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-7 py-3 text-base text-white/80 hover:bg-white/10 hover:text-white transition backdrop-blur sm:w-auto"
                 >
                   J&apos;ai déjà un compte
-                </button>
+                </Link>
               </div>
 
             </div>
@@ -657,18 +632,18 @@ export default function LandingPage() {
               Crée ton profil gratuitement et commence à te connecter avec les acteurs de l&apos;événementiel dès aujourd&apos;hui.
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
-              <button
-                onClick={() => router.push('/register')}
-                className="w-full sm:w-auto rounded-xl bg-purple-600 px-8 py-3.5 text-base font-semibold text-white hover:bg-purple-500 transition shadow-lg shadow-purple-900/40"
+              <Link
+                href="/register"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-purple-600 px-8 py-3.5 text-base font-semibold text-white hover:bg-purple-500 transition shadow-lg shadow-purple-900/40 sm:w-auto"
               >
                 Créer mon compte — c&apos;est gratuit
-              </button>
-              <button
-                onClick={() => router.push('/login')}
-                className="w-full sm:w-auto rounded-xl border border-white/15 bg-white/5 px-8 py-3.5 text-base text-white/70 hover:bg-white/10 hover:text-white transition"
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-8 py-3.5 text-base text-white/70 hover:bg-white/10 hover:text-white transition sm:w-auto"
               >
                 Se connecter
-              </button>
+              </Link>
             </div>
           </div>
 

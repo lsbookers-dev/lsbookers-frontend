@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    unoptimized: true,
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400,
     remotePatterns: [
       // Médias servis par ton backend (local & prod)
       {
@@ -19,6 +20,16 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'lsbookers.com',
         pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lsbookers-backend-production.up.railway.app',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
       },
 
       // ✅ Cloudflare R2 (tous les médias — avatars, bannières, publications, messages, logos)

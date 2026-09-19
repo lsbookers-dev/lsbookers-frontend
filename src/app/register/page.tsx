@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 import { apiUrl } from '@/utils/api'
+import { usePublicSettings } from '@/context/PublicSettingsContext'
+import { PUBLIC_IMAGE_BLUR } from '@/lib/publicSettings.shared'
 import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Gift, Mail, Lock, Camera, CalendarDays, Building2 } from 'lucide-react'
 import CityAutocomplete from '@/components/CityAutocomplete'
+import PublicBrand from '@/components/PublicBrand'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
@@ -181,21 +184,7 @@ function BrandingPanel({ step, logoUrl }: { step: number; logoUrl?: string | nul
   return (
     <aside className="hidden lg:flex flex-col justify-between border-r border-white/8">
       <div className="p-10">
-        <Link href="/" className="inline-flex items-center gap-3 group">
-          {logoUrl ? (
-            <Image src={logoUrl} alt="LSBookers" width={44} height={44} className="object-contain h-11 w-11 rounded-xl" unoptimized />
-          ) : (
-            <>
-              <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
-                <span className="font-black text-base tracking-widest">LS</span>
-              </div>
-              <div className="leading-tight">
-                <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
-                <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
-              </div>
-            </>
-          )}
-        </Link>
+        <PublicBrand logoUrl={logoUrl} />
 
         <div className="mt-12 space-y-4">
           <div className="h-12 w-12 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
@@ -271,17 +260,7 @@ function TagSelector({ options, selected, onChange }: {
 // ─── Page principale ──────────────────────────────────────────────────────────
 export default function RegisterPage() {
   const router = useRouter()
-  const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl] = useState(DEFAULT_BG)
-  const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  useEffect(() => {
-    fetch(apiUrl('admin/settings')).then(r => r.json())
-      .then(d => {
-        if (d?.registerBgUrl) setBgUrl(d.registerBgUrl)
-        if (d?.landingLogoUrl) setLogoUrl(d.landingLogoUrl)
-      })
-      .catch(() => {})
-  }, [])
+  const { registerBgUrl: bgUrl, landingLogoUrl: logoUrl } = usePublicSettings()
 
   const [step, setStep]     = useState(1)
   const [error, setError]   = useState<string | null>(null)
@@ -424,7 +403,17 @@ export default function RegisterPage() {
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white" style={{ background: '#0c0a14' }}>
-      <Image src={bgUrl} alt="LSBookers" fill priority sizes="100vw" className="z-0 object-cover" />
+      <Image
+        src={bgUrl}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        quality={82}
+        placeholder="blur"
+        blurDataURL={PUBLIC_IMAGE_BLUR}
+        className="z-0 object-cover"
+      />
       <div className="absolute inset-0 z-10 bg-black/60" />
       <div className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
@@ -439,11 +428,8 @@ export default function RegisterPage() {
 
             {/* Logo mobile */}
             {step <= 5 && (
-              <div className="lg:hidden flex items-center gap-3 mb-8">
-                <div className="h-9 w-9 rounded-xl bg-white/10 backdrop-blur ring-1 ring-white/15 flex items-center justify-center">
-                  <span className="font-black text-sm tracking-widest">LS</span>
-                </div>
-                <span className="font-extrabold text-base">LSBookers</span>
+              <div className="mb-8 lg:hidden">
+                <PublicBrand logoUrl={logoUrl} size="small" showTagline={false} />
               </div>
             )}
 
