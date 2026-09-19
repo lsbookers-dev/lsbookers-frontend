@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import {
+  Mic2, CalendarDays, Camera, Lock, CreditCard, Globe,
+  Smartphone, Bell, Zap, WifiOff, ArrowUp, Plus, CheckCircle2,
+  Star, Home, Search, Mail,
+} from 'lucide-react'
 
 /* ─────────────────────────────────────────────────────────
    COMPOSANTS UI
@@ -29,14 +34,14 @@ function AudienceCard({
   subtitle,
   items,
 }: {
-  icon: string
+  icon: React.ReactNode
   title: string
   subtitle: string
   items: string[]
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md hover:bg-white/8 transition">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600/20 border border-purple-500/30 text-2xl">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600/20 border border-purple-500/30">
         {icon}
       </div>
       <div>
@@ -136,9 +141,14 @@ function PhoneMockup() {
 
           {/* Bottom nav mockup */}
           <div className="border-t border-white/8 pt-2 flex justify-around px-2">
-            {['🏠','🔍','✉️','🔔','👤'].map((icon, i) => (
-              <div key={i} className={`flex flex-col items-center gap-0.5 ${i === 0 ? 'opacity-100' : 'opacity-30'}`}>
-                <span className="text-[10px]">{icon}</span>
+            {[
+              <Home key="home" className="w-2.5 h-2.5" />,
+              <Search key="search" className="w-2.5 h-2.5" />,
+              <Mail key="mail" className="w-2.5 h-2.5" />,
+              <Bell key="bell" className="w-2.5 h-2.5" />,
+            ].map((icon, i) => (
+              <div key={i} className={`flex flex-col items-center gap-0.5 ${i === 0 ? 'opacity-100 text-purple-400' : 'opacity-30 text-white/60'}`}>
+                {icon}
                 {i === 0 && <div className="w-3 h-0.5 bg-purple-400 rounded-full" />}
               </div>
             ))}
@@ -206,7 +216,7 @@ function AppSection() {
             {/* Pill badge */}
             <div className="inline-flex justify-center lg:justify-start">
               <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-xs text-purple-300 font-medium">
-                📱 Application mobile disponible
+                <Smartphone className="h-3 w-3" /> Application mobile disponible
               </span>
             </div>
 
@@ -226,12 +236,12 @@ function AppSection() {
             {/* Points forts */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { icon: '⚡', label: 'Ultra rapide', desc: 'Chargement instantané' },
-                { icon: '🔔', label: 'Notifications', desc: 'Ne ratez rien' },
-                { icon: '📵', label: 'Hors ligne', desc: 'Fonctionne sans réseau' },
+                { icon: <Zap className="h-5 w-5 text-purple-400" />, label: 'Ultra rapide', desc: 'Chargement instantané' },
+                { icon: <Bell className="h-5 w-5 text-purple-400" />, label: 'Notifications', desc: 'Ne ratez rien' },
+                { icon: <WifiOff className="h-5 w-5 text-purple-400" />, label: 'Hors ligne', desc: 'Fonctionne sans réseau' },
               ].map(({ icon, label, desc }) => (
-                <div key={label} className="rounded-xl border border-white/8 bg-white/3 p-3 text-center">
-                  <span className="text-xl">{icon}</span>
+                <div key={label} className="rounded-xl border border-white/8 bg-white/3 p-3 text-center flex flex-col items-center">
+                  {icon}
                   <p className="text-sm font-semibold text-white mt-1">{label}</p>
                   <p className="text-xs text-white/40 mt-0.5">{desc}</p>
                 </div>
@@ -245,7 +255,7 @@ function AppSection() {
                   onClick={handleInstall}
                   className="flex items-center justify-center gap-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 px-6 py-3.5 text-white font-semibold transition shadow-lg shadow-purple-900/40"
                 >
-                  <span className="text-lg">🤖</span>
+                  <Smartphone className="h-5 w-5" />
                   <div className="text-left">
                     <p className="text-[10px] text-purple-200 leading-none mb-0.5">Installer sur</p>
                     <p className="text-sm font-bold leading-none">Android</p>
@@ -261,7 +271,7 @@ function AppSection() {
                     : 'border border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
                 }`}
               >
-                <span className="text-lg">🍎</span>
+                <Smartphone className={`h-5 w-5 ${isIOS ? 'text-neutral-700' : ''}`} />
                 <div className="text-left">
                   <p className={`text-[10px] leading-none mb-0.5 ${isIOS ? 'text-neutral-500' : 'text-white/50'}`}>Installer sur</p>
                   <p className="text-sm font-bold leading-none">iPhone / iPad</p>
@@ -289,13 +299,13 @@ function AppSection() {
 
             <div className="space-y-4 mb-6">
               {[
-                { step: 1, icon: '⬆️', text: 'Appuyez sur le bouton Partager en bas de Safari' },
-                { step: 2, icon: '➕', text: 'Faites défiler et appuyez sur « Sur l\'écran d\'accueil »' },
-                { step: 3, icon: '✅', text: 'Confirmez en appuyant sur « Ajouter » en haut à droite' },
+                { step: 1, icon: <ArrowUp className="h-4 w-4 text-purple-400" />, text: 'Appuyez sur le bouton Partager en bas de Safari' },
+                { step: 2, icon: <Plus className="h-4 w-4 text-purple-400" />, text: 'Faites défiler et appuyez sur « Sur l\'écran d\'accueil »' },
+                { step: 3, icon: <CheckCircle2 className="h-4 w-4 text-purple-400" />, text: 'Confirmez en appuyant sur « Ajouter » en haut à droite' },
               ].map(({ step, icon, text }) => (
                 <div key={step} className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full bg-purple-600/20 border border-purple-500/30 flex flex-col items-center justify-center flex-shrink-0">
-                    <span className="text-base leading-none">{icon}</span>
+                  <div className="w-9 h-9 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                    {icon}
                   </div>
                   <p className="text-sm text-white/70 leading-relaxed pt-2">{text}</p>
                 </div>
@@ -322,7 +332,7 @@ export default function LandingPage() {
   const router = useRouter()
 
   const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl]       = useState('')
+  const [bgUrl, setBgUrl]       = useState(DEFAULT_BG)
   const [logoUrl, setLogoUrl]   = useState<string | null>(null)
 
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -331,10 +341,10 @@ export default function LandingPage() {
     fetch(`${API_BASE}/api/admin/settings`)
       .then(r => r.json())
       .then(data => {
-        setBgUrl(data?.landingBgUrl || DEFAULT_BG)
-        if (data?.headerLogoUrl) setLogoUrl(data.headerLogoUrl)
+        if (data?.landingBgUrl) setBgUrl(data.landingBgUrl)
+        if (data?.landingLogoUrl) setLogoUrl(data.landingLogoUrl)
       })
-      .catch(() => setBgUrl(DEFAULT_BG))
+      .catch(() => {})
   }, [API_BASE])
 
   return (
@@ -345,17 +355,15 @@ export default function LandingPage() {
       ══════════════════════════════════════════════════ */}
       <section className="relative w-full min-h-screen flex flex-col overflow-hidden" style={{ background: '#0c0a14' }}>
 
-        {/* Photo de fond — chargée seulement après fetch (évite le flash bleu) */}
-        {bgUrl && (
-          <Image
-            src={bgUrl}
-            alt="LSBookers — Plateforme événementielle"
-            fill
-            priority
-            sizes="100vw"
-            className="z-0 object-cover"
-          />
-        )}
+        {/* Photo de fond */}
+        <Image
+          src={bgUrl}
+          alt="LSBookers — Plateforme événementielle"
+          fill
+          priority
+          sizes="100vw"
+          className="z-0 object-cover"
+        />
 
         {/* Overlays */}
         <div className="absolute inset-0 z-10 bg-black/55" />
@@ -485,13 +493,13 @@ export default function LandingPage() {
 
           {/* Confiance technique */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-white/35">
-            <span>🔒 Données sécurisées</span>
+            <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Données sécurisées</span>
             <span className="hidden sm:block text-white/10">·</span>
-            <span>🇪🇺 Hébergé en Europe</span>
+            <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Hébergé en Europe</span>
             <span className="hidden sm:block text-white/10">·</span>
-            <span>💳 Paiements via Stripe</span>
+            <span className="flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Paiements via Stripe</span>
             <span className="hidden sm:block text-white/10">·</span>
-            <span>🇫🇷 Support francophone</span>
+            <span>Support francophone</span>
           </div>
 
         </div>
@@ -514,7 +522,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <AudienceCard
-            icon="🎤"
+            icon={<Mic2 className="h-6 w-6 text-purple-400" />}
             title="Artistes"
             subtitle="DJ · Chanteur · Saxophoniste · Danseur…"
             items={[
@@ -525,7 +533,7 @@ export default function LandingPage() {
             ]}
           />
           <AudienceCard
-            icon="🎪"
+            icon={<CalendarDays className="h-6 w-6 text-purple-400" />}
             title="Organisateurs"
             subtitle="Club · Festival · Agence · Soirée privée…"
             items={[
@@ -536,7 +544,7 @@ export default function LandingPage() {
             ]}
           />
           <AudienceCard
-            icon="📸"
+            icon={<Camera className="h-6 w-6 text-purple-400" />}
             title="Prestataires"
             subtitle="Photo · Son · Décoration · Traiteur…"
             items={[
@@ -591,7 +599,7 @@ export default function LandingPage() {
                 {/* Carte principale */}
                 <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 shadow-2xl">
                   <div className="flex items-center gap-3 mb-5">
-                    <div className="h-10 w-10 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-lg">🎤</div>
+                    <div className="h-10 w-10 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center"><Mic2 className="h-5 w-5 text-purple-400" /></div>
                     <div>
                       <p className="text-sm font-semibold text-white">DJ Nova</p>
                       <p className="text-xs text-white/45">Paris · Disponible ce week-end</p>
@@ -605,7 +613,7 @@ export default function LandingPage() {
                   </div>
                   <div className="h-px bg-white/8 mb-4" />
                   <div className="flex items-center justify-between text-xs text-white/45">
-                    <span>⭐ 4.9 · 48 avis</span>
+                    <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-yellow-400 text-yellow-400" /> 4.9 · 48 avis</span>
                     <span>127 abonnés</span>
                   </div>
                 </div>

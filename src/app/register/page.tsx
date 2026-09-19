@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 import { apiUrl } from '@/utils/api'
-import { Eye, EyeOff, Check, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Gift } from 'lucide-react'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -143,56 +143,64 @@ function ProgressBar({ current }: { current: number }) {
 }
 
 // ─── Panneau gauche ───────────────────────────────────────────────────────────
-const BRANDING: { emoji: string; title: string; subtitle: string; items: string[] }[] = [
+const BRANDING: { icon: React.ReactNode; title: string; subtitle: string; items: string[] }[] = [
   {
-    emoji: '✦',
+    icon: <Sparkles className="h-7 w-7 text-violet-400" />,
     title: 'Rejoins la scène.',
     subtitle: 'Crée ton compte en quelques minutes et rejoins le réseau événementiel de référence.',
     items: ['Réseau social dédié à l\'événementiel', 'Agenda & gestion des événements', 'Offres d\'emploi & mise en relation'],
   },
   {
-    emoji: '🎭',
+    icon: <Mic2 className="h-7 w-7 text-violet-400" />,
     title: 'Ton activité.',
     subtitle: 'Choisis ton rôle et sélectionne tes spécialités pour que les organisateurs te trouvent.',
     items: ['Artiste, organisateur ou prestataire', 'Spécialités visibles sur ton profil', 'Modifier à tout moment dans les réglages'],
   },
   {
-    emoji: '👤',
+    icon: <User className="h-7 w-7 text-violet-400" />,
     title: 'Qui es-tu ?',
     subtitle: 'Ces informations créent ton profil public et sécurisent ton compte.',
     items: ['Ton pseudo sera visible sur ton profil', 'Tes données personnelles restent privées', 'Tout peut être modifié après inscription'],
   },
   {
-    emoji: '📋',
+    icon: <FileText className="h-7 w-7 text-violet-400" />,
     title: 'Ton statut.',
     subtitle: 'Nécessaire pour activer les fonctionnalités de facturation sur la plateforme.',
     items: ['Particulier ou professionnel', 'SIRET vérifié en temps réel', 'Informations sécurisées et chiffrées'],
   },
   {
-    emoji: '🎁',
+    icon: <Gift className="h-7 w-7 text-violet-400" />,
     title: '3 mois gratuits.',
     subtitle: 'Choisis ta formule et profite de 3 mois d\'essai complet — sans engagement.',
     items: ['Aucun prélèvement pendant l\'essai', '2 mois offerts sur la formule annuelle', '-20% sur les prestations avec le plan annuel'],
   },
 ]
 
-function BrandingPanel({ step }: { step: number }) {
+function BrandingPanel({ step, logoUrl }: { step: number; logoUrl?: string | null }) {
   const content = BRANDING[Math.min(step - 1, BRANDING.length - 1)]
   return (
     <aside className="hidden lg:flex flex-col justify-between border-r border-white/8">
       <div className="p-10">
         <Link href="/" className="inline-flex items-center gap-3 group">
-          <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
-            <span className="font-black text-base tracking-widest">LS</span>
-          </div>
-          <div className="leading-tight">
-            <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
-            <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
-          </div>
+          {logoUrl ? (
+            <Image src={logoUrl} alt="LSBookers" width={180} height={46} className="object-contain h-11 w-auto" unoptimized />
+          ) : (
+            <>
+              <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
+                <span className="font-black text-base tracking-widest">LS</span>
+              </div>
+              <div className="leading-tight">
+                <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
+                <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
+              </div>
+            </>
+          )}
         </Link>
 
         <div className="mt-12 space-y-4">
-          <div className="text-3xl">{content.emoji}</div>
+          <div className="h-12 w-12 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+            {content.icon}
+          </div>
           <h1 className="text-3xl font-black tracking-tight leading-tight">{content.title}</h1>
           <p className="text-white/55 text-sm max-w-xs leading-relaxed">{content.subtitle}</p>
           <ul className="mt-6 space-y-3">
@@ -264,11 +272,15 @@ function TagSelector({ options, selected, onChange }: {
 export default function RegisterPage() {
   const router = useRouter()
   const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl] = useState('')
+  const [bgUrl, setBgUrl] = useState(DEFAULT_BG)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   useEffect(() => {
     fetch(apiUrl('admin/settings')).then(r => r.json())
-      .then(d => setBgUrl(d?.registerBgUrl || DEFAULT_BG))
-      .catch(() => setBgUrl(DEFAULT_BG))
+      .then(d => {
+        if (d?.registerBgUrl) setBgUrl(d.registerBgUrl)
+        if (d?.landingLogoUrl) setLogoUrl(d.landingLogoUrl)
+      })
+      .catch(() => {})
   }, [])
 
   const [step, setStep]     = useState(1)
@@ -412,7 +424,7 @@ export default function RegisterPage() {
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white" style={{ background: '#0c0a14' }}>
-      {bgUrl && <Image src={bgUrl} alt="LSBookers" fill priority sizes="100vw" className="z-0 object-cover" />}
+      <Image src={bgUrl} alt="LSBookers" fill priority sizes="100vw" className="z-0 object-cover" />
       <div className="absolute inset-0 z-10 bg-black/60" />
       <div className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
@@ -420,7 +432,7 @@ export default function RegisterPage() {
       </div>
 
       <div className="relative z-20 mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
-        {step <= 5 && <BrandingPanel step={step} />}
+        {step <= 5 && <BrandingPanel step={step} logoUrl={logoUrl} />}
 
         <main className="flex items-center justify-center p-6 lg:p-12">
           <div className="w-full max-w-md">

@@ -12,6 +12,7 @@ type AdminSettings = {
   loginBgUrl: string
   registerBgUrl: string
   headerLogoUrl: string
+  landingLogoUrl: string
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -22,6 +23,7 @@ const EMPTY: AdminSettings = {
   loginBgUrl: '',
   registerBgUrl: '',
   headerLogoUrl: '',
+  landingLogoUrl: '',
 }
 
 export default function AdminSettingsPage() {
@@ -56,6 +58,7 @@ export default function AdminSettingsPage() {
         loginBgUrl: data.loginBgUrl ?? '',
         registerBgUrl: data.registerBgUrl ?? '',
         headerLogoUrl: data.headerLogoUrl ?? '',
+        landingLogoUrl: data.landingLogoUrl ?? '',
       })
     } catch (e) {
       console.error(e)
@@ -181,8 +184,14 @@ export default function AdminSettingsPage() {
           onPick={(f) => void uploadAndSet('registerBgUrl', f)}
         />
         <LogoPicker
+          label="Logo — Header"
           url={settings.headerLogoUrl}
           onUpload={(f) => void uploadAndSet('headerLogoUrl', f)}
+        />
+        <LogoPicker
+          label="Logo — Landing / Login / Register"
+          url={settings.landingLogoUrl}
+          onUpload={(f) => void uploadAndSet('landingLogoUrl', f)}
         />
       </div>
 
@@ -192,9 +201,11 @@ export default function AdminSettingsPage() {
 }
 
 function LogoPicker({
+  label,
   url,
   onUpload,
 }: {
+  label: string
   url: string
   onUpload: (file: File) => void
 }) {
@@ -237,7 +248,7 @@ function LogoPicker({
       <section className="rounded-2xl border border-purple-500/30 p-4 bg-black/30">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <h4 className="font-semibold text-purple-300">Logo — Header</h4>
+            <h4 className="font-semibold text-purple-300">{label}</h4>
             <p className="text-xs text-white/50 mt-0.5">Recadrage horizontal (3:1)</p>
             {url && <p className="text-[10px] text-white/30 break-all mt-1">{url}</p>}
           </div>

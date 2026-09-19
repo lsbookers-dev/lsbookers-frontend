@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { useAuth, type LoginError } from '@/context/AuthContext'
 import { apiUrl } from '@/utils/api'
 
@@ -12,28 +12,34 @@ import { apiUrl } from '@/utils/api'
 ───────────────────────────────────────────────────────── */
 function getGreeting() {
   const h = new Date().getHours()
-  if (h >= 5 && h < 12) return 'Bonjour 🌤'
-  if (h >= 12 && h < 18) return 'Bon après-midi ☀️'
-  if (h >= 18 && h < 22) return 'Bonsoir 🌆'
-  return 'Bonne nuit 🌙'
+  if (h >= 5 && h < 12) return 'Bonjour'
+  if (h >= 12 && h < 18) return 'Bon après-midi'
+  if (h >= 18 && h < 22) return 'Bonsoir'
+  return 'Bonne nuit'
 }
 
 /* ─────────────────────────────────────────────────────────
    PANNEAU GAUCHE — minimaliste
 ───────────────────────────────────────────────────────── */
-function BrandingPanel() {
+function BrandingPanel({ logoUrl }: { logoUrl?: string | null }) {
   return (
     <aside className="hidden lg:flex flex-col justify-between border-r border-white/8">
 
       <div className="p-10">
         <Link href="/" className="inline-flex items-center gap-3 group">
-          <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
-            <span className="font-black text-base tracking-widest">LS</span>
-          </div>
-          <div className="leading-tight">
-            <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
-            <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
-          </div>
+          {logoUrl ? (
+            <Image src={logoUrl} alt="LSBookers" width={180} height={46} className="object-contain h-11 w-auto" unoptimized />
+          ) : (
+            <>
+              <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
+                <span className="font-black text-base tracking-widest">LS</span>
+              </div>
+              <div className="leading-tight">
+                <p className="text-lg font-extrabold tracking-tight">LSBookers</p>
+                <p className="text-[10px] text-white/50 tracking-widest uppercase">Réseau événementiel</p>
+              </div>
+            </>
+          )}
         </Link>
 
         <div className="mt-16">
@@ -71,15 +77,19 @@ export default function LoginPage() {
   const [greeting, setGreeting]                 = useState('')
 
   const DEFAULT_BG = 'https://res.cloudinary.com/dzpie6sij/image/upload/v1755121809/Landing_fz7zqx.png'
-  const [bgUrl, setBgUrl] = useState('')
+  const [bgUrl, setBgUrl] = useState(DEFAULT_BG)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => { setGreeting(getGreeting()) }, [])
 
   useEffect(() => {
     fetch(apiUrl('admin/settings'))
       .then(r => r.json())
-      .then(data => setBgUrl(data?.loginBgUrl || DEFAULT_BG))
-      .catch(() => setBgUrl(DEFAULT_BG))
+      .then(data => {
+        if (data?.loginBgUrl) setBgUrl(data.loginBgUrl)
+        if (data?.landingLogoUrl) setLogoUrl(data.landingLogoUrl)
+      })
+      .catch(() => {})
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,17 +143,7 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white" style={{ background: '#0c0a14' }}>
 
-      {/* Photo de fond — chargée seulement après fetch (évite le flash bleu) */}
-      {bgUrl && (
-        <Image
-          src={bgUrl}
-          alt="LSBookers"
-          fill
-          priority
-          sizes="100vw"
-          className="z-0 object-cover"
-        />
-      )}
+      <Image src={bgUrl} alt="LSBookers" fill priority sizes="100vw" className="z-0 object-cover" />
       <div className="absolute inset-0 z-10 bg-black/60" />
       <div className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl" />
@@ -153,7 +153,7 @@ export default function LoginPage() {
       {/* Grille 2 colonnes */}
       <div className="relative z-20 mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
 
-        <BrandingPanel />
+        <BrandingPanel logoUrl={logoUrl} />
 
         {/* Formulaire */}
         <main className="flex items-center justify-center p-6 lg:p-12">
@@ -223,7 +223,7 @@ export default function LoginPage() {
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-white/75">Email</label>
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">✉️</span>
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Mail className="w-4 h-4" /></span>
                     <input
                       type="email"
                       value={email}
@@ -244,7 +244,7 @@ export default function LoginPage() {
                     </Link>
                   </div>
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">🔒</span>
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Lock className="w-4 h-4" /></span>
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
