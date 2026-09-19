@@ -383,7 +383,7 @@ export default function LandingPage() {
           <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6">
             <Link href="/" className="inline-flex items-center gap-3 group" aria-label="LSBookers">
               {logoUrl ? (
-                <Image src={logoUrl} alt="LSBookers" width={220} height={56} className="object-contain h-12 w-auto" unoptimized />
+                <Image src={logoUrl} alt="LSBookers" width={48} height={48} className="object-contain h-12 w-12 rounded-xl" unoptimized />
               ) : (
                 <>
                   <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition overflow-hidden flex items-center justify-center">

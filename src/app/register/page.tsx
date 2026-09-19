@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 import { apiUrl } from '@/utils/api'
-import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Gift } from 'lucide-react'
+import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Gift, Mail, Lock, Camera, CalendarDays, Building2 } from 'lucide-react'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ function BrandingPanel({ step, logoUrl }: { step: number; logoUrl?: string | nul
       <div className="p-10">
         <Link href="/" className="inline-flex items-center gap-3 group">
           {logoUrl ? (
-            <Image src={logoUrl} alt="LSBookers" width={180} height={46} className="object-contain h-11 w-auto" unoptimized />
+            <Image src={logoUrl} alt="LSBookers" width={44} height={44} className="object-contain h-11 w-11 rounded-xl" unoptimized />
           ) : (
             <>
               <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur ring-1 ring-white/15 group-hover:ring-white/30 transition flex items-center justify-center">
@@ -480,7 +480,7 @@ export default function RegisterPage() {
                 <form onSubmit={handleStep1} className="space-y-4">
                   <Field label="Email">
                     <div className="relative">
-                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">✉️</span>
+                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Mail className="w-4 h-4" /></span>
                       <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                         required autoComplete="email" placeholder="nom@domaine.com"
                         className={inputCls('pl-10')} />
@@ -489,7 +489,7 @@ export default function RegisterPage() {
 
                   <Field label="Mot de passe">
                     <div className="relative">
-                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">🔒</span>
+                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Lock className="w-4 h-4" /></span>
                       <input type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
                         required autoComplete="new-password" placeholder="Au moins 8 caractères"
                         className={inputCls('pl-10 pr-10')} />
@@ -502,7 +502,7 @@ export default function RegisterPage() {
 
                   <Field label="Confirmer le mot de passe">
                     <div className="relative">
-                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">🔒</span>
+                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Lock className="w-4 h-4" /></span>
                       <input type={showCfm ? 'text' : 'password'} value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
                         required autoComplete="new-password" placeholder="••••••••"
                         className={inputCls('pl-10 pr-10')} />
@@ -529,9 +529,9 @@ export default function RegisterPage() {
                   {/* Cartes rôle */}
                   <div className="grid grid-cols-3 gap-2.5">
                     {([
-                      { value: 'ARTIST' as Role,    label: 'Artiste',      icon: '🎤', desc: 'DJ, musicien, performer…' },
-                      { value: 'ORGANIZER' as Role,  label: 'Organisateur', icon: '🎪', desc: 'Club, festival, soirée…' },
-                      { value: 'PROVIDER' as Role,   label: 'Prestataire',  icon: '📸', desc: 'Photo, son, déco…' },
+                      { value: 'ARTIST' as Role,    label: 'Artiste',      icon: <Mic2 className="h-6 w-6 text-violet-400" />, desc: 'DJ, musicien, performer…' },
+                      { value: 'ORGANIZER' as Role,  label: 'Organisateur', icon: <CalendarDays className="h-6 w-6 text-violet-400" />, desc: 'Club, festival, soirée…' },
+                      { value: 'PROVIDER' as Role,   label: 'Prestataire',  icon: <Camera className="h-6 w-6 text-violet-400" />, desc: 'Photo, son, déco…' },
                     ]).map(opt => (
                       <button key={opt.value} type="button"
                         onClick={() => { setRole(opt.value); setSpecialties([]) }}
@@ -539,7 +539,7 @@ export default function RegisterPage() {
                           ${role === opt.value
                             ? 'border-violet-500 bg-violet-500/15 shadow-lg shadow-violet-900/20'
                             : 'border-white/10 bg-white/4 hover:border-white/20 hover:bg-white/[0.06]'}`}>
-                        <span className="text-3xl">{opt.icon}</span>
+                        <div className="h-10 w-10 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">{opt.icon}</div>
                         <span className={`font-semibold text-xs ${role === opt.value ? 'text-white' : 'text-white/70'}`}>{opt.label}</span>
                         <span className="text-[10px] text-white/35 leading-tight">{opt.desc}</span>
                         {role === opt.value && (
@@ -673,8 +673,8 @@ export default function RegisterPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     {([
-                      { value: 'INDIVIDUAL' as LegalType,   label: 'Particulier',    icon: '👤', desc: 'Tu agis à titre personnel.' },
-                      { value: 'PROFESSIONAL' as LegalType, label: 'Professionnel',  icon: '🏢', desc: 'Auto-entrepreneur, société…' },
+                      { value: 'INDIVIDUAL' as LegalType,   label: 'Particulier',    icon: <User className="h-6 w-6 text-violet-400" />, desc: 'Tu agis à titre personnel.' },
+                      { value: 'PROFESSIONAL' as LegalType, label: 'Professionnel',  icon: <Building2 className="h-6 w-6 text-violet-400" />, desc: 'Auto-entrepreneur, société…' },
                     ]).map(opt => (
                       <button key={opt.value} type="button"
                         onClick={() => { setLegalType(opt.value); setSiretStatus('idle'); setSiretName('') }}
@@ -682,7 +682,7 @@ export default function RegisterPage() {
                           ${legalType === opt.value
                             ? 'border-violet-500 bg-violet-500/15 shadow-lg shadow-violet-900/20'
                             : 'border-white/10 bg-white/4 hover:border-white/20 hover:bg-white/[0.06]'}`}>
-                        <span className="text-3xl">{opt.icon}</span>
+                        <div className="h-10 w-10 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">{opt.icon}</div>
                         <span className={`font-semibold text-sm ${legalType === opt.value ? 'text-white' : 'text-white/70'}`}>{opt.label}</span>
                         <span className="text-[11px] text-white/40 leading-tight">{opt.desc}</span>
                       </button>
@@ -731,7 +731,7 @@ export default function RegisterPage() {
 
                   {/* Message essai gratuit */}
                   <div className="flex items-center gap-3 rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-3">
-                    <span className="text-lg flex-shrink-0">🎁</span>
+                    <Gift className="h-5 w-5 text-violet-400 flex-shrink-0" />
                     <p className="text-xs text-violet-200 leading-relaxed">
                       <strong>3 mois d&apos;essai gratuit</strong> — aucun prélèvement avant le <strong>{trialEndStr}</strong>.
                     </p>

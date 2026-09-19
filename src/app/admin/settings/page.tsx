@@ -192,6 +192,7 @@ export default function AdminSettingsPage() {
           label="Logo — Landing / Login / Register"
           url={settings.landingLogoUrl}
           onUpload={(f) => void uploadAndSet('landingLogoUrl', f)}
+          aspectRatio={1}
         />
       </div>
 
@@ -204,10 +205,12 @@ function LogoPicker({
   label,
   url,
   onUpload,
+  aspectRatio = 3,
 }: {
   label: string
   url: string
   onUpload: (file: File) => void
+  aspectRatio?: number
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
@@ -237,7 +240,7 @@ function LogoPicker({
       {cropSrc && (
         <CropModal
           src={cropSrc}
-          aspectRatio={3}
+          aspectRatio={aspectRatio}
           displayWidth={480}
           shape="rect"
           maxZoom={6}
@@ -249,7 +252,7 @@ function LogoPicker({
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h4 className="font-semibold text-purple-300">{label}</h4>
-            <p className="text-xs text-white/50 mt-0.5">Recadrage horizontal (3:1)</p>
+            <p className="text-xs text-white/50 mt-0.5">{aspectRatio === 1 ? 'Recadrage carré (1:1)' : 'Recadrage horizontal (3:1)'}</p>
             {url && <p className="text-[10px] text-white/30 break-all mt-1">{url}</p>}
           </div>
           <label className={`px-4 py-2 rounded-xl cursor-pointer font-medium text-sm transition ${busy ? 'bg-white/10 opacity-60' : 'bg-purple-600 hover:bg-purple-500 text-white'}`}>
