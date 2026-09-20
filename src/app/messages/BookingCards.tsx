@@ -9,16 +9,15 @@ import type { Message, BookingRequestData } from './types'
 
 /* ── Status badge ────────────────────────────────────────── */
 export function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    PENDING:   { label: 'En attente', cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
-    ACCEPTED:  { label: 'Accepté',    cls: 'bg-green-500/20 text-green-300 border-green-500/30' },
-    DECLINED:  { label: 'Refusé',     cls: 'bg-red-500/20 text-red-300 border-red-500/30' },
-    CANCELLED: { label: 'Annulé',     cls: 'bg-white/10 text-white/40 border-white/10' },
+  const map: Record<string, string> = {
+    PENDING: 'En attente',
+    ACCEPTED: 'Accepté',
+    DECLINED: 'Refusé',
+    CANCELLED: 'Annulé',
   }
-  const s = map[status] || map.PENDING
   return (
-    <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full border ${s.cls}`}>
-      {s.label}
+    <span className={`lsb-booking-status is-${status.toLowerCase()}`}>
+      {map[status] || map.PENDING}
     </span>
   )
 }
@@ -96,66 +95,69 @@ export function BookingRequestCard({
   }
 
   return (
-    <div className="max-w-sm w-full rounded-2xl border border-violet-500/30 bg-violet-900/20 overflow-hidden">
-      <div className="px-4 py-3 border-b border-violet-500/20 flex items-center gap-2">
-        <CalendarDays className="w-4 h-4 text-violet-400 shrink-0" />
-        <span className="text-sm font-semibold text-violet-300">Proposition de booking</span>
+    <div className="lsb-booking-message-card">
+      <div className="lsb-booking-card-heading">
+        <div>
+          <span>DEMANDE DE BOOKING</span>
+          <h3>Proposition de booking</h3>
+        </div>
         <StatusBadge status={status} />
       </div>
-      <div className="px-4 py-3 space-y-1.5">
-        <p className="flex items-center gap-2 text-sm text-white/80 capitalize"><CalendarDays className="w-4 h-4 text-violet-300" />{dateLabel}</p>
-        {br.fee != null && (
-          <p className="flex items-center gap-2 text-sm text-white/80"><Banknote className="w-4 h-4 text-violet-300" />{Number(br.fee).toLocaleString('fr-FR')} €</p>
-        )}
+      <div className="lsb-booking-card-body">
+        <div className="lsb-booking-facts">
+          <div><span><CalendarDays className="w-4 h-4" /></span><p><small>Date proposée</small><strong className="capitalize">{dateLabel}</strong></p></div>
+          <div><span><Banknote className="w-4 h-4" /></span><p><small>Cachet</small><strong>{br.fee != null ? `${Number(br.fee).toLocaleString('fr-FR')} €` : 'À définir'}</strong></p></div>
+        </div>
         {br.message && (
-          <p className="text-sm text-white/55 italic border-l-2 border-violet-500/40 pl-3">&ldquo;{br.message}&rdquo;</p>
+          <div className="lsb-booking-note"><span>MESSAGE</span><p>&ldquo;{br.message}&rdquo;</p></div>
         )}
       </div>
       {status === 'PENDING' && (
-        <div className="px-4 pb-4">
+        <div className="lsb-booking-card-footer">
           {!isSender ? (
             showCounter ? (
-              <div className="space-y-2 mt-1">
+              <div className="lsb-booking-counter-form">
+                <p>Faire une contre-proposition</p>
                 <input type="date" value={counterDate} onChange={e => setCounterDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-violet-400" />
+                  className="lsb-booking-field" />
                 <input type="number" value={counterFee} onChange={e => setCounterFee(e.target.value)}
                   placeholder="Cachet proposé (€)"
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-400" />
+                  className="lsb-booking-field" />
                 <textarea value={counterMsg} onChange={e => setCounterMsg(e.target.value)}
                   placeholder="Message (optionnel)…" rows={2}
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-400 resize-none" />
-                <div className="flex gap-2">
+                  className="lsb-booking-field resize-none" />
+                <div className="lsb-booking-actions">
                   <button onClick={submitCounter} disabled={sendingCounter || !counterDate}
-                    className="flex-1 py-2 rounded-xl bg-violet-600 text-white text-sm font-medium hover:bg-violet-500 disabled:opacity-30 transition">
+                    className="is-primary">
                     {sendingCounter ? 'Envoi…' : 'Envoyer'}
                   </button>
                   <button onClick={() => setShowCounter(false)}
-                    className="px-3 py-2 rounded-xl bg-white/5 text-white/50 text-sm hover:bg-white/10 transition">
+                    className="is-secondary">
                     Annuler
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex gap-2 mt-1">
+              <div className="lsb-booking-actions">
                 <button onClick={() => updateStatus('ACCEPTED')} disabled={updating}
-                  className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-500 disabled:opacity-30 transition">
-                  <Check className="inline w-4 h-4 mr-1" />Accepter
+                  className="is-primary">
+                  <Check className="w-4 h-4" />Accepter
                 </button>
                 <button onClick={() => setShowCounter(true)}
-                  className="flex-1 py-2 rounded-xl bg-amber-600/80 text-white text-sm font-medium hover:bg-amber-500/80 transition">
-                  <RefreshCw className="inline w-4 h-4 mr-1" />Contre-offre
+                  className="is-secondary">
+                  <RefreshCw className="w-4 h-4" />Contre-offre
                 </button>
                 <button onClick={() => updateStatus('DECLINED')} disabled={updating}
-                  className="flex-1 py-2 rounded-xl bg-red-700/70 text-white text-sm font-medium hover:bg-red-600/70 disabled:opacity-30 transition">
-                  <X className="inline w-4 h-4 mr-1" />Refuser
+                  className="is-danger">
+                  <X className="w-4 h-4" />Refuser
                 </button>
               </div>
             )
           ) : (
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-white/35">En attente de réponse…</span>
+            <div className="lsb-booking-waiting">
+              <span>En attente de la réponse du destinataire</span>
               <button onClick={() => updateStatus('CANCELLED')} disabled={updating}
-                className="px-3 py-1.5 rounded-xl bg-white/5 text-white/40 text-xs hover:bg-white/10 disabled:opacity-30 transition">
+                className="is-danger">
                 Annuler
               </button>
             </div>
@@ -208,33 +210,38 @@ export function CancellationRequestCard({
   }
 
   return (
-    <div className="max-w-sm w-full rounded-2xl border border-orange-500/30 bg-orange-900/15 overflow-hidden">
-      <div className="px-4 py-3 border-b border-orange-500/20 flex items-center gap-2">
-        <Ban className="w-4 h-4 text-orange-300" />
-        <span className="text-sm font-semibold text-orange-300">Demande d&apos;annulation</span>
+    <div className="lsb-booking-message-card is-cancellation">
+      <div className="lsb-booking-card-heading">
+        <div>
+          <span>GESTION DU BOOKING</span>
+          <h3>Demande d&apos;annulation</h3>
+        </div>
+        <span className="lsb-booking-status is-cancel-request"><Ban className="w-3 h-3" /> À confirmer</span>
       </div>
-      <div className="px-4 py-3 space-y-1.5">
-        <p className="flex items-center gap-2 text-sm text-white/80 capitalize"><CalendarDays className="w-4 h-4 text-orange-300" />{dateLabel}</p>
+      <div className="lsb-booking-card-body">
+        <div className="lsb-booking-facts is-single">
+          <div><span><CalendarDays className="w-4 h-4" /></span><p><small>Booking concerné</small><strong className="capitalize">{dateLabel}</strong></p></div>
+        </div>
         {br.cancellationNote && (
-          <p className="text-sm text-white/55 italic border-l-2 border-orange-500/40 pl-3">&ldquo;{br.cancellationNote}&rdquo;</p>
+          <div className="lsb-booking-note"><span>MOTIF</span><p>&ldquo;{br.cancellationNote}&rdquo;</p></div>
         )}
       </div>
-      <div className="px-4 pb-4">
+      <div className="lsb-booking-card-footer">
         {localDone === 'accepted' ? (
-          <p className="text-xs text-green-400 font-medium"><Check className="inline w-4 h-4 mr-1" />Annulation confirmée</p>
+          <p className="lsb-booking-result is-success"><Check className="w-4 h-4" />Annulation confirmée</p>
         ) : localDone === 'denied' ? (
-          <p className="text-xs text-white/40"><X className="inline w-4 h-4 mr-1" />Demande d&apos;annulation refusée</p>
+          <p className="lsb-booking-result"><X className="w-4 h-4" />Demande d&apos;annulation refusée</p>
         ) : isRequester ? (
-          <p className="text-xs text-white/35">En attente de confirmation…</p>
+          <p className="lsb-booking-result">En attente de confirmation…</p>
         ) : (
-          <div className="flex gap-2 mt-1">
+          <div className="lsb-booking-actions">
             <button onClick={() => respond(true)} disabled={responding}
-              className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-500 disabled:opacity-30 transition">
-              <Check className="inline w-4 h-4 mr-1" />Confirmer l&apos;annulation
+              className="is-primary">
+              <Check className="w-4 h-4" />Confirmer l&apos;annulation
             </button>
             <button onClick={() => respond(false)} disabled={responding}
-              className="flex-1 py-2 rounded-xl bg-white/5 text-white/60 text-sm font-medium hover:bg-white/10 disabled:opacity-30 transition">
-              <X className="inline w-4 h-4 mr-1" />Refuser
+              className="is-secondary">
+              <X className="w-4 h-4" />Refuser
             </button>
           </div>
         )}
