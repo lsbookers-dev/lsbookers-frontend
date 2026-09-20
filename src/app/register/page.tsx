@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -14,7 +14,7 @@ import PublicBrand from '@/components/PublicBrand'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
-type LegalType = 'INDIVIDUAL' | 'PROFESSIONAL'
+type LegalType = 'INDIVIDUAL' | 'INTERMITTENT' | 'PROFESSIONAL'
 type Plan = 'MONTHLY' | 'YEARLY'
 type PseudoStatus = 'idle' | 'checking' | 'available' | 'taken'
 type SiretStatus  = 'idle' | 'checking' | 'valid' | 'invalid'
@@ -282,11 +282,23 @@ export default function RegisterPage() {
   const [firstName, setFirstName]               = useState('')
   const [lastName, setLastName]                 = useState('')
   const [dateOfBirth, setDateOfBirth]           = useState('')
+  const [dobDay, setDobDay]                     = useState('')
+  const [dobMonth, setDobMonth]                 = useState('')
+  const [dobYear, setDobYear]                   = useState('')
   const [country, setCountry]                   = useState('France')
   const [city, setCity]                         = useState('')
   const [phone, setPhone]                       = useState('')
   const [pseudoStatus, setPseudoStatus]         = useState<PseudoStatus>('idle')
   const [isAdult, setIsAdult]                   = useState(false)
+
+  // Synchroniser la date complète depuis les 3 sélects
+  useEffect(() => {
+    if (dobDay && dobMonth && dobYear) {
+      setDateOfBirth(`${dobYear}-${dobMonth}-${dobDay}`)
+    } else {
+      setDateOfBirth('')
+    }
+  }, [dobDay, dobMonth, dobYear])
 
   // ── Étape 4 : Statut ──
   const [legalType, setLegalType]   = useState<LegalType | null>(null)
@@ -347,7 +359,7 @@ export default function RegisterPage() {
           legalStatus: legalType === 'PROFESSIONAL' ? 'COMPANY' : 'INDIVIDUAL',
           organizerType: role === 'ORGANIZER' ? (legalType === 'PROFESSIONAL' ? 'PROFESSIONAL' : 'INDIVIDUAL') : undefined,
           siret: legalType === 'PROFESSIONAL' ? siret.replace(/\s/g, '') : undefined,
-          city: city || undefined,
+          city: city,
           specialties: specialties.length > 0 ? specialties : undefined,
         },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
@@ -386,6 +398,7 @@ export default function RegisterPage() {
   const handleStep3 = (e: React.FormEvent) => {
     e.preventDefault(); setError(null)
     if (pseudoStatus === 'taken') { setError('Ce pseudo est déjà utilisé.'); return }
+    if (!city.trim()) { setError('La ville est requise.'); return }
     go(4)
   }
 
@@ -598,11 +611,34 @@ export default function RegisterPage() {
                     </Field>
                   </div>
 
-                  <Field label="Date de naissance" hint="Optionnel — doit être le 18 ans ou plus.">
-                    <input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)}
-                      max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                      className={inputCls()} />
-                  </Field>
+                  {/* Date de naissance — 3 sélects */}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-white/75">Date de naissance</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <select value={dobDay} onChange={e => setDobDay(e.target.value)}
+                        className="w-full appearance-none rounded-xl bg-white/5 px-3 py-2.5 text-white outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-violet-500/60">
+                        <option value="" className="bg-neutral-900 text-white/50">Jour</option>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                          <option key={d} value={String(d).padStart(2, '0')} className="bg-neutral-900">{d}</option>
+                        ))}
+                      </select>
+                      <select value={dobMonth} onChange={e => setDobMonth(e.target.value)}
+                        className="w-full appearance-none rounded-xl bg-white/5 px-3 py-2.5 text-white outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-violet-500/60">
+                        <option value="" className="bg-neutral-900 text-white/50">Mois</option>
+                        {['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'].map((m, i) => (
+                          <option key={m} value={String(i + 1).padStart(2, '0')} className="bg-neutral-900">{m}</option>
+                        ))}
+                      </select>
+                      <select value={dobYear} onChange={e => setDobYear(e.target.value)}
+                        className="w-full appearance-none rounded-xl bg-white/5 px-3 py-2.5 text-white outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-violet-500/60">
+                        <option value="" className="bg-neutral-900 text-white/50">Année</option>
+                        {Array.from({ length: 83 }, (_, i) => new Date().getFullYear() - 18 - i).map(y => (
+                          <option key={y} value={String(y)} className="bg-neutral-900">{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="mt-1 text-xs text-white/35">Tu dois avoir 18 ans ou plus pour t&apos;inscrire.</p>
+                  </div>
 
                   <Field label="Pays">
                     <div className="relative">
@@ -616,7 +652,7 @@ export default function RegisterPage() {
                     </div>
                   </Field>
 
-                  <Field label="Ville" hint="Optionnel.">
+                  <Field label="Ville">
                     <CityAutocomplete value={city} onChange={setCity} placeholder="Ex. Paris, Lyon, Marseille…" />
                   </Field>
 
@@ -655,22 +691,23 @@ export default function RegisterPage() {
               {/* ── ÉTAPE 4 : Statut légal ───────────────────────────────────── */}
               {step === 4 && (
                 <form onSubmit={handleStep4} className="space-y-4">
-                  <p className="text-sm text-white/50 -mt-1">Nécessaire pour activer les fonctionnalités de facturation.</p>
+                  <p className="text-sm text-white/50 -mt-1">Choisis le statut qui correspond à ton activité.</p>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-2.5">
                     {([
-                      { value: 'INDIVIDUAL' as LegalType,   label: 'Particulier',    icon: <User className="h-6 w-6 text-violet-400" />, desc: 'Tu agis à titre personnel.' },
-                      { value: 'PROFESSIONAL' as LegalType, label: 'Professionnel',  icon: <Building2 className="h-6 w-6 text-violet-400" />, desc: 'Auto-entrepreneur, société…' },
+                      { value: 'INDIVIDUAL' as LegalType,    label: 'Particulier',    icon: <User className="h-6 w-6 text-violet-400" />,      desc: 'Sans activité déclarée.' },
+                      { value: 'INTERMITTENT' as LegalType,  label: 'Intermittent',   icon: <Mic2 className="h-6 w-6 text-violet-400" />,      desc: 'Intermittent du spectacle.' },
+                      { value: 'PROFESSIONAL' as LegalType,  label: 'Professionnel',  icon: <Building2 className="h-6 w-6 text-violet-400" />, desc: 'Auto-entrepreneur, société…' },
                     ]).map(opt => (
                       <button key={opt.value} type="button"
                         onClick={() => { setLegalType(opt.value); setSiretStatus('idle'); setSiretName('') }}
-                        className={`flex flex-col items-center gap-2.5 rounded-2xl border p-5 text-center transition
+                        className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition
                           ${legalType === opt.value
                             ? 'border-violet-500 bg-violet-500/15 shadow-lg shadow-violet-900/20'
                             : 'border-white/10 bg-white/4 hover:border-white/20 hover:bg-white/[0.06]'}`}>
                         <div className="h-10 w-10 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">{opt.icon}</div>
-                        <span className={`font-semibold text-sm ${legalType === opt.value ? 'text-white' : 'text-white/70'}`}>{opt.label}</span>
-                        <span className="text-[11px] text-white/40 leading-tight">{opt.desc}</span>
+                        <span className={`font-semibold text-xs ${legalType === opt.value ? 'text-white' : 'text-white/70'}`}>{opt.label}</span>
+                        <span className="text-[10px] text-white/40 leading-tight">{opt.desc}</span>
                       </button>
                     ))}
                   </div>
