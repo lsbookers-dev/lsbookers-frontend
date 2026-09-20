@@ -63,21 +63,22 @@ export default function ConversationDetails({ conversation, currentUserId, messa
       <button type="button" onClick={onClose} className="lsb-details-close xl:hidden" aria-label="Fermer les informations"><X className="w-4 h-4" /></button>
       <div className="lsb-details-profile">
         <Avatar src={participant.profile?.avatar || ''} alt={participant.name} size={68} />
-        <h2>{participant.name}</h2>
-        <p>{ROLE_LABEL[participant.role]}</p>
-        <Link href={`/${rolePath}/${participant.id}`} className="lsb-details-profile-link">Voir le profil <ExternalLink className="w-3.5 h-3.5" /></Link>
+        <div className="lsb-details-profile-copy">
+          <h2>{participant.name}</h2>
+          <p>{ROLE_LABEL[participant.role]}</p>
+        </div>
+        <Link href={`/${rolePath}/${participant.id}`} className="lsb-details-profile-link" aria-label={`Voir le profil de ${participant.name}`}><ExternalLink className="w-3.5 h-3.5" /></Link>
       </div>
 
-      <div className="lsb-details-section">
-        <span>COLLABORATION</span>
-        <div><BriefcaseBusiness className="w-4 h-4" /><strong>{bookingCount}</strong> booking{bookingCount > 1 ? 's' : ''}</div>
-        <div><Share2 className="w-4 h-4" /><strong>{sharedCount}</strong> contenu{sharedCount > 1 ? 's' : ''} partagé{sharedCount > 1 ? 's' : ''}</div>
-        <div><CalendarDays className="w-4 h-4" /> Mise à jour {new Date(conversation.updatedAt).toLocaleDateString('fr-FR')}</div>
-        <div><UserRound className="w-4 h-4" /> {ROLE_LABEL[participant.role]}</div>
+      <div className="lsb-details-section lsb-details-card">
+        <div className="lsb-details-section-heading"><span>COLLABORATION</span><small>{bookingCount > 0 ? 'En cours' : 'Disponible'}</small></div>
+        <div className="lsb-details-stat"><span className="lsb-details-stat-icon"><BriefcaseBusiness className="w-4 h-4" /></span><span><strong>{bookingCount} booking{bookingCount > 1 ? 's' : ''}</strong><small>{bookingCount > 0 ? 'Lié à cette conversation' : 'Aucun booking en cours'}</small></span></div>
+        <div className="lsb-details-stat"><span className="lsb-details-stat-icon"><Share2 className="w-4 h-4" /></span><span><strong>{sharedCount} contenu{sharedCount > 1 ? 's' : ''} partagé{sharedCount > 1 ? 's' : ''}</strong><small>Profils et offres partagés</small></span></div>
+        <div className="lsb-details-stat"><span className="lsb-details-stat-icon"><CalendarDays className="w-4 h-4" /></span><span><strong>Dernière activité</strong><small>{new Date(conversation.updatedAt).toLocaleDateString('fr-FR')}</small></span></div>
       </div>
 
-      <div className="lsb-details-section">
-        <span>MÉDIAS PARTAGÉS</span>
+      <div className="lsb-details-section lsb-details-card">
+        <div className="lsb-details-section-heading"><span>MÉDIAS PARTAGÉS</span><small>{media.length}</small></div>
         {media.length > 0 ? (
           <div className="lsb-shared-media-grid">
             {media.slice(-6).reverse().map((message) => (
@@ -91,12 +92,14 @@ export default function ConversationDetails({ conversation, currentUserId, messa
         ) : <p className="lsb-details-empty"><Images className="w-4 h-4" /> Aucun média partagé</p>}
       </div>
 
-      <div className="lsb-details-actions">
+      <div className="lsb-details-actions lsb-details-card">
+        <div className="lsb-details-section-heading"><span>OUTILS</span></div>
         <button type="button" onClick={() => setSearchOpen((value) => !value)} className={searchOpen ? 'is-active' : ''}><Search className="w-4 h-4" /> Rechercher dans la discussion</button>
         <button type="button" onClick={toggleMute} className={muted ? 'is-active' : ''}>
           {muted ? <BellRing className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
           {muted ? 'Réactiver les notifications' : 'Mettre en sourdine'}
         </button>
+        <Link href={`/${rolePath}/${participant.id}`} className="lsb-details-action-link"><UserRound className="w-4 h-4" /> Voir le profil</Link>
       </div>
 
       {searchOpen && (

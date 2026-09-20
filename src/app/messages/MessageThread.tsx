@@ -10,7 +10,7 @@ import {
   ArrowLeft, MessageCircle, Loader2,
   CheckCheck, Check, Paperclip, Send, FileText, X, ExternalLink, CalendarPlus,
   UserPlus, Search,
-  MapPin, CalendarDays, Info,
+  MapPin, CalendarDays, Info, Images, BriefcaseBusiness, MoreHorizontal,
 } from 'lucide-react'
 import { Avatar, AttachmentBubble } from './MessageUI'
 import { BookingRequestCard, CancellationRequestCard } from './BookingCards'
@@ -211,6 +211,23 @@ export default function MessageThread({
     })
   }, [messages])
 
+  const collaborationSummary = useMemo(() => {
+    const bookingMessages = messages.filter((message) => message.bookingRequest)
+    const bookingIds = new Set(bookingMessages.map((message) => message.bookingRequest!.id))
+    const activeBooking = [...bookingMessages].reverse().find((message) => (
+      message.bookingRequest?.status !== 'DECLINED' && message.bookingRequest?.status !== 'CANCELLED'
+    )) ?? bookingMessages[bookingMessages.length - 1]
+    const mediaCount = messages.filter((message) => (
+      message.attachmentUrl && (message.attachmentType === 'IMAGE' || message.attachmentType === 'VIDEO')
+    )).length
+    const sharedCount = messages.filter((message) => message.type === 'PROFILE_SHARE' || message.type === 'OFFER_SHARE').length
+    const bookingDate = activeBooking?.bookingRequest?.startDate
+      ? new Date(activeBooking.bookingRequest.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      : null
+
+    return { bookingCount: bookingIds.size, activeBooking, bookingDate, mediaCount, sharedCount }
+  }, [messages])
+
   const onStatusUpdate = (messageId: string, newStatus: BookingRequestData['status']) => {
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId || !m.bookingRequest) return m
@@ -296,6 +313,27 @@ export default function MessageThread({
             : <div className="flex-1 min-w-0">{inner}</div>
         })()}
         <button type="button" onClick={onOpenDetails} className="lsb-thread-info-button" aria-label="Informations sur la conversation"><Info className="w-4 h-4" /></button>
+      </div>
+
+      <div className="lsb-thread-context" aria-label="Contexte de la collaboration">
+        <button
+          type="button"
+          className="lsb-thread-context-card"
+          onClick={() => collaborationSummary.activeBooking && document.getElementById(`message-${collaborationSummary.activeBooking.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          disabled={!collaborationSummary.activeBooking}
+        >
+          <span className="lsb-thread-context-icon"><CalendarDays className="w-4 h-4" /></span>
+          <span><strong>{collaborationSummary.bookingCount > 0 ? `${collaborationSummary.bookingCount} booking${collaborationSummary.bookingCount > 1 ? 's' : ''}` : 'Aucun booking'}</strong><small>{collaborationSummary.bookingDate ? `${collaborationSummary.bookingDate} · Collaboration en cours` : 'Aucune demande dans cet échange'}</small></span>
+        </button>
+        <button type="button" className="lsb-thread-context-card" onClick={onOpenDetails}>
+          <span className="lsb-thread-context-icon"><Images className="w-4 h-4" /></span>
+          <span><strong>{collaborationSummary.mediaCount} média{collaborationSummary.mediaCount > 1 ? 's' : ''}</strong><small>Voir les fichiers partagés</small></span>
+        </button>
+        <button type="button" className="lsb-thread-context-card" onClick={onOpenDetails}>
+          <span className="lsb-thread-context-icon"><BriefcaseBusiness className="w-4 h-4" /></span>
+          <span><strong>{collaborationSummary.sharedCount} contenu{collaborationSummary.sharedCount > 1 ? 's' : ''} lié{collaborationSummary.sharedCount > 1 ? 's' : ''}</strong><small>Profils et offres partagés</small></span>
+        </button>
+        <button type="button" onClick={onOpenDetails} className="lsb-thread-context-more" aria-label="Plus d'informations sur la conversation"><MoreHorizontal className="w-4 h-4" /></button>
       </div>
 
       {/* Formulaire de proposition de booking (slide-down) */}

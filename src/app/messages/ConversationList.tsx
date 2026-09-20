@@ -61,6 +61,68 @@ export default function ConversationList({
       })
     : []
 
+  const isUnreadConversation = (conv: Conversation) => (
+    !!conv.lastMessageMeta && conv.lastMessageMeta.senderId !== currentUserId && !conv.lastMessageMeta.seen
+  )
+  const isBookingConversation = (conv: Conversation) => /booking|proposition|réservation/i.test(conv.lastMessage || '')
+  const unreadCount = conversations.filter(isUnreadConversation).length
+  const bookingCount = conversations.filter(isBookingConversation).length
+  const priorityConversations = filter === 'all'
+    ? filteredConvs.filter((conv) => isUnreadConversation(conv) || isBookingConversation(conv))
+    : filteredConvs
+  const otherConversations = filter === 'all'
+    ? filteredConvs.filter((conv) => !isUnreadConversation(conv) && !isBookingConversation(conv))
+    : []
+
+  const renderConversation = (conv: Conversation) => {
+    const other = conv.participants.find((p) => p.id !== currentUserId) ?? conv.participants[0]
+    const isActive = conv.id === activeConvId
+    const isUnread = isUnreadConversation(conv)
+    const isBooking = isBookingConversation(conv)
+
+    return (
+      <div key={conv.id} onClick={() => selectConv(conv.id)}
+        className={`lsb-conversation-row group relative cursor-pointer transition-all duration-150 ${
+          isActive ? 'bg-gradient-to-r from-violet-600/[0.18] via-violet-500/[0.08] to-transparent' : 'hover:bg-white/[0.03]'
+        }`}
+      >
+        {isActive && <div className="lsb-conversation-active-line" />}
+        <div className="lsb-conversation-main">
+          <div className="relative shrink-0">
+            <Avatar src={other?.profile?.avatar || ''} alt={other?.name || '?'} size={42} />
+            {isUnread && <span className="lsb-conversation-unread-dot" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <p className={`text-sm truncate ${isUnread ? 'font-semibold text-white' : isActive ? 'font-medium text-white/90' : 'font-medium text-white/65'}`}>
+                {other?.name}
+              </p>
+              <span className={`text-[10px] shrink-0 tabular-nums ${isUnread ? 'text-violet-400' : 'text-white/25'}`}>
+                {conv.updatedAt ? formatTime(conv.updatedAt) : ''}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2 mt-0.5">
+              <p className={`text-xs truncate ${isUnread ? 'text-white/60' : 'text-white/30'}`}>
+                {conv.lastMessage ? cleanPreview(conv.lastMessage) : <span className="italic text-white/20">Nouvelle conversation</span>}
+              </p>
+              <button onClick={(e) => deleteConversation(conv.id, e)} disabled={deletingId === conv.id}
+                aria-label={`Supprimer la conversation avec ${other?.name || 'cet utilisateur'}`}
+                className="lsb-conversation-delete opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-500/10 text-white/20 hover:text-red-400">
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+        {(isBooking || isUnread) && (
+          <div className="lsb-conversation-labels">
+            {isBooking && <span className="is-booking">Booking</span>}
+            {isUnread && <span className="is-unread">Non lu</span>}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className={`lsb-conversations
       flex flex-col border-r border-white/[0.06]
@@ -72,12 +134,11 @@ export default function ConversationList({
       <div className="lsb-conversations-header px-4 pt-5 pb-3 border-b border-white/[0.05]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-base font-bold tracking-tight text-white">
-              Messages
-            </h1>
-            {conversations.length > 0 && !isSearching && (
-              <p className="text-[11px] text-white/25 mt-0.5">{conversations.length} conversation{conversations.length > 1 ? 's' : ''}</p>
-            )}
+            <p className="lsb-conversations-kicker">VOS ÉCHANGES</p>
+            <div className="lsb-conversations-title">
+              <h1>Messages</h1>
+              {unreadCount > 0 && <span>{unreadCount}</span>}
+            </div>
           </div>
           <button
             type="button"
@@ -104,9 +165,9 @@ export default function ConversationList({
 
         {!isSearching && (
           <div className="lsb-message-filters" aria-label="Filtrer les conversations">
-            <button type="button" className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')}>Tous</button>
-            <button type="button" className={filter === 'unread' ? 'is-active' : ''} onClick={() => setFilter('unread')}>Non lus</button>
-            <button type="button" className={filter === 'bookings' ? 'is-active' : ''} onClick={() => setFilter('bookings')}>Bookings</button>
+            <button type="button" className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')}>Tous · {conversations.length}</button>
+            <button type="button" className={filter === 'unread' ? 'is-active' : ''} onClick={() => setFilter('unread')}>Non lus · {unreadCount}</button>
+            <button type="button" className={filter === 'bookings' ? 'is-active' : ''} onClick={() => setFilter('bookings')}>Bookings · {bookingCount}</button>
           </div>
         )}
 
@@ -184,45 +245,26 @@ export default function ConversationList({
                 </>
               )}
             </div>
+          ) : filter === 'all' ? (
+            <>
+              {priorityConversations.length > 0 && (
+                <section className="lsb-conversation-group">
+                  <div className="lsb-conversation-group-title"><span>À TRAITER</span><strong>{priorityConversations.length} priorité{priorityConversations.length > 1 ? 's' : ''}</strong></div>
+                  {priorityConversations.map(renderConversation)}
+                </section>
+              )}
+              {otherConversations.length > 0 && (
+                <section className="lsb-conversation-group">
+                  <div className="lsb-conversation-group-title"><span>AUTRES ÉCHANGES</span></div>
+                  {otherConversations.map(renderConversation)}
+                </section>
+              )}
+            </>
           ) : (
-            filteredConvs.map((conv) => {
-              const other = conv.participants.find((p) => p.id !== currentUserId) ?? conv.participants[0]
-              const isActive = conv.id === activeConvId
-              const isUnread = !!conv.lastMessageMeta && conv.lastMessageMeta.senderId !== currentUserId && !conv.lastMessageMeta.seen
-
-              return (
-                <div key={conv.id} onClick={() => selectConv(conv.id)}
-                  className={`lsb-conversation-row group relative flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-all duration-150 ${
-                    isActive ? 'bg-gradient-to-r from-violet-600/[0.18] via-violet-500/[0.08] to-transparent' : 'hover:bg-white/[0.03]'
-                  }`}
-                >
-                  {isActive && <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-gradient-to-b from-violet-400 to-purple-600" />}
-                  <div className="relative shrink-0">
-                    <Avatar src={other?.profile?.avatar || ''} alt={other?.name || '?'} size={44} />
-                    {isUnread && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-violet-500 border-2 border-[#0e0e1a] shadow-sm shadow-violet-500/50" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={`text-sm truncate ${isUnread ? 'font-semibold text-white' : isActive ? 'font-medium text-white/90' : 'font-medium text-white/65'}`}>
-                        {other?.name}
-                      </p>
-                      <span className={`text-[10px] shrink-0 tabular-nums ${isUnread ? 'text-violet-400' : 'text-white/25'}`}>
-                        {conv.updatedAt ? formatTime(conv.updatedAt) : ''}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 mt-0.5">
-                      <p className={`text-xs truncate ${isUnread ? 'text-white/60' : 'text-white/30'}`}>
-                        {conv.lastMessage ? cleanPreview(conv.lastMessage) : <span className="italic text-white/20">Nouvelle conversation</span>}
-                      </p>
-                      <button onClick={(e) => deleteConversation(conv.id, e)} disabled={deletingId === conv.id}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-500/10 text-white/20 hover:text-red-400">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })
+            <section className="lsb-conversation-group">
+              <div className="lsb-conversation-group-title"><span>{filter === 'unread' ? 'NON LUS' : 'BOOKINGS'}</span><strong>{filteredConvs.length} résultat{filteredConvs.length > 1 ? 's' : ''}</strong></div>
+              {filteredConvs.map(renderConversation)}
+            </section>
           )}
         </div>
       )}
