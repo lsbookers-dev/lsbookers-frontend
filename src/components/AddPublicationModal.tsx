@@ -13,6 +13,10 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import type { PubCardData, PubTag } from './PublicationCard'
+import CropModal from './CropModal'
+
+// Ratio 4:5 — format Instagram portrait, idéal pour un feed uniforme
+const PUBLICATION_ASPECT_RATIO = 4 / 5
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 const MAX_FILES = 10
@@ -72,9 +76,35 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
   const [tagResults, setTagResults] = useState<TagUser[]>([])
   const [selectedUsers, setSelectedUsers] = useState<TagUser[]>([])
   const [searching, setSearching] = useState(false)
+  // File d'attente de recadrage : chaque image passe par le CropModal avant d'être ajoutée
+  const [cropQueue, setCropQueue] = useState<File[]>([])
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
 
   filesRef.current = files
   uploadingRef.current = uploading
+
+  // Gestion de la file de recadrage : ouvre le CropModal pour chaque image en attente
+  useEffect(() => {
+    if (cropQueue.length === 0) {
+      setCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+      return
+    }
+    const url = URL.createObjectURL(cropQueue[0])
+    setCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return url })
+  }, [cropQueue])
+
+  const advanceCropQueue = () => setCropQueue(prev => prev.slice(1))
+
+  const handleCropConfirm = (blob: Blob) => {
+    const original = cropQueue[0]
+    const croppedFile = new File([blob], original?.name ?? 'image.jpg', { type: 'image/jpeg' })
+    const preview: FilePreview = { file: croppedFile, previewUrl: URL.createObjectURL(croppedFile), type: 'image' }
+    setFiles(prev => {
+      if (prev.length >= MAX_FILES) { URL.revokeObjectURL(preview.previewUrl); return prev }
+      return [...prev, preview]
+    })
+    advanceCropQueue()
+  }
 
   const closeModal = useCallback(() => {
     if (!uploadingRef.current) onClose()
@@ -131,7 +161,8 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
 
   const addFiles = (incoming: FileList | File[]) => {
     const candidates = Array.from(incoming)
-    const accepted: FilePreview[] = []
+    const pendingImages: File[] = []
+    const acceptedVideos: FilePreview[] = []
     let nextError = ''
 
     for (const file of candidates) {
@@ -148,20 +179,30 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
           : 'Une vidéo dépasse la limite de 100 Mo.'
         continue
       }
-      accepted.push({
-        file,
-        previewUrl: URL.createObjectURL(file),
-        type: isVideo ? 'video' : 'image',
+      // Les images passent par le CropModal — les vidéos sont ajoutées directement
+      if (isImage) {
+        pendingImages.push(file)
+      } else {
+        acceptedVideos.push({ file, previewUrl: URL.createObjectURL(file), type: 'video' })
+      }
+    }
+
+    // Ajouter les vidéos immédiatement
+    if (acceptedVideos.length > 0) {
+      setFiles(previous => {
+        const available = Math.max(0, MAX_FILES - previous.length)
+        const kept = acceptedVideos.slice(0, available)
+        acceptedVideos.slice(available).forEach(item => URL.revokeObjectURL(item.previewUrl))
+        if (acceptedVideos.length > available) nextError = `Une publication peut contenir ${MAX_FILES} médias maximum.`
+        return [...previous, ...kept]
       })
     }
 
-    setFiles(previous => {
-      const available = Math.max(0, MAX_FILES - previous.length)
-      const kept = accepted.slice(0, available)
-      accepted.slice(available).forEach(item => URL.revokeObjectURL(item.previewUrl))
-      if (accepted.length > available) nextError = `Une publication peut contenir ${MAX_FILES} médias maximum.`
-      return [...previous, ...kept]
-    })
+    // Mettre les images en file d'attente de recadrage
+    if (pendingImages.length > 0) {
+      setCropQueue(prev => [...prev, ...pendingImages])
+    }
+
     setError(nextError)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -270,6 +311,19 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
   const initials = authorName.slice(0, 2).toUpperCase()
 
   return (
+    <>
+    {/* CropModal — s'ouvre par-dessus le composeur pour chaque image de la file */}
+    {cropSrc && cropQueue.length > 0 && (
+      <CropModal
+        src={cropSrc}
+        aspectRatio={PUBLICATION_ASPECT_RATIO}
+        displayWidth={360}
+        outputWidth={1080}
+        maxZoom={4}
+        onConfirm={handleCropConfirm}
+        onCancel={advanceCropQueue}
+      />
+    )}
     <div
       className="fixed inset-0 z-[80] flex items-end justify-center bg-black/80 backdrop-blur-md sm:items-center sm:p-5"
       onMouseDown={event => { if (event.target === event.currentTarget) closeModal() }}
@@ -471,5 +525,6 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
         </footer>
       </section>
     </div>
+    </>
   )
 }

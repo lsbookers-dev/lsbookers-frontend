@@ -5,10 +5,11 @@ import { X, Check, ZoomIn, ZoomOut } from 'lucide-react'
 
 interface Props {
   src: string
-  aspectRatio: number   // largeur / hauteur  (1 = carré, 3 = bannière)
-  displayWidth?: number // largeur de la zone de preview
+  aspectRatio: number    // largeur / hauteur  (1 = carré, 3 = bannière)
+  displayWidth?: number  // largeur de la zone de preview
+  outputWidth?: number   // résolution de sortie (défaut : 400, ou 1200 si ratio ≥ 2)
   shape?: 'circle' | 'rect'
-  maxZoom?: number      // zoom maximum (défaut 3)
+  maxZoom?: number       // zoom maximum (défaut 3)
   onConfirm: (blob: Blob) => void
   onCancel: () => void
 }
@@ -17,6 +18,7 @@ export default function CropModal({
   src,
   aspectRatio,
   displayWidth = 320,
+  outputWidth,
   shape = 'rect',
   maxZoom = 3,
   onConfirm,
@@ -99,8 +101,8 @@ export default function CropModal({
     const srcX = centerX - srcW / 2
     const srcY = centerY - srcH / 2
 
-    // Résolution de sortie : 400×400 pour avatar, 1200×400 pour bannière
-    const outW = aspectRatio >= 2 ? 1200 : 400
+    // Résolution de sortie : prop outputWidth, sinon 1200 pour bannière, 400 pour avatar
+    const outW = outputWidth ?? (aspectRatio >= 2 ? 1200 : 400)
     const outH = Math.round(outW / aspectRatio)
 
     const canvas = document.createElement('canvas')

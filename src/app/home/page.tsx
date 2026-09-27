@@ -345,8 +345,8 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
 
   return (
     <article className="group relative overflow-hidden rounded-[1.4rem] border border-white/[0.1] bg-[#111016] shadow-[0_28px_75px_rgba(0,0,0,.2)]">
-      {isVideo ? (
-        <div className="relative aspect-video bg-black" onClick={() => onOpenModal(post)}>
+      <div className={`relative ${isVideo ? 'aspect-video' : 'aspect-[4/5]'} bg-black`} onClick={() => onOpenModal(post)}>
+        {isVideo ? (
           <video
             key={current.url}
             ref={videoRef}
@@ -355,11 +355,11 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
             muted preload="metadata" playsInline loop
             onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
           />
-        </div>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={current.url} alt={post.caption || post.title} className="w-full cursor-pointer block transition duration-700 group-hover:scale-[1.015]" loading="lazy" onClick={() => onOpenModal(post)} />
-      )}
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={current.url} alt={post.caption || post.title} className="h-full w-full cursor-pointer object-cover transition duration-700 group-hover:scale-[1.015]" loading="lazy" />
+        )}
+      </div>
 
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/90" />
 
