@@ -1,28 +1,25 @@
 'use client'
 
-/**
- * PublicationsSection
- * Section complète publications : grille de cartes + modale avec commentaires.
- * Utilisée sur tous les profils (privés + publics) et la page home.
- */
+/** Portfolio vivant partagé par les profils privés et publics. */
 
-import { useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { ImagePlus, Trash2, X } from 'lucide-react'
 import PublicationCard, { type PubCardData, type PubTag } from './PublicationCard'
 import PublicationModal from './PublicationModal'
 import TagModal from './TagModal'
 
 type Props = {
   publications: PubCardData[]
-  /** Titre de la section (ex: "Publications", "Réalisations") */
   title?: string
-  /** Callback pour supprimer une publication (profil privé uniquement) */
   onDelete?: (id: number) => void
-  /** Affiche le bouton supprimer sur chaque carte */
   isOwner?: boolean
-  /** User ID du propriétaire (pour activer les actions auteur dans la modal) */
   ownerUserId?: number
-  /** Bouton ou élément React additionnel dans le header (ex: bouton Ajouter) */
   headerAction?: React.ReactNode
+}
+
+const cardSize = (index: number): 'tall' | 'medium' | 'square' => {
+  const pattern: Array<'tall' | 'medium' | 'square'> = ['tall', 'square', 'medium', 'tall', 'medium', 'square']
+  return pattern[index % pattern.length]
 }
 
 export default function PublicationsSection({
@@ -33,86 +30,89 @@ export default function PublicationsSection({
   ownerUserId,
   headerAction,
 }: Props) {
-  const [selected,   setSelected]   = useState<PubCardData | null>(null)
-  const [tagTarget,  setTagTarget]  = useState<PubCardData | null>(null)
-  const [showAll,    setShowAll]    = useState(false)
-  const [pubs,       setPubs]       = useState<PubCardData[]>(publications)
+  const [selected, setSelected] = useState<PubCardData | null>(null)
+  const [tagTarget, setTagTarget] = useState<PubCardData | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  const [pubs, setPubs] = useState<PubCardData[]>(publications)
 
-  /* Sync si la prop change (ex: ajout ou suppression d'une pub) */
-  if (publications.length !== pubs.length) {
+  useEffect(() => {
     setPubs(publications)
-  }
+  }, [publications])
 
-  const sorted  = [...pubs].sort((a, b) => b.id - a.id)
+  const sorted = [...pubs].sort((a, b) => b.id - a.id)
   const preview = sorted.slice(0, 9)
 
-  /* Mise à jour en temps réel des compteurs likes/comments */
   const handleCountChange = useCallback((pubId: number, likes: number, comments: number) => {
-    setPubs(prev =>
-      prev.map(p =>
-        p.id === pubId ? { ...p, _count: { likes, comments } } : p
-      )
-    )
+    setPubs(previous => previous.map(publication => (
+      publication.id === pubId ? { ...publication, _count: { likes, comments } } : publication
+    )))
+    setSelected(previous => previous?.id === pubId
+      ? { ...previous, _count: { likes, comments } }
+      : previous)
   }, [])
 
-  /* Mise à jour des tags depuis TagModal */
   const handleTagsChange = useCallback((pubId: number, tags: PubTag[]) => {
-    setPubs(prev =>
-      prev.map(p => p.id === pubId ? { ...p, tags } : p)
-    )
-    // Mettre à jour aussi la pub sélectionnée si ouverte
-    setSelected(prev => prev?.id === pubId ? { ...prev, tags } : prev)
-    // Mettre à jour la cible du TagModal
-    setTagTarget(prev => prev?.id === pubId ? { ...prev, tags } : prev)
+    setPubs(previous => previous.map(publication => publication.id === pubId ? { ...publication, tags } : publication))
+    setSelected(previous => previous?.id === pubId ? { ...previous, tags } : previous)
+    setTagTarget(previous => previous?.id === pubId ? { ...previous, tags } : previous)
   }, [])
+
+  const renderPortfolio = (items: PubCardData[], inModal = false) => (
+    <div className={`columns-2 gap-2.5 sm:gap-3 ${inModal ? 'md:columns-3 lg:columns-4' : 'md:columns-3'}`}>
+      {items.map((publication, index) => (
+        <div key={publication.id} className="relative mb-2.5 inline-block w-full break-inside-avoid sm:mb-3">
+          <PublicationCard
+            pub={publication}
+            onClick={pub => { if (inModal) setShowAll(false); setSelected(pub) }}
+            isOwner={isOwner}
+            onTagClick={isOwner ? pub => { if (inModal) setShowAll(false); setTagTarget(pub) } : undefined}
+            size={cardSize(index)}
+          />
+          {isOwner && onDelete && (
+            <button
+              type="button"
+              onClick={event => { event.stopPropagation(); onDelete(publication.id) }}
+              aria-label={`Supprimer ${publication.title}`}
+              className="absolute bottom-3.5 right-3.5 z-[5] grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-black/65 text-white/65 backdrop-blur-md transition hover:border-red-400/50 hover:bg-red-600 hover:text-white"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <>
-      <section className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5">
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
+      <section className="overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-[linear-gradient(145deg,rgba(18,16,23,.9),rgba(10,9,13,.94))] p-3.5 shadow-[0_24px_65px_rgba(0,0,0,.16)] sm:p-5">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-[.2em] text-violet-300/80">Portfolio public</span>
+            <h2 className="mt-1 font-serif text-xl font-semibold text-white">{title}</h2>
+            {sorted.length > 0 && <p className="mt-1 text-[10px] text-white/35">{sorted.length} création{sorted.length > 1 ? 's' : ''}</p>}
+          </div>
           <div className="flex items-center gap-2">
             {sorted.length > 9 && (
-              <button
-                onClick={() => setShowAll(true)}
-                className="text-xs px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
-              >
-                Voir toutes ({sorted.length})
+              <button type="button" onClick={() => setShowAll(true)} className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-medium text-white/55 transition hover:border-violet-400/30 hover:text-white">
+                Tout voir
               </button>
             )}
             {headerAction}
           </div>
         </div>
 
-        {/* ── Grille ou état vide ── */}
         {sorted.length === 0 ? (
-          <p className="text-neutral-400 text-sm">Aucune publication pour le moment.</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-1.5">
-            {preview.map(p => (
-              <div key={p.id} className="relative">
-                <PublicationCard
-                  pub={p}
-                  onClick={setSelected}
-                  isOwner={isOwner}
-                  onTagClick={isOwner ? setTagTarget : undefined}
-                />
-                {isOwner && onDelete && (
-                  <button
-                    onClick={e => { e.stopPropagation(); onDelete(p.id) }}
-                    className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full transition z-10"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
+          <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed border-white/10 bg-white/[0.018] px-5 text-center">
+            <div>
+              <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-violet-500/10 text-violet-300/70"><ImagePlus size={20} /></span>
+              <p className="mt-3 text-sm font-medium text-white/65">Le portfolio est encore vide</p>
+              <p className="mt-1 text-[11px] text-white/35">Les prochaines créations apparaîtront ici.</p>
+            </div>
           </div>
-        )}
+        ) : renderPortfolio(preview)}
       </section>
 
-      {/* ── Modale détail publication ── */}
       {selected && (
         <PublicationModal
           pub={selected}
@@ -122,7 +122,6 @@ export default function PublicationsSection({
         />
       )}
 
-      {/* ── TagModal (auteur uniquement) ── */}
       {tagTarget && (
         <TagModal
           pubId={tagTarget.id}
@@ -132,37 +131,15 @@ export default function PublicationsSection({
         />
       )}
 
-      {/* ── Modale "Voir toutes" ── */}
       {showAll && (
-        <div
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowAll(false)}
-        >
-          <div
-            className="max-w-4xl w-full max-h-[88vh] overflow-y-auto bg-neutral-950 border border-white/10 rounded-2xl p-5"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">{title} ({sorted.length})</h3>
-              <button
-                onClick={() => setShowAll(false)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
-              >
-                Fermer
-              </button>
-            </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {sorted.map(p => (
-                <PublicationCard
-                  key={p.id}
-                  pub={p}
-                  isOwner={isOwner}
-                  onClick={pub => { setShowAll(false); setSelected(pub) }}
-                  onTagClick={isOwner ? pub => { setShowAll(false); setTagTarget(pub) } : undefined}
-                />
-              ))}
-            </div>
-          </div>
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 backdrop-blur-md sm:items-center sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget) setShowAll(false) }}>
+          <section role="dialog" aria-modal="true" aria-label={`${title}, toutes les publications`} className="flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden border-white/10 bg-[#0b0a0e] shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-[1.35rem] sm:border">
+            <header className="flex items-center justify-between gap-4 border-b border-white/[0.08] px-4 py-4 sm:px-5">
+              <div><span className="text-[9px] font-bold uppercase tracking-[.18em] text-violet-300/75">Portfolio vivant</span><h3 className="mt-1 font-serif text-lg font-semibold">{title} <span className="text-white/30">({sorted.length})</span></h3></div>
+              <button type="button" onClick={() => setShowAll(false)} aria-label="Fermer" className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.035] text-white/50 hover:text-white"><X size={16} /></button>
+            </header>
+            <div className="overflow-y-auto p-3.5 sm:p-5">{renderPortfolio(sorted, true)}</div>
+          </section>
         </div>
       )}
     </>

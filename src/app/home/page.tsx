@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Heart, Star, Users, ChevronLeft, ChevronRight,
   Briefcase, Loader2, UserPlus, Flame, MessageCircle, ChevronDown,
-  Volume2, VolumeX,
+  Volume2, VolumeX, Images, Share2,
 } from 'lucide-react'
 import PublicationModal from '@/components/PublicationModal'
 import AddPublicationModal from '@/components/AddPublicationModal'
@@ -218,34 +218,14 @@ function AdminPostCard({ post }: { post: AdminPost }) {
   const isVideo = post.mediaType === 'VIDEO'
 
   return (
-    <article className="rounded-2xl border border-purple-500/20 bg-purple-500/5 overflow-hidden relative">
-      {/* Badge Officiel */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 text-xs px-2 py-1 rounded-full backdrop-blur-sm">
-        <Star className="w-3 h-3 fill-yellow-300" /> Officiel
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center gap-3 p-3 pt-4">
-        <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex-shrink-0 flex items-center justify-center text-white text-sm font-bold border-2 border-purple-400/40">
-          LS
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-semibold text-white">LS Bookers</span>
-            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-          </div>
-          <p className="text-xs text-purple-300/70">{timeAgo(post.createdAt)}</p>
-        </div>
-      </div>
-
-      {/* Média */}
+    <article className="group relative min-h-[24rem] overflow-hidden rounded-[1.4rem] border border-violet-400/20 bg-[#131019] shadow-[0_28px_75px_rgba(0,0,0,.2)] sm:aspect-[16/10] sm:min-h-0">
       {post.mediaUrl && (
-        <div className="w-full bg-black flex items-center justify-center">
+        <div className="absolute inset-0 bg-black">
           {isVideo ? (
             // eslint-disable-next-line jsx-a11y/media-has-caption
             <video
               src={post.mediaUrl}
-              className="w-full max-h-[480px] object-contain block"
+              className="h-full w-full object-cover"
               controls
               preload="metadata"
               playsInline
@@ -255,22 +235,29 @@ function AdminPostCard({ post }: { post: AdminPost }) {
             <img
               src={post.mediaUrl}
               alt={post.title || 'LS Bookers'}
-              className="w-full max-h-[480px] object-contain block"
+              className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.015]"
               loading="lazy"
             />
           )}
         </div>
       )}
+      {!post.mediaUrl && <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(168,85,247,.32),transparent_38%),linear-gradient(145deg,#1d1428,#0d0b12_70%)]" />}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/5 to-black/95" />
 
-      {/* Contenu texte */}
+      <header className="absolute inset-x-0 top-0 z-[3] flex items-center gap-3 p-4 sm:p-5">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-violet-300/35 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-xs font-bold text-white shadow-lg">LS</span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-white">LS Bookers <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" /></span>
+          <span className="mt-0.5 block text-[10px] text-white/55">{timeAgo(post.createdAt)}</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/25 bg-amber-400/15 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.12em] text-amber-200 backdrop-blur-md"><Star size={11} className="fill-current" /> Officiel</span>
+      </header>
+
       {(post.title || post.content) && (
-        <div className="p-3 space-y-1">
-          {post.title && (
-            <p className="text-sm font-semibold text-white">{post.title}</p>
-          )}
-          {post.content && (
-            <p className="text-sm text-white/70 leading-relaxed">{post.content}</p>
-          )}
+        <div className="absolute bottom-6 left-5 right-5 z-[3] max-w-2xl">
+          <p className="text-[9px] font-bold uppercase tracking-[.18em] text-violet-300">Actualité LSBookers</p>
+          {post.title && <h2 className="mt-2 font-serif text-2xl font-semibold leading-[1.05] text-white drop-shadow sm:text-3xl">{post.title}</h2>}
+          {post.content && <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-white/70 sm:text-xs">{post.content}</p>}
         </div>
       )}
     </article>
@@ -335,10 +322,49 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
     setMediaIdx(i => (i + 1) % allMedia.length)
   }
 
+  const share = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const shareData = {
+      title: post.title,
+      text: post.caption || post.title,
+      url: window.location.href,
+    }
+    try {
+      if (navigator.share) await navigator.share(shareData)
+      else await navigator.clipboard.writeText(window.location.href)
+    } catch {
+      /* L'utilisateur peut fermer la feuille de partage sans erreur visible. */
+    }
+  }
+
+  const feedLabel = post.feedType === 'suggestion'
+    ? 'À découvrir'
+    : post.feedType === 'trending'
+      ? 'En tendance'
+      : roleLabel(post.author.role) || 'Publication'
+
   return (
-    <article className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden">
-      <div className="flex items-center gap-3 p-3">
-        <Link href={post.author.profileUrl} className="relative w-9 h-9 rounded-full overflow-hidden bg-zinc-800 flex-shrink-0 block">
+    <article className="group relative min-h-[30rem] overflow-hidden rounded-[1.4rem] border border-white/[0.1] bg-[#111016] shadow-[0_28px_75px_rgba(0,0,0,.2)] sm:aspect-[16/11] sm:min-h-0">
+      <div className="absolute inset-0 bg-black" onClick={() => onOpenModal(post)}>
+        {isVideo ? (
+          <video
+            key={current.url}
+            ref={videoRef}
+            src={current.url}
+            className="h-full w-full cursor-pointer object-cover transition duration-700 group-hover:scale-[1.015]"
+            muted preload="metadata" playsInline loop
+            onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={current.url} alt={post.caption || post.title} className="h-full w-full cursor-pointer object-cover transition duration-700 group-hover:scale-[1.015]" loading="lazy" />
+        )}
+      </div>
+
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/75 via-black/5 to-black/95" />
+
+      <header className="absolute inset-x-0 top-0 z-[3] flex items-center gap-3 p-4 sm:p-5">
+        <Link href={post.author.profileUrl} className="relative block h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border border-white/20 bg-zinc-800 shadow-lg">
           {post.author.avatar ? (
             <Image src={post.author.avatar} alt={post.author.name} fill className="object-cover" />
           ) : (
@@ -346,85 +372,55 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
           )}
         </Link>
         <div className="flex-1 min-w-0">
-          <Link href={post.author.profileUrl} className="text-sm font-semibold text-white hover:text-purple-300 transition-colors truncate block">
+          <Link href={post.author.profileUrl} className="block truncate text-sm font-semibold text-white drop-shadow hover:text-purple-200">
             {post.author.name}
           </Link>
-          <p className="text-xs text-white/40">
+          <p className="mt-0.5 text-[10px] text-white/60">
             {post.author.profession || roleLabel(post.author.role)} · {timeAgo(post.createdAt)}
           </p>
         </div>
         {post.isFromFollow && post.author.userId !== currentUserId && (
-          <span className="text-xs text-purple-400/60 flex-shrink-0">Suivi</span>
+          <span className="flex-shrink-0 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] text-violet-200 backdrop-blur-md">Suivi</span>
         )}
+      </header>
+
+      <div className="absolute left-4 top-[4.7rem] z-[3] flex gap-2 sm:left-5 sm:top-[5.25rem]">
+        <span className="rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.12em] text-white/75 backdrop-blur-md">{feedLabel}</span>
+        {isMulti && <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[9px] text-white/75 backdrop-blur-md"><Images size={11} /> {mediaIdx + 1} / {allMedia.length}</span>}
       </div>
 
-      <div className="w-full bg-black flex items-center justify-center relative group" onClick={() => onOpenModal(post)}>
-        {isVideo ? (
-          <>
-            <video
-              key={current.url}
-              ref={videoRef}
-              src={current.url}
-              className="w-full max-h-[560px] object-contain block cursor-pointer"
-              muted preload="metadata" playsInline loop
-              onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
-            />
-            {/* Bouton mute/unmute global */}
-            <button
-              onClick={(e) => { e.stopPropagation(); onToggleMute() }}
-              className="absolute bottom-3 right-3 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/15 text-white transition-all"
-              title={isMuted ? 'Activer le son' : 'Couper le son'}
-            >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-          </>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={current.url} alt={post.caption || post.title} className="w-full max-h-[560px] object-contain block cursor-pointer" loading="lazy" />
-        )}
+      {isMulti && (
+        <>
+          <button type="button" onClick={prev} aria-label="Média précédent" className="absolute left-3 top-1/2 z-[4] grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/45 text-white/70 opacity-100 backdrop-blur-md transition hover:bg-black/75 hover:text-white sm:opacity-0 sm:group-hover:opacity-100"><ChevronLeft size={17} /></button>
+          <button type="button" onClick={next} aria-label="Média suivant" className="absolute right-3 top-1/2 z-[4] grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/45 text-white/70 opacity-100 backdrop-blur-md transition hover:bg-black/75 hover:text-white sm:opacity-0 sm:group-hover:opacity-100"><ChevronRight size={17} /></button>
+          <div className="absolute bottom-4 left-1/2 z-[4] flex -translate-x-1/2 gap-1" onClick={event => event.stopPropagation()}>
+            {allMedia.map((_, index) => <button key={index} type="button" onClick={event => { event.stopPropagation(); setMediaIdx(index) }} aria-label={`Afficher le média ${index + 1}`} className={`h-1.5 rounded-full transition-all ${index === mediaIdx ? 'w-5 bg-white' : 'w-1.5 bg-white/40'}`} />)}
+          </div>
+        </>
+      )}
 
-        {/* Flèches navigation */}
-        {isMulti && (
-          <>
-            <button
-              onClick={prev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 backdrop-blur-sm rounded-full p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={next}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 backdrop-blur-sm rounded-full p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            {/* Points indicateurs */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1" onClick={e => e.stopPropagation()}>
-              {allMedia.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={(e) => { e.stopPropagation(); setMediaIdx(i) }}
-                  className={`rounded-full transition-all ${i === mediaIdx ? 'bg-white w-4 h-1.5' : 'bg-white/40 w-1.5 h-1.5'}`}
-                />
-              ))}
-            </div>
-          </>
-        )}
+      <div className="absolute bottom-5 left-4 right-[4.8rem] z-[3] sm:bottom-6 sm:left-5 sm:right-24">
+        <p className="text-[9px] font-bold uppercase tracking-[.18em] text-violet-300">{roleLabel(post.author.role) || 'Portfolio'} · {post.author.profession || 'Création'}</p>
+        <button type="button" onClick={() => onOpenModal(post)} className="mt-2 block text-left">
+          <h2 className="font-serif text-2xl font-semibold leading-[1.05] text-white drop-shadow sm:text-3xl">{post.title}</h2>
+          {post.caption && <p className="mt-2 line-clamp-2 max-w-xl text-[11px] leading-relaxed text-white/70 sm:text-xs">{post.caption}</p>}
+        </button>
       </div>
 
-      <div className="p-3 space-y-2">
-        <div className="flex items-center gap-4">
-          <button onClick={() => onLike(post.id)} className="flex items-center gap-1.5 text-sm transition-colors">
-            <Heart className={`w-4 h-4 transition-all ${post.likedByMe ? 'fill-pink-500 text-pink-500 scale-110' : 'text-white/40 hover:text-pink-400'}`} />
-            <span className={post.likedByMe ? 'text-pink-400' : 'text-white/40'}>{post.likesCount}</span>
+      <div className="absolute bottom-5 right-3 z-[5] grid gap-2.5 sm:bottom-6 sm:right-5">
+        <span className="grid justify-items-center gap-1">
+          <button type="button" onClick={event => { event.stopPropagation(); onLike(post.id) }} aria-label={post.likedByMe ? 'Retirer le J’aime' : 'Aimer'} className={`grid h-11 w-11 place-items-center rounded-full border backdrop-blur-md transition ${post.likedByMe ? 'border-pink-400/45 bg-pink-500/25 text-pink-300' : 'border-white/15 bg-black/50 text-white/80 hover:bg-white/10'}`}><Heart size={17} className={post.likedByMe ? 'fill-current' : ''} /></button>
+          <span className="text-[9px] text-white/65">{post.likesCount}</span>
+        </span>
+        <span className="grid justify-items-center gap-1">
+          <button type="button" onClick={event => { event.stopPropagation(); onOpenModal(post) }} aria-label="Voir les commentaires" className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/50 text-white/80 backdrop-blur-md transition hover:bg-white/10"><MessageCircle size={17} /></button>
+          <span className="text-[9px] text-white/65">{post.commentsCount ?? 0}</span>
+        </span>
+        <button type="button" onClick={share} aria-label="Partager" className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/50 text-white/80 backdrop-blur-md transition hover:bg-white/10"><Share2 size={16} /></button>
+        {isVideo && (
+          <button type="button" onClick={event => { event.stopPropagation(); onToggleMute() }} aria-label={isMuted ? 'Activer le son' : 'Couper le son'} className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/50 text-white/80 backdrop-blur-md transition hover:bg-white/10">
+            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
-          <button onClick={() => onOpenModal(post)} className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors">
-            <MessageCircle className="w-4 h-4" />
-            <span>{post.commentsCount ?? 0}</span>
-          </button>
-        </div>
-        {post.caption && (
-          <p className="text-sm text-white/70 leading-relaxed line-clamp-2">{post.caption}</p>
         )}
       </div>
     </article>
@@ -680,7 +676,7 @@ function OffersSidebar({ apiBase, onSelectOffer }: {
    PAGE PRINCIPALE
 ───────────────────────────────────────────────────────────── */
 export default function HomePage() {
-  const { user } = useAuth() as { user: { id: number; avatarUrl?: string | null; name?: string; profile?: { id: number } } | null }
+  const { user } = useAuth() as { user: { id: number; avatarUrl?: string | null; name?: string; role: string; profile?: { id: number } } | null }
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   const [featured, setFeatured]           = useState<FeaturedProfile[]>([])
@@ -770,10 +766,11 @@ export default function HomePage() {
       p.id !== postId ? p : { ...p, likedByMe: !wasLiked, likesCount: wasLiked ? prevCount - 1 : prevCount + 1 }
     ))
     try {
-      await fetch(`${API_BASE}/api/publications/${postId}/like`, {
+      const response = await fetch(`${API_BASE}/api/publications/${postId}/like`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
+      if (!response.ok) throw new Error('Like refusé')
     } catch {
       // Rollback vers l'état original (pas un double-toggle)
       setPosts(prev => prev.map(p =>
@@ -913,13 +910,13 @@ export default function HomePage() {
               commentsCount: 0,
               likedByMe: false,
               isFromFollow: false,
-              additionalMedia: [],
+              additionalMedia: pub.additionalMedia ?? [],
               author: {
                 profileId: user.profile?.id ?? 0,
-                userId: null,
+                userId: Number(user.id),
                 name: user.name ?? '',
                 avatar: user.avatarUrl ?? null,
-                role: null,
+                role: user.role,
                 profession: null,
                 profileUrl: '/studio-profile',
               },

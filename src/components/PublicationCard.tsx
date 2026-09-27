@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { Heart, MessageCircle, Play, Images, Tag } from 'lucide-react'
+import { Heart, Images, MessageCircle, Play, Tag } from 'lucide-react'
 
 export type PubMediaItem = {
   id?: number
@@ -30,138 +30,111 @@ export type PubCardData = {
   media: string
   mediaType: 'image' | 'video' | string
   caption?: string
+  createdAt?: string
   additionalMedia?: PubMediaItem[]
   tags?: PubTag[]
   _count?: { likes: number; comments: number }
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-const toAbs = (u?: string | null) => {
-  if (!u) return ''
-  if (u.startsWith('http')) return u
-  return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`
+const toAbs = (url?: string | null) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
 type Props = {
   pub: PubCardData
   onClick: (pub: PubCardData) => void
-  /** Affiche le titre sous la carte (mode liste). Par défaut: false */
-  showTitle?: boolean
-  /** Si l'utilisateur connecté est l'auteur → affiche le bouton tag */
   isOwner?: boolean
-  /** Callback quand l'auteur clique sur l'icône tag */
   onTagClick?: (pub: PubCardData) => void
+  size?: 'tall' | 'medium' | 'square'
 }
 
-export default function PublicationCard({ pub, onClick, showTitle = false, isOwner = false, onTagClick }: Props) {
-  const likes      = pub._count?.likes    ?? 0
-  const comments   = pub._count?.comments ?? 0
-  const isImage    = pub.mediaType?.toLowerCase() === 'image'
-  const extraCount = pub.additionalMedia?.length ?? 0
+const sizeClasses = {
+  tall: 'aspect-[4/5]',
+  medium: 'aspect-[4/3]',
+  square: 'aspect-square',
+}
 
-  // Tags acceptés uniquement pour l'overlay
-  const acceptedTags = pub.tags?.filter(t => t.status === 'ACCEPTED') ?? []
-  const pendingTags  = pub.tags?.filter(t => t.status === 'PENDING')  ?? []
+export default function PublicationCard({ pub, onClick, isOwner = false, onTagClick, size = 'square' }: Props) {
+  const likes = pub._count?.likes ?? 0
+  const comments = pub._count?.comments ?? 0
+  const isImage = pub.mediaType?.toLowerCase() === 'image'
+  const mediaCount = 1 + (pub.additionalMedia?.length ?? 0)
+  const acceptedTags = pub.tags?.filter(tag => tag.status === 'ACCEPTED') ?? []
+  const pendingTags = pub.tags?.filter(tag => tag.status === 'PENDING') ?? []
 
   return (
-    <div
+    <article
       onClick={() => onClick(pub)}
-      className="group relative rounded-xl overflow-hidden border border-white/10 bg-black/30 cursor-pointer"
+      className={`group relative w-full cursor-pointer overflow-hidden rounded-[1.15rem] border border-white/[0.09] bg-[#121016] shadow-[0_18px_45px_rgba(0,0,0,.14)] ${sizeClasses[size]}`}
     >
-      {/* ── Média principal ── */}
-      <div className="relative w-full aspect-square">
-        {isImage ? (
-          <Image
-            src={pub.media}
-            alt={pub.title}
-            fill
-            unoptimized
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <>
-            <video
-              src={pub.media}
-              className="w-full h-full object-cover"
-              muted
-              preload="metadata"
-            />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-black/50 rounded-full p-3">
-                <Play size={20} className="text-white fill-white" />
-              </div>
-            </div>
-          </>
-        )}
+      {isImage ? (
+        <Image
+          src={pub.media}
+          alt={pub.title}
+          fill
+          unoptimized
+          className="object-cover transition duration-500 group-hover:scale-[1.035] group-hover:saturate-[1.08]"
+        />
+      ) : (
+        <>
+          <video src={pub.media} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+          <span className="absolute left-1/2 top-1/2 z-[2] grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-md">
+            <Play size={17} className="translate-x-px fill-white" />
+          </span>
+        </>
+      )}
 
-        {/* ── Badge multi-photos ── */}
-        {extraCount > 0 && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 pointer-events-none">
-            <Images size={11} className="text-white" />
-            <span className="text-white text-[10px] font-semibold">+{extraCount}</span>
-          </div>
-        )}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/95 transition-colors group-hover:from-black/25" />
 
-        {/* ── Overlay tags acceptés (bas-gauche, comme Instagram) ── */}
-        {acceptedTags.length > 0 && (
-          <div className="absolute bottom-2 left-2 flex items-center pointer-events-none">
+      <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between gap-2 p-2.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          {isOwner && onTagClick && (
+            <button
+              type="button"
+              onClick={event => { event.stopPropagation(); onTagClick(pub) }}
+              className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/15 bg-black/55 text-white/75 backdrop-blur-md transition hover:border-violet-400/50 hover:bg-violet-500/30 hover:text-white"
+              aria-label="Identifier des personnes"
+            >
+              <Tag size={13} />
+              {pendingTags.length > 0 && <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-black/60" />}
+            </button>
+          )}
+          {acceptedTags.length > 0 && (
             <div className="flex -space-x-1.5">
-              {acceptedTags.slice(0, 3).map(t => (
-                t.taggedUser.profile?.avatar ? (
-                  <div key={t.id} className="relative h-5 w-5 rounded-full overflow-hidden border border-black/60 shrink-0">
-                    <Image src={toAbs(t.taggedUser.profile.avatar)} alt="" fill className="object-cover" unoptimized />
-                  </div>
+              {acceptedTags.slice(0, 3).map(tag => (
+                tag.taggedUser.profile?.avatar ? (
+                  <span key={tag.id} className="relative h-7 w-7 overflow-hidden rounded-full border border-black/60 bg-[#24152e]">
+                    <Image src={toAbs(tag.taggedUser.profile.avatar)} alt="" fill className="object-cover" unoptimized />
+                  </span>
                 ) : (
-                  <div key={t.id} className="h-5 w-5 rounded-full bg-violet-600 border border-black/60 shrink-0 flex items-center justify-center text-[8px] font-bold text-white">
-                    {(t.taggedUser.pseudo || t.taggedUser.firstName || '?')[0]?.toUpperCase()}
-                  </div>
+                  <span key={tag.id} className="grid h-7 w-7 place-items-center rounded-full border border-black/60 bg-violet-600 text-[8px] font-bold text-white">
+                    {(tag.taggedUser.pseudo || tag.taggedUser.firstName || '?')[0]?.toUpperCase()}
+                  </span>
                 )
               ))}
             </div>
-            {acceptedTags.length > 3 && (
-              <span className="ml-1 text-[10px] text-white/70 bg-black/50 rounded-full px-1">+{acceptedTags.length - 3}</span>
-            )}
-          </div>
-        )}
-
-        {/* ── Badge tags en attente (point orange) ── */}
-        {pendingTags.length > 0 && isOwner && (
-          <div className="absolute bottom-2 right-2 h-2 w-2 rounded-full bg-amber-400 border border-black/60 pointer-events-none" />
-        )}
-
-        {/* ── Overlay hover ── */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-6">
-          <div className="flex items-center gap-1.5 text-white font-semibold text-sm drop-shadow">
-            <Heart size={18} className="fill-white" />
-            <span>{likes}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-white font-semibold text-sm drop-shadow">
-            <MessageCircle size={18} className="fill-white" />
-            <span>{comments}</span>
-          </div>
+          )}
         </div>
 
-        {/* ── Bouton Tag (auteur uniquement, toujours visible) ── */}
-        {isOwner && onTagClick && (
-          <button
-            onClick={e => { e.stopPropagation(); onTagClick(pub) }}
-            className="absolute top-2 left-2 bg-black/60 hover:bg-violet-600 text-white rounded-full p-1.5 z-10 transition-colors"
-            title="Identifier des personnes"
-          >
-            <Tag size={13} />
-          </button>
+        {mediaCount > 1 && (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/15 bg-black/55 px-2 py-1 text-[9px] font-semibold text-white/85 backdrop-blur-md">
+            <Images size={11} /> {mediaCount}
+          </span>
         )}
       </div>
 
-      {/* ── Titre optionnel sous la carte ── */}
-      {showTitle && (
-        <div className="p-3">
-          <p className="text-sm font-medium truncate">{pub.title}</p>
-          {pub.caption && (
-            <p className="text-xs text-white/40 truncate mt-0.5">{pub.caption}</p>
-          )}
+      <div className="absolute inset-x-0 bottom-0 z-[3] p-3.5 sm:p-4">
+        <p className="line-clamp-2 font-serif text-base font-semibold leading-tight text-white sm:text-lg">{pub.title}</p>
+        {pub.caption && <p className="mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-white/55 opacity-90 sm:text-[11px]">{pub.caption}</p>}
+        <div className="mt-2.5 flex items-center gap-3 border-t border-white/10 pt-2.5 text-[10px] text-white/60">
+          <span className="inline-flex items-center gap-1"><Heart size={12} /> {likes}</span>
+          <span className="inline-flex items-center gap-1"><MessageCircle size={12} /> {comments}</span>
+          <span className="ml-auto text-[8px] font-semibold uppercase tracking-[.16em] text-violet-300/85">Voir</span>
         </div>
-      )}
-    </div>
+      </div>
+    </article>
   )
 }
