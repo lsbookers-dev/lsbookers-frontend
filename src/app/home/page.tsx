@@ -341,7 +341,7 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
     ? 'À découvrir'
     : post.feedType === 'trending'
       ? 'En tendance'
-      : roleLabel(post.author.role) || 'Publication'
+      : null
 
   return (
     <article className="group relative min-h-[30rem] overflow-hidden rounded-[1.4rem] border border-white/[0.1] bg-[#111016] shadow-[0_28px_75px_rgba(0,0,0,.2)] sm:aspect-[16/11] sm:min-h-0">
@@ -361,7 +361,7 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
         )}
       </div>
 
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/75 via-black/5 to-black/95" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/90" />
 
       <header className="absolute inset-x-0 top-0 z-[3] flex items-center gap-3 p-4 sm:p-5">
         <Link href={post.author.profileUrl} className="relative block h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border border-white/20 bg-zinc-800 shadow-lg">
@@ -385,7 +385,7 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
       </header>
 
       <div className="absolute left-4 top-[4.7rem] z-[3] flex gap-2 sm:left-5 sm:top-[5.25rem]">
-        <span className="rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.12em] text-white/75 backdrop-blur-md">{feedLabel}</span>
+        {feedLabel && <span className="rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.12em] text-white/75 backdrop-blur-md">{feedLabel}</span>}
         {isMulti && <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[9px] text-white/75 backdrop-blur-md"><Images size={11} /> {mediaIdx + 1} / {allMedia.length}</span>}
       </div>
 
@@ -400,8 +400,7 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
       )}
 
       <div className="absolute bottom-5 left-4 right-[4.8rem] z-[3] sm:bottom-6 sm:left-5 sm:right-24">
-        <p className="text-[9px] font-bold uppercase tracking-[.18em] text-violet-300">{roleLabel(post.author.role) || 'Portfolio'} · {post.author.profession || 'Création'}</p>
-        <button type="button" onClick={() => onOpenModal(post)} className="mt-2 block text-left">
+        <button type="button" onClick={() => onOpenModal(post)} className="block text-left">
           <h2 className="font-serif text-2xl font-semibold leading-[1.05] text-white drop-shadow sm:text-3xl">{post.title}</h2>
           {post.caption && <p className="mt-2 line-clamp-2 max-w-xl text-[11px] leading-relaxed text-white/70 sm:text-xs">{post.caption}</p>}
         </button>
