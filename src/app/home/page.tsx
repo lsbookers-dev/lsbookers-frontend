@@ -351,13 +351,13 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
             key={current.url}
             ref={videoRef}
             src={current.url}
-            className="h-full w-full cursor-pointer object-cover transition duration-700 group-hover:scale-[1.015]"
+            className="h-full w-full cursor-pointer object-cover object-top transition duration-700 group-hover:scale-[1.015]"
             muted preload="metadata" playsInline loop
             onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={current.url} alt={post.caption || post.title} className="h-full w-full cursor-pointer object-cover transition duration-700 group-hover:scale-[1.015]" loading="lazy" />
+          <img src={current.url} alt={post.caption || post.title} className="h-full w-full cursor-pointer object-cover object-top transition duration-700 group-hover:scale-[1.015]" loading="lazy" />
         )}
       </div>
 
