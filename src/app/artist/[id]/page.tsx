@@ -7,6 +7,7 @@ import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
+import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
 import { useAuth } from '@/context/AuthContext'
 
 /* ================== Types ================== */
@@ -94,6 +95,7 @@ export default function ArtistPublicProfilePage() {
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState<string | null>(null)
   const [abonnesCount, setAbonnesCount] = useState(0)
+  const [pubTab, setPubTab]             = useState<'publications' | 'identifications'>('publications')
 
   const defaults = useMemo(() => ({
     banner: '/banners/artist_banner.jpg',
@@ -235,7 +237,27 @@ export default function ArtistPublicProfilePage() {
             {profile && (
               <AgendaCalendar profileId={profile.id} isOwner={false} showAvailability={true} viewerRole={viewer?.role ?? null} viewerProfileId={viewer?.profile?.id ?? null} />
             )}
-            <PublicationsSection publications={publications} title="Publications" ownerUserId={Number(userId)} />
+            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+              <div className="flex gap-1 bg-white/[0.04] rounded-xl p-1 mb-4 w-fit">
+                <button
+                  onClick={() => setPubTab('publications')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'publications' ? 'bg-violet-600 text-white' : 'text-white/50 hover:text-white'}`}
+                >
+                  Publications
+                </button>
+                <button
+                  onClick={() => setPubTab('identifications')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'identifications' ? 'bg-pink-600 text-white' : 'text-white/50 hover:text-white'}`}
+                >
+                  Identifications
+                </button>
+              </div>
+              {pubTab === 'publications' ? (
+                <PublicationsSection publications={publications} ownerUserId={Number(userId)} />
+              ) : profile ? (
+                <TaggedPublicationsTab profileId={profile.id} accentColor="bg-pink-600" />
+              ) : null}
+            </section>
             {profile.cvText && (
               <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
                 <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">CV / Expérience</h2>

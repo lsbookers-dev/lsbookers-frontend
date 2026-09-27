@@ -14,6 +14,7 @@ import PublicationsSection from '@/components/PublicationsSection'
 import CropModal from '@/components/CropModal'
 import AddPublicationModal from '@/components/AddPublicationModal'
 import AlbumsTab from '@/components/AlbumsTab'
+import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
 import { getAuthToken } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -134,7 +135,7 @@ export default function ArtistProfilePage() {
   const [publications, setPublications] = useState<Publication[]>([])
   const [reviews, setReviews]           = useState<Review[]>([])
   const [loading, setLoading]           = useState(true)
-  const [pubTab, setPubTab]             = useState<'publications' | 'albums'>('publications')
+  const [pubTab, setPubTab]             = useState<'publications' | 'albums' | 'identifications'>('publications')
 
   // Publication modal
   const [showAddPub, setShowAddPub] = useState(false)
@@ -447,6 +448,12 @@ export default function ArtistProfilePage() {
                   >
                     Albums
                   </button>
+                  <button
+                    onClick={() => setPubTab('identifications')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${pubTab === 'identifications' ? 'bg-pink-600 text-white' : 'text-white/50 hover:text-white'}`}
+                  >
+                    Identifications
+                  </button>
                 </div>
                 {pubTab === 'publications' && (
                   <button
@@ -465,7 +472,7 @@ export default function ArtistProfilePage() {
                   ownerUserId={user?.id ? Number(user.id) : undefined}
                   onDelete={handleDeletePub}
                 />
-              ) : profile ? (
+              ) : pubTab === 'albums' && profile ? (
                 <AlbumsTab
                   profileId={profile.id}
                   isOwner={true}
@@ -473,6 +480,8 @@ export default function ArtistProfilePage() {
                   accent="pink"
                   publications={publications}
                 />
+              ) : pubTab === 'identifications' && profile ? (
+                <TaggedPublicationsTab profileId={profile.id} accentColor="bg-pink-600" />
               ) : null}
             </section>
 
