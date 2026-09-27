@@ -344,22 +344,22 @@ function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleM
       : null
 
   return (
-    <article className="group relative min-h-[30rem] overflow-hidden rounded-[1.4rem] border border-white/[0.1] bg-[#111016] shadow-[0_28px_75px_rgba(0,0,0,.2)] sm:aspect-[16/11] sm:min-h-0">
-      <div className="absolute inset-0 bg-black" onClick={() => onOpenModal(post)}>
-        {isVideo ? (
+    <article className="group relative overflow-hidden rounded-[1.4rem] border border-white/[0.1] bg-[#111016] shadow-[0_28px_75px_rgba(0,0,0,.2)]">
+      {isVideo ? (
+        <div className="relative aspect-video bg-black" onClick={() => onOpenModal(post)}>
           <video
             key={current.url}
             ref={videoRef}
             src={current.url}
-            className="h-full w-full cursor-pointer object-cover object-top transition duration-700 group-hover:scale-[1.015]"
+            className="h-full w-full cursor-pointer object-cover transition duration-700 group-hover:scale-[1.015]"
             muted preload="metadata" playsInline loop
             onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
           />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={current.url} alt={post.caption || post.title} className="h-full w-full cursor-pointer object-cover object-top transition duration-700 group-hover:scale-[1.015]" loading="lazy" />
-        )}
-      </div>
+        </div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={current.url} alt={post.caption || post.title} className="w-full cursor-pointer block transition duration-700 group-hover:scale-[1.015]" loading="lazy" onClick={() => onOpenModal(post)} />
+      )}
 
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/90" />
 
