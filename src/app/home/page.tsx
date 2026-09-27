@@ -680,7 +680,7 @@ function OffersSidebar({ apiBase, onSelectOffer }: {
    PAGE PRINCIPALE
 ───────────────────────────────────────────────────────────── */
 export default function HomePage() {
-  const { user } = useAuth() as { user: { id: number; avatarUrl?: string | null; name?: string } | null }
+  const { user } = useAuth() as { user: { id: number; avatarUrl?: string | null; name?: string; profile?: { id: number } } | null }
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   const [featured, setFeatured]           = useState<FeaturedProfile[]>([])
@@ -691,15 +691,15 @@ export default function HomePage() {
   const [adminPosts, setAdminPosts]       = useState<AdminPost[]>([])
   const [loadingFeed, setLoadingFeed]     = useState(true)
   const [loadingMore, setLoadingMore]     = useState(false)
-  const [feedPage, setFeedPage]           = useState(1)
+  const [feedCursor, setFeedCursor]       = useState<string | null>(null)
   const [hasMore, setHasMore]             = useState(true)
   const [isMuted, setIsMuted]             = useState(true)
   const toggleMute = () => setIsMuted(m => !m)
   const [activeTab, setActiveTab]         = useState<'forYou' | 'network' | 'nearby'>('forYou')
   const [showAddPubModal, setShowAddPubModal] = useState(false)
 
-  // ── Fetch feed (page initiale ou suivante) ──────────────
-  const fetchFeed = useCallback(async (pageNum: number, replace: boolean) => {
+  // ── Fetch feed — pagination par curseur (stable, évite le décalage de skip) ──
+  const fetchFeed = useCallback(async (cursor: string | null, replace: boolean) => {
     if (!user) return
     const token = getAuthToken()
     const headers: Record<string, string> = {}
@@ -707,16 +707,23 @@ export default function HomePage() {
     if (replace) setLoadingFeed(true)
     else setLoadingMore(true)
     try {
-      const r = await fetch(`${API_BASE}/api/home/feed?page=${pageNum}`, { headers })
+      const url = cursor
+        ? `${API_BASE}/api/home/feed?after=${encodeURIComponent(cursor)}`
+        : `${API_BASE}/api/home/feed`
+      const r = await fetch(url, { headers })
       const d = r.ok ? await r.json() : null
       if (!d) return
+      const newPosts: typeof posts = d.posts || []
       if (replace) {
-        setPosts(d.posts || [])
+        setPosts(newPosts)
         setAdminPosts(d.adminPosts || [])
       } else {
-        setPosts(prev => [...prev, ...(d.posts || [])])
+        setPosts(prev => [...prev, ...newPosts])
       }
-      setFeedPage(pageNum)
+      // Le curseur pointe sur le createdAt du dernier post reçu
+      if (newPosts.length > 0) {
+        setFeedCursor(newPosts[newPosts.length - 1].createdAt)
+      }
       setHasMore(d.hasMore ?? false)
     } catch {
       /* silencieux */
@@ -738,7 +745,7 @@ export default function HomePage() {
       .catch(() => {})
 
     if (user) {
-      fetchFeed(1, true)
+      fetchFeed(null, true)
 
       fetch(`${API_BASE}/api/home/suggested`, { headers })
         .then(r => r.ok ? r.json() : null)
@@ -749,12 +756,18 @@ export default function HomePage() {
     }
   }, [user, API_BASE, fetchFeed])
 
-  // ── Toggle like ─────────────────────────────────────────
+  // ── Toggle like (avec rollback correct en cas d'erreur) ──
   const handleLike = async (postId: number) => {
     if (!user) return
     const token = getAuthToken()
+    // Capturer l'état original avant la mise à jour optimiste
+    const original = posts.find(p => p.id === postId)
+    if (!original) return
+    const wasLiked = original.likedByMe
+    const prevCount = original.likesCount
+    // Mise à jour optimiste
     setPosts(prev => prev.map(p =>
-      p.id !== postId ? p : { ...p, likedByMe: !p.likedByMe, likesCount: p.likedByMe ? p.likesCount - 1 : p.likesCount + 1 }
+      p.id !== postId ? p : { ...p, likedByMe: !wasLiked, likesCount: wasLiked ? prevCount - 1 : prevCount + 1 }
     ))
     try {
       await fetch(`${API_BASE}/api/publications/${postId}/like`, {
@@ -762,8 +775,9 @@ export default function HomePage() {
         headers: { Authorization: `Bearer ${token}` },
       })
     } catch {
+      // Rollback vers l'état original (pas un double-toggle)
       setPosts(prev => prev.map(p =>
-        p.id !== postId ? p : { ...p, likedByMe: !p.likedByMe, likesCount: p.likedByMe ? p.likesCount - 1 : p.likesCount + 1 }
+        p.id !== postId ? p : { ...p, likedByMe: wasLiked, likesCount: prevCount }
       ))
     }
   }
@@ -853,7 +867,7 @@ export default function HomePage() {
               {/* Bouton Charger plus (pagination serveur) */}
               {hasMore && (
                 <button
-                  onClick={() => fetchFeed(feedPage + 1, false)}
+                  onClick={() => fetchFeed(feedCursor, false)}
                   disabled={loadingMore}
                   className="w-full py-3 rounded-2xl border border-white/10 bg-white/3 hover:bg-white/6 text-sm text-white/50 hover:text-white/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
@@ -883,7 +897,7 @@ export default function HomePage() {
       {/* ── Modale ajouter publication ─────────────────────── */}
       {showAddPubModal && user && (
         <AddPublicationModal
-          profileId={user.id}
+          profileId={user.profile?.id ?? 0}
           token={getAuthToken() ?? ''}
           accent="violet"
           onClose={() => setShowAddPubModal(false)}
@@ -901,7 +915,7 @@ export default function HomePage() {
               isFromFollow: false,
               additionalMedia: [],
               author: {
-                profileId: user.id,
+                profileId: user.profile?.id ?? 0,
                 userId: null,
                 name: user.name ?? '',
                 avatar: user.avatarUrl ?? null,

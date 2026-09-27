@@ -271,11 +271,17 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
       if (res.ok) {
         if (isReply) {
           setComments(prev =>
-            prev.map(c => ({
-              ...c,
-              replies: c.replies.filter(r => r.id !== commentId),
-              _count: { ...c._count, replies: Math.max(0, c._count.replies - 1) },
-            }))
+            prev.map(c => {
+              const hadReply = c.replies.some(r => r.id === commentId)
+              return {
+                ...c,
+                replies: c.replies.filter(r => r.id !== commentId),
+                // Décrémenter uniquement le compteur du commentaire parent de cette réponse
+                _count: hadReply
+                  ? { ...c._count, replies: Math.max(0, c._count.replies - 1) }
+                  : c._count,
+              }
+            })
           )
         } else {
           setComments(prev => prev.filter(c => c.id !== commentId))
