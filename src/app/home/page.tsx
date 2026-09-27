@@ -943,10 +943,12 @@ export default function HomePage() {
             media: selectedPost.media,
             mediaType: selectedPost.mediaType.toLowerCase() as 'image' | 'video',
             caption: selectedPost.caption ?? undefined,
+            createdAt: selectedPost.createdAt,
             additionalMedia: selectedPost.additionalMedia ?? [],
             _count: { likes: selectedPost.likesCount, comments: selectedPost.commentsCount ?? 0 },
           }}
           onClose={() => setSelectedPost(null)}
+          ownerUserId={selectedPost.author.userId ?? undefined}
           onCountChange={(pubId, likes, comments) => {
             setPosts(prev => prev.map(p =>
               p.id === pubId ? { ...p, likesCount: likes, commentsCount: comments } : p
