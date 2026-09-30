@@ -9,7 +9,7 @@ import {
   X, MapPin, Calendar, Clock, Tag, Briefcase, FileText, Download, Euro,
   Receipt, Music2, Paperclip,
 } from 'lucide-react'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 
 type EventDocument = {
   id: number
@@ -63,10 +63,8 @@ export default function StaffEventView({ eventId, api, onClose }: Props) {
   const load = useCallback(async () => {
     setLoading(true); setError(false)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${api}/api/events/${eventId}/staff-view`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await apiFetch(`${api}/api/events/${eventId}/staff-view`, {
+        })
       if (res.ok) setData(await res.json())
       else setError(true)
     } catch { setError(true) }
@@ -96,7 +94,7 @@ export default function StaffEventView({ eventId, api, onClose }: Props) {
           <div className="flex h-36 items-center justify-center text-sm text-white/45">Chargement…</div>
         )}
         {error && (
-          <div className="m-4 flex h-32 items-center justify-center rounded-2xl border border-rose-400/15 bg-rose-500/5 px-4 text-center text-sm text-rose-200">Impossible de charger l'événement.</div>
+          <div className="m-4 flex h-32 items-center justify-center rounded-2xl border border-rose-400/15 bg-rose-500/5 px-4 text-center text-sm text-rose-200">Impossible de charger l&apos;événement.</div>
         )}
         {data && (
           <>

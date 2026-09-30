@@ -3,7 +3,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from 'react'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 import { Loader2, Trash2, ToggleLeft, ToggleRight, Plus, X, Pin, PinOff } from 'lucide-react'
 
 type AdminPost = {
@@ -19,10 +19,6 @@ type AdminPost = {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-function getAuthHeaders(): Record<string, string> {
-  const t = typeof window !== 'undefined' ? getAuthToken() : null
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -58,8 +54,7 @@ export default function AdminPublicationsPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/admin/posts`, {
-        headers: getAuthHeaders(),
+      const res = await apiFetch(`${API_BASE}/api/admin/posts`, {
         cache: 'no-store',
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -109,9 +104,8 @@ export default function AdminPublicationsPage() {
         const form = new FormData()
         form.append('file', mediaFile)
         form.append('folder', 'media')
-        const upRes = await fetch(`${API_BASE}/api/upload`, {
+        const upRes = await apiFetch(`${API_BASE}/api/upload`, {
           method: 'POST',
-          headers: getAuthHeaders(),
           body: form,
         })
         if (!upRes.ok) throw new Error('Erreur upload média')
@@ -121,9 +115,9 @@ export default function AdminPublicationsPage() {
         setUploading(false)
       }
 
-      const res = await fetch(`${API_BASE}/api/admin/posts`, {
+      const res = await apiFetch(`${API_BASE}/api/admin/posts`, {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title:     title.trim() || null,
           content:   content.trim() || null,
@@ -157,10 +151,9 @@ export default function AdminPublicationsPage() {
   const handleDelete = async (id: number) => {
     if (!confirm('Supprimer cette publication ?')) return
     try {
-      await fetch(`${API_BASE}/api/admin/posts/${id}`, {
+      await apiFetch(`${API_BASE}/api/admin/posts/${id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
+        })
       setPosts(prev => prev.filter(p => p.id !== id))
       showNotice('Publication supprimée.')
     } catch {
@@ -170,10 +163,9 @@ export default function AdminPublicationsPage() {
 
   const handlePin = async (id: number) => {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/posts/${id}/pin`, {
+      const res = await apiFetch(`${API_BASE}/api/admin/posts/${id}/pin`, {
         method: 'PATCH',
-        headers: getAuthHeaders(),
-      })
+        })
       if (!res.ok) throw new Error()
       const d = await res.json()
       setPosts(prev => prev.map(p => p.id === id ? d.post : p))
@@ -184,10 +176,9 @@ export default function AdminPublicationsPage() {
 
   const handleToggle = async (id: number) => {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/posts/${id}/toggle`, {
+      const res = await apiFetch(`${API_BASE}/api/admin/posts/${id}/toggle`, {
         method: 'PATCH',
-        headers: getAuthHeaders(),
-      })
+        })
       if (!res.ok) throw new Error()
       const d = await res.json()
       setPosts(prev => prev.map(p => p.id === id ? d.post : p))

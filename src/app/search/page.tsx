@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -221,8 +222,7 @@ export default function SearchPage() {
     if (radiusKm.trim())   params.append('radius', radiusKm.trim())
     if (filterByDate && dateFilter.trim()) params.append('date', dateFilter.trim())
 
-    fetch(`${API_BASE}/api/search?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    apiFetch(`${API_BASE}/api/search?${params.toString()}`, {
       cache: 'no-store',
     })
       .then(async res => {

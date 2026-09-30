@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 import {
   Users, CreditCard, MessageSquare, TrendingUp,
   Receipt, UserPlus, LogIn, type LucideIcon,
@@ -52,7 +52,6 @@ export default function AdminDashboard() {
   const authed = React.useCallback((init?: RequestInit) => ({
     ...(init || {}),
     headers: {
-      Authorization: `Bearer ${tokenRef.current}`,
       ...(init?.headers || {}),
     },
     cache: 'no-store' as const,
@@ -63,7 +62,7 @@ export default function AdminDashboard() {
     try {
       if (!silent) setLoading(true)
       setError(null)
-      const r = await fetch(`${API_BASE}/api/admin/stats/summary`, authed())
+      const r = await apiFetch(`${API_BASE}/api/admin/stats/summary`, authed())
       if (!r.ok) throw new Error('HTTP ' + r.status)
       const json = await r.json() as { summary?: Summary } | Summary
       const sum: Summary = ('summary' in json && json.summary) ? json.summary as Summary : json as Summary
@@ -89,7 +88,7 @@ export default function AdminDashboard() {
     ;(async () => {
       try {
         setLoginLoading(true)
-        const r = await fetch(`${API_BASE}/api/admin/stats/logins?period=${loginPeriod}`, authed())
+        const r = await apiFetch(`${API_BASE}/api/admin/stats/logins?period=${loginPeriod}`, authed())
         if (!r.ok) throw new Error('HTTP ' + r.status)
         const json = await r.json() as { count: number }
         if (alive) setLoginCount(json.count)

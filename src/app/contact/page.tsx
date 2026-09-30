@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useState } from 'react'
 import { Mail, MessageSquare, User, AtSign, Tag, Send, CheckCircle } from 'lucide-react'
 
@@ -30,7 +31,7 @@ export default function ContactPage() {
     setSending(true)
     setError(null)
     try {
-      const res = await fetch(`${API}/api/contact`, {
+      const res = await apiFetch(`${API}/api/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

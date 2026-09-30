@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 
 /** ===== Types ===== */
 type Summary = {
@@ -45,7 +45,6 @@ export default function AdminStatsPage() {
   const authed = React.useCallback((init?: RequestInit) => ({
     ...(init || {}),
     headers: {
-      Authorization: `Bearer ${tokenRef.current}`,
       ...(init?.headers || {}),
     },
     cache: 'no-store' as const,
@@ -59,7 +58,7 @@ export default function AdminStatsPage() {
         setError(null)
 
         // Summary
-        const r1 = await fetch(`${API_BASE}/api/admin/stats/summary`, authed())
+        const r1 = await apiFetch(`${API_BASE}/api/admin/stats/summary`, authed())
         if (!r1.ok) throw new Error('HTTP ' + r1.status)
         const js1 = await r1.json() as { summary?: Summary } | Summary
         const sum: Summary = ('summary' in js1 && js1.summary) ? js1.summary as Summary : js1 as Summary
@@ -67,7 +66,7 @@ export default function AdminStatsPage() {
         setSummary(sum)
 
         // Series
-        const r2 = await fetch(`${API_BASE}/api/admin/stats/series?days=30`, authed())
+        const r2 = await apiFetch(`${API_BASE}/api/admin/stats/series?days=30`, authed())
         if (!r2.ok) throw new Error('HTTP ' + r2.status)
         const js2 = await r2.json() as { series?: Point[] } | Point[]
         const arr: Point[] = Array.isArray(js2) ? js2 : (js2.series || [])

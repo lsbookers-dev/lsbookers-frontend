@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Instagram, Facebook, Globe, Music, Youtube } from 'lucide-react'
@@ -101,7 +102,7 @@ export default function ProviderPublicProfilePage() {
         setLoading(true)
         setError(null)
 
-        const profileRes = await fetch(`${API_BASE}/api/profile/user/${userId}`, { cache: 'no-store' })
+        const profileRes = await apiFetch(`${API_BASE}/api/profile/user/${userId}`, { cache: 'no-store' })
 
         if (!profileRes.ok) throw new Error(`HTTP ${profileRes.status}`)
 
@@ -114,7 +115,7 @@ export default function ProviderPublicProfilePage() {
 
         if (loadedProfile?.id) {
 
-          const pubsRes = await fetch(`${API_BASE}/api/publications/profile/${loadedProfile.id}`, { cache: 'no-store' })
+          const pubsRes = await apiFetch(`${API_BASE}/api/publications/profile/${loadedProfile.id}`, { cache: 'no-store' })
 
           if (pubsRes.ok) {
 

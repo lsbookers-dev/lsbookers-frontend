@@ -4,7 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import CropModal from '@/components/CropModal'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 
 type AdminSettings = {
   welcomeText: string
@@ -46,8 +46,7 @@ export default function AdminSettingsPage() {
     }
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/admin/settings`, {
-        headers: token ? ({ Authorization: `Bearer ${token}` } as HeadersInit) : undefined,
+      const res = await apiFetch(`${API_BASE}/api/admin/settings`, {
         cache: 'no-store',
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -78,11 +77,10 @@ export default function AdminSettingsPage() {
       const body: AdminSettings = { ...settings, ...(next ?? {}) }
       setSettings(body) // UI optimiste
       try {
-        const res = await fetch(`${API_BASE}/api/admin/settings`, {
+        const res = await apiFetch(`${API_BASE}/api/admin/settings`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(body),
         })
@@ -112,9 +110,8 @@ export default function AdminSettingsPage() {
       fd.append('folder', folderMap[field] ?? 'media')
       fd.append('type', 'image')
       try {
-        const res = await fetch(`${API_BASE}/api/upload`, {
+        const res = await apiFetch(`${API_BASE}/api/upload`, {
           method: 'POST',
-          headers: token ? ({ Authorization: `Bearer ${token}` } as HeadersInit) : undefined,
           body: fd,
         })
         if (!res.ok) {

@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
@@ -78,8 +79,7 @@ function MessagesContent() {
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/messages/conversations?t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await apiFetch(`${API_BASE}/api/messages/conversations?t=${Date.now()}`, {
         cache: 'no-store',
       })
       if (!res.ok) return
@@ -104,8 +104,8 @@ function MessagesContent() {
     if (!token || !convId) return
     if (!silent) setLoadingMsgs(true)
     try {
-      const res = await fetch(`${API_BASE}/api/messages/messages/${convId}`, {
-        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
+      const res = await apiFetch(`${API_BASE}/api/messages/messages/${convId}`, {
+        headers: { 'Cache-Control': 'no-store' },
       })
       if (!res.ok) return
       const data: Message[] = await res.json()
@@ -127,8 +127,8 @@ function MessagesContent() {
     if (!firstId) return
     setLoadingMore(true)
     try {
-      const res = await fetch(`${API_BASE}/api/messages/messages/${activeConvId}?before=${firstId}`, {
-        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
+      const res = await apiFetch(`${API_BASE}/api/messages/messages/${activeConvId}?before=${firstId}`, {
+        headers: { 'Cache-Control': 'no-store' },
       })
       if (!res.ok) return
       const older: Message[] = await res.json()
@@ -152,10 +152,9 @@ function MessagesContent() {
   /* ── Mark seen ── */
   const markSeen = useCallback(async (convId: number) => {
     if (!token || !convId) return
-    await fetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
+    await apiFetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => {})
+      }).catch(() => {})
     setConversations(prev => prev.map(c => {
       if (c.id !== convId || !c.lastMessageMeta) return c
       return { ...c, lastMessageMeta: { ...c.lastMessageMeta, seen: true } }
@@ -246,8 +245,8 @@ function MessagesContent() {
         fetchMessages(activeConvId)
         return
       }
-      fetch(`${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`, {
-        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' },
+      apiFetch(`${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`, {
+        headers: { 'Cache-Control': 'no-store' },
       })
         .then(r => r.json())
         .then((missed: Message[]) => {
@@ -306,9 +305,9 @@ function MessagesContent() {
       // Si chargement initial raté → recharger complètement plutôt qu'abandonner
       if (!lastId) { fetchMessages(activeConvId, true); return }
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `${API_BASE}/api/messages/messages/${activeConvId}?after=${lastId}`,
-          { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' } }
+          { headers: { 'Cache-Control': 'no-store' } }
         )
         if (!res.ok) return
         const missed: Message[] = await res.json()
@@ -363,7 +362,7 @@ function MessagesContent() {
   /* ── Charger les contacts (followers + suivis) ── */
   useEffect(() => {
     if (!token) return
-    fetch(`${API_BASE}/api/follow/contacts`, { headers: { Authorization: `Bearer ${token}` } })
+    apiFetch(`${API_BASE}/api/follow/contacts`, { })
       .then(r => r.json())
       .then(d => setContacts(Array.isArray(d.contacts) ? d.contacts : []))
       .catch(() => {})
@@ -375,9 +374,9 @@ function MessagesContent() {
     const t = setTimeout(async () => {
       setSearchLoading(true)
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `${API_BASE}/api/search?name=${encodeURIComponent(search.trim())}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { }
         )
         if (!res.ok) return
         const data = await res.json()
@@ -407,9 +406,9 @@ function MessagesContent() {
     const existing = conversations.find((c) => c.participants.some((p) => p.id === recipientId))
     if (existing) { selectConv(existing.id); setSearch(''); return }
     try {
-      const res = await fetch(`${API_BASE}/api/messages/start`, {
+      const res = await apiFetch(`${API_BASE}/api/messages/start`, {
         method: 'POST',
-        headers: getHeaders(token),
+        headers: getHeaders(),
         body: JSON.stringify({ recipientId }),
       })
       if (!res.ok) {
@@ -472,9 +471,8 @@ function MessagesContent() {
       fd.append('conversationId', String(activeConvId))
       if (optimisticText) fd.append('content', optimisticText)
       if (file) fd.append('file', file)
-      const res = await fetch(`${API_BASE}/api/messages/send-file`, {
+      const res = await apiFetch(`${API_BASE}/api/messages/send-file`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       })
       if (!res.ok) {
@@ -511,10 +509,9 @@ function MessagesContent() {
     if (!confirm('Supprimer cette conversation ?')) return
     setDeletingId(convId)
     try {
-      await fetch(`${API_BASE}/api/messages/conversations/${convId}`, {
+      await apiFetch(`${API_BASE}/api/messages/conversations/${convId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token || ''}` },
-      })
+        })
       setConversations((prev) => prev.filter((c) => c.id !== convId))
       if (activeConvId === convId) router.push('/messages')
     } catch (err) { console.error('deleteConversation:', err) }

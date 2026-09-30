@@ -9,7 +9,7 @@ import {
   CheckCircle, XCircle, ShieldOff, ShieldAlert,
   Plus, X, Calendar, Euro
 } from 'lucide-react'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
@@ -173,12 +173,6 @@ function Section({ title, icon, children }: {
 // ─────────────────────────────────────────────
 // Page principale
 // ─────────────────────────────────────────────
-// Lit le token fraîchement depuis localStorage à chaque appel (fiable sur tous les navigateurs)
-function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const t = typeof window !== 'undefined' ? getAuthToken() : null
-  return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
-}
-
 export default function ProfileSettings() {
   const router = useRouter()
   const { user } = useAuth()
@@ -237,7 +231,7 @@ export default function ProfileSettings() {
   // ── Chargement du profil
   useEffect(() => {
     if (!user) return
-    fetch(`${API}/api/profile/me`, { credentials: 'include', headers: getAuthHeaders() })
+    apiFetch(`${API}/api/profile/me`, { credentials: 'include' })
       .then(r => r.json())
       .then(({ profile: p }) => {
         if (!p) return
@@ -264,18 +258,18 @@ export default function ProfileSettings() {
       .finally(() => setLoading(false))
 
     // Charger la liste des bloqués
-    fetch(`${API}/api/block/list`, { headers: getAuthHeaders() })
+    apiFetch(`${API}/api/block/list`, {})
       .then(r => r.ok ? r.json() : { blocked: [] })
       .then(d => setBlockedUsers(d.blocked || []))
       .catch(() => {})
 
     // Charger les offres (organisateurs)
     if (user?.role === 'ORGANIZER') {
-      fetch(`${API}/api/profile/me`, { credentials: 'include', headers: getAuthHeaders() })
+      apiFetch(`${API}/api/profile/me`, { credentials: 'include' })
         .then(r => r.json())
         .then(({ profile: p }) => {
           if (!p?.id) return
-          return fetch(`${API}/api/offers?organizerId=${p.id}`)
+          return apiFetch(`${API}/api/offers?organizerId=${p.id}`)
         })
         .then(r => r?.json())
         .then(data => { if (Array.isArray(data)) setOffers(data) })
@@ -287,10 +281,9 @@ export default function ProfileSettings() {
   const handleUnblock = async (targetId: number) => {
     setUnblockingId(targetId)
     try {
-      const res = await fetch(`${API}/api/block/${targetId}`, {
+      const res = await apiFetch(`${API}/api/block/${targetId}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
+        })
       if (res.ok) {
         setBlockedUsers(prev => prev.filter(u => u.id !== targetId))
       }
@@ -307,10 +300,10 @@ export default function ProfileSettings() {
     setSaving(true)
     setError(null)
     try {
-      const res = await fetch(`${API}/api/profile/${profile.id}`, {
+      const res = await apiFetch(`${API}/api/profile/${profile.id}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bio: profile.bio,
           location: profile.location,
@@ -354,9 +347,9 @@ export default function ProfileSettings() {
     }
     setSubmittingOffer(true)
     try {
-      const res = await fetch(`${API}/api/offers`, {
+      const res = await apiFetch(`${API}/api/offers`, {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title:       offerForm.title,
           description: offerForm.description,
@@ -383,7 +376,7 @@ export default function ProfileSettings() {
   const handleDeleteOffer = async (offerId: number) => {
     if (!confirm('Supprimer cette offre ?')) return
     try {
-      await fetch(`${API}/api/offers/${offerId}`, { method: 'DELETE', headers: getAuthHeaders() })
+      await apiFetch(`${API}/api/offers/${offerId}`, { method: 'DELETE' })
       setOffers(prev => prev.filter(o => o.id !== offerId))
     } catch { /* silently */ }
   }

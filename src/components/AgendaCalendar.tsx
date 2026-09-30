@@ -12,7 +12,7 @@ import BookingsPanel    from './agenda/BookingsPanel'
 import EventPanel       from './agenda/EventPanel'
 import CalendarGrid     from './agenda/CalendarGrid'
 import StaffEventView   from './agenda/StaffEventView'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 
 /* ─────────────────────────────────────────────────────────
    PROPS
@@ -170,9 +170,7 @@ export default function AgendaCalendar({
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const token = getAuthToken()
       const headers: Record<string, string> = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
 
       const monday = new Date(focusDate)
       monday.setDate(focusDate.getDate() - ((focusDate.getDay() + 6) % 7))
@@ -188,7 +186,7 @@ export default function AgendaCalendar({
         const endpoint = isOwner
           ? `${API}/api/events/my?month=${period.month}&year=${period.year}`
           : `${API}/api/events/profile/${profileId}?month=${period.month}&year=${period.year}`
-        return fetch(endpoint, { headers })
+        return apiFetch(endpoint, { headers })
       }))
       const eventPayloads = await Promise.all(eventResponses.filter((response) => response.ok).map((response) => response.json()))
       const myEvents: CalEvent[] = eventPayloads.flatMap((payload) => payload.events || [])
@@ -197,7 +195,7 @@ export default function AgendaCalendar({
       let assignedEvents: CalEvent[] = []
       if (isOwner) {
         try {
-          const assignedRes = await fetch(`${API}/api/events/assigned`, { headers })
+          const assignedRes = await apiFetch(`${API}/api/events/assigned`, { headers })
           if (assignedRes.ok) {
             const assignedData = await assignedRes.json()
             assignedEvents = (assignedData.events || []) as CalEvent[]
@@ -212,7 +210,7 @@ export default function AgendaCalendar({
       setEvents(mergedEvents)
 
       if (showAvailability) {
-        const availabilityResponses = await Promise.all(periods.map((period) => fetch(`${API}/api/events/availability/${profileId}?month=${period.month}&year=${period.year}`)))
+        const availabilityResponses = await Promise.all(periods.map((period) => apiFetch(`${API}/api/events/availability/${profileId}?month=${period.month}&year=${period.year}`)))
         const availabilityPayloads = await Promise.all(availabilityResponses.filter((response) => response.ok).map((response) => response.json()))
         const mergedAvailability = Array.from(new Map(availabilityPayloads.flatMap((payload) => payload.availability || []).map((item: AvailDay) => [item.date, item])).values())
         setAvailability(mergedAvailability)
@@ -225,10 +223,8 @@ export default function AgendaCalendar({
 
   /* ── refreshPanel ── */
   const refreshPanel = useCallback(async () => {
-    const token = getAuthToken()
-    const res = await fetch(`${API}/api/events/booking-requests`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const res = await apiFetch(`${API}/api/events/booking-requests`, {
+      })
     if (res.ok) setPanelData(await res.json())
   }, [API])
 
@@ -245,10 +241,9 @@ export default function AgendaCalendar({
   const cancelBooking = useCallback(async (id: number) => {
     setCancelingId(id)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/booking-request/${id}`, {
+      const res = await apiFetch(`${API}/api/events/booking-request/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'CANCELLED' }),
       })
       if (res.ok) await refreshPanel()
@@ -260,10 +255,9 @@ export default function AgendaCalendar({
   const requestCancellation = useCallback(async (id: number) => {
     setCancelRequestingId(id)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/booking-request/${id}/cancel-request`, {
+      const res = await apiFetch(`${API}/api/events/booking-request/${id}/cancel-request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: cancelNoteText.trim() || undefined }),
       })
       if (res.ok) {
@@ -278,8 +272,7 @@ export default function AgendaCalendar({
   const fetchAllEvents = useCallback(async () => {
     setEventsLoading(true); setEventsError(false)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/all`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await apiFetch(`${API}/api/events/all`, { })
       if (res.ok) { const d = await res.json(); setAllEvents(d.events || []) }
       else setEventsError(true)
     } catch { setEventsError(true) }
@@ -290,8 +283,7 @@ export default function AgendaCalendar({
   const fetchEventDetail = useCallback(async (id: number) => {
     setEventDetailLoading(true); setEventDetailError(false)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/${id}/detail`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await apiFetch(`${API}/api/events/${id}/detail`, { })
       if (res.ok) {
         const d = await res.json()
         setEventDetail(d.event)
@@ -331,7 +323,7 @@ export default function AgendaCalendar({
     setDetailTab('details'); setEventDetail(null); setEventDetailError(false)
     setEventOffers([]); setShowEventOfferForm(false)
     setEventOfferForm({ title: '', description: '', type: 'ARTIST', specialty: '', date: '', time: '20:00', endDate: '', endTime: '', location: '', country: defaultCountry || '', fee: '' })
-    fetch(`${API}/api/offers?eventId=${id}`)
+    apiFetch(`${API}/api/offers?eventId=${id}`)
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setEventOffers(data) })
       .catch(() => {})
@@ -374,12 +366,11 @@ export default function AgendaCalendar({
     if (!createTitle.trim() || !createDate || !createLieu.trim()) return
     setCreating(true); setCreateError('')
     try {
-      const token = getAuthToken()
       const startISO = createStartTime ? `${createDate}T${createStartTime}:00` : `${createDate}T12:00:00`
       const endISO   = createEndDate ? (createEndTime ? `${createEndDate}T${createEndTime}:00` : `${createEndDate}T23:59:00`) : null
-      const res = await fetch(`${API}/api/events`, {
+      const res = await apiFetch(`${API}/api/events`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: createTitle.trim(), start: startISO, end: endISO,
           lieu: createLieu.trim() || null, category: createCategory || null,
@@ -408,10 +399,8 @@ export default function AgendaCalendar({
     if (!selectedEventId) return
     setDeletingEvent(true)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/${selectedEventId}`, {
-        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await apiFetch(`${API}/api/events/${selectedEventId}`, {
+        method: 'DELETE', })
       if (res.ok) {
         setShowEventPanel(false); setEventMode('list'); setSelectedEventId(null)
         setEventDetail(null); setConfirmDelete(false)
@@ -426,10 +415,9 @@ export default function AgendaCalendar({
     if (!selectedEventId) return
     setNotesSaving(true)
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/events/${selectedEventId}/notes`, {
+      await apiFetch(`${API}/api/events/${selectedEventId}/notes`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: notesText }),
       })
     } catch {}
@@ -441,10 +429,9 @@ export default function AgendaCalendar({
     if (!newExpenseLabel.trim() || !selectedEventId) return
     setAddingExpense(true); setExpenseError('')
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/${selectedEventId}/expenses`, {
+      const res = await apiFetch(`${API}/api/events/${selectedEventId}/expenses`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           label:    newExpenseLabel.trim(),
           amount:   newExpenseAmount || null,
@@ -468,10 +455,9 @@ export default function AgendaCalendar({
   const toggleExpensePaid = useCallback(async (expenseId: number, paid: boolean) => {
     if (!selectedEventId) return
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
+      await apiFetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paid }),
       })
       setEventDetail(prev => prev ? { ...prev, expenses: prev.expenses.map(e => e.id === expenseId ? { ...e, paid } : e) } : prev)
@@ -482,10 +468,8 @@ export default function AgendaCalendar({
   const deleteExpense = useCallback(async (expenseId: number) => {
     if (!selectedEventId) return
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
-        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
-      })
+      await apiFetch(`${API}/api/events/${selectedEventId}/expenses/${expenseId}`, {
+        method: 'DELETE', })
       setEventDetail(prev => prev ? { ...prev, expenses: prev.expenses.filter(e => e.id !== expenseId) } : prev)
     } catch {}
   }, [API, selectedEventId])
@@ -495,10 +479,9 @@ export default function AgendaCalendar({
     if (!newPurchaseItem.trim() || !selectedEventId) return
     setAddingPurchase(true)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/${selectedEventId}/purchases`, {
+      const res = await apiFetch(`${API}/api/events/${selectedEventId}/purchases`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item: newPurchaseItem.trim(), quantity: newPurchaseQty || null, price: newPurchasePrice || null }),
       })
       if (res.ok) {
@@ -514,10 +497,9 @@ export default function AgendaCalendar({
   const togglePurchaseDone = useCallback(async (purchaseId: number, done: boolean) => {
     if (!selectedEventId) return
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
+      await apiFetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ done }),
       })
       setEventDetail(prev => prev ? { ...prev, purchases: prev.purchases.map(p => p.id === purchaseId ? { ...p, done } : p) } : prev)
@@ -528,10 +510,8 @@ export default function AgendaCalendar({
   const deletePurchase = useCallback(async (purchaseId: number) => {
     if (!selectedEventId) return
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
-        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
-      })
+      await apiFetch(`${API}/api/events/${selectedEventId}/purchases/${purchaseId}`, {
+        method: 'DELETE', })
       setEventDetail(prev => prev ? { ...prev, purchases: prev.purchases.filter(p => p.id !== purchaseId) } : prev)
     } catch {}
   }, [API, selectedEventId])
@@ -541,12 +521,11 @@ export default function AgendaCalendar({
     if (!selectedEventId || !editTitle.trim()) return
     setEditSaving(true); setEditError('')
     try {
-      const token = getAuthToken()
       const startISO = editStartTime ? `${editStart}T${editStartTime}:00` : `${editStart}T12:00:00`
       const endISO   = editEnd ? (editEndTime ? `${editEnd}T${editEndTime}:00` : `${editEnd}T23:59:00`) : null
-      const res = await fetch(`${API}/api/events/${selectedEventId}`, {
+      const res = await apiFetch(`${API}/api/events/${selectedEventId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: editTitle.trim(), lieu: editLieu.trim() || null, category: editCategory || null,
           budget: editBudget ? parseFloat(editBudget) : null, status: editStatus,
@@ -571,10 +550,9 @@ export default function AgendaCalendar({
   const updateStaffStatus = useCallback(async (staffId: number, status: string) => {
     if (!selectedEventId) return
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/events/${selectedEventId}/staff/${staffId}`, {
+      await apiFetch(`${API}/api/events/${selectedEventId}/staff/${staffId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       })
       fetchEventDetail(selectedEventId)
@@ -587,10 +565,9 @@ export default function AgendaCalendar({
     if (!role || !selectedEventId) return
     setAddingStaff(true); setStaffError('')
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/${selectedEventId}/staff`, {
+      const res = await apiFetch(`${API}/api/events/${selectedEventId}/staff`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           role,
           name: staffProfileId ? null : (newStaffName.trim() || null),
@@ -617,10 +594,8 @@ export default function AgendaCalendar({
     if (!selectedEventId) return
     setDeletingStaffId(staffId)
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/events/${selectedEventId}/staff/${staffId}`, {
-        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
-      })
+      await apiFetch(`${API}/api/events/${selectedEventId}/staff/${staffId}`, {
+        method: 'DELETE', })
       setEventDetail(prev => prev ? { ...prev, staff: prev.staff.filter(s => s.id !== staffId) } : prev)
     } catch {}
     finally { setDeletingStaffId(null) }
@@ -632,10 +607,8 @@ export default function AgendaCalendar({
     if (!q.trim() || q.trim().length < 2) { setStaffSearchResults([]); return }
     setStaffSearchLoading(true)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/search/users?q=${encodeURIComponent(q.trim())}&limit=5`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await apiFetch(`${API}/api/search/users?q=${encodeURIComponent(q.trim())}&limit=5`, {
+        })
       if (res.ok) {
         const d = await res.json()
         // L'API retourne { users: [{ id, pseudo, firstName, lastName, role, profile: { id, avatar } }] }
@@ -657,12 +630,11 @@ export default function AgendaCalendar({
     if (!selectedEventId) return
     setUploadingDoc(true); setDocError('')
     try {
-      const token = getAuthToken()
       const formData = new FormData()
       formData.append('folder', 'documents') // avant le fichier : lu par le serveur pour autoriser les PDF
       formData.append('file', file)
-      const uploadRes = await fetch(`${API}/api/upload`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
+      const uploadRes = await apiFetch(`${API}/api/upload`, {
+        method: 'POST', body: formData,
       })
       if (!uploadRes.ok) {
         const upErr = await uploadRes.json().catch(() => ({}))
@@ -672,9 +644,9 @@ export default function AgendaCalendar({
       const uploadData = await uploadRes.json()
       const url = uploadData.url || uploadData.secure_url
       if (!url) { setDocError("URL manquante après upload"); return }
-      const res = await fetch(`${API}/api/events/${selectedEventId}/documents`, {
+      const res = await apiFetch(`${API}/api/events/${selectedEventId}/documents`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: file.name, url, fileType: docType }),
       })
       if (res.ok) {
@@ -692,10 +664,8 @@ export default function AgendaCalendar({
   const deleteDocument = useCallback(async (docId: number) => {
     if (!selectedEventId) return
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/events/${selectedEventId}/documents/${docId}`, {
-        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
-      })
+      await apiFetch(`${API}/api/events/${selectedEventId}/documents/${docId}`, {
+        method: 'DELETE', })
       setEventDetail(prev => prev ? { ...prev, documents: prev.documents.filter(d => d.id !== docId) } : prev)
     } catch {}
   }, [API, selectedEventId])
@@ -704,10 +674,9 @@ export default function AgendaCalendar({
   const updatePaymentStatus = useCallback(async (bookingId: number, paymentStatus: string) => {
     setUpdatingPayment(bookingId)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/events/booking-request/${bookingId}/payment-status`, {
+      const res = await apiFetch(`${API}/api/events/booking-request/${bookingId}/payment-status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentStatus }),
       })
       if (res.ok) await refreshPanel()
@@ -724,10 +693,9 @@ export default function AgendaCalendar({
     }
     setSubmittingEventOffer(true)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/offers`, {
+      const res = await apiFetch(`${API}/api/offers`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: form.title, description: form.description, type: form.type,
           specialty: form.specialty || null,
@@ -752,8 +720,7 @@ export default function AgendaCalendar({
 
   /* ── deleteEventOffer (extrait de l'inline JSX) ── */
   const deleteEventOffer = useCallback(async (offerId: number) => {
-    const token = getAuthToken()
-    await fetch(`${API}/api/offers/${offerId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    await apiFetch(`${API}/api/offers/${offerId}`, { method: 'DELETE', })
     setEventOffers(prev => prev.filter(x => x.id !== offerId))
   }, [API])
 
@@ -811,12 +778,11 @@ export default function AgendaCalendar({
     const effectiveStatus = selectedAvail?.status === status ? 'NONE' : status
     setSavingAvail(true)
     try {
-      const token = getAuthToken()
       const d = selected
       const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T00:00:00.000Z`
-      const res = await fetch(`${API}/api/events/availability`, {
+      const res = await apiFetch(`${API}/api/events/availability`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: dateStr, status: effectiveStatus }),
       })
       if (res.ok) {
@@ -841,11 +807,10 @@ export default function AgendaCalendar({
     if (bulkDates.size === 0) return
     setSavingAvail(true)
     try {
-      const token = getAuthToken()
       const dates = Array.from(bulkDates).map(d => `${d}T00:00:00.000Z`)
-      const res = await fetch(`${API}/api/events/availability/bulk`, {
+      const res = await apiFetch(`${API}/api/events/availability/bulk`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dates, status }),
       })
       if (res.ok) {
@@ -873,12 +838,11 @@ export default function AgendaCalendar({
     if (!selected || !viewerProfileId) return
     setBookingSending(true)
     try {
-      const token = getAuthToken()
       const d = selected
       const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T00:00:00.000Z`
-      const res = await fetch(`${API}/api/events/booking-request`, {
+      const res = await apiFetch(`${API}/api/events/booking-request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetProfileId: profileId, date: dateStr,
           message: bookingMsg.trim() || null,

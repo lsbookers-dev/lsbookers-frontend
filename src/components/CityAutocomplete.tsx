@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -65,7 +66,7 @@ export default function CityAutocomplete({
     if (q.length < 2) { setSuggestions([]); setOpen(false); return }
     setLoading(true)
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=nom,departement&boost=population&limit=8`
       )
       if (res.ok) {

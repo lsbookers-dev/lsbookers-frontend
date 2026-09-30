@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Briefcase, MapPin, Search, SlidersHorizontal, Sparkles, Plus, X, Send, Share2, Layers } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
@@ -204,9 +204,8 @@ function OffersInner() {
   // Charger le profil connecté (spécialités + ville/pays)
   useEffect(() => {
     if (!user?.id) return
-    const token = getAuthToken()
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
-    fetch(`${API_BASE}/api/profile/user/${user.id}`, { credentials: 'include', headers })
+    const headers: Record<string, string> = {}
+    apiFetch(`${API_BASE}/api/profile/user/${user.id}`, { credentials: 'include', headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data?.profile) return
@@ -238,7 +237,7 @@ function OffersInner() {
       if (filters.specialty) params.set('specialty', filters.specialty)
       if (filters.location)  params.set('location',  filters.location)
       if (filters.country)   params.set('country',   filters.country)
-      const res = await fetch(`${API_BASE}/api/offers?${params}`)
+      const res = await apiFetch(`${API_BASE}/api/offers?${params}`)
       if (res.ok) setOffers(await res.json())
     } catch (err) {
       console.error('Erreur chargement offres:', err)
@@ -257,9 +256,8 @@ function OffersInner() {
     if (!shareOffer || shareQuery.trim().length < 2) { setShareUsers([]); return }
     const t = setTimeout(async () => {
       try {
-        const token = getAuthToken()
-        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
-        const res = await fetch(`${API_BASE}/api/search?name=${encodeURIComponent(shareQuery)}`, { credentials: 'include', headers })
+        const headers: Record<string, string> = {}
+        const res = await apiFetch(`${API_BASE}/api/search?name=${encodeURIComponent(shareQuery)}`, { credentials: 'include', headers })
         if (res.ok) {
           const data = await res.json()
           setShareUsers((data.users || []).slice(0, 8))
@@ -274,11 +272,10 @@ function OffersInner() {
     if (!user) { router.push('/login'); return }
     setApplyingId(offer.id)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/api/offers/${offer.id}/apply`, {
+      const res = await apiFetch(`${API_BASE}/api/offers/${offer.id}/apply`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: `Bonjour, je suis intéressé(e) par votre offre "${offer.title}". N'hésitez pas à consulter mon profil.` }),
       })
       if (res.ok) {
@@ -299,11 +296,10 @@ function OffersInner() {
     if (!shareOffer) return
     setShareSubmitting(true)
     try {
-      const token = getAuthToken()
-      await fetch(`${API_BASE}/api/messages/share-offer`, {
+      await apiFetch(`${API_BASE}/api/messages/share-offer`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientId: toUserId, offerId: shareOffer.id }),
       })
       setShareSuccess(true)
@@ -325,12 +321,11 @@ function OffersInner() {
     setPubError(null)
     setPubSubmitting(true)
     try {
-      const token = getAuthToken()
       const dateTime = pubForm.time ? `${pubForm.date}T${pubForm.time}:00` : `${pubForm.date}T00:00:00`
-      const res = await fetch(`${API_BASE}/api/offers`, {
+      const res = await apiFetch(`${API_BASE}/api/offers`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: pubForm.title.trim(), description: pubForm.description.trim(),
           type: pubForm.type, specialty: pubForm.specialty || null,

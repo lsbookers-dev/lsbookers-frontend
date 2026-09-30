@@ -9,7 +9,7 @@ import {
   Bell, LogOut, Mail,
   Settings, UserRound, ChevronDown,
 } from 'lucide-react'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 import { getSocket } from '@/lib/socket'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
@@ -126,10 +126,9 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
   const respondStaffInvitation = useCallback(async (notifId: number, staffId: number, eventId: number, response: 'ACCEPT' | 'REFUSE') => {
     setRespondingStaff(prev => ({ ...prev, [notifId]: true }))
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/api/events/${eventId}/staff/${staffId}/respond`, {
+      const res = await apiFetch(`${API_BASE}/api/events/${eventId}/staff/${staffId}/respond`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ response }),
       })
       if (res.ok) {
@@ -143,10 +142,8 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
   const openPubModal = useCallback(async (pubId: number) => {
     setNotifOpen(false)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/publications/${pubId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
+      const res = await apiFetch(`${API}/api/publications/${pubId}`, {
+        })
       if (!res.ok) return
       const pub = await res.json() as PubCardData
       setPubModal(pub)
@@ -158,7 +155,7 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
 
   // ── Logo admin ───────────────────────────────────
   useEffect(() => {
-    fetch(`${API_BASE}/api/admin/settings`)
+    apiFetch(`${API_BASE}/api/admin/settings`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.headerLogoUrl) setHeaderLogoUrl(d.headerLogoUrl) })
       .catch(() => {})
@@ -204,12 +201,10 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
     setNotifLoading(true)
 
     // Fetch liste + mark-all-read en parallèle
-    const token = getAuthToken()
-    const headers = { Authorization: `Bearer ${token}` }
     try {
       const [listRes] = await Promise.all([
-        fetch(`${API_BASE}/api/notifications`, { headers }),
-        fetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH', headers }),
+        apiFetch(`${API_BASE}/api/notifications`),
+        apiFetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH' }),
       ])
       if (listRes.ok) {
         const data = await listRes.json()
@@ -227,12 +222,12 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
     if (!user?.id || !API_BASE) return
     const token = getAuthToken()
     if (!token) return
-    const headers = { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-store' }
+    const headers = { 'Cache-Control': 'no-store' }
 
     try {
       const [msgRes, notifRes] = await Promise.all([
-        fetch(`${API_BASE}/api/messages/unread-count?t=${Date.now()}`, { headers }),
-        fetch(`${API_BASE}/api/notifications/unread-count?t=${Date.now()}`, { headers }),
+        apiFetch(`${API_BASE}/api/messages/unread-count?t=${Date.now()}`, { headers }),
+        apiFetch(`${API_BASE}/api/notifications/unread-count?t=${Date.now()}`, { headers }),
       ])
       if (msgRes.ok) setUnreadMsg(Number((await msgRes.json()).count ?? 0))
       // Ne pas écraser le compteur si le popup est ouvert (évite la race condition)

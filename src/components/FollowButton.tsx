@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { UserPlus, UserMinus, UserX, ShieldOff } from 'lucide-react'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch, getUserId } from '@/utils/auth'
 
 interface Props {
   targetUserId: number
@@ -11,22 +11,6 @@ interface Props {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-function authHeaders(): Record<string, string> {
-  const token = typeof window !== 'undefined' ? getAuthToken() : null
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-/** Décode le payload d'un JWT sans vérification (client-side only) */
-function getTokenUserId(): number | null {
-  try {
-    const token = typeof window !== 'undefined' ? getAuthToken() : null
-    if (!token) return null
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    return payload.id ?? null
-  } catch {
-    return null
-  }
-}
 
 export default function FollowButton({ targetUserId, onFollowChange }: Props) {
   const [following, setFollowing]   = useState(false)
@@ -36,7 +20,7 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
   const [busy, setBusy]             = useState(false)
   const [showBlockMenu, setShowBlockMenu] = useState(false)
 
-  const currentUserId = getTokenUserId()
+  const currentUserId = getUserId()
   const isSelf = currentUserId === targetUserId
 
   useEffect(() => {
@@ -44,8 +28,8 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
     const load = async () => {
       try {
         const [fRes, bRes] = await Promise.all([
-          fetch(`${API_BASE}/api/follow/status/${targetUserId}`, { headers: authHeaders() }),
-          fetch(`${API_BASE}/api/block/status/${targetUserId}`,  { headers: authHeaders() }),
+          apiFetch(`${API_BASE}/api/follow/status/${targetUserId}`, {}),
+          apiFetch(`${API_BASE}/api/block/status/${targetUserId}`,  {}),
         ])
         if (fRes.ok) { const d = await fRes.json(); setFollowing(d.following); setFollowsYou(d.followsYou ?? false) }
         if (bRes.ok) { const d = await bRes.json(); setBlocked(d.blocked) }
@@ -65,10 +49,9 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
     setBusy(true)
     try {
       const method = following ? 'DELETE' : 'POST'
-      const res = await fetch(`${API_BASE}/api/follow/${targetUserId}`, {
+      const res = await apiFetch(`${API_BASE}/api/follow/${targetUserId}`, {
         method,
-        headers: authHeaders(),
-      })
+        })
       if (res.ok) {
         const next = !following
         setFollowing(next)
@@ -85,10 +68,9 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
     setShowBlockMenu(false)
     try {
       const method = blocked ? 'DELETE' : 'POST'
-      const res = await fetch(`${API_BASE}/api/block/${targetUserId}`, {
+      const res = await apiFetch(`${API_BASE}/api/block/${targetUserId}`, {
         method,
-        headers: authHeaders(),
-      })
+        })
       if (res.ok) {
         const nextBlocked = !blocked
         setBlocked(nextBlocked)

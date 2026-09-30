@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 import {
   CreditCard, FileText, MapPin, Image as ImageIcon, StickyNote,
   Plus, Download, Eye, Trash2, Bed, Plane, Loader2, Paperclip,
@@ -12,10 +12,6 @@ import { BookingItem2, BookingDetail, BookingLogistic, BookingMedia, DocumentIte
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-function authHeaders(): Record<string, string> {
-  const t = typeof window !== 'undefined' ? getAuthToken() : null
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
 const PAYMENT_LABEL: Record<string, { label: string; cls: string }> = {
@@ -158,9 +154,8 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
       form.append('title', title.trim())
       if (file) form.append('file', file)
 
-      const res = await fetch(`${API_BASE}/api/bookings/${bookingId}/logistics`, {
+      const res = await apiFetch(`${API_BASE}/api/bookings/${bookingId}/logistics`, {
         method: 'POST',
-        headers: authHeaders(),
         body: form,
       })
       if (!res.ok) throw new Error()
@@ -283,9 +278,8 @@ function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await fetch(`${API_BASE}/api/bookings/${bookingId}/media`, {
+      const res = await apiFetch(`${API_BASE}/api/bookings/${bookingId}/media`, {
         method: 'POST',
-        headers: authHeaders(),
         body: form,
       })
       if (!res.ok) throw new Error()
@@ -378,9 +372,9 @@ function TabNotes({ bookingId, initialNotes, targetName }: { bookingId: number; 
   const save = async (value: string) => {
     setSaving(true)
     try {
-      await fetch(`${API_BASE}/api/bookings/${bookingId}/notes`, {
+      await apiFetch(`${API_BASE}/api/bookings/${bookingId}/notes`, {
         method:  'PATCH',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ sharedNotes: value }),
       })
       setSaved(true)
@@ -481,7 +475,7 @@ export default function EventTabBookings(p: Props) {
     setFetchError(null)
     setLoadingDetail(true)
     try {
-      const res = await fetch(`${API_BASE}/api/bookings/${id}`, { headers: authHeaders() })
+      const res = await apiFetch(`${API_BASE}/api/bookings/${id}`, {})
       if (res.ok) {
         const d = await res.json()
         setDetail(d.booking)
@@ -505,9 +499,8 @@ export default function EventTabBookings(p: Props) {
 
   const deleteLogistic = async (logId: number) => {
     if (!selectedId) return
-    await fetch(`${API_BASE}/api/bookings/${selectedId}/logistics/${logId}`, {
-      method: 'DELETE', headers: authHeaders(),
-    })
+    await apiFetch(`${API_BASE}/api/bookings/${selectedId}/logistics/${logId}`, {
+      method: 'DELETE', })
     setDetail(prev => prev ? { ...prev, logistics: prev.logistics.filter(l => l.id !== logId) } : prev)
   }
 
@@ -517,9 +510,8 @@ export default function EventTabBookings(p: Props) {
 
   const deleteMedia = async (mediaId: number) => {
     if (!selectedId) return
-    await fetch(`${API_BASE}/api/bookings/${selectedId}/media/${mediaId}`, {
-      method: 'DELETE', headers: authHeaders(),
-    })
+    await apiFetch(`${API_BASE}/api/bookings/${selectedId}/media/${mediaId}`, {
+      method: 'DELETE', })
     setDetail(prev => prev ? { ...prev, media: prev.media.filter(m => m.id !== mediaId) } : prev)
   }
 

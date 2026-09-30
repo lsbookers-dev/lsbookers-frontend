@@ -9,7 +9,7 @@ import PublicationsSection from '@/components/PublicationsSection'
 import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import { useAuth } from '@/context/AuthContext'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 
 /* =============== Types =============== */
 type PublicUser = {
@@ -159,7 +159,7 @@ export default function OrganizerPublicProfilePage() {
         setLoading(true)
         setError(null)
 
-        const profileRes = await fetch(`${API_BASE}/api/profile/user/${userId}`, {
+        const profileRes = await apiFetch(`${API_BASE}/api/profile/user/${userId}`, {
           cache: 'no-store',
         })
         if (!profileRes.ok) throw new Error(`HTTP ${profileRes.status}`)
@@ -172,7 +172,7 @@ export default function OrganizerPublicProfilePage() {
         if (!loadedProfile) throw new Error('Profil introuvable')
 
         if (loadedProfile.id) {
-          const pubsRes = await fetch(`${API_BASE}/api/publications/profile/${loadedProfile.id}`, {
+          const pubsRes = await apiFetch(`${API_BASE}/api/publications/profile/${loadedProfile.id}`, {
             cache: 'no-store',
           })
           if (pubsRes.ok) {
@@ -182,7 +182,7 @@ export default function OrganizerPublicProfilePage() {
             setPublications([])
           }
 
-          const offersRes = await fetch(`${API_BASE}/api/offers?organizerId=${loadedProfile.id}`, {
+          const offersRes = await apiFetch(`${API_BASE}/api/offers?organizerId=${loadedProfile.id}`, {
             cache: 'no-store',
           })
           if (offersRes.ok) {
@@ -256,11 +256,10 @@ export default function OrganizerPublicProfilePage() {
     }
     setSubmitting(true)
     try {
-      const token = getAuthToken()
       const datetime = `${form.date}T${form.time || '00:00'}:00`
-      const res = await fetch(`${API_BASE}/api/offers`, {
+      const res = await apiFetch(`${API_BASE}/api/offers`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title:       form.title,
           description: form.description,
@@ -290,11 +289,9 @@ export default function OrganizerPublicProfilePage() {
   const handleDeleteOffer = async (offerId: number) => {
     if (!confirm('Supprimer cette offre ?')) return
     try {
-      const token = getAuthToken()
-      await fetch(`${API_BASE}/api/offers/${offerId}`, {
+      await apiFetch(`${API_BASE}/api/offers/${offerId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       setOffers(prev => prev.filter(o => o.id !== offerId))
     } catch (err) {
       console.error('Erreur suppression offre:', err)

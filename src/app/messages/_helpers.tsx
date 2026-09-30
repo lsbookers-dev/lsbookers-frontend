@@ -36,6 +36,6 @@ export function formatMessageTime(date: string) {
   return new Date(date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function getHeaders(token: string) {
-  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+export function getHeaders() {
+  return { 'Content-Type': 'application/json' }
 }

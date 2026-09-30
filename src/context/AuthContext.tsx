@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch, isCookieSessionMode, storeSession, COOKIE_SESSION_MARKER } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
 import { disconnectSocket } from '@/lib/socket'
@@ -117,14 +117,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Les pages publiques ne doivent jamais attendre le backend pour s'afficher.
     if (isPublicPath(window.location.pathname)) setLoading(false)
 
+    const cookieMode = isCookieSessionMode()
+
     const validateSession = async () => {
       try {
-        const headers: HeadersInit = {}
-        if (storedToken) headers.Authorization = `Bearer ${storedToken}`
+        // Passage au mode « cookie uniquement » : une ancienne session (jeton en localStorage)
+        // est convertie une fois en cookie httpOnly, puis le jeton est effacé du navigateur.
+        if (cookieMode && storedToken && storedToken !== COOKIE_SESSION_MARKER) {
+          await fetch(apiUrl('auth/session'), {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${storedToken}` },
+            credentials: 'include',
+            signal: controller.signal,
+          }).catch(() => {})
+          storeSession(null)
+        }
 
-        const res = await fetch(apiUrl('auth/me'), {
-          headers,
-          credentials: 'include',
+        const res = await apiFetch(apiUrl('auth/me'), {
           cache: 'no-store',
           signal: controller.signal,
         })
@@ -141,10 +150,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const data = await res.json()
         const normalized = normalizeUser(data.user)
 
-        // Les écrans actuels utilisent le Bearer token. Une session retrouvée
+        // Mode cookie : la session est portée par le cookie httpOnly, on ne garde qu'un marqueur.
+        if (cookieMode) {
+          storeSession(null)
+          try { localStorage.setItem('user', JSON.stringify(normalized)) } catch { }
+          if (!cancelled) {
+            setToken(COOKIE_SESSION_MARKER)
+            setUser(normalized)
+          }
+          return
+        }
+
+        // Mode transition : les écrans utilisent le jeton. Une session retrouvée
         // uniquement par cookie est fermée proprement pour éviter un état partiel.
         if (!storedToken) {
-          await fetch(apiUrl('auth/logout'), {
+          await apiFetch(apiUrl('auth/logout'), {
             method: 'POST',
             credentials: 'include',
           }).catch(() => {})
@@ -193,10 +213,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (storedDeviceToken) headers['X-Device-Token'] = storedDeviceToken
 
-    const res = await fetch(apiUrl('auth/login'), {
+    const res = await apiFetch(apiUrl('auth/login'), {
       method: 'POST',
       headers,
-      credentials: 'include',
       body: JSON.stringify({ email, password }),
     })
 
@@ -211,13 +230,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const data = await res.json()
     const normalized = normalizeUser(data.user)
 
-    // Cookie httpOnly posé par le backend + token en localStorage (fallback Safari)
+    // Cookie httpOnly posé par le backend. Le jeton n'est gardé dans le navigateur qu'en
+    // mode transition (API sur un autre site) ; en mode cookie, seul un marqueur est stocké.
     localStorage.setItem('user', JSON.stringify(normalized))
-    localStorage.setItem('token', data.token)
+    storeSession(data.token)
     // Persister le device token pour les prochaines connexions
     if (data.deviceToken) persistDeviceToken(data.deviceToken)
 
-    setToken(data.token)
+    setToken(getAuthToken())
     setUser(normalized)
 
     if (normalized.role === 'ADMIN') {
@@ -231,13 +251,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     // Efface le cookie httpOnly côté serveur
     try {
-      const headers: HeadersInit = {}
-      if (token) headers.Authorization = `Bearer ${token}`
-      await fetch(apiUrl('auth/logout'), {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-      })
+      await apiFetch(apiUrl('auth/logout'), { method: 'POST' })
     } catch { }
     disconnectSocket()
     clearLocalSession()

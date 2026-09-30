@@ -7,7 +7,7 @@ import Header from '@/components/Header'
 import BottomNav from '@/components/BottomNav'
 import InstallPrompt from '@/components/InstallPrompt'
 import AppSidebar from '@/components/AppSidebar'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -20,10 +20,9 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
     const ping = () => {
       const token = getAuthToken()
       if (!token) return
-      fetch(`${API_BASE}/api/auth/heartbeat`, {
+      apiFetch(`${API_BASE}/api/auth/heartbeat`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {})
+        }).catch(() => {})
     }
     ping()
     const interval = setInterval(ping, 60_000)

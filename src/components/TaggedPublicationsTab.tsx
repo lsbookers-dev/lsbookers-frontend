@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 /**
  * Onglet "Identifications" — affiche toutes les publications
  * où ce profil a été identifié (tags acceptés).
@@ -30,7 +31,7 @@ export default function TaggedPublicationsTab({ profileId, accentColor = 'bg-vio
   useEffect(() => {
     if (!profileId) return
     setLoading(true)
-    fetch(`${API_BASE}/api/publications/tagged/${profileId}`)
+    apiFetch(`${API_BASE}/api/publications/tagged/${profileId}`)
       .then(r => r.ok ? r.json() : { publications: [] })
       .then(d => setPublications(d.publications || []))
       .catch(() => setPublications([]))
@@ -52,7 +53,7 @@ export default function TaggedPublicationsTab({ profileId, accentColor = 'bg-vio
           <span className={`mx-auto grid h-11 w-11 place-items-center rounded-xl bg-violet-500/10 text-violet-300/70`}>
             <Tag size={20} />
           </span>
-          <p className="mt-3 text-sm font-medium text-white/65">Aucune identification pour l'instant</p>
+          <p className="mt-3 text-sm font-medium text-white/65">Aucune identification pour l&apos;instant</p>
           <p className="mt-1 text-[11px] text-white/35">Les photos sur lesquelles ce profil est identifié apparaîtront ici.</p>
         </div>
       </div>

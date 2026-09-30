@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -105,10 +105,8 @@ export default function NotificationsPage() {
     setLoading(true)
     setError(false)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await apiFetch(`${API_BASE}/api/notifications`, {
+        })
       if (!res.ok) throw new Error()
       const data = await res.json()
       setAll(data.notifications || [])
@@ -125,21 +123,18 @@ export default function NotificationsPage() {
 
   const markAsRead = async (id: number) => {
     try {
-      const token = getAuthToken()
-      await fetch(`${API_BASE}/api/notifications/${id}`, {
+      await apiFetch(`${API_BASE}/api/notifications/${id}`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       setAll(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
     } catch { /* silencieux */ }
   }
 
   const respondStaffInvitation = async (notifId: number, staffId: number, eventId: number, response: 'ACCEPT' | 'REFUSE') => {
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/api/events/${eventId}/staff/${staffId}/respond`, {
+      const res = await apiFetch(`${API_BASE}/api/events/${eventId}/staff/${staffId}/respond`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ response }),
       })
       if (res.ok) {
@@ -153,11 +148,9 @@ export default function NotificationsPage() {
   const markAllAsRead = async () => {
     setMarkingAll(true)
     try {
-      const token = getAuthToken()
-      await fetch(`${API_BASE}/api/notifications/mark-all-read`, {
+      await apiFetch(`${API_BASE}/api/notifications/mark-all-read`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       setAll(prev => prev.map(n => ({ ...n, read: true })))
     } catch { /* silencieux */ }
     setMarkingAll(false)

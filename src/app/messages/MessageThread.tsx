@@ -1,6 +1,7 @@
 // messages/MessageThread.tsx — Panneau droit : fil de messages + zone de saisie
 
 'use client'
+import { apiFetch } from '@/utils/auth'
 
 import React, { useMemo, useState, useEffect } from 'react'
 import Image from 'next/image'
@@ -95,9 +96,9 @@ export default function MessageThread({
     setBookingSending(true)
     setBookingError('')
     try {
-      const res = await fetch(`${API_BASE}/api/events/booking-request`, {
+      const res = await apiFetch(`${API_BASE}/api/events/booking-request`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetProfileId: otherForBooking.profileId,
           conversationId: activeConvId,
@@ -133,9 +134,8 @@ export default function MessageThread({
     if (!otherId || !token) return
     const fetchStatus = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/messages/status/${otherId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        const res = await apiFetch(`${API_BASE}/api/messages/status/${otherId}`, {
+          })
         if (res.ok) setOnlineStatus(await res.json())
       } catch {}
     }
@@ -150,9 +150,8 @@ export default function MessageThread({
     const t = setTimeout(async () => {
       setShareLoading(true)
       try {
-        const res = await fetch(`${API_BASE}/api/search?name=${encodeURIComponent(shareSearch.trim())}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        const res = await apiFetch(`${API_BASE}/api/search?name=${encodeURIComponent(shareSearch.trim())}`, {
+          })
         if (!res.ok) return
         const data = await res.json()
         const users = Array.isArray(data?.users) ? data.users : []
@@ -174,9 +173,9 @@ export default function MessageThread({
   const sendProfileShare = async (targetUserId: number) => {
     if (!activeConvId || !token) return
     try {
-      await fetch(`${API_BASE}/api/messages/share-profile`, {
+      await apiFetch(`${API_BASE}/api/messages/share-profile`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: activeConvId, profileUserId: targetUserId }),
       })
       setShowShareProfile(false)

@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { X, Tag, UserMinus, Search } from 'lucide-react'
 import type { PubTag } from './PublicationCard'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -51,9 +51,8 @@ export default function TagModal({ pubId, initialTags, onClose, onTagsChange }: 
     if (!q.trim() || q.length < 2) { setResults([]); return }
     setSearching(true)
     try {
-      const res = await fetch(`${API_BASE}/api/search/users?q=${encodeURIComponent(q)}&limit=8`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
+      const res = await apiFetch(`${API_BASE}/api/search/users?q=${encodeURIComponent(q)}&limit=8`, {
+        })
       if (res.ok) {
         const data = await res.json()
         const taggedIds = new Set(tags.map(t => t.taggedUser.id))
@@ -71,9 +70,9 @@ export default function TagModal({ pubId, initialTags, onClose, onTagsChange }: 
     if (!token || tags.length >= 5) return
     setTagLoading(userId)
     try {
-      const res = await fetch(`${API_BASE}/api/publications/${pubId}/tags`, {
+      const res = await apiFetch(`${API_BASE}/api/publications/${pubId}/tags`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userIds: [userId] }),
       })
       if (res.ok) {
@@ -90,10 +89,9 @@ export default function TagModal({ pubId, initialTags, onClose, onTagsChange }: 
   const handleRemove = async (tagId: number) => {
     if (!token) return
     try {
-      await fetch(`${API_BASE}/api/publications/${pubId}/tags/${tagId}`, {
+      await apiFetch(`${API_BASE}/api/publications/${pubId}/tags/${tagId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       const newTags = tags.filter(t => t.id !== tagId)
       setTags(newTags)
       onTagsChange(newTags)

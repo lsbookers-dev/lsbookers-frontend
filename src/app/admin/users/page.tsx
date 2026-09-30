@@ -3,14 +3,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { Trash2, Search, RefreshCw, Eye, X, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const t = typeof window !== 'undefined' ? getAuthToken() : null
-  return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
-}
 
 type ListedUser = {
   id: number
@@ -136,8 +131,7 @@ export default function AdminUsersPage() {
       const params = new URLSearchParams({ limit: String(LIMIT), offset: String(pageIndex * LIMIT) })
       if (search.trim()) params.set('q', search.trim())
 
-      const res = await fetch(`${API}/api/admin/users?${params}`, {
-        headers: getAuthHeaders(),
+      const res = await apiFetch(`${API}/api/admin/users?${params}`, {
         cache: 'no-store',
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -159,8 +153,7 @@ export default function AdminUsersPage() {
     setDetailLoading(true)
     setDetailUser(null)
     try {
-      const res = await fetch(`${API}/api/admin/users/${id}`, {
-        headers: getAuthHeaders(),
+      const res = await apiFetch(`${API}/api/admin/users/${id}`, {
         cache: 'no-store',
       })
       if (!res.ok) throw new Error()
@@ -178,9 +171,9 @@ export default function AdminUsersPage() {
     if (!confirm(`Changer le rôle de ${displayName(u)} de ${ROLE_LABELS[u.role] || u.role} vers ${ROLE_LABELS[newRole] || newRole} ?`)) return
     setChangingRole(u.id)
     try {
-      const res = await fetch(`${API}/api/admin/users/${u.id}/role`, {
+      const res = await apiFetch(`${API}/api/admin/users/${u.id}/role`, {
         method: 'PATCH',
-        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
       })
       if (!res.ok) throw new Error()
@@ -196,10 +189,9 @@ export default function AdminUsersPage() {
     if (!confirm(`Supprimer le compte de ${displayName(u)} (${u.email}) ? Cette action est irréversible.`)) return
     setDeleting(u.id)
     try {
-      const res = await fetch(`${API}/api/admin/users/${u.id}`, {
+      const res = await apiFetch(`${API}/api/admin/users/${u.id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
+        })
       if (!res.ok) throw new Error()
       setUsers(prev => prev.filter(x => x.id !== u.id))
       setTotal(prev => prev - 1)

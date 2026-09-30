@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import type { PubCardData, PubTag, PubTagUser } from './PublicationCard'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 import TagModal from './TagModal'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -128,7 +128,7 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
     try {
       const profileId = user?.profile?.id
       const qs = profileId ? `?profileId=${profileId}` : ''
-      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/comments${qs}`)
+      const res = await apiFetch(`${API_BASE}/api/publications/${pub.id}/comments${qs}`)
       if (res.ok) {
         const data = await res.json()
         setComments(data.comments || [])
@@ -156,10 +156,9 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
 
     setLikeLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/like`, {
+      const res = await apiFetch(`${API_BASE}/api/publications/${pub.id}/like`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       if (res.ok) {
         const data = await res.json()
         setLiked(data.liked)
@@ -191,10 +190,9 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/publications/comments/${commentId}/like`, {
+      const res = await apiFetch(`${API_BASE}/api/publications/comments/${commentId}/like`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       if (res.ok) {
         const data = await res.json()
         setComments(prev => applyCommentLike(prev, commentId, data.liked, data.count))
@@ -214,12 +212,11 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
 
     setSubmitting(true)
     try {
-      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/comments`, {
+      const res = await apiFetch(`${API_BASE}/api/publications/${pub.id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+          },
         body: JSON.stringify({ content: newComment.trim() }),
       })
       if (res.ok) {
@@ -245,12 +242,11 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
 
     setReplySubmitting(true)
     try {
-      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/comments`, {
+      const res = await apiFetch(`${API_BASE}/api/publications/${pub.id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+          },
         body: JSON.stringify({ content: replyText.trim(), parentId }),
       })
       if (res.ok) {
@@ -287,10 +283,9 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
     if (!token) return
 
     try {
-      const res = await fetch(`${API_BASE}/api/publications/comments/${commentId}`, {
+      const res = await apiFetch(`${API_BASE}/api/publications/comments/${commentId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       if (res.ok) {
         if (isReply) {
           setComments(prev =>
@@ -323,10 +318,9 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
     const token = getAuthToken()
     if (!token) return
     try {
-      await fetch(`${API_BASE}/api/publications/${pub.id}/tags/${tagId}`, {
+      await apiFetch(`${API_BASE}/api/publications/${pub.id}/tags/${tagId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       setTags(prev => prev.filter(t => t.id !== tagId))
     } catch { /* silent */ }
   }
@@ -336,9 +330,9 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/publications/${pub.id}/tags/${tagId}/respond`, {
+      const res = await apiFetch(`${API_BASE}/api/publications/${pub.id}/tags/${tagId}/respond`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       })
       if (res.ok) {

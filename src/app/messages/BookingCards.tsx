@@ -1,6 +1,7 @@
 // messages/BookingCards.tsx — Cartes booking request + cancellation request
 
 'use client'
+import { apiFetch } from '@/utils/auth'
 
 import { useState } from 'react'
 import { Ban, Banknote, CalendarDays, Check, RefreshCw, X } from 'lucide-react'
@@ -53,9 +54,9 @@ export function BookingRequestCard({
     if (!token || updating) return
     setUpdating(true)
     try {
-      const res = await fetch(`${API_BASE}/api/events/booking-request/${br.id}`, {
+      const res = await apiFetch(`${API_BASE}/api/events/booking-request/${br.id}`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
       if (res.ok) {
@@ -73,9 +74,9 @@ export function BookingRequestCard({
     if (!token || !counterDate || sendingCounter) return
     setSendingCounter(true)
     try {
-      const res = await fetch(`${API_BASE}/api/events/booking-request`, {
+      const res = await apiFetch(`${API_BASE}/api/events/booking-request`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetProfileId: br.requesterId,
           date: counterDate,
@@ -193,9 +194,9 @@ export function CancellationRequestCard({
     if (!token || responding) return
     setResponding(true)
     try {
-      const res = await fetch(`${API_BASE}/api/events/booking-request/${br.id}/cancel-response`, {
+      const res = await apiFetch(`${API_BASE}/api/events/booking-request/${br.id}/cancel-response`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accept }),
       })
       if (res.ok) {

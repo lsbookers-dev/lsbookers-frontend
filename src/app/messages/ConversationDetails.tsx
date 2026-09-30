@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -47,9 +48,9 @@ export default function ConversationDetails({ conversation, currentUserId, messa
     const next = !muted
     setMuted(next)
     try {
-      const response = await fetch(`${API_BASE}/api/messages/conversations/${conversation.id}/mute`, {
+      const response = await apiFetch(`${API_BASE}/api/messages/conversations/${conversation.id}/mute`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ muted: next }),
       })
       if (!response.ok) setMuted(!next)

@@ -2,14 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Trash2, Archive, ArchiveRestore, Mail, MailOpen, RefreshCw, Inbox } from 'lucide-react'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const t = typeof window !== 'undefined' ? getAuthToken() : null
-  return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
-}
 
 type ContactMsg = {
   id: number
@@ -33,9 +28,9 @@ export default function AdminMessagesPage() {
   const load = useCallback(async (archived: boolean) => {
     setLoading(true)
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API}/api/contact/admin?archived=${archived}&limit=50`,
-        { headers: getAuthHeaders(), cache: 'no-store' }
+        { cache: 'no-store' }
       )
       if (!res.ok) throw new Error()
       const d = await res.json()
@@ -54,9 +49,8 @@ export default function AdminMessagesPage() {
   const markRead = async (msg: ContactMsg) => {
     if (msg.isRead) return
     try {
-      await fetch(`${API}/api/contact/admin/${msg.id}/read`, {
-        method: 'PATCH', headers: getAuthHeaders(),
-      })
+      await apiFetch(`${API}/api/contact/admin/${msg.id}/read`, {
+        method: 'PATCH', })
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isRead: true } : m))
       setSelected(prev => prev?.id === msg.id ? { ...prev, isRead: true } : prev)
       setUnread(u => Math.max(0, u - 1))
@@ -73,9 +67,9 @@ export default function AdminMessagesPage() {
   const archive = async (msg: ContactMsg) => {
     const next = !msg.isArchived
     try {
-      await fetch(`${API}/api/contact/admin/${msg.id}/archive`, {
+      await apiFetch(`${API}/api/contact/admin/${msg.id}/archive`, {
         method: 'PATCH',
-        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ archived: next }),
       })
       setMessages(prev => prev.filter(m => m.id !== msg.id))
@@ -88,9 +82,8 @@ export default function AdminMessagesPage() {
   const remove = async (msg: ContactMsg) => {
     if (!confirm(`Supprimer ce message de ${msg.name} ?`)) return
     try {
-      await fetch(`${API}/api/contact/admin/${msg.id}`, {
-        method: 'DELETE', headers: getAuthHeaders(),
-      })
+      await apiFetch(`${API}/api/contact/admin/${msg.id}`, {
+        method: 'DELETE', })
       setMessages(prev => prev.filter(m => m.id !== msg.id))
       if (selected?.id === msg.id) setSelected(null)
       setTotal(t => t - 1)

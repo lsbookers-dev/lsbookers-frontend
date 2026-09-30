@@ -12,7 +12,7 @@ import {
 import PublicationModal from '@/components/PublicationModal'
 import AddPublicationModal from '@/components/AddPublicationModal'
 import OfferModal, { type OfferDetail } from '@/components/OfferModal'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
 /* ─────────────────────────────────────────────────────────────
@@ -439,7 +439,7 @@ function TopList({ title, role, apiBase }: { title: string; role: 'ARTIST' | 'PR
     try {
       const params = new URLSearchParams({ role })
       if (loc) params.append('city', loc)
-      const r = await fetch(`${apiBase}/api/home/top?${params}`)
+      const r = await apiFetch(`${apiBase}/api/home/top?${params}`)
       if (r.ok) {
         const d = await r.json()
         setItems(d.top || [])
@@ -521,12 +521,10 @@ function SuggestedProfiles({ items }: { items: SuggestedProfile[] }) {
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
   const follow = async (userId: number) => {
-    const token = getAuthToken()
     try {
-      await fetch(`${API_BASE}/api/follow/${userId}`, {
+      await apiFetch(`${API_BASE}/api/follow/${userId}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       setFollowed(prev => new Set([...prev, userId]))
     } catch { /* silencieux */ }
   }
@@ -589,7 +587,7 @@ function OffersSidebar({ apiBase, onSelectOffer }: {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`${apiBase}/api/offers`)
+    apiFetch(`${apiBase}/api/offers`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setOffers(Array.isArray(d) ? d.slice(0, 6) : []))
       .catch(() => {})
@@ -696,16 +694,14 @@ export default function HomePage() {
   // ── Fetch feed — pagination par curseur (stable, évite le décalage de skip) ──
   const fetchFeed = useCallback(async (cursor: string | null, replace: boolean) => {
     if (!user) return
-    const token = getAuthToken()
     const headers: Record<string, string> = {}
-    if (token) headers.Authorization = `Bearer ${token}`
     if (replace) setLoadingFeed(true)
     else setLoadingMore(true)
     try {
       const url = cursor
         ? `${API_BASE}/api/home/feed?after=${encodeURIComponent(cursor)}`
         : `${API_BASE}/api/home/feed`
-      const r = await fetch(url, { headers })
+      const r = await apiFetch(url, { headers })
       const d = r.ok ? await r.json() : null
       if (!d) return
       const newPosts: typeof posts = d.posts || []
@@ -730,11 +726,9 @@ export default function HomePage() {
 
   // ── Chargement initial ──────────────────────────────────
   useEffect(() => {
-    const token = getAuthToken()
     const headers: Record<string, string> = {}
-    if (token) headers.Authorization = `Bearer ${token}`
 
-    fetch(`${API_BASE}/api/home/carousel`)
+    apiFetch(`${API_BASE}/api/home/carousel`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setFeatured(d.featured || []) })
       .catch(() => {})
@@ -742,7 +736,7 @@ export default function HomePage() {
     if (user) {
       fetchFeed(null, true)
 
-      fetch(`${API_BASE}/api/home/suggested`, { headers })
+      apiFetch(`${API_BASE}/api/home/suggested`, { headers })
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) setSuggested(d.suggested || []) })
         .catch(() => {})
@@ -754,7 +748,6 @@ export default function HomePage() {
   // ── Toggle like (avec rollback correct en cas d'erreur) ──
   const handleLike = async (postId: number) => {
     if (!user) return
-    const token = getAuthToken()
     // Capturer l'état original avant la mise à jour optimiste
     const original = posts.find(p => p.id === postId)
     if (!original) return
@@ -765,10 +758,9 @@ export default function HomePage() {
       p.id !== postId ? p : { ...p, likedByMe: !wasLiked, likesCount: wasLiked ? prevCount - 1 : prevCount + 1 }
     ))
     try {
-      const response = await fetch(`${API_BASE}/api/publications/${postId}/like`, {
+      const response = await apiFetch(`${API_BASE}/api/publications/${postId}/like`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       if (!response.ok) throw new Error('Like refusé')
     } catch {
       // Rollback vers l'état original (pas un double-toggle)

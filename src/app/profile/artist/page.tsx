@@ -15,7 +15,7 @@ import CropModal from '@/components/CropModal'
 import AddPublicationModal from '@/components/AddPublicationModal'
 import AlbumsTab from '@/components/AlbumsTab'
 import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -103,11 +103,6 @@ const buildSoundcloudEmbed = (url: string) => {
   return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url.trim())}&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&visual=true`
 }
 
-function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const t = typeof window !== 'undefined' ? getAuthToken() : null
-  return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
-}
-
 // ─────────────────────────────────────────────
 // Composant bouton édition inline
 // ─────────────────────────────────────────────
@@ -168,7 +163,7 @@ export default function ArtistProfilePage() {
   // ── Chargement du profil
   useEffect(() => {
     if (!user) return
-    fetch(`${API}/api/profile/me`, { credentials: 'include', headers: getAuthHeaders() })
+    apiFetch(`${API}/api/profile/me`, { credentials: 'include' })
       .then(r => r.json())
       .then(({ profile: p }) => {
         if (!p) return
@@ -185,12 +180,12 @@ export default function ArtistProfilePage() {
         })
 
         if (p.id) {
-          fetch(`${API}/api/publications/profile/${p.id}`)
+          apiFetch(`${API}/api/publications/profile/${p.id}`)
             .then(r => r.json())
             .then(d => setPublications(d.publications || []))
             .catch(() => {})
 
-          fetch(`${API}/api/reviews/profile/${p.id}`)
+          apiFetch(`${API}/api/reviews/profile/${p.id}`)
             .then(r => r.json())
             .then(d => setReviews(d.reviews || []))
             .catch(() => {})
@@ -203,11 +198,10 @@ export default function ArtistProfilePage() {
   // ── Sauvegarder un champ
   const saveField = async (data: Record<string, string | null>) => {
     if (!profile) return false
-    const token = getAuthToken()
-    const res = await fetch(`${API}/api/profile/${profile.id}`, {
+    const res = await apiFetch(`${API}/api/profile/${profile.id}`, {
       method: 'PUT',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
     if (res.ok) {
@@ -239,9 +233,8 @@ export default function ArtistProfilePage() {
   const handleDeletePub = async (id: number) => {
     if (!confirm('Supprimer cette publication ?')) return
     try {
-      const res = await fetch(`${API}/api/publications/${id}`, {
-        method: 'DELETE', credentials: 'include', headers: getAuthHeaders(),
-      })
+      const res = await apiFetch(`${API}/api/publications/${id}`, {
+        method: 'DELETE', credentials: 'include', })
       if (!res.ok) throw new Error('Échec')
       setPublications(prev => prev.filter(p => p.id !== id))
     } catch { alert('Impossible de supprimer') }
@@ -252,8 +245,8 @@ export default function ArtistProfilePage() {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('folder', folder)
-    const res = await fetch(`${API}/api/upload`, {
-      method: 'POST', credentials: 'include', headers: getAuthHeaders(), body: fd,
+    const res = await apiFetch(`${API}/api/upload`, {
+      method: 'POST', credentials: 'include', body: fd,
     })
     if (!res.ok) throw new Error('Upload échoué')
     const data = await res.json()

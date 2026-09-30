@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -102,7 +103,7 @@ export default function LoginPage() {
   const handleResendVerification = async () => {
     setResendLoading(true)
     try {
-      await fetch(apiUrl('auth/resend-verification'), {
+      await apiFetch(apiUrl('auth/resend-verification'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

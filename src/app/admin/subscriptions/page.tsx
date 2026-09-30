@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 
 /** ===== Types ===== */
 type Plan = {
@@ -58,7 +58,6 @@ export default function AdminSubscriptionsPage() {
     ...(init || {}),
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${tokenRef.current}`,
       ...(init?.headers || {}),
     },
     cache: 'no-store' as const,
@@ -69,7 +68,7 @@ export default function AdminSubscriptionsPage() {
       setLoading(true); setError(null)
 
       // Plans
-      const r1 = await fetch(`${API_BASE}/api/admin/plans`, authed())
+      const r1 = await apiFetch(`${API_BASE}/api/admin/plans`, authed())
       if (r1.status === 404 || r1.status === 405) {
         // Route inexistante = Stripe non configuré
         return
@@ -79,7 +78,7 @@ export default function AdminSubscriptionsPage() {
       setPlans(Array.isArray(p) ? p : (p.plans || []))
 
       // Souscriptions
-      const r2 = await fetch(`${API_BASE}/api/admin/subscriptions`, authed())
+      const r2 = await apiFetch(`${API_BASE}/api/admin/subscriptions`, authed())
       if (r2.status === 404 || r2.status === 405) return
       if (!r2.ok) throw new Error('HTTP ' + r2.status)
       const s = await r2.json() as { subscriptions?: Subscription[] } | Subscription[]
@@ -116,10 +115,10 @@ export default function AdminSubscriptionsPage() {
     try {
       const body = JSON.stringify(form)
       if (editing) {
-        const r = await fetch(`${API_BASE}/api/admin/plans/${editing.id}`, authed({ method: 'PUT', body }))
+        const r = await apiFetch(`${API_BASE}/api/admin/plans/${editing.id}`, authed({ method: 'PUT', body }))
         if (!r.ok) throw new Error('HTTP ' + r.status)
       } else {
-        const r = await fetch(`${API_BASE}/api/admin/plans`, authed({ method: 'POST', body }))
+        const r = await apiFetch(`${API_BASE}/api/admin/plans`, authed({ method: 'POST', body }))
         if (!r.ok) throw new Error('HTTP ' + r.status)
       }
       await loadAll()
@@ -134,7 +133,7 @@ export default function AdminSubscriptionsPage() {
 
   const toggleActive = async (p: Plan) => {
     try {
-      const r = await fetch(`${API_BASE}/api/admin/plans/${p.id}`, authed({
+      const r = await apiFetch(`${API_BASE}/api/admin/plans/${p.id}`, authed({
         method: 'PUT',
         body: JSON.stringify({ isActive: !p.isActive }),
       }))
@@ -149,7 +148,7 @@ export default function AdminSubscriptionsPage() {
   const removePlan = async (id: number) => {
     if (!confirm('Supprimer ce plan ?')) return
     try {
-      const r = await fetch(`${API_BASE}/api/admin/plans/${id}`, authed({ method: 'DELETE' }))
+      const r = await apiFetch(`${API_BASE}/api/admin/plans/${id}`, authed({ method: 'DELETE' }))
       if (!r.ok) throw new Error('HTTP ' + r.status)
       setPlans(prev => prev.filter(x => x.id !== id))
       alert('Plan supprimé ✅')

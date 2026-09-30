@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 /**
  * Composeur partagé par l'accueil et les profils.
  * Les fonctions historiques (multi-upload, création et callback) sont conservées.
@@ -138,9 +139,9 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
     const timer = window.setTimeout(async () => {
       setSearching(true)
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_BASE}/api/search/users?q=${encodeURIComponent(tagQuery.trim())}&limit=8`,
-          { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal },
+          { signal: controller.signal },
         )
         if (!response.ok) return
         const data = await response.json()
@@ -232,9 +233,8 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
     form.append('file', item.file)
     form.append('folder', 'media')
     form.append('type', item.type)
-    const response = await fetch(`${API_BASE}/api/upload`, {
+    const response = await apiFetch(`${API_BASE}/api/upload`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
       body: form,
     })
     if (!response.ok) {
@@ -266,9 +266,9 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
       }
 
       const [first, ...rest] = uploaded
-      const response = await fetch(`${API_BASE}/api/publications`, {
+      const response = await apiFetch(`${API_BASE}/api/publications`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
           media: first.url,
@@ -285,9 +285,9 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
       const saved: PubCardData = await response.json()
 
       if (selectedUsers.length > 0) {
-        const tagResponse = await fetch(`${API_BASE}/api/publications/${saved.id}/tags`, {
+        const tagResponse = await apiFetch(`${API_BASE}/api/publications/${saved.id}/tags`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userIds: selectedUsers.map(selected => selected.id) }),
         }).catch(() => null)
         if (tagResponse?.ok) {

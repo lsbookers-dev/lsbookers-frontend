@@ -9,14 +9,10 @@ import {
   CreditCard, BarChart2, Settings, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-function getAuthHeaders(): Record<string, string> {
-  const t = typeof window !== 'undefined' ? getAuthToken() : null
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
 
 const NAV_ITEMS = [
   { href: '/admin/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
@@ -60,8 +56,7 @@ export default function AdminHeader() {
   useEffect(() => {
     const fetchUnread = async () => {
       try {
-        const res = await fetch(`${API}/api/contact/admin/unread-count`, {
-          headers: getAuthHeaders(),
+        const res = await apiFetch(`${API}/api/contact/admin/unread-count`, {
           cache: 'no-store',
         })
         if (res.ok) {

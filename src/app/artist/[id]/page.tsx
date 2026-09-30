@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Instagram, Facebook, Globe, Music, Youtube } from 'lucide-react'
@@ -108,14 +109,14 @@ export default function ArtistPublicProfilePage() {
       try {
         setLoading(true)
         setError(null)
-        const profileRes = await fetch(`${API_BASE}/api/profile/user/${userId}`, { cache: 'no-store' })
+        const profileRes = await apiFetch(`${API_BASE}/api/profile/user/${userId}`, { cache: 'no-store' })
         if (!profileRes.ok) throw new Error(`HTTP ${profileRes.status}`)
         const profileData = (await profileRes.json()) as { profile: ApiProfile }
         const p = profileData.profile
         setProfile(p)
         setAbonnesCount(p?.followersCount ?? 0)
         if (p?.id) {
-          const pubsRes = await fetch(`${API_BASE}/api/publications/profile/${p.id}`, { cache: 'no-store' })
+          const pubsRes = await apiFetch(`${API_BASE}/api/publications/profile/${p.id}`, { cache: 'no-store' })
           if (pubsRes.ok) {
             const pubsData = await pubsRes.json()
             setPublications(pubsData.publications || [])

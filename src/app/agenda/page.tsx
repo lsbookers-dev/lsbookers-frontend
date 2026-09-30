@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import { useAuth } from '@/context/AuthContext'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 import { CalendarDays } from 'lucide-react'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -15,8 +15,7 @@ export default function AgendaPage() {
 
   useEffect(() => {
     if (!user) return
-    const token = getAuthToken()
-    fetch(`${API}/api/profile/me`, { credentials: 'include', headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    apiFetch(`${API}/api/profile/me`, { credentials: 'include', })
       .then(response => response.ok ? response.json() : null)
       .then(data => { setProfileId(data?.profile?.id || null); setCountry(data?.profile?.country || null) })
       .catch(() => {})

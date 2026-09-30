@@ -5,8 +5,11 @@
  */
 
 import { io, Socket } from 'socket.io-client'
+import { API_BASE } from '@/utils/api'
+import { isCookieSessionMode, COOKIE_SESSION_MARKER } from '@/utils/auth'
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001').replace(/\/$/, '')
+// API_BASE (sans « /api » final) : sinon socket.io croirait à un « namespace » /api
+const BACKEND_URL = API_BASE
 
 let socket: Socket | null = null
 let currentToken: string | null = null
@@ -28,8 +31,12 @@ export function getSocket(token: string): Socket {
   }
 
   currentToken = token
+  // Mode cookie : le cookie httpOnly est envoyé avec la poignée de main (withCredentials),
+  // aucun jeton n'est lu par le JavaScript. Mode transition : jeton explicite.
+  const cookieMode = isCookieSessionMode() || token === COOKIE_SESSION_MARKER
   socket = io(BACKEND_URL, {
-    auth: { token },
+    ...(cookieMode ? {} : { auth: { token } }),
+    withCredentials: true,
     transports: ['websocket', 'polling'],
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,

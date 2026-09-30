@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
-import { getAuthToken } from '@/utils/auth'
+import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import {
   ArrowRight,
@@ -232,24 +232,23 @@ export default function SpacePage() {
     async function loadDashboard() {
       setLoading(true)
       setLoadError(false)
-      const token = getAuthToken()
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
+      const headers: HeadersInit = {}
       const authOptions: RequestInit = { credentials: 'include', headers, cache: 'no-store' }
 
       try {
-        const profileResponse = await fetch(apiUrl('profile/me'), authOptions)
+        const profileResponse = await apiFetch(apiUrl('profile/me'), authOptions)
         if (!profileResponse.ok) throw new Error('PROFILE_UNAVAILABLE')
         const profilePayload = await profileResponse.json()
         const profile: Profile | null = profilePayload?.profile || null
 
         const requests = [
-          fetch(apiUrl('events/booking-requests'), authOptions),
-          fetch(apiUrl('events/all'), authOptions),
-          fetch(apiUrl('events/assigned'), authOptions),
-          fetch(apiUrl('messages/unread-count'), authOptions),
-          fetch(apiUrl('notifications'), authOptions),
-          fetch(apiUrl('offers'), { cache: 'no-store' }),
-          profile?.id ? fetch(apiUrl(`reviews/profile/${profile.id}`), { cache: 'no-store' }) : Promise.resolve(null),
+          apiFetch(apiUrl('events/booking-requests'), authOptions),
+          apiFetch(apiUrl('events/all'), authOptions),
+          apiFetch(apiUrl('events/assigned'), authOptions),
+          apiFetch(apiUrl('messages/unread-count'), authOptions),
+          apiFetch(apiUrl('notifications'), authOptions),
+          apiFetch(apiUrl('offers'), { cache: 'no-store' }),
+          profile?.id ? apiFetch(apiUrl(`reviews/profile/${profile.id}`), { cache: 'no-store' }) : Promise.resolve(null),
         ]
 
         const [bookingsRes, eventsRes, assignedRes, unreadRes, notificationsRes, offersRes, reviewsRes] = await Promise.allSettled(requests)

@@ -7,7 +7,7 @@ import {
   X, MapPin, Calendar, Euro, Users,
   Send, Search, CheckCircle, Briefcase, SlidersHorizontal,
 } from 'lucide-react'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -82,9 +82,9 @@ export default function OfferModal({ offer, onClose, isLoggedIn }: Props) {
     const token = getAuthToken(); if (!token) return
     setApplying(true); setApplyErr('')
     try {
-      const res = await fetch(`${API_BASE}/api/offers/${offer.id}/apply`, {
+      const res = await apiFetch(`${API_BASE}/api/offers/${offer.id}/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: applyMsg }),
       })
       const data = await res.json()
@@ -105,10 +105,8 @@ export default function OfferModal({ offer, onClose, isLoggedIn }: Props) {
     if (!q.trim()) { setShareResults([]); return }
     setShareLoading(true)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API_BASE}/api/search?name=${encodeURIComponent(q)}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
+      const res = await apiFetch(`${API_BASE}/api/search?name=${encodeURIComponent(q)}`, {
+        })
       if (res.ok) {
         const data = await res.json()
         setShareResults((data.users || []).slice(0, 6))
@@ -119,9 +117,9 @@ export default function OfferModal({ offer, onClose, isLoggedIn }: Props) {
   const handleShare = async (recipient: SearchUser) => {
     const token = getAuthToken(); if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/messages/share-offer`, {
+      const res = await apiFetch(`${API_BASE}/api/messages/share-offer`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientId: recipient.id, offerId: offer.id }),
       })
       if (res.ok) {

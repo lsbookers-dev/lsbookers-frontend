@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -322,7 +323,7 @@ export default function RegisterPage() {
     if (!value || value.trim().length < 3) { setPseudoStatus('idle'); return }
     setPseudoStatus('checking')
     try {
-      const res = await fetch(`${apiUrl('auth/check-pseudo')}?pseudo=${encodeURIComponent(value.trim())}`)
+      const res = await apiFetch(`${apiUrl('auth/check-pseudo')}?pseudo=${encodeURIComponent(value.trim())}`)
       const d = await res.json()
       setPseudoStatus(d.available ? 'available' : 'taken')
     } catch { setPseudoStatus('idle') }
@@ -334,7 +335,7 @@ export default function RegisterPage() {
     if (raw.length !== 14) { setSiretStatus('invalid'); return }
     setSiretStatus('checking')
     try {
-      const res = await fetch(`${apiUrl('auth/validate-siret')}?siret=${raw}`)
+      const res = await apiFetch(`${apiUrl('auth/validate-siret')}?siret=${raw}`)
       const d = await res.json()
       if (d.valid) { setSiretStatus('valid'); setSiretName(d.companyName || '') }
       else { setSiretStatus('invalid'); setSiretName('') }
@@ -881,7 +882,7 @@ export default function RegisterPage() {
                     Pas reçu l&apos;email ?{' '}
                     <button type="button"
                       onClick={async () => {
-                        try { await fetch(apiUrl('auth/resend-verification'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }) } catch {}
+                        try { await apiFetch(apiUrl('auth/resend-verification'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }) } catch {}
                         alert('Email renvoyé !')
                       }}
                       className="text-white/55 underline underline-offset-4 hover:text-white transition">

@@ -1,5 +1,6 @@
 'use client'
 
+import { apiFetch } from '@/utils/auth'
 /**
  * AlbumsTab — Onglet Albums sur les profils
  * Affiche la grille d'albums, permet de créer / supprimer un album (owner),
@@ -99,9 +100,8 @@ export default function AlbumsTab({
         ? `${API_BASE}/api/albums/mine`
         : `${API_BASE}/api/albums/profile/${profileId}`
 
-      const res = await fetch(endpoint, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
+      const res = await apiFetch(endpoint, {
+        })
       const data = await res.json()
       setAlbums(data.albums ?? [])
     } catch {
@@ -119,9 +119,9 @@ export default function AlbumsTab({
     if (!newTitle.trim() || creating) return
     setCreating(true)
     try {
-      const res = await fetch(`${API_BASE}/api/albums`, {
+      const res = await apiFetch(`${API_BASE}/api/albums`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle.trim(), description: newDesc.trim() || null, isPrivate: newPrivate }),
       })
       if (!res.ok) throw new Error()
@@ -140,10 +140,9 @@ export default function AlbumsTab({
     e.stopPropagation()
     if (!confirm('Supprimer cet album ?')) return
     try {
-      await fetch(`${API_BASE}/api/albums/${id}`, {
+      await apiFetch(`${API_BASE}/api/albums/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       setAlbums(prev => prev.filter(a => a.id !== id))
       if (openAlbum?.id === id) setOpenAlbum(null)
     } catch {
@@ -156,9 +155,8 @@ export default function AlbumsTab({
   const handleOpenAlbum = async (albumId: number) => {
     setLoadingAlbum(true)
     try {
-      const res = await fetch(`${API_BASE}/api/albums/${albumId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
+      const res = await apiFetch(`${API_BASE}/api/albums/${albumId}`, {
+        })
       const data = await res.json()
       setOpenAlbum(data.album ?? null)
     } catch {
@@ -174,9 +172,9 @@ export default function AlbumsTab({
     if (!openAlbum || addingPubId === pubId) return
     setAddingPubId(pubId)
     try {
-      const res = await fetch(`${API_BASE}/api/albums/${openAlbum.id}/items`, {
+      const res = await apiFetch(`${API_BASE}/api/albums/${openAlbum.id}/items`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ publicationId: pubId }),
       })
       if (!res.ok) throw new Error()
@@ -195,10 +193,9 @@ export default function AlbumsTab({
   const handleRemoveItem = async (itemId: number) => {
     if (!openAlbum) return
     try {
-      await fetch(`${API_BASE}/api/albums/${openAlbum.id}/items/${itemId}`, {
+      await apiFetch(`${API_BASE}/api/albums/${openAlbum.id}/items/${itemId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        })
       setOpenAlbum(prev => prev ? { ...prev, items: prev.items.filter(i => i.id !== itemId) } : null)
       // Mettre à jour le count dans la liste
       setAlbums(prev => prev.map(a => a.id === openAlbum.id ? { ...a, itemCount: Math.max(0, a.itemCount - 1) } : a))

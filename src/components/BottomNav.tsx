@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Home, Compass, CalendarDays, MessageCircle, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
@@ -32,8 +32,8 @@ export default function BottomNav() {
       if (!token) return
       try {
         const [msgRes, notifRes] = await Promise.all([
-          fetch(`${API}/api/messages/unread-count`,       { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API}/api/notifications/unread-count`,  { headers: { Authorization: `Bearer ${token}` } }),
+          apiFetch(`${API}/api/messages/unread-count`,       { }),
+          apiFetch(`${API}/api/notifications/unread-count`,  { }),
         ])
         if (msgRes.ok)   { const d = await msgRes.json();   setUnreadMsg(d.count   || 0) }
         if (notifRes.ok) { const d = await notifRes.json(); setUnreadNotif(d.count || 0) }

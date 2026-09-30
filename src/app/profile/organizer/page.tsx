@@ -15,7 +15,7 @@ import CropModal from '@/components/CropModal'
 import AddPublicationModal from '@/components/AddPublicationModal'
 import AlbumsTab from '@/components/AlbumsTab'
 import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
-import { getAuthToken } from '@/utils/auth'
+import { getAuthToken, apiFetch } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
 
@@ -132,11 +132,6 @@ const displayName = (profile: ApiProfile | null): string => {
   return u.pseudo || u.email || '—'
 }
 
-function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const t = typeof window !== 'undefined' ? getAuthToken() : null
-  return t ? { Authorization: `Bearer ${t}`, ...extra } : { ...extra }
-}
-
 // ─────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────
@@ -180,7 +175,7 @@ export default function OrganizerProfilePage() {
   // ── Chargement du profil
   useEffect(() => {
     if (!user) return
-    fetch(`${API}/api/profile/me`, { credentials: 'include', headers: getAuthHeaders() })
+    apiFetch(`${API}/api/profile/me`, { credentials: 'include' })
       .then(r => r.json())
       .then(({ profile: p }) => {
         if (!p) return
@@ -200,21 +195,21 @@ export default function OrganizerProfilePage() {
         })
 
         if (p.id) {
-          fetch(`${API}/api/publications/profile/${p.id}`)
+          apiFetch(`${API}/api/publications/profile/${p.id}`)
             .then(r => r.json())
             .then(d => setPublications(d.publications || []))
             .catch(() => {})
         }
 
         if (p.id) {
-          fetch(`${API}/api/reviews/profile/${p.id}`)
+          apiFetch(`${API}/api/reviews/profile/${p.id}`)
             .then(r => r.json())
             .then(d => setReviews(d.reviews || []))
             .catch(() => {})
         }
 
         // Charger les offres publiées par cet organisateur
-        fetch(`${API}/api/offers?organizerId=${p.id}`)
+        apiFetch(`${API}/api/offers?organizerId=${p.id}`)
           .then(r => r.json())
           .then(d => setMyOffers(Array.isArray(d) ? d : []))
           .catch(() => {})
@@ -227,11 +222,10 @@ export default function OrganizerProfilePage() {
   const deletePublication = async (id: number) => {
     if (!confirm('Supprimer cette publication ?')) return
     try {
-      const res = await fetch(`${API}/api/publications/${id}`, {
+      const res = await apiFetch(`${API}/api/publications/${id}`, {
         method: 'DELETE',
         credentials: 'include',
-        headers: getAuthHeaders(),
-      })
+        })
       if (!res.ok) throw new Error('Suppression échouée')
       setPublications(prev => prev.filter(p => p.id !== id))
     } catch (err) {
@@ -253,15 +247,14 @@ export default function OrganizerProfilePage() {
     setOfferError(null)
     setOfferSubmitting(true)
     try {
-      const token = getAuthToken()
       const dateTime = offerForm.time ? `${offerForm.date}T${offerForm.time}:00` : `${offerForm.date}T00:00:00`
       const endDateTime = offerForm.endDate
         ? (offerForm.endTime ? `${offerForm.endDate}T${offerForm.endTime}:00` : `${offerForm.endDate}T00:00:00`)
         : null
-      const res = await fetch(`${API}/api/offers`, {
+      const res = await apiFetch(`${API}/api/offers`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: offerForm.title.trim(),
           description: offerForm.description.trim(),
@@ -291,12 +284,10 @@ export default function OrganizerProfilePage() {
   const deleteOffer = async (id: number) => {
     if (!confirm('Supprimer cette offre ?')) return
     try {
-      const token = getAuthToken()
-      await fetch(`${API}/api/offers/${id}`, {
+      await apiFetch(`${API}/api/offers/${id}`, {
         method: 'DELETE',
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
+        })
       setMyOffers(prev => prev.filter(o => o.id !== id))
     } catch {
       alert('Erreur lors de la suppression.')
@@ -308,11 +299,10 @@ export default function OrganizerProfilePage() {
     if (!profile) return
     setContactSaving(true)
     try {
-      const token = getAuthToken()
-      const res = await fetch(`${API}/api/profile/${profile.id}`, {
+      const res = await apiFetch(`${API}/api/profile/${profile.id}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contactForm),
       })
       if (res.ok) {
@@ -327,10 +317,9 @@ export default function OrganizerProfilePage() {
   // ── Sauvegarder un champ quelconque
   const saveField = async (data: Record<string, string | null>) => {
     if (!profile) return false
-    const token = getAuthToken()
-    const res = await fetch(`${API}/api/profile/${profile.id}`, {
+    const res = await apiFetch(`${API}/api/profile/${profile.id}`, {
       method: 'PUT', credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
     if (res.ok) {
@@ -346,8 +335,8 @@ export default function OrganizerProfilePage() {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('folder', folder)
-    const res = await fetch(`${API}/api/upload`, {
-      method: 'POST', credentials: 'include', headers: getAuthHeaders(), body: fd,
+    const res = await apiFetch(`${API}/api/upload`, {
+      method: 'POST', credentials: 'include', body: fd,
     })
     if (!res.ok) throw new Error('Upload échoué')
     const data = await res.json()
