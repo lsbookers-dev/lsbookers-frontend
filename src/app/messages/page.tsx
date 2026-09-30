@@ -412,7 +412,11 @@ function MessagesContent() {
         headers: getHeaders(token),
         body: JSON.stringify({ recipientId }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null)
+        if (errData?.error === 'BLOCKED') alert(sendErrorText('BLOCKED'))
+        return
+      }
       const data = await res.json()
       if (data.conversationId && data.conversation) {
         const newConv: Conversation = {
@@ -476,6 +480,8 @@ function MessagesContent() {
       if (!res.ok) {
         // Rollback si erreur
         if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
+        const errData = await res.json().catch(() => null)
+        alert(sendErrorText(errData?.error))
         return
       }
       // Point 6 — Remplacer le message temp par la réponse HTTP immédiatement
@@ -600,6 +606,14 @@ function MessagesContent() {
 }
 
 /* ── Export avec Suspense (requis pour useSearchParams) ── */
+/* Message affiché quand l'envoi est refusé par le serveur */
+function sendErrorText(code?: string) {
+  if (code === 'BLOCKED') return 'Vous ne pouvez pas échanger avec cet utilisateur.'
+  if (code === 'FORMAT_NOT_ALLOWED') return 'Ce type de fichier n\u2019est pas accepté.'
+  if (code === 'FILE_TOO_LARGE') return 'Fichier trop volumineux (25 Mo maximum).'
+  return 'Le message n\u2019a pas pu être envoyé. Réessayez.'
+}
+
 export default function MessagesPage() {
   return (
     <Suspense fallback={
