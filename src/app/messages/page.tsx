@@ -154,7 +154,9 @@ function MessagesContent() {
     if (!token || !convId) return
     await apiFetch(`${API_BASE}/api/messages/mark-seen/${convId}`, {
       method: 'POST',
-      }).catch(() => {})
+    }).catch(() => {})
+    // Pastille de l'enveloppe (header + barre mobile) mise à jour tout de suite
+    window.dispatchEvent(new Event('lsb:unread-changed'))
     setConversations(prev => prev.map(c => {
       if (c.id !== convId || !c.lastMessageMeta) return c
       return { ...c, lastMessageMeta: { ...c.lastMessageMeta, seen: true } }

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Home, Compass, CalendarDays, MessageCircle, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken, apiFetch } from '@/utils/auth'
+import { getSocket } from '@/lib/socket'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
@@ -41,7 +42,20 @@ export default function BottomNav() {
     }
     fetchCounts()
     const interval = setInterval(fetchCounts, 30_000)
-    return () => clearInterval(interval)
+    // Mise à jour immédiate : message lu dans cet onglet, ou événement temps réel du serveur
+    window.addEventListener('lsb:unread-changed', fetchCounts)
+    const token = getAuthToken()
+    const socket = token ? getSocket(token) : null
+    socket?.on('new_message', fetchCounts)
+    socket?.on('conversation_updated', fetchCounts)
+    socket?.on('unread_changed', fetchCounts)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('lsb:unread-changed', fetchCounts)
+      socket?.off('new_message', fetchCounts)
+      socket?.off('conversation_updated', fetchCounts)
+      socket?.off('unread_changed', fetchCounts)
+    }
   }, [user?.id, API])
 
   if (!user) return null

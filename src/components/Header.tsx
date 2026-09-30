@@ -243,10 +243,12 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
     const onVisible = () => { if (document.visibilityState === 'visible') fetchCounts() }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('focus', fetchCounts)
+    window.addEventListener('lsb:unread-changed', fetchCounts)
     return () => {
       clearInterval(id)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', fetchCounts)
+      window.removeEventListener('lsb:unread-changed', fetchCounts)
     }
   }, [fetchCounts])
 
@@ -260,10 +262,12 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
     const refresh = () => fetchCounts()
     socket.on('conversation_updated', refresh)
     socket.on('new_message', refresh)
+    socket.on('unread_changed', refresh)
 
     return () => {
       socket.off('conversation_updated', refresh)
       socket.off('new_message', refresh)
+      socket.off('unread_changed', refresh)
     }
   }, [user?.id, fetchCounts])
 
