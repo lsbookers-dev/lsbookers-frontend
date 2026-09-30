@@ -341,18 +341,20 @@ export default function LandingPage() {
       ══════════════════════════════════════════════════ */}
       <section className="relative w-full min-h-screen flex flex-col overflow-hidden" style={{ background: '#0c0a14' }}>
 
-        {/* Photo de fond */}
-        <Image
-          src={bgUrl}
-          alt="LSBookers — Plateforme événementielle"
-          fill
-          priority
-          sizes="100vw"
-          quality={82}
-          placeholder="blur"
-          blurDataURL={PUBLIC_IMAGE_BLUR}
-          className="z-0 object-cover"
-        />
+        {/* Photo de fond — affichée uniquement si l'URL est définie */}
+        {bgUrl && (
+          <Image
+            src={bgUrl}
+            alt="LSBookers — Plateforme événementielle"
+            fill
+            priority
+            sizes="100vw"
+            quality={82}
+            placeholder="blur"
+            blurDataURL={PUBLIC_IMAGE_BLUR}
+            className="z-0 object-cover"
+          />
+        )}
 
         {/* Overlays */}
         <div className="absolute inset-0 z-10 bg-black/55" />

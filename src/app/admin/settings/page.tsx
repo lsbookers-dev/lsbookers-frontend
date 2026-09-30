@@ -99,9 +99,17 @@ export default function AdminSettingsPage() {
   const uploadAndSet = useCallback(
     async (field: keyof AdminSettings, file: File) => {
       if (!API_BASE || !token) return
+      // Choisir le bon dossier R2 selon le champ
+      const folderMap: Record<string, string> = {
+        landingBgUrl:  'banners',
+        loginBgUrl:    'banners',
+        registerBgUrl: 'banners',
+        headerLogoUrl: 'logos',
+        landingLogoUrl: 'logos',
+      }
       const fd = new FormData()
       fd.append('file', file)
-      fd.append('folder', 'site')
+      fd.append('folder', folderMap[field] ?? 'media')
       fd.append('type', 'image')
       try {
         const res = await fetch(`${API_BASE}/api/upload`, {

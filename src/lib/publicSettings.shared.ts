@@ -6,14 +6,14 @@ export type PublicSettings = {
   headerLogoUrl: string
 }
 
-const R2_BASE = 'https://pub-28115fb1c7084199a44966ca2924104c.r2.dev/lsbookers/media'
-
+// Valeurs par défaut vides — les images viennent TOUJOURS de l'API (R2).
+// Des URLs hardcodées ici risquent de pointer vers des fichiers supprimés.
 export const FALLBACK_PUBLIC_SETTINGS: PublicSettings = {
-  landingBgUrl: `${R2_BASE}/1789763713078-Fond_Landing_1.png`,
-  loginBgUrl: `${R2_BASE}/1789764013636-Fond_Login.png`,
-  registerBgUrl: `${R2_BASE}/1789764020199-Fond_Register.png`,
-  landingLogoUrl: `${R2_BASE}/1789816508313-logo.jpg`,
-  headerLogoUrl: `${R2_BASE}/1789430276585-logo.jpg`,
+  landingBgUrl: '',
+  loginBgUrl: '',
+  registerBgUrl: '',
+  landingLogoUrl: '',
+  headerLogoUrl: '',
 }
 
 export const PUBLIC_IMAGE_BLUR =

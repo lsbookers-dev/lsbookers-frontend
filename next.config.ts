@@ -38,6 +38,12 @@ const nextConfig = {
         hostname: '*.r2.dev',
         pathname: '/**',
       },
+      // ✅ Vercel Blob (anciens médias uploadés avant migration R2)
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+        pathname: '/**',
+      },
     ],
   },
   // ✅ ESLint ignoré pendant le build (warnings <img> non bloquants)
