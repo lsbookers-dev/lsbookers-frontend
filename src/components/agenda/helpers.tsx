@@ -186,7 +186,7 @@ export function DocumentsSection({
       }`}>
         <UploadCloud className="h-4 w-4" aria-hidden="true" />
         {uploadingDoc ? 'Upload en cours…' : `Ajouter ${label.toLowerCase()}`}
-        <input type="file" className="hidden" disabled={uploadingDoc}
+        <input type="file" accept=".pdf,image/*" className="hidden" disabled={uploadingDoc}
           onChange={e => {
             const f = e.target.files?.[0]
             if (f) addDocument(f, docType)

@@ -659,11 +659,16 @@ export default function AgendaCalendar({
     try {
       const token = getAuthToken()
       const formData = new FormData()
+      formData.append('folder', 'documents') // avant le fichier : lu par le serveur pour autoriser les PDF
       formData.append('file', file)
       const uploadRes = await fetch(`${API}/api/upload`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
       })
-      if (!uploadRes.ok) { setDocError("Erreur d'upload"); return }
+      if (!uploadRes.ok) {
+        const upErr = await uploadRes.json().catch(() => ({}))
+        setDocError(upErr.error === 'FORMAT_NOT_ALLOWED' ? 'Format non accepté (PDF ou image uniquement)' : upErr.error === 'FILE_TOO_LARGE' ? 'Fichier trop volumineux (25 Mo max)' : "Erreur d'upload")
+        return
+      }
       const uploadData = await uploadRes.json()
       const url = uploadData.url || uploadData.secure_url
       if (!url) { setDocError("URL manquante après upload"); return }
