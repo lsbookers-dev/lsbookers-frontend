@@ -1014,6 +1014,7 @@ body {
 .lsb-messages-page { height:100%; min-height:36rem; margin:0; border:1px solid var(--lsb-line); border-radius:1.35rem; background:#08070b; box-shadow:0 28px 80px rgba(0,0,0,.3); }
 .lsb-messages-page > * { border-color:var(--lsb-line) !important; }
 .lsb-messages-page input, .lsb-messages-page textarea { background-color: rgba(255,255,255,.045) !important; border-color: var(--lsb-line) !important; }
+.lsb-message-composer textarea { background-color: transparent !important; }
 .lsb-conversations { width:19rem !important; border-color:var(--lsb-line) !important; background:#0b0a0e !important; }
 .lsb-conversations-header { background:#0b0a0e; }
 .lsb-new-message { width:2.35rem; height:2.35rem; display:grid; place-items:center; border:0; border-radius:.75rem; color:white; background:linear-gradient(135deg,#a855f7,#7c3aed); transition:transform .2s,filter .2s; }

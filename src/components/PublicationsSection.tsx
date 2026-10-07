@@ -58,9 +58,9 @@ export default function PublicationsSection({
   }, [])
 
   const renderPortfolio = (items: PubCardData[], inModal = false) => (
-    <div className={`columns-2 gap-2.5 sm:gap-3 ${inModal ? 'md:columns-3 lg:columns-4' : 'md:columns-3'}`}>
+    <div className={`grid grid-cols-2 items-start gap-2.5 sm:gap-3 ${inModal ? 'md:grid-cols-3 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
       {items.map((publication, index) => (
-        <div key={publication.id} className="relative mb-2.5 inline-block w-full break-inside-avoid sm:mb-3">
+        <div key={publication.id} className="relative w-full">
           <PublicationCard
             pub={publication}
             onClick={pub => { if (inModal) setShowAll(false); setSelected(pub) }}
