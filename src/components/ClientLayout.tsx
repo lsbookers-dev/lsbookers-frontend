@@ -30,11 +30,18 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   }, [user])
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .catch((err) => console.error('SW registration failed:', err))
+    if (!('serviceWorker' in navigator)) return
+    // En local (npm run dev), les fichiers du site ne changent pas de nom : le cache
+    // du service worker servirait d'anciennes versions. On ne l'active qu'en production.
+    if (process.env.NODE_ENV !== 'production') {
+      navigator.serviceWorker.getRegistrations()
+        .then((regs) => regs.forEach((r) => r.unregister()))
+        .catch(() => {})
+      return
     }
+    navigator.serviceWorker
+      .register('/sw.js')
+      .catch((err) => console.error('SW registration failed:', err))
   }, [])
 
   const publicPaths = [
