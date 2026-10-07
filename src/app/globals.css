@@ -983,7 +983,7 @@ body {
 .lsb-discover-results-title { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:1rem; }.lsb-discover-results-title span { color:var(--lsb-accent); font-size:.62rem; font-weight:700; letter-spacing:.17em; }.lsb-discover-results-title h2 { margin:.35rem 0 0; font-size:1.25rem; }.lsb-discover-results-title > p { color:var(--lsb-muted); font-size:.7rem; }
 
 .lsb-surface-page { background: radial-gradient(circle at 75% 0%,rgba(168,85,247,.12),transparent 30rem),transparent !important; }
-.lsb-surface-page > div:not(.fixed) { position: relative; }
+.lsb-surface-page > div:not(.fixed):not(.sticky) { position: relative; }
 .lsb-notifications-page > div:not(.fixed), .lsb-offers-page > div:not(.fixed) { padding-top: 2.2rem; }
 .lsb-notifications-page [class*="rounded-2xl"], .lsb-offers-page [class*="rounded-2xl"] { border-color: var(--lsb-line); background-color: rgba(17,16,22,.88); }
 .lsb-offer-poster { display:grid; grid-template-columns:1fr; min-height:0; overflow:hidden; border:1px solid var(--lsb-line); border-radius:1rem; background:var(--lsb-panel); box-shadow:0 18px 50px rgba(0,0,0,.18); transition:transform .25s ease,border-color .25s ease; }
