@@ -946,6 +946,8 @@ export default function AgendaCalendar({
                 </button>
               )}
               <div className="lsb-agenda-divider" />
+              {/* Précédent / Aujourd'hui / Suivant restent groupés quand la barre passe à la ligne */}
+              <div className="lsb-agenda-nav-group flex items-center gap-1.5">
               <button
                 onClick={() => movePeriod(-1)}
                 className="lsb-agenda-nav-button"
@@ -961,6 +963,7 @@ export default function AgendaCalendar({
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
+              </div>
             </div>
           </>
         )}

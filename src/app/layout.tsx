@@ -40,10 +40,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="fr">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#7C3AED" />
+        <meta name="theme-color" content="#08070b" />
         <meta name="msapplication-TileColor" content="#7C3AED" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
         <meta name="apple-mobile-web-app-title" content="LSBookers" />
         <link rel="apple-touch-icon" href="/icons/icon-180.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
