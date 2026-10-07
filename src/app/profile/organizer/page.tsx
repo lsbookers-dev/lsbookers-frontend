@@ -309,6 +309,9 @@ export default function OrganizerProfilePage() {
         const { profile: updated } = await res.json()
         setProfile(prev => prev ? { ...prev, ...updated } : prev)
         setEditingContact(false)
+      } else {
+        const err = await res.json().catch(() => null)
+        alert(err?.message || 'Impossible d\'enregistrer les coordonnées.')
       }
     } catch { /* silencieux */ }
     finally { setContactSaving(false) }
@@ -327,6 +330,8 @@ export default function OrganizerProfilePage() {
       setProfile(prev => prev ? { ...prev, ...updated } : prev)
       return true
     }
+    const err = await res.json().catch(() => null)
+    alert(err?.message || 'Impossible d\'enregistrer la modification.')
     return false
   }
 

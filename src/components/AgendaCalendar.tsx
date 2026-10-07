@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, BookOpen, X, CheckSquare } from 'lucide-react'
 
 import {

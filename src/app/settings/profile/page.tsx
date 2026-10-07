@@ -12,6 +12,7 @@ import {
 import { apiFetch } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
+import DeleteAccountSection from '@/components/DeleteAccountSection'
 
 // ─────────────────────────────────────────────
 // Config
@@ -758,6 +759,9 @@ export default function ProfileSettings() {
             </ul>
           )}
         </Section>
+
+        {/* ── Suppression du compte ── */}
+        {role !== 'ADMIN' && <DeleteAccountSection />}
 
       </div>
     </div>

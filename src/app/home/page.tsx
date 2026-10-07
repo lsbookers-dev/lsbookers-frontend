@@ -222,7 +222,6 @@ function AdminPostCard({ post }: { post: AdminPost }) {
       {post.mediaUrl && (
         <div className="absolute inset-0 bg-black">
           {isVideo ? (
-            // eslint-disable-next-line jsx-a11y/media-has-caption
             <video
               src={post.mediaUrl}
               className="h-full w-full object-cover"

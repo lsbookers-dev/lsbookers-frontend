@@ -1,9 +1,37 @@
 import './globals.css'
 import type { ReactNode } from 'react'
+import type { Metadata } from 'next'
 import { AuthProvider } from '@/context/AuthContext'
 import { PublicSettingsProvider } from '@/context/PublicSettingsContext'
 import ClientLayout from '@/components/ClientLayout'
 import { getPublicSettings } from '@/lib/publicSettings'
+
+const SITE_URL = 'https://lsbookers.com'
+const DESCRIPTION =
+  'LS Bookers met en relation artistes, organisateurs d\'événements et prestataires : profils, publications, agenda, bookings, messagerie et offres.'
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'LS Bookers — La plateforme événementielle',
+    template: '%s · LS Bookers',
+  },
+  description: DESCRIPTION,
+  applicationName: 'LS Bookers',
+  openGraph: {
+    type: 'website',
+    siteName: 'LS Bookers',
+    locale: 'fr_FR',
+    url: SITE_URL,
+    title: 'LS Bookers — La plateforme événementielle',
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'LS Bookers — La plateforme événementielle',
+    description: DESCRIPTION,
+  },
+}
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const publicSettings = await getPublicSettings()

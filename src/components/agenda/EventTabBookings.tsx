@@ -1,7 +1,7 @@
 // agenda/EventTabBookings.tsx — Onglet Bookings : liste gauche + panneau droit 5 onglets
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { apiFetch } from '@/utils/auth'
 import {
   CreditCard, FileText, MapPin, Image as ImageIcon, StickyNote,

@@ -219,6 +219,8 @@ export default function ProviderProfilePage() {
       setProfile(prev => prev ? { ...prev, ...updated } : prev)
       return true
     }
+    const err = await res.json().catch(() => null)
+    alert(err?.message || 'Impossible d\'enregistrer la modification.')
     return false
   }
 

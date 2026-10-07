@@ -10,7 +10,7 @@ import ConversationList from './ConversationList'
 import MessageThread from './MessageThread'
 import ConversationDetails from './ConversationDetails'
 import { API_BASE, getHeaders } from './_helpers'
-import { getSocket, disconnectSocket } from '@/lib/socket'
+import { getSocket } from '@/lib/socket'
 import type { Conversation, Message, SearchUser } from './types'
 
 /* ══════════════════════════════════════════════════════════
