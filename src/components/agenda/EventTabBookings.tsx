@@ -8,16 +8,17 @@ import {
   Plus, Download, Eye, Trash2, Bed, Plane, Loader2, Paperclip,
   CheckCircle2, CalendarDays,
 } from 'lucide-react'
-import { BookingItem2, BookingDetail, BookingLogistic, BookingMedia, DocumentItem, LinkedBooking } from './types'
+import { BookingItem2, BookingDetail, BookingLogistic, BookingMedia, BookingContract, DocumentItem, LinkedBooking } from './types'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
-const PAYMENT_LABEL: Record<string, { label: string; cls: string }> = {
+export const PAYMENT_LABEL: Record<string, { label: string; cls: string }> = {
   UNPAID:  { label: 'Non payé', cls: 'border border-amber-400/20 bg-amber-400/10 text-amber-200' },
   DEPOSIT: { label: 'Acompte',  cls: 'border border-cyan-400/20 bg-cyan-400/10 text-cyan-200' },
   PAID:    { label: 'Payé',     cls: 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-200' },
+  DIRECT:  { label: 'Payé en direct', cls: 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-200' },
 }
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   PENDING:   { label: 'En cours', cls: 'border border-amber-400/20 bg-amber-400/10 text-amber-200' },
@@ -82,59 +83,93 @@ function TabPayment({ booking, isOrganizer }: { booking: BookingDetail; isOrgani
   )
 }
 
-// Contrat
-function TabContrat({ docs, isOrganizer, onUpload, uploading }: {
-  docs: DocumentItem[]
-  isOrganizer: boolean
-  onUpload: (f: File) => void
-  uploading: boolean
+// Contrat — PDF propres à ce booking, déposés par l'organisateur ou la personne bookée
+export function TabContrat({ contracts, bookingId, myProfileId, onAdd, onDelete, eventDocs = [] }: {
+  contracts: BookingContract[]
+  bookingId: number
+  myProfileId: number | null
+  onAdd: (c: BookingContract) => void
+  onDelete: (id: number) => void
+  eventDocs?: DocumentItem[]
 }) {
-  const contracts = docs.filter(d => d.fileType === 'CONTRACT')
   const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleUpload = async (file: File) => {
+    setUploading(true); setError('')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await apiFetch(`${API_BASE}/api/bookings/${bookingId}/contracts`, { method: 'POST', body: form })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(d.error === 'FORMAT_NOT_ALLOWED' ? 'Seuls les fichiers PDF sont acceptés.'
+          : d.error === 'FILE_TOO_LARGE' ? 'Fichier trop lourd (50 Mo maximum).'
+          : d.error || 'Envoi impossible.')
+        return
+      }
+      onAdd(d.contract)
+    } catch { setError('Envoi impossible.') }
+    finally { setUploading(false) }
+  }
+
+  const all = [
+    ...contracts.map(c => ({ key: `c${c.id}`, id: c.id, name: c.title, url: c.fileUrl, mine: c.senderId === myProfileId })),
+    ...eventDocs.map(d => ({ key: `d${d.id}`, id: d.id, name: d.name, url: d.url, mine: false })),
+  ]
 
   return (
     <div className="space-y-3">
-      {contracts.length === 0 && (
-        <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-4 text-center text-xs text-white/35">Aucun contrat pour cet événement.</p>
+      {all.length === 0 && (
+        <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-4 text-center text-xs text-white/35">Aucun contrat pour ce booking.</p>
       )}
-      {contracts.map(d => (
-        <div key={d.id} className="flex items-center gap-2.5 rounded-xl border border-violet-300/10 bg-gradient-to-r from-violet-500/10 to-cyan-500/5 px-3 py-2.5">
+      {all.map(d => (
+        <div key={d.key} className="flex items-center gap-2.5 rounded-xl border border-violet-300/10 bg-gradient-to-r from-violet-500/10 to-cyan-500/5 px-3 py-2.5">
           <FileText className="w-4 h-4 text-violet-400 shrink-0" />
-          <span className="flex-1 min-w-0 text-xs text-white/70 truncate">{d.name}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-white/70 truncate">{d.name}</p>
+            <p className="text-[10px] text-white/35">{d.mine ? 'Ajouté par vous' : 'Partagé avec vous'}</p>
+          </div>
           <a href={d.url} target="_blank" rel="noreferrer"
             className="flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-violet-400/20 px-2.5 text-[11px] text-violet-200 transition-colors hover:bg-violet-500/10">
             <Eye className="w-3 h-3" /> Voir
           </a>
+          {d.mine && d.key.startsWith('c') && (
+            <button onClick={() => onDelete(d.id)} aria-label={`Supprimer ${d.name}`}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white/35 transition-colors hover:bg-rose-500/10 hover:text-rose-300">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ))}
-      {isOrganizer && (
-        <>
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex min-h-24 w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-violet-300/20 bg-violet-500/5 py-4 transition-colors hover:border-violet-300/40 hover:bg-violet-500/10 disabled:opacity-50"
-          >
-            {uploading
-              ? <Loader2 className="w-5 h-5 text-white/20 animate-spin" />
-              : <Plus className="w-5 h-5 text-white/15" />
-            }
-            <p className="text-xs text-white/45">{uploading ? 'Upload en cours…' : 'Envoyer un contrat PDF'}</p>
-          </button>
-          <input ref={fileRef} type="file" accept=".pdf" className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = '' }} />
-        </>
-      )}
+      <button
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        className="flex min-h-20 w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-violet-300/20 bg-violet-500/5 py-3 transition-colors hover:border-violet-300/40 hover:bg-violet-500/10 disabled:opacity-50"
+      >
+        {uploading
+          ? <Loader2 className="w-5 h-5 text-white/20 animate-spin" />
+          : <Plus className="w-5 h-5 text-white/15" />
+        }
+        <p className="text-xs text-white/45">{uploading ? 'Envoi en cours…' : 'Ajouter un contrat (PDF)'}</p>
+      </button>
+      <input ref={fileRef} type="file" accept="application/pdf,.pdf" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = '' }} />
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   )
 }
 
-// Logement / Transports
-function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
+// Logement / Transports — l'organisateur et la personne bookée ajoutent leurs billets / réservations
+export function TabLogement({ logistics, isOrganizer, myProfileId, bookingId, onAdd, onDelete, otherName }: {
   logistics: BookingLogistic[]
   isOrganizer: boolean
+  myProfileId: number | null
   bookingId: number
   onAdd: (l: BookingLogistic) => void
   onDelete: (id: number) => void
+  otherName: string
 }) {
   const [showForm, setShowForm] = useState(false)
   const [type, setType]         = useState<'HOTEL' | 'TRANSPORT'>('HOTEL')
@@ -158,8 +193,13 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
         method: 'POST',
         body: form,
       })
-      if (!res.ok) throw new Error()
-      const d = await res.json()
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(d.error === 'FORMAT_NOT_ALLOWED' ? 'Formats acceptés : PDF, JPG, PNG, WEBP.'
+          : d.error === 'FILE_TOO_LARGE' ? 'Fichier trop lourd (50 Mo maximum).'
+          : 'Erreur lors de l\'enregistrement.')
+        return
+      }
       onAdd(d.logistic)
       setShowForm(false)
       setTitle('')
@@ -174,7 +214,7 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
   return (
     <div className="space-y-3">
       {/* Formulaire ajout */}
-      {isOrganizer && (
+      {(
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-semibold text-cyan-100/65 uppercase tracking-[0.15em]">Hébergement &amp; Transport</p>
           {!showForm && (
@@ -211,9 +251,9 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
           <button onClick={() => fileRef.current?.click()}
             className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.025] px-3 text-xs text-white/45 transition-colors hover:border-violet-400/35 hover:text-violet-200">
             <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
-            {file ? <span className="text-violet-300">{file.name}</span> : 'Joindre un PDF (optionnel)'}
+            {file ? <span className="text-violet-300">{file.name}</span> : 'Joindre un PDF ou une photo (optionnel)'}
           </button>
-          <input ref={fileRef} type="file" accept=".pdf" className="hidden"
+          <input ref={fileRef} type="file" accept="application/pdf,.pdf,image/jpeg,image/png,image/webp" className="hidden"
             onChange={e => setFile(e.target.files?.[0] ?? null)} />
           {error && <p className="text-xs text-red-400">{error}</p>}
           <div className="flex gap-2">
@@ -244,12 +284,15 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
               {l.type === 'HOTEL' ? 'Logement' : 'Transport'}
             </span>
             <span className="text-xs font-medium text-white/75 flex-1 truncate">{l.title}</span>
-            {isOrganizer && (
+            {(l.addedByProfileId === myProfileId || (isOrganizer && l.addedByProfileId == null)) && (
               <button onClick={() => onDelete(l.id)} aria-label={`Supprimer ${l.title}`} className="grid h-9 w-9 place-items-center rounded-lg text-white/35 transition-colors hover:bg-rose-500/10 hover:text-rose-300">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
+          <p className="mb-1 text-[10px] text-white/35">
+            {l.addedByProfileId === myProfileId || (isOrganizer && l.addedByProfileId == null) ? 'Ajouté par vous' : `Ajouté par ${otherName}`}
+          </p>
           {l.fileUrl && (
             <a href={l.fileUrl} target="_blank" rel="noreferrer" download={l.fileName || true}
               className="inline-flex min-h-9 items-center gap-1.5 text-[11px] text-violet-300 transition-colors hover:text-violet-200">
@@ -263,7 +306,7 @@ function TabLogement({ logistics, isOrganizer, bookingId, onAdd, onDelete }: {
 }
 
 // Médias promo
-function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
+export function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
   media: BookingMedia[]
   isOrganizer: boolean
   bookingId: number
@@ -315,6 +358,10 @@ function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
         Photos et vidéos partagées par l&apos;organisateur pour promouvoir l&apos;événement.
       </p>
 
+      {media.length === 0 && !isOrganizer && (
+        <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-4 text-center text-xs text-white/35">Aucun média partagé pour l&apos;instant.</p>
+      )}
+
       <div className="grid grid-cols-2 gap-2 min-[460px]:grid-cols-3">
         {media.map(m => (
           <div key={m.id} className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5">
@@ -363,7 +410,7 @@ function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
 }
 
 // Notes partagées
-function TabNotes({ bookingId, initialNotes, targetName }: { bookingId: number; initialNotes: string; targetName: string }) {
+export function TabNotes({ bookingId, initialNotes, targetName, placeholder = 'Écrivez vos notes ici…' }: { bookingId: number; initialNotes: string; targetName: string; placeholder?: string }) {
   const [notes, setNotes] = useState(initialNotes)
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
@@ -391,12 +438,12 @@ function TabNotes({ bookingId, initialNotes, targetName }: { bookingId: number; 
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-white/45">Visibles par l&apos;organisateur et {targetName}</p>
+      <p className="text-[11px] text-white/45">Visibles par vous et {targetName}</p>
       <textarea
         value={notes}
         onChange={e => handleChange(e.target.value)}
         rows={6}
-        placeholder="Écrivez vos notes ici…"
+        placeholder={placeholder}
         className="w-full resize-none rounded-2xl border border-violet-300/10 bg-gradient-to-br from-white/[0.055] to-violet-500/[0.035] px-3.5 py-3 text-sm leading-relaxed text-white/70 outline-none placeholder:text-white/25 focus:border-violet-400/35 focus:ring-2 focus:ring-violet-500/10"
       />
       <p className="flex min-h-6 items-center gap-1.5 text-[11px] text-white/35">
@@ -435,6 +482,7 @@ export default function EventTabBookings(p: Props) {
   const [detail,      setDetail]      = useState<BookingDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [fetchError,  setFetchError]  = useState<string | null>(null)
+  const [myProfileId, setMyProfileId] = useState<number | null>(null)
 
   // Vue artiste/prestataire booké
   if (p.isBookedEvent) {
@@ -479,6 +527,7 @@ export default function EventTabBookings(p: Props) {
       if (res.ok) {
         const d = await res.json()
         setDetail(d.booking)
+        setMyProfileId(d.myProfileId ?? null)
       } else {
         const errData = await res.json().catch(() => ({}))
         setFetchError(`HTTP ${res.status}: ${(errData as { error?: string }).error || 'Erreur inconnue'}`)
@@ -515,8 +564,15 @@ export default function EventTabBookings(p: Props) {
     setDetail(prev => prev ? { ...prev, media: prev.media.filter(m => m.id !== mediaId) } : prev)
   }
 
-  // Upload contrat (réutilise l'addDocument existant, type CONTRACT)
-  const uploadContract = (file: File) => p.addDocument(file, 'CONTRACT')
+  // Contrats propres au booking
+  const addContract = (c: BookingContract) =>
+    setDetail(prev => prev ? { ...prev, contracts: [...(prev.contracts || []), c] } : prev)
+
+  const deleteContract = async (contractId: number) => {
+    if (!selectedId) return
+    const res = await apiFetch(`${API_BASE}/api/bookings/${selectedId}/contracts/${contractId}`, { method: 'DELETE' })
+    if (res.ok) setDetail(prev => prev ? { ...prev, contracts: (prev.contracts || []).filter(c => c.id !== contractId) } : prev)
+  }
 
   return (
     <div
@@ -634,16 +690,19 @@ export default function EventTabBookings(p: Props) {
                   )}
                   {activeTab === 'ct' && (
                     <TabContrat
-                      docs={p.allDocs}
-                      isOrganizer={isOrganizer}
-                      onUpload={uploadContract}
-                      uploading={p.uploadingDoc}
+                      contracts={detail.contracts || []}
+                      bookingId={detail.id}
+                      myProfileId={myProfileId}
+                      onAdd={addContract}
+                      onDelete={deleteContract}
                     />
                   )}
                   {activeTab === 'lg' && (
                     <TabLogement
                       logistics={detail.logistics}
                       isOrganizer={isOrganizer}
+                      myProfileId={myProfileId}
+                      otherName={selectedBooking ? displayName(selectedBooking) : 'l\'artiste'}
                       bookingId={detail.id}
                       onAdd={addLogistic}
                       onDelete={deleteLogistic}

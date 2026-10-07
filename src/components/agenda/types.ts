@@ -87,6 +87,15 @@ export type BookingLogistic = {
   title: string
   fileUrl?: string | null
   fileName?: string | null
+  addedByProfileId?: number | null
+  createdAt: string
+}
+
+export type BookingContract = {
+  id: number
+  title: string
+  fileUrl: string
+  senderId: number
   createdAt: string
 }
 
@@ -106,6 +115,7 @@ export type BookingDetail = {
   sharedNotes?: string | null
   logistics: BookingLogistic[]
   media: BookingMedia[]
+  contracts: BookingContract[]
   requester?: { id: number; user?: { id: number; pseudo?: string | null; avatar?: string | null } | null } | null
   target?: { id: number; specialty?: string | null; user?: { id: number; pseudo?: string | null; firstName?: string | null; lastName?: string | null; avatar?: string | null } | null } | null
 }

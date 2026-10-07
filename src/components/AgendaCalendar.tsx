@@ -11,7 +11,7 @@ import { isSameDay } from './agenda/helpers'
 import BookingsPanel    from './agenda/BookingsPanel'
 import EventPanel       from './agenda/EventPanel'
 import CalendarGrid     from './agenda/CalendarGrid'
-import StaffEventView   from './agenda/StaffEventView'
+import BookedEventView  from './agenda/BookedEventView'
 import { apiFetch } from '@/utils/auth'
 
 /* ─────────────────────────────────────────────────────────
@@ -866,7 +866,7 @@ export default function AgendaCalendar({
   return (
     <div className={`lsb-agenda-component rounded-2xl overflow-hidden ${isOwner ? 'is-owner' : 'is-public'}`}>
 
-      {/* En-tête (masqué quand StaffEventView est actif — il a son propre header) */}
+      {/* En-tête (masqué quand BookedEventView est actif — il a son propre header) */}
       {!showStaffEventPanel && (
       <div className="lsb-agenda-toolbar flex items-center justify-between px-5 py-3.5">
         {showEventPanel ? (
@@ -988,9 +988,9 @@ export default function AgendaCalendar({
         />
       )}
 
-      {/* Panneau vue staff — événement assigné (lecture seule) */}
+      {/* Panneau « je suis booké » — événement d'un organisateur où je suis artiste / prestataire */}
       {showStaffEventPanel && staffEventId && (
-        <StaffEventView
+        <BookedEventView
           eventId={staffEventId}
           api={API}
           onClose={() => { setShowStaffEventPanel(false); setStaffEventId(null) }}
