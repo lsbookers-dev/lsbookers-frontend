@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
+import SpecialtyPicker from '@/components/SpecialtyPicker'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type Offer = {
@@ -627,10 +628,12 @@ function OffersInner() {
                 </div>
                 <div>
                   <p className={PUB_LABEL}>Spécialité <span className="text-violet-300">*</span></p>
-                  <select value={pubForm.specialty} onChange={e => setPubForm(p => ({ ...p, specialty: e.target.value }))} className={PUB_INPUT}>
-                    <option value="">Choisir une spécialité</option>
-                    {getSpecialtiesForOfferType(pubForm.type).map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <SpecialtyPicker
+                    value={pubForm.specialty}
+                    options={getSpecialtiesForOfferType(pubForm.type)}
+                    onChange={v => setPubForm(p => ({ ...p, specialty: v }))}
+                    className={PUB_INPUT}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
