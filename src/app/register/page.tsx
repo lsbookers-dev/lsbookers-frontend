@@ -158,7 +158,7 @@ const BRANDING: { icon: React.ReactNode; title: string; subtitle: string; items:
     icon: <Mic2 className="h-7 w-7 text-violet-400" />,
     title: 'Ton activité.',
     subtitle: 'Choisis ton rôle et sélectionne tes spécialités pour que les organisateurs te trouvent.',
-    items: ['Artiste, organisateur ou prestataire', 'Spécialités visibles sur ton profil', 'Modifier à tout moment dans les réglages'],
+    items: ['Artiste (ou agent), organisateur ou prestataire', 'Spécialités visibles sur ton profil', 'Modifier à tout moment dans les réglages'],
   },
   {
     icon: <User className="h-7 w-7 text-violet-400" />,
@@ -529,7 +529,7 @@ export default function RegisterPage() {
                   {/* Cartes rôle */}
                   <div className="grid grid-cols-3 gap-2.5">
                     {([
-                      { value: 'ARTIST' as Role,    label: 'Artiste',      icon: <Mic2 className="h-6 w-6 text-violet-400" />, desc: 'DJ, musicien, performer…' },
+                      { value: 'ARTIST' as Role,    label: 'Artiste',      icon: <Mic2 className="h-6 w-6 text-violet-400" />, desc: 'Crée le profil de ton artiste ou le tien', tag: 'Agent / représentant' },
                       { value: 'ORGANIZER' as Role,  label: 'Organisateur', icon: <CalendarDays className="h-6 w-6 text-violet-400" />, desc: 'Club, festival, soirée…' },
                       { value: 'PROVIDER' as Role,   label: 'Prestataire',  icon: <Camera className="h-6 w-6 text-violet-400" />, desc: 'Photo, son, déco…' },
                     ]).map(opt => (
@@ -541,6 +541,9 @@ export default function RegisterPage() {
                             : 'border-white/10 bg-white/4 hover:border-white/20 hover:bg-white/[0.06]'}`}>
                         <div className="h-10 w-10 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">{opt.icon}</div>
                         <span className={`font-semibold text-xs ${role === opt.value ? 'text-white' : 'text-white/70'}`}>{opt.label}</span>
+                        {'tag' in opt && opt.tag && (
+                          <span className="rounded-full border border-violet-400/30 bg-violet-500/10 px-2 py-0.5 text-[9px] font-medium leading-tight text-violet-200">{opt.tag}</span>
+                        )}
                         <span className="text-[10px] text-white/35 leading-tight">{opt.desc}</span>
                         {role === opt.value && (
                           <span className="mt-1 rounded-full bg-violet-500 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wide">Sélectionné</span>
