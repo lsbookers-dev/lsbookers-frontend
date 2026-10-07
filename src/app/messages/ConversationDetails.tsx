@@ -67,8 +67,10 @@ export default function ConversationDetails({ conversation, currentUserId, messa
         <div className="lsb-details-profile-copy">
           <h2>{participant.name}</h2>
           <p>{ROLE_LABEL[participant.role]}</p>
+          <Link href={`/${rolePath}/${participant.id}`} className="lsb-details-profile-textlink">
+            Voir le profil <ExternalLink className="w-3 h-3" />
+          </Link>
         </div>
-        <Link href={`/${rolePath}/${participant.id}`} className="lsb-details-profile-link" aria-label={`Voir le profil de ${participant.name}`}><ExternalLink className="w-3.5 h-3.5" /></Link>
       </div>
 
       <div className="lsb-details-section lsb-details-card">

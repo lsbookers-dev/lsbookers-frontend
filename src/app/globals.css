@@ -1823,3 +1823,26 @@ a:focus:not(:focus-visible) {
 @media (max-width: 1023px) {
   .lsb-home-grid.is-trends .lsb-home-rail { display: grid; }
 }
+
+/* Infos de conversation : lien vers le profil sous le nom (plus d'icône isolée sous la croix) */
+.lsb-details-profile-textlink { display: inline-flex; align-items: center; gap: .3rem; margin-top: .45rem; color: #c4b5fd; font-size: .62rem; }
+.lsb-details-profile-textlink:hover { color: white; }
+
+/* iPhone / iPad : les champs date et heure gardent une largeur fixe sinon ils débordent */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"], input[type="time"], input[type="datetime-local"] { min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; }
+  input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value { text-align: left; }
+}
+
+/* Agenda sur téléphone : jour centré, événements en pastilles de couleur */
+@media (max-width: 767px) {
+  .lsb-month-day { display: flex; flex-direction: column; align-items: center; padding: .3rem .1rem; }
+  .lsb-month-events { display: flex; flex-wrap: wrap; justify-content: center; gap: .2rem; margin-top: .4rem; }
+  .lsb-month-event { width: .45rem; height: .45rem; min-height: 0; padding: 0; border: 0 !important; border-radius: 50%; background: #c084fc; box-shadow: 0 0 6px rgba(192,132,252,.45); }
+  .lsb-month-event.booking, .lsb-month-event.staff-pending { background: #a78bfa; }
+  .lsb-month-event.confirmed { background: #5eead4; box-shadow: 0 0 6px rgba(94,234,212,.4); }
+  .lsb-month-event.pending { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,.4); }
+  .lsb-month-event.staff-booked { background: #67e8f9; }
+  .lsb-month-more { display: none; }
+  .lsb-month-availability-dot { top: .3rem; right: .3rem; bottom: auto; width: .38rem; height: .38rem; }
+}

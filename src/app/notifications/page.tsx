@@ -109,7 +109,15 @@ export default function NotificationsPage() {
         })
       if (!res.ok) throw new Error()
       const data = await res.json()
+      const list: { read?: boolean }[] = data.notifications || []
       setAll(data.notifications || [])
+      // Comme la cloche sur ordinateur : ouvrir la page vaut lecture. Les nouvelles
+      // restent mises en avant pendant cette visite, mais les pastilles s'effacent.
+      if (list.some(n => !n.read)) {
+        apiFetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH' })
+          .then(() => window.dispatchEvent(new Event('lsb:unread-changed')))
+          .catch(() => {})
+      }
     } catch {
       setError(true)
     } finally {
