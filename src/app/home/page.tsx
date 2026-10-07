@@ -687,7 +687,15 @@ export default function HomePage() {
   const [hasMore, setHasMore]             = useState(true)
   const [isMuted, setIsMuted]             = useState(true)
   const toggleMute = () => setIsMuted(m => !m)
-  const [activeTab, setActiveTab]         = useState<'forYou' | 'network' | 'nearby'>('forYou')
+  const [activeTab, setActiveTab]         = useState<'forYou' | 'network' | 'nearby' | 'trends'>('forYou')
+
+  // L'onglet « Tendances » n'existe que lorsque la colonne de droite est masquée (< 1024 px)
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 1024px)')
+    const reset = () => { if (wide.matches) setActiveTab(t => (t === 'trends' ? 'forYou' : t)) }
+    wide.addEventListener('change', reset)
+    return () => wide.removeEventListener('change', reset)
+  }, [])
   const [showAddPubModal, setShowAddPubModal] = useState(false)
 
   // ── Fetch feed — pagination par curseur (stable, évite le décalage de skip) ──
@@ -795,7 +803,7 @@ export default function HomePage() {
 
       {featured.length > 0 && <FeaturedCarousel items={featured} />}
 
-      <div className="lsb-home-grid">
+      <div className={`lsb-home-grid ${activeTab === 'trends' ? 'is-trends' : ''}`}>
         <div className="lsb-feed-column">
 
           <header className="lsb-page-heading lsb-home-heading">
@@ -817,9 +825,10 @@ export default function HomePage() {
             <button className={activeTab === 'forYou' ? 'is-active' : ''} onClick={() => setActiveTab('forYou')}>Pour vous</button>
             <button className={activeTab === 'network' ? 'is-active' : ''} onClick={() => setActiveTab('network')}>Mon réseau</button>
             <button className={activeTab === 'nearby' ? 'is-active' : ''} onClick={() => setActiveTab('nearby')}>À proximité</button>
+            <button className={`lsb-feed-tab-trends ${activeTab === 'trends' ? 'is-active' : ''}`} onClick={() => setActiveTab('trends')}>Tendances</button>
           </div>
 
-          {loadingFeed ? (
+          {activeTab === 'trends' ? null : loadingFeed ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
               <p className="text-sm text-white/30">Chargement du feed…</p>

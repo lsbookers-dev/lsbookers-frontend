@@ -1815,3 +1815,11 @@ a:focus:not(:focus-visible) {
   .lsb-conversation-delete { padding: .55rem !important; margin: -.4rem -.5rem -.4rem .35rem; }
   .lsb-conversation-delete svg { width: .9rem; height: .9rem; }
 }
+
+/* Accueil : onglet « Tendances » quand la colonne de droite est masquée (téléphone, tablette portrait) */
+@media (min-width: 1024px) {
+  .lsb-feed-tab-trends { display: none; }
+}
+@media (max-width: 1023px) {
+  .lsb-home-grid.is-trends .lsb-home-rail { display: grid; }
+}
