@@ -178,10 +178,12 @@ function OffersInner() {
     type: '', specialty: '', location: '', country: '',
   })
   const [forMe, setForMe]               = useState(false)
+  const [filtersOpen, setFiltersOpen]   = useState(false)
   const [userSpecialties, setUserSpec]  = useState<string[]>([])
 
   const isOrganizer  = user?.role === 'ORGANIZER'
   const canFilterMe  = user?.role === 'ARTIST' || user?.role === 'PROVIDER'
+  const activeFilterCount = Object.values(filters).filter(Boolean).length
 
   // Modal publication (organisateurs)
   const [showPublish, setShowPublish]     = useState(false)
@@ -411,8 +413,34 @@ function OffersInner() {
         </div>
 
         {/* ── Filtres ── */}
-        <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 mb-8">
-          <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-3 sm:p-4 mb-5 sm:mb-8">
+          {/* Téléphone : une seule ligne, les filtres s'ouvrent au besoin */}
+          <div className="flex items-center gap-2 sm:hidden">
+            <button
+              onClick={() => setFiltersOpen(v => !v)}
+              aria-expanded={filtersOpen}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                filtersOpen || activeFilterCount > 0
+                  ? 'border-purple-500/50 bg-purple-600/20 text-purple-200'
+                  : 'border-white/10 text-white/70'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Filtres{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+            </button>
+            {canFilterMe && (
+              <button
+                onClick={() => setForMe(v => !v)}
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                  forMe ? 'border-purple-500/50 bg-purple-600/30 text-purple-200' : 'border-white/10 text-white/60'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                Pour moi
+              </button>
+            )}
+          </div>
+          <div className="hidden sm:flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-white/40" />
               <span className="text-sm font-medium text-white/60">Filtrer les offres</span>
@@ -440,7 +468,7 @@ function OffersInner() {
               </button>
             )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className={`${filtersOpen ? 'grid' : 'hidden'} mt-3 sm:mt-0 sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3`}>
             <select
               value={filters.type}
               onChange={e => setFilters(p => ({ ...p, type: e.target.value }))}
@@ -481,6 +509,16 @@ function OffersInner() {
                 className="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:outline-none focus:border-purple-500/50"
               />
             </div>
+
+            {(activeFilterCount > 0 || forMe) && (
+              <button
+                onClick={() => { setFilters({ type: '', specialty: '', location: '', country: '' }); setForMe(false) }}
+                className="sm:hidden flex items-center justify-center gap-1.5 rounded-xl border border-white/10 py-2.5 text-sm text-white/50"
+              >
+                <X className="w-4 h-4" />
+                Réinitialiser les filtres
+              </button>
+            )}
           </div>
         </div>
 

@@ -204,6 +204,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!loading && !user && !isPublicPath(pathname)) {
       router.replace('/login')
     }
+    // Déjà connecté : l'appli installée (et la page d'accueil) mènent directement au fil
+    if (!loading && user && (pathname === '/' || pathname === '/login')) {
+      router.replace(user.role === 'ADMIN' ? '/admin/dashboard' : '/home')
+    }
   }, [loading, pathname, router, user])
 
   /* ===================== Login ===================== */

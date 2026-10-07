@@ -1,7 +1,7 @@
 // LSBookers — Service Worker
 // Seuls les fichiers publics de l'application sont conservés hors ligne.
 
-const CACHE_NAME = 'lsbookers-v2'
+const CACHE_NAME = 'lsbookers-v3'
 const STATIC_ASSETS = [
   '/offline.html',
   '/manifest.json',

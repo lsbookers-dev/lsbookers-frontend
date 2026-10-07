@@ -737,7 +737,7 @@ export default function MessageThread({
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
-        <p className="text-[10px] text-white/10 mt-1.5 text-center tracking-wide">Entrée pour envoyer · Shift+Entrée pour nouvelle ligne</p>
+        <p className="hidden md:block text-[10px] text-white/10 mt-1.5 text-center tracking-wide">Entrée pour envoyer · Shift+Entrée pour nouvelle ligne</p>
       </div>
 
       {/* Modal offre partagée */}

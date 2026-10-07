@@ -109,7 +109,7 @@ function Toggle({ value, onChange, label, description }: {
       <button
         type="button"
         onClick={() => onChange(!value)}
-        className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-emerald-500' : 'bg-white/10'}`}
+        className={`relative w-11 h-6 shrink-0 rounded-full transition-colors ${value ? 'bg-emerald-500' : 'bg-white/10'}`}
       >
         <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0'}`} />
       </button>
@@ -394,7 +394,7 @@ export default function ProfileSettings() {
     <div className="min-h-screen text-white pb-20 lsb-surface-page lsb-settings-page">
 
       {/* Header fixe */}
-      <div className="sticky top-0 z-10 border-b border-white/10 bg-black/60 backdrop-blur-xl">
+      <div className="sticky top-[env(safe-area-inset-top)] md:top-[calc(4rem+env(safe-area-inset-top))] z-10 border-b border-white/10 bg-black/80 backdrop-blur-xl">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition">
             <ArrowLeft size={16} />

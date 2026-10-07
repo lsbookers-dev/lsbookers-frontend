@@ -451,8 +451,8 @@ export default function RegisterPage() {
 
               {/* En-tête */}
               {step <= 5 && (
-                <div className="mb-5 flex items-center justify-between">
-                  <div>
+                <div className="mb-5 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <h2 className="text-2xl font-black">Créer un compte</h2>
                     <p className="text-sm text-white/45 mt-0.5">
                       Déjà inscrit ?{' '}
@@ -460,12 +460,12 @@ export default function RegisterPage() {
                     </p>
                   </div>
                   {step === 1 ? (
-                    <Link href="/" className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white transition">
+                    <Link href="/" className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white transition">
                       ← Retour
                     </Link>
                   ) : (
                     <button type="button" onClick={() => go(step - 1)}
-                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white transition">
+                      className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white transition">
                       ← Retour
                     </button>
                   )}
@@ -494,7 +494,7 @@ export default function RegisterPage() {
                         required autoComplete="new-password" placeholder="Au moins 8 caractères"
                         className={inputCls('pl-10 pr-10')} />
                       <button type="button" onClick={() => setShowPwd(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition">
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-white/30 hover:text-white/60 transition">
                         {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
@@ -507,7 +507,7 @@ export default function RegisterPage() {
                         required autoComplete="new-password" placeholder="••••••••"
                         className={inputCls('pl-10 pr-10')} />
                       <button type="button" onClick={() => setShowCfm(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition">
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-white/30 hover:text-white/60 transition">
                         {showCfm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>

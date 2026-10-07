@@ -32,6 +32,8 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   /* Empêche le scroll horizontal parasite sur tous les appareils */
   overflow-x: hidden;
+  /* « clip » coupe pareil sans casser les en-têtes collants (position: sticky) */
+  overflow-x: clip;
   max-width: 100%;
   /* Lissage des polices (Mac + iOS) */
   -webkit-font-smoothing: antialiased;
@@ -1007,7 +1009,7 @@ body {
 .lsb-offer-secondary { border:1px solid var(--lsb-line); color:var(--lsb-muted); background:transparent; }.lsb-offer-secondary:hover { color:white; border-color:rgba(255,255,255,.18); }
 .lsb-offer-apply { border:0; color:white; font-weight:650; }.lsb-offer-actions svg { width:.85rem; height:.85rem; }
 .lsb-offer-actions .lsb-offer-apply { grid-column:auto; grid-row:auto; }
-.lsb-messages-shell { height:calc(100dvh - 4.5rem); padding:1.15rem; background:radial-gradient(circle at 72% 0,rgba(168,85,247,.1),transparent 28rem); }
+.lsb-messages-shell { height:calc(100dvh - 4.5rem - env(safe-area-inset-top, 0px)); padding:1.15rem; background:radial-gradient(circle at 72% 0,rgba(168,85,247,.1),transparent 28rem); }
 .lsb-section-heading { display:flex; align-items:center; justify-content:space-between; margin:0 0 1rem; }.lsb-section-heading span { color:var(--lsb-accent); font-size:.62rem; font-weight:700; letter-spacing:.17em; }.lsb-section-heading h1 { margin:.35rem 0 0; font-size:1.5rem; letter-spacing:-.025em; }.lsb-section-heading h1 em { color:var(--lsb-accent); font-style:normal; }.lsb-section-heading > svg { color:#c4b5fd; }
 .lsb-messages-page { height:100%; min-height:36rem; margin:0; border:1px solid var(--lsb-line); border-radius:1.35rem; background:#08070b; box-shadow:0 28px 80px rgba(0,0,0,.3); }
 .lsb-messages-page > * { border-color:var(--lsb-line) !important; }
@@ -1075,7 +1077,8 @@ body {
 .lsb-admin-shell { background:radial-gradient(circle at 75% 0%,rgba(168,85,247,.12),transparent 32rem),var(--background); }.lsb-admin-shell main > div, .lsb-admin-shell main section { border-color:var(--lsb-line) !important; }
 
 @media (min-width: 768px) {
-  .lsb-app-main { margin-left: 13.5rem; padding-top: 4rem; }
+  .lsb-app-main { margin-left: 13.5rem; padding-top: calc(4rem + env(safe-area-inset-top, 0px)); }
+  .lsb-sidebar { top: calc(4rem + env(safe-area-inset-top, 0px)); }
 }
 @media (min-width:1280px) {
   .lsb-thread-info-button { display:none; }
@@ -1083,14 +1086,20 @@ body {
   .lsb-conversation-details.lsb-details-open { position:relative; inset:auto; width:18rem; box-shadow:none; }
 }
 @media (min-width: 768px) and (max-width: 1100px) {
-  .lsb-sidebar { width: 5.2rem; }
-  .lsb-side-link { justify-content: center; padding: 0; }
-  .lsb-side-link span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .lsb-sidebar { width: 5.6rem; padding-inline: .45rem; }
+  .lsb-sidebar nav { gap: .2rem; }
+  .lsb-side-link { flex-direction: column; justify-content: center; gap: .3rem; min-height: 3.6rem; padding: .35rem .15rem; text-align: center; font-size: .64rem; line-height: 1.15; }
+  .lsb-side-link svg { width: 1.2rem; height: 1.2rem; }
+  .lsb-side-link.is-active::before { height: 1.6rem; }
   .lsb-sidebar-legal { display: none; }
-  .lsb-app-main { margin-left: 5.2rem; }
+  .lsb-app-main { margin-left: 5.6rem; }
   .lsb-dashboard-grid { grid-template-columns: 1fr 1fr; }
   .lsb-home-grid { grid-template-columns:minmax(0,1fr) 15rem; }
   .lsb-header-search { width:min(34vw,24rem); }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .lsb-home-grid { grid-template-columns: 1fr; }
+  .lsb-home-rail { display: none; }
 }
 @media (max-width:1100px) {
   .lsb-week-agenda.is-public { grid-template-columns:1fr; }
@@ -1102,9 +1111,10 @@ body {
   .lsb-week-calendar { border-right:0; border-bottom:1px solid var(--agenda-line); }
   .lsb-week-detail { min-height:0; border-top:0; }
   .lsb-agenda-toolbar { flex-wrap:wrap; }
-  .lsb-agenda-toolbar-controls { width:100%; max-width:100%; overflow-x:auto; flex-wrap:nowrap; justify-content:flex-start; margin-left:0; padding:.05rem .05rem .25rem; scrollbar-width:none; }
+  .lsb-agenda-toolbar-controls { width:100%; max-width:100%; flex-wrap:wrap; row-gap:.5rem; justify-content:flex-start; margin-left:0; padding:.05rem .05rem .25rem; }
   .lsb-agenda-toolbar-controls::-webkit-scrollbar { display:none; }
   .lsb-agenda-toolbar-controls > * { flex:none; }
+  .lsb-agenda-toolbar-controls .lsb-agenda-divider { display:none; }
 }
 @media (max-width: 767px) {
   .lsb-page { padding: 1.35rem .85rem calc(5.5rem + env(safe-area-inset-bottom)); }
@@ -1124,8 +1134,10 @@ body {
   .lsb-next-date { grid-row: auto; }
   .lsb-home-grid { grid-template-columns:1fr; }
   .lsb-home-rail { display:none; }
-  .lsb-composer { grid-template-columns:2.5rem 1fr; }.lsb-composer > span { display:none; }
-  .lsb-feed-tabs { gap:1.2rem; overflow-x:auto; }
+  .lsb-composer { grid-template-columns:2.5rem minmax(0,1fr) 2.2rem; }.lsb-composer > span { font-size:.85rem; }
+  .lsb-composer::after { content:'+'; width:2.2rem; height:2.2rem; display:grid; place-items:center; border-radius:50%; background:var(--lsb-accent); color:white; font-size:1.25rem; line-height:1; }
+  .lsb-feed-tabs { gap:1.2rem; overflow-x:auto; scrollbar-width:none; }
+  .lsb-feed-tabs::-webkit-scrollbar { display:none; }
   .lsb-discover-page > .relative:first-child > .relative { margin:0 .8rem .8rem; padding:1.2rem; border-radius:0 0 1rem 1rem; }
   .lsb-discover-page > div:last-child { padding:1rem .85rem 5rem; }
   .lsb-discover-page .mt-6.flex { flex-wrap:wrap; }.lsb-discover-page .mt-6.flex > div:first-child { flex:0 0 100%; }.lsb-discover-page .mt-6.flex > button:nth-of-type(1) { flex:1; }
@@ -1166,7 +1178,7 @@ body {
   .lsb-agenda-nav-button { width:2.35rem; }
   .lsb-agenda-action { padding-inline:.7rem !important; }
   .lsb-agenda-today { padding-inline:.75rem; }
-  .lsb-agenda-view-switch button { min-height:1.95rem; padding-inline:.68rem; }
+  .lsb-agenda-view-switch button { min-height:2.2rem; padding-inline:.75rem; }
   .lsb-month-calendar { padding:.5rem .22rem; }
   .lsb-month-weekdays,.lsb-month-grid { min-width:0; }
   .lsb-month-weekdays { font-size:.48rem; letter-spacing:.045em; }
@@ -1770,4 +1782,35 @@ a:focus:not(:focus-visible) {
   .lsb-message-composer button { padding: .5rem; }
   .lsb-conversation-details.lsb-details-open { padding: 1rem; }
   .lsb-conversation-details.lsb-details-open .lsb-details-profile { padding-right: 2.5rem; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   SOCLE TÉLÉPHONE & TABLETTE (étape 3 de la roadmap)
+═══════════════════════════════════════════════════════════ */
+
+/* Appli installée : la barre d'état (heure, encoche) est transparente.
+   On réserve sa place en haut et on la recouvre d'un fond sombre. */
+.lsb-status-shield { position: fixed; z-index: 70; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: rgba(8,7,11,.94); pointer-events: none; }
+@media (max-width: 767px) {
+  main { padding-top: env(safe-area-inset-top, 0px); }
+  .fixed.inset-0 { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+
+/* Écrans tactiles : un champ écrit en moins de 16 px fait zoomer l'iPhone/iPad au toucher */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select { font-size: 16px !important; }
+  /* Boutons qui n'apparaissaient qu'au survol de la souris : toujours visibles au doigt */
+  button.opacity-0[class*="group-hover:opacity-100"] { opacity: .7; }
+}
+
+/* Messagerie sur téléphone : plus de bande vide, conversation en plein écran */
+@media (max-width: 767px) {
+  .lsb-messages-shell { height: calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px)); }
+  html[data-lsb-chat] .lsb-bottom-nav { display: none; }
+  html[data-lsb-chat] main { padding-bottom: 0 !important; }
+  html[data-lsb-chat] .lsb-messages-shell { height: calc(100dvh - env(safe-area-inset-top, 0px)); }
+  html[data-lsb-chat] .lsb-message-composer-wrap { padding-bottom: calc(.7rem + env(safe-area-inset-bottom, 0px)) !important; }
+  .lsb-conversation-delete { padding: .55rem !important; margin: -.4rem -.5rem -.4rem .35rem; }
+  .lsb-conversation-delete svg { width: .9rem; height: .9rem; }
 }

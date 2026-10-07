@@ -540,6 +540,15 @@ function MessagesContent() {
     }, 2000)
   }
 
+  /* ── Conversation ouverte sur téléphone : la barre du bas se masque (CSS) ── */
+  const chatOpen = !!activeConvId && mobileView === 'chat'
+  useEffect(() => {
+    const root = document.documentElement
+    if (chatOpen) root.dataset.lsbChat = '1'
+    else delete root.dataset.lsbChat
+    return () => { delete root.dataset.lsbChat }
+  }, [chatOpen])
+
   /* ══ RENDU ══════════════════════════════════════════════ */
   return (
     <div className="lsb-messages-shell">

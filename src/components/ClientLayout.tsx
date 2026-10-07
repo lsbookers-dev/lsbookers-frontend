@@ -80,6 +80,8 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
       {showAppNav && <BottomNav />}
+      {/* Appli installée sur iPhone : la barre d'état (heure, encoche) est transparente */}
+      <div className="lsb-status-shield md:hidden" aria-hidden="true" />
       <InstallPrompt />
     </div>
   )

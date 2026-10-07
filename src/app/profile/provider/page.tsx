@@ -475,7 +475,7 @@ export default function ProviderProfilePage() {
 
           {/* Publications + Albums (onglets) */}
           <section className="bg-[rgba(255,255,255,0.04)] border border-white/[0.07] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div className="flex gap-1 bg-white/[0.05] rounded-xl p-1">
                 <button
                   onClick={() => setPubTab('publications')}
@@ -788,7 +788,7 @@ export default function ProviderProfilePage() {
       {showOfferModal && (
         <div className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowOfferModal(false)}>
           <div className="max-w-lg w-full bg-[#1a1a2e] border border-white/[0.12] rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 className="text-lg font-semibold">Publier une offre</h3>
               <button onClick={() => setShowOfferModal(false)} className="text-white/40 hover:text-white"><X size={18} /></button>
             </div>

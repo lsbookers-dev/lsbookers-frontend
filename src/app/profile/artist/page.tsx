@@ -429,7 +429,7 @@ export default function ArtistProfilePage() {
             {/* Publications + Albums (onglets) */}
             <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
               {/* Header avec onglets */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="flex gap-1 bg-white/[0.04] rounded-xl p-1">
                   <button
                     onClick={() => setPubTab('publications')}

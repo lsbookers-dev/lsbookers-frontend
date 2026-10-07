@@ -198,10 +198,10 @@ function FeaturedCarousel({ items }: { items: FeaturedProfile[] }) {
           <button onClick={next} className="absolute -right-3 top-1/2 translate-y-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 rounded-full p-1.5 transition-colors">
             <ChevronRight className="w-4 h-4 text-white" />
           </button>
-          <div className="flex justify-center gap-1.5 mt-3">
+          <div className="flex justify-center mt-1">
             {Array.from({ length: slidesCount }).map((_, i) => (
-              <button key={i} onClick={() => { setIdx(i); startTimer() }}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${i === idx ? 'bg-purple-400 w-4' : 'bg-white/20'}`}
+              <button key={i} aria-label={`Diapositive ${i + 1}`} onClick={() => { setIdx(i); startTimer() }}
+                className={`box-content p-2 bg-clip-content w-1.5 h-1.5 rounded-full transition-all ${i === idx ? 'bg-purple-400 w-4' : 'bg-white/20'}`}
               />
             ))}
           </div>

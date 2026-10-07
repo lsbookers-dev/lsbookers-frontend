@@ -421,7 +421,7 @@ export default function OrganizerPublicProfilePage() {
             </section>
 
             <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-purple-400" />
                   <h2 className="text-xs uppercase tracking-widest text-white/35">Offres d&apos;emploi</h2>

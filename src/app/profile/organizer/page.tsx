@@ -513,7 +513,7 @@ export default function OrganizerProfilePage() {
 
           {/* Publications + Albums (onglets) */}
           <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div className="flex gap-1 bg-white/[0.04] rounded-xl p-1">
                 <button
                   onClick={() => setPubTab('publications')}
@@ -858,7 +858,7 @@ export default function OrganizerProfilePage() {
             className="max-w-lg w-full bg-neutral-950 border border-white/10 rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 className="text-lg font-semibold">Publier une offre</h3>
               <button onClick={() => setShowOfferModal(false)} className="text-neutral-400 hover:text-white">
                 <X size={18} />
