@@ -294,6 +294,7 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
                   <TabNotes
                     bookingId={detail.id}
                     initialNotes={detail.sharedNotes || ''}
+                    onSaved={v => setDetail(prev => prev ? { ...prev, sharedNotes: v } : prev)}
                     targetName={organizerName}
                     placeholder="Ex : 2 micros HF, une table de 2 m, arrivée 18h pour la balance…"
                   />

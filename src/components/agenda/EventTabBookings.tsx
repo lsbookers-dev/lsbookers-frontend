@@ -1,7 +1,7 @@
 // agenda/EventTabBookings.tsx — Onglet Bookings : liste gauche + panneau droit 5 onglets
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { apiFetch } from '@/utils/auth'
 import {
   CreditCard, FileText, MapPin, Image as ImageIcon, StickyNote,
@@ -365,24 +365,20 @@ export function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
       <div className="grid grid-cols-2 gap-2 min-[460px]:grid-cols-3">
         {media.map(m => (
           <div key={m.id} className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5">
-            {m.mediaType === 'IMAGE'
-              ? <img src={m.url} alt={m.name || ''} className="w-full h-full object-cover" />
-              : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <ImageIcon className="w-6 h-6 text-white/20" />
-                </div>
-              )
+            {m.mediaType === 'VIDEO'
+              ? <video src={m.url} controls playsInline preload="metadata" className="h-full w-full bg-black object-cover" />
+              : <a href={m.url} target="_blank" rel="noreferrer"><img src={m.url} alt={m.name || ''} className="w-full h-full object-cover" /></a>
             }
-            {/* Overlay download */}
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <a href={m.url} download={m.name || true} target="_blank" rel="noreferrer"
-                className="p-1.5 bg-white/15 rounded-lg hover:bg-white/25 transition-colors">
+            {/* Actions (toujours visibles sur mobile, au survol sur ordinateur) */}
+            <div className="absolute right-1.5 top-1.5 flex gap-1.5 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+              <a href={m.url} download={m.name || true} target="_blank" rel="noreferrer" aria-label={`Télécharger ${m.name || 'le média'}`}
+                className="grid h-8 w-8 place-items-center rounded-lg bg-black/60 transition-colors hover:bg-black/80">
                 <Download className="w-3.5 h-3.5 text-white" />
               </a>
               {isOrganizer && (
-                <button onClick={() => onDelete(m.id)}
-                  className="p-1.5 bg-red-500/20 rounded-lg hover:bg-red-500/35 transition-colors">
-                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <button onClick={() => onDelete(m.id)} aria-label={`Supprimer ${m.name || 'le média'}`}
+                  className="grid h-8 w-8 place-items-center rounded-lg bg-black/60 transition-colors hover:bg-red-500/40">
+                  <Trash2 className="w-3.5 h-3.5 text-red-300" />
                 </button>
               )}
             </div>
@@ -410,11 +406,25 @@ export function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
 }
 
 // Notes partagées
-export function TabNotes({ bookingId, initialNotes, targetName, placeholder = 'Écrivez vos notes ici…' }: { bookingId: number; initialNotes: string; targetName: string; placeholder?: string }) {
+export function TabNotes({ bookingId, initialNotes, targetName, placeholder = 'Écrivez vos notes ici…', onSaved }: { bookingId: number; initialNotes: string; targetName: string; placeholder?: string; onSaved?: (notes: string) => void }) {
   const [notes, setNotes] = useState(initialNotes)
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const editedRef = useRef(false)
+
+  // À l'ouverture : relire la dernière version (l'autre personne a pu écrire entre-temps)
+  useEffect(() => {
+    let cancelled = false
+    apiFetch(`${API_BASE}/api/bookings/${bookingId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (cancelled || editedRef.current || !d?.booking) return
+        setNotes(d.booking.sharedNotes || '')
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [bookingId])
 
   const save = async (value: string) => {
     setSaving(true)
@@ -424,6 +434,7 @@ export function TabNotes({ bookingId, initialNotes, targetName, placeholder = '�
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ sharedNotes: value }),
       })
+      onSaved?.(value)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch { /* silent */ }
@@ -431,6 +442,7 @@ export function TabNotes({ bookingId, initialNotes, targetName, placeholder = '�
   }
 
   const handleChange = (v: string) => {
+    editedRef.current = true
     setNotes(v)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(v), 1200)
@@ -721,6 +733,7 @@ export default function EventTabBookings(p: Props) {
                     <TabNotes
                       bookingId={detail.id}
                       initialNotes={detail.sharedNotes || ''}
+                      onSaved={v => setDetail(prev => prev ? { ...prev, sharedNotes: v } : prev)}
                       targetName={selectedBooking ? displayName(selectedBooking) : 'l\'artiste'}
                     />
                   )}
