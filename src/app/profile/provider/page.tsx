@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Settings2, MessageCircle, Star, Plus, MapPin,
+  Settings2, MessageCircle, Plus, MapPin,
   Globe, Youtube, Instagram, Twitter, Facebook, Linkedin, Link,
   Pencil, Check, X, Users, Euro, FileText, Briefcase,
   Calendar, ChevronLeft, ChevronRight,
@@ -16,8 +16,11 @@ import CropModal from '@/components/CropModal'
 import AddPublicationModal from '@/components/AddPublicationModal'
 import AlbumsTab from '@/components/AlbumsTab'
 import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
+import ReviewsPanel from '@/components/ReviewsPanel'
+import { useProfilePublications } from '@/hooks/useProfilePublications'
 import { getAuthToken, apiFetch } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
+import { radiusLabel } from '@/utils/radius'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 const OFFERS_PER_PAGE = 3
@@ -46,12 +49,9 @@ type ApiProfile = {
   websiteUrl?: string | null
   cvText?: string | null
   feeInfo?: string | null
-  availableForBooking?: boolean
   showRealName?: boolean
   followersCount?: number
   followingCount?: number
-  reviewsAvg?: number | null
-  reviewsCount?: number
   user?: {
     id: number
     pseudo?: string | null
@@ -72,16 +72,6 @@ type Publication = {
   _count?: { likes: number; comments: number }
 }
 
-type Review = {
-  id: number
-  rating: number
-  comment?: string | null
-  createdAt: string
-  author?: {
-    user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null }
-    avatar?: string | null
-  }
-}
 
 type Offer = {
   id: number
@@ -135,8 +125,7 @@ export default function ProviderProfilePage() {
   const { user } = useAuth()
 
   const [profile, setProfile]           = useState<ApiProfile | null>(null)
-  const [publications, setPublications] = useState<Publication[]>([])
-  const [reviews, setReviews]           = useState<Review[]>([])
+  const pubs = useProfilePublications<Publication>(profile?.id)
   const [loading, setLoading]           = useState(true)
   const [pubTab, setPubTab]             = useState<'publications' | 'albums' | 'identifications'>('publications')
 
@@ -192,12 +181,6 @@ export default function ProviderProfilePage() {
         })
 
         if (p.id) {
-          apiFetch(`${API}/api/publications/profile/${p.id}`)
-            .then(r => r.json()).then(d => setPublications(d.publications || [])).catch(() => {})
-
-          apiFetch(`${API}/api/reviews/profile/${p.id}`)
-            .then(r => r.json()).then(d => setReviews(d.reviews || [])).catch(() => {})
-
           apiFetch(`${API}/api/offers?organizerId=${p.id}`)
             .then(r => r.json()).then(d => setMyOffers(Array.isArray(d) ? d : [])).catch(() => {})
         }
@@ -220,7 +203,7 @@ export default function ProviderProfilePage() {
       return true
     }
     const err = await res.json().catch(() => null)
-    alert(err?.message || 'Impossible d\'enregistrer la modification.')
+    alert(err?.message || err?.error || 'Impossible d\'enregistrer la modification.')
     return false
   }
 
@@ -261,20 +244,24 @@ export default function ProviderProfilePage() {
           country: offerForm.country.trim(), fee: offerForm.fee ? parseFloat(offerForm.fee) : null,
         }),
       })
-      if (!res.ok) throw new Error('Erreur serveur')
+      if (!res.ok) {
+        const d = await res.json().catch(() => null)
+        throw new Error(d?.message || d?.error || 'Échec de la publication. Réessayez.')
+      }
       const saved = await res.json()
       setMyOffers(prev => [saved, ...prev]); setOfferForm(EMPTY_OFFER_FORM)
       setShowOfferModal(false); setOfferPage(0)
-    } catch { setOfferError('Échec de la publication. Réessayez.') }
+    } catch (err) { setOfferError(err instanceof Error ? err.message : 'Échec de la publication. Réessayez.') }
     finally { setOfferSubmitting(false) }
   }
 
   const deleteOffer = async (id: number) => {
     if (!confirm('Supprimer cette offre ?')) return
     try {
-      await apiFetch(`${API}/api/offers/${id}`, {
+      const res = await apiFetch(`${API}/api/offers/${id}`, {
         method: 'DELETE', credentials: 'include',
         })
+      if (!res.ok) throw new Error('Suppression refusée')
       setMyOffers(prev => prev.filter(o => o.id !== id))
     } catch { alert('Erreur lors de la suppression.') }
   }
@@ -285,7 +272,7 @@ export default function ProviderProfilePage() {
       const res = await apiFetch(`${API}/api/publications/${id}`, {
         method: 'DELETE', credentials: 'include', })
       if (!res.ok) throw new Error('Suppression échouée')
-      setPublications(prev => prev.filter(p => p.id !== id))
+      pubs.remove(id)
     } catch { alert('Échec de la suppression.') }
   }
 
@@ -414,7 +401,7 @@ export default function ProviderProfilePage() {
                   <p className="text-xs text-white/45 mt-1 flex items-center gap-1">
                     <MapPin size={11} className="text-white/30" />
                     {[profile?.location, profile?.country].filter(Boolean).join(', ')}
-                    {profile?.radiusKm ? ` · Rayon ${profile.radiusKm} km` : ''}
+                    {profile?.radiusKm ? ` · ${radiusLabel(profile.radiusKm)}` : ''}
                   </p>
                 )}
                 {profile?.specialties && profile.specialties.length > 0 && (
@@ -447,7 +434,7 @@ export default function ProviderProfilePage() {
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">
-              <p className="text-base font-semibold text-white">{publications.length}</p>
+              <p className="text-base font-semibold text-white">{pubs.total}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">réalisations</p>
             </div>
           </div>
@@ -508,7 +495,11 @@ export default function ProviderProfilePage() {
 
             {pubTab === 'publications' ? (
               <PublicationsSection
-                publications={publications}
+                publications={pubs.publications}
+                total={pubs.total}
+                hasMore={pubs.hasMore}
+                loadingMore={pubs.loadingMore}
+                onLoadMore={pubs.loadMore}
                 isOwner={true}
                   ownerUserId={user?.id ? Number(user.id) : undefined}
                 onDelete={deletePublication}
@@ -519,7 +510,7 @@ export default function ProviderProfilePage() {
                 isOwner={true}
                 token={getAuthToken() ?? ''}
                 accent="blue"
-                publications={publications}
+                publications={pubs.publications}
               />
             ) : pubTab === 'identifications' && profile ? (
               <TaggedPublicationsTab profileId={profile.id} accentColor="bg-pink-600" />
@@ -561,48 +552,7 @@ export default function ProviderProfilePage() {
         <aside className="space-y-5">
 
           {/* Avis */}
-          <section className="bg-[rgba(255,255,255,0.04)] border border-white/[0.07] rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Star size={15} className="text-yellow-400" />
-              <h2 className="text-xs uppercase tracking-widest text-white/35">Avis reçus</h2>
-              {(profile?.reviewsAvg ?? 0) > 0 && (
-                <span className="ml-auto text-sm font-medium text-yellow-400">
-                  {profile?.reviewsAvg?.toFixed(1)}<span className="text-white/35 text-xs font-normal"> / 5</span>
-                </span>
-              )}
-            </div>
-            {reviews.length === 0
-              ? <p className="text-xs text-white/30 text-center py-3">Aucun avis pour l&apos;instant</p>
-              : <div className="space-y-3">
-                  {reviews.slice(0, 4).map(r => {
-                    const rName = r.author?.user
-                      ? (r.author.user.pseudo || [r.author.user.firstName, r.author.user.lastName].filter(Boolean).join(' ') || 'Anonyme')
-                      : 'Anonyme'
-                    return (
-                      <div key={r.id} className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
-                        <div className="flex items-center gap-2.5 mb-1.5">
-                          <div className="relative h-7 w-7 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
-                            {r.author?.avatar
-                              ? <Image src={r.author.avatar} alt={rName} fill className="object-cover" />
-                              : <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{rName.charAt(0).toUpperCase()}</span>
-                            }
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium leading-none mb-1">{rName}</p>
-                            <div className="flex items-center gap-0.5">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <Star key={i} size={10} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-neutral-600'} />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        {r.comment && <p className="text-xs text-white/65 leading-relaxed">{r.comment}</p>}
-                      </div>
-                    )
-                  })}
-                </div>
-            }
-          </section>
+          {profile && <ReviewsPanel profileId={profile.id} isOwner />}
 
           {/* Prestations proposées + Tarifs */}
           <section className="bg-[rgba(255,255,255,0.04)] border border-white/[0.07] rounded-2xl p-4">
@@ -831,7 +781,7 @@ export default function ProviderProfilePage() {
           token={getAuthToken() ?? ''}
           accent="blue"
           onClose={() => setShowAddPub(false)}
-          onPublished={(pub) => setPublications(prev => [pub, ...prev])}
+          onPublished={pubs.add}
         />
       )}
 

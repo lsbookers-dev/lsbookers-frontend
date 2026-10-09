@@ -180,6 +180,11 @@ body {
 .lsb-space-request-list p { overflow:hidden; margin:0; color:#766f7b; font-size:.56rem; text-overflow:ellipsis; white-space:nowrap; }
 .lsb-space-request-list article > a { display:flex; align-items:center; gap:.25rem; color:#b990f5; font-size:.57rem; }
 .lsb-space-request-list article > a svg { width:.72rem; height:.72rem; }
+.lsb-space-reviews { margin-top:.8rem; }
+.lsb-space-request-list article > button { display:flex; align-items:center; gap:.3rem; padding:.42rem .7rem; border:1px solid rgba(250,204,21,.28); border-radius:99px; color:#fde68a; background:rgba(250,204,21,.08); font-size:.58rem; font-weight:600; white-space:nowrap; transition:background .15s; }
+.lsb-space-request-list article > button:hover { background:rgba(250,204,21,.16); }
+.lsb-space-request-list article > button svg { width:.72rem; height:.72rem; }
+.lsb-space-reviews-more { margin:.4rem .1rem 0; color:#766f7b; font-size:.56rem; }
 .lsb-space-panel-empty { min-height:11rem; display:grid; place-items:center; align-content:center; gap:.65rem; border-top:1px solid rgba(255,255,255,.065); color:#6f6875; text-align:center; }
 .lsb-space-panel-empty svg { width:1.35rem; height:1.35rem; color:#8463ad; }
 .lsb-space-panel-empty p { margin:0; font-size:.64rem; }
@@ -240,7 +245,7 @@ body {
   .lsb-space-activity-list > a { grid-template-columns:auto minmax(0,1fr); }
   .lsb-space-activity-list time { grid-column:2; }
   .lsb-space-request-list article { grid-template-columns:auto minmax(0,1fr); }
-  .lsb-space-request-list article > a { grid-column:2; }
+  .lsb-space-request-list article > a,.lsb-space-request-list article > button { grid-column:2; justify-self:start; }
   .lsb-space-footer-card { align-items:flex-start; flex-direction:column; }
   .lsb-space-footer-card small { white-space:normal; line-height:1.4; }
 }

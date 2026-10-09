@@ -50,6 +50,7 @@ const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
   NEW_COMMENT_REPLY:     { icon: '↩️', color: 'bg-indigo-500/15 text-indigo-300' },
   NEW_COMMENT_LIKE:      { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
   NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
+  NEW_REVIEW:            { icon: '⭐', color: 'bg-yellow-500/15 text-yellow-300' },
   NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300' },
   STAFF_INVITATION:      { icon: '🎤', color: 'bg-violet-500/15 text-violet-300' },
   STAFF_ACCEPTED:        { icon: '✅', color: 'bg-green-500/15 text-green-300' },
@@ -70,6 +71,8 @@ function getPopupLink(notif: PopupNotif): string | null {
     return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
   if (notif.type === 'NEW_OFFER')
     return `/offers`
+  if (notif.type === 'NEW_REVIEW')
+    return '/studio-profile'
   // NEW_COMMENT / NEW_LIKE / NEW_COMMENT_REPLY / NEW_COMMENT_LIKE avec publicationId → modal inline, pas de navigation
   if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE'].includes(notif.type) && notif.publicationId)
     return null

@@ -7,9 +7,12 @@ import SafeImage from '@/components/SafeImage'
 import FollowButton from '@/components/FollowButton'
 import PublicationsSection from '@/components/PublicationsSection'
 import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
+import ReviewsPanel from '@/components/ReviewsPanel'
+import { useProfilePublications } from '@/hooks/useProfilePublications'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
+import { radiusLabel } from '@/utils/radius'
 
 /* =============== Types =============== */
 type PublicUser = {
@@ -127,7 +130,7 @@ export default function OrganizerPublicProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [abonnesCount, setAbonnesCount] = useState(0)
-  const [publications, setPublications] = useState<Publication[]>([])
+  const pubs = useProfilePublications<Publication>(profile?.id)
   const [offers, setOffers] = useState<Offer[]>([])
   const [pubTab, setPubTab] = useState<'publications' | 'identifications'>('publications')
 
@@ -141,7 +144,7 @@ export default function OrganizerPublicProfilePage() {
     location: '', country: '', fee: '',
   })
 
-  const isOwner = viewer?.id === Number(userId)
+  const isOwner = viewer ? Number(viewer.id) === Number(userId) : false
 
   const defaults = useMemo(
     () => ({
@@ -172,16 +175,6 @@ export default function OrganizerPublicProfilePage() {
         if (!loadedProfile) throw new Error('Profil introuvable')
 
         if (loadedProfile.id) {
-          const pubsRes = await apiFetch(`${API_BASE}/api/publications/profile/${loadedProfile.id}`, {
-            cache: 'no-store',
-          })
-          if (pubsRes.ok) {
-            const pubsData = await pubsRes.json()
-            setPublications(pubsData.publications || [])
-          } else {
-            setPublications([])
-          }
-
           const offersRes = await apiFetch(`${API_BASE}/api/offers?organizerId=${loadedProfile.id}`, {
             cache: 'no-store',
           })
@@ -250,8 +243,8 @@ export default function OrganizerPublicProfilePage() {
   const handlePublishOffer = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(null)
-    if (!form.title || !form.description || !form.date || !form.location || !form.country) {
-      setFormError('Tous les champs obligatoires doivent être remplis.')
+    if (!form.title || !form.description || !form.date || !form.location || !form.country || !form.specialty.trim()) {
+      setFormError('Tous les champs obligatoires doivent être remplis (spécialité comprise).')
       return
     }
     setSubmitting(true)
@@ -264,7 +257,7 @@ export default function OrganizerPublicProfilePage() {
           title:       form.title,
           description: form.description,
           type:        form.type,
-          specialty:   form.specialty || null,
+          specialty:   form.specialty.trim(),
           date:        datetime,
           location:    form.location,
           country:     form.country,
@@ -272,8 +265,8 @@ export default function OrganizerPublicProfilePage() {
         }),
       })
       if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d.error || 'Erreur')
+        const d = await res.json().catch(() => null)
+        throw new Error(d?.message || d?.error || 'Erreur')
       }
       const newOffer: Offer = await res.json()
       setOffers(prev => [newOffer, ...prev])
@@ -289,12 +282,14 @@ export default function OrganizerPublicProfilePage() {
   const handleDeleteOffer = async (offerId: number) => {
     if (!confirm('Supprimer cette offre ?')) return
     try {
-      await apiFetch(`${API_BASE}/api/offers/${offerId}`, {
+      const res = await apiFetch(`${API_BASE}/api/offers/${offerId}`, {
         method: 'DELETE',
         })
+      if (!res.ok) throw new Error('Suppression refusée')
       setOffers(prev => prev.filter(o => o.id !== offerId))
     } catch (err) {
       console.error('Erreur suppression offre:', err)
+      alert('Impossible de supprimer cette offre.')
     }
   }
 
@@ -316,7 +311,7 @@ export default function OrganizerPublicProfilePage() {
                 <h1 className="text-xl md:text-2xl font-bold truncate">{name}</h1>
                 <p className="text-xs text-white/45 mt-1">
                   {location ? `${location}${country ? `, ${country}` : ''}` : country}
-                  {radius ? ` • Rayon ${radius} km` : ''}
+                  {radius ? ` • ${radiusLabel(radius)}` : ''}
                 </p>
               </div>
             </div>
@@ -348,7 +343,7 @@ export default function OrganizerPublicProfilePage() {
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">
-              <p className="text-base font-semibold text-white">{publications.length}</p>
+              <p className="text-base font-semibold text-white">{pubs.total}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">publications</p>
             </div>
           </div>
@@ -414,7 +409,7 @@ export default function OrganizerPublicProfilePage() {
                 </button>
               </div>
               {pubTab === 'publications' ? (
-                <PublicationsSection publications={publications} ownerUserId={Number(userId)} />
+                <PublicationsSection publications={pubs.publications} total={pubs.total} hasMore={pubs.hasMore} loadingMore={pubs.loadingMore} onLoadMore={pubs.loadMore} ownerUserId={Number(userId)} />
               ) : profile ? (
                 <TaggedPublicationsTab profileId={profile.id} accentColor="bg-pink-600" />
               ) : null}
@@ -624,10 +619,7 @@ export default function OrganizerPublicProfilePage() {
 
           <aside className="space-y-6">
             {/* Avis */}
-            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-              <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Avis</h2>
-              <p className="text-white/40 text-sm">Aucun avis pour le moment.</p>
-            </section>
+            <ReviewsPanel profileId={profile.id} isOwner={isOwner} />
 
             {/* Vidéo de présentation */}
             {profile.showYoutubeUrl !== false && profile.youtubeUrl?.trim() && (() => {
@@ -656,8 +648,7 @@ export default function OrganizerPublicProfilePage() {
 
             {/* Coordonnées */}
             {(profile.instagramUrl || profile.facebookUrl || profile.tiktokUrl ||
-              profile.twitterUrl || profile.linkedinUrl || profile.websiteUrl ||
-              profile.address || profile.city) && (() => {
+              profile.twitterUrl || profile.linkedinUrl || profile.websiteUrl) && (() => {
               const socialLinks = [
                 { url: profile.instagramUrl, icon: Instagram, label: 'Instagram',  color: 'hover:text-pink-400' },
                 { url: profile.facebookUrl,  icon: Facebook,  label: 'Facebook',   color: 'hover:text-blue-400' },
@@ -667,21 +658,12 @@ export default function OrganizerPublicProfilePage() {
                 { url: profile.websiteUrl,   icon: Globe,      label: 'Site web',   color: 'hover:text-violet-400' },
               ].filter(s => s.url?.trim())
 
-              const addressLine = [profile.address, profile.postalCode, profile.city].filter(Boolean).join(', ')
-
               return (
                 <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
                   <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Coordonnées</h2>
 
-                  {addressLine && (
-                    <p className="text-sm text-white/70 flex items-start gap-2">
-                      <MapPin className="w-4 h-4 mt-0.5 text-white/30 shrink-0" />
-                      {addressLine}
-                    </p>
-                  )}
-
                   {socialLinks.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-4">
+                    <div className="flex flex-wrap gap-4">
                       {socialLinks.map(({ url, icon: Icon, label, color }) => (
                         <a
                           key={label}

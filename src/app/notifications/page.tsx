@@ -42,6 +42,7 @@ const TYPE_CONFIG: Record<string, TypeConfig> = {
   NEW_FOLLOW:            { icon: '👤', color: 'bg-teal-500/15 text-teal-300',     label: 'Nouvel abonné' },
   NEW_COMMENT:           { icon: '💭', color: 'bg-indigo-500/15 text-indigo-300', label: 'Commentaire' },
   NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300',     label: 'Like' },
+  NEW_REVIEW:            { icon: '⭐', color: 'bg-yellow-500/15 text-yellow-300', label: 'Nouvel avis' },
   // Sécurité
   NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300',   label: 'Sécurité' },
   // Invitations staff événement
@@ -72,6 +73,9 @@ function getLink(notif: Notif): string | null {
   // Offres
   if (notif.type === 'NEW_OFFER')
     return `/offers`
+  // Avis reçu → mon Studio profil (où s'affichent mes avis)
+  if (notif.type === 'NEW_REVIEW')
+    return '/studio-profile'
   // Réseau social → profil de l'acteur
   if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()

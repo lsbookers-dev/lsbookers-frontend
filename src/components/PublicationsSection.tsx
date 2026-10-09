@@ -15,6 +15,11 @@ type Props = {
   isOwner?: boolean
   ownerUserId?: number
   headerAction?: React.ReactNode
+  /** Nombre réel de publications (elles sont chargées par pages) */
+  total?: number
+  hasMore?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
 }
 
 const cardSize = (index: number): 'tall' | 'medium' | 'square' => {
@@ -29,6 +34,10 @@ export default function PublicationsSection({
   isOwner = false,
   ownerUserId,
   headerAction,
+  total,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: Props) {
   const [selected, setSelected] = useState<PubCardData | null>(null)
   const [tagTarget, setTagTarget] = useState<PubCardData | null>(null)
@@ -41,6 +50,7 @@ export default function PublicationsSection({
 
   const sorted = [...pubs].sort((a, b) => b.id - a.id)
   const preview = sorted.slice(0, 9)
+  const count = Math.max(total ?? 0, sorted.length)
 
   const handleCountChange = useCallback((pubId: number, likes: number, comments: number) => {
     setPubs(previous => previous.map(publication => (
@@ -90,10 +100,10 @@ export default function PublicationsSection({
           <div>
             <span className="text-[9px] font-bold uppercase tracking-[.2em] text-violet-300/80">Portfolio public</span>
             <h2 className="mt-1 font-serif text-xl font-semibold text-white">{title}</h2>
-            {sorted.length > 0 && <p className="mt-1 text-[10px] text-white/35">{sorted.length} création{sorted.length > 1 ? 's' : ''}</p>}
+            {count > 0 && <p className="mt-1 text-[10px] text-white/35">{count} création{count > 1 ? 's' : ''}</p>}
           </div>
           <div className="flex items-center gap-2">
-            {sorted.length > 9 && (
+            {count > 9 && (
               <button type="button" onClick={() => setShowAll(true)} className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-medium text-white/55 transition hover:border-violet-400/30 hover:text-white">
                 Tout voir
               </button>
@@ -135,10 +145,19 @@ export default function PublicationsSection({
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 backdrop-blur-md sm:items-center sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget) setShowAll(false) }}>
           <section role="dialog" aria-modal="true" aria-label={`${title}, toutes les publications`} className="flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden border-white/10 bg-[#0b0a0e] shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-[1.35rem] sm:border">
             <header className="flex items-center justify-between gap-4 border-b border-white/[0.08] px-4 py-4 sm:px-5">
-              <div><span className="text-[9px] font-bold uppercase tracking-[.18em] text-violet-300/75">Portfolio vivant</span><h3 className="mt-1 font-serif text-lg font-semibold">{title} <span className="text-white/30">({sorted.length})</span></h3></div>
+              <div><span className="text-[9px] font-bold uppercase tracking-[.18em] text-violet-300/75">Portfolio vivant</span><h3 className="mt-1 font-serif text-lg font-semibold">{title} <span className="text-white/30">({count})</span></h3></div>
               <button type="button" onClick={() => setShowAll(false)} aria-label="Fermer" className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.035] text-white/50 hover:text-white"><X size={16} /></button>
             </header>
-            <div className="overflow-y-auto p-3.5 sm:p-5">{renderPortfolio(sorted, true)}</div>
+            <div className="overflow-y-auto p-3.5 sm:p-5">
+              {renderPortfolio(sorted, true)}
+              {hasMore && onLoadMore && (
+                <div className="mt-5 flex justify-center">
+                  <button type="button" onClick={onLoadMore} disabled={loadingMore} className="rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-medium text-white/60 transition hover:border-violet-400/30 hover:text-white disabled:opacity-50">
+                    {loadingMore ? 'Chargement…' : 'Voir plus de publications'}
+                  </button>
+                </div>
+              )}
+            </div>
           </section>
         </div>
       )}

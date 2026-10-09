@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Save, ArrowLeft, Music, MapPin, User, Briefcase,
   CheckCircle, XCircle, ShieldOff, ShieldAlert,
-  Plus, X, Calendar, Euro
+  Plus, X, Calendar, Euro, IdCard
 } from 'lucide-react'
 import { apiFetch } from '@/utils/auth'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
@@ -85,10 +85,40 @@ type Profile = {
   showStyles: boolean
   youtubeUrl: string
   showYoutubeUrl: boolean
-  availableForBooking: boolean
   showRealName: boolean
   avatar: string | null
   banner: string | null
+}
+
+// Informations saisies à l'inscription (privées, jamais affichées sur le profil public)
+type Account = {
+  pseudo: string
+  firstName: string
+  lastName: string
+  dateOfBirth: string
+  phone: string
+  countryOfResidence: string
+  legalStatus: '' | 'INDIVIDUAL' | 'INTERMITTENT' | 'AUTO_ENTREPRENEUR' | 'COMPANY'
+  establishmentName: string
+  siret: string
+}
+
+const EMPTY_ACCOUNT: Account = {
+  pseudo: '', firstName: '', lastName: '', dateOfBirth: '', phone: '',
+  countryOfResidence: '', legalStatus: '', establishmentName: '', siret: '',
+}
+
+const isProfessional = (status: Account['legalStatus']) => status === 'COMPANY' || status === 'AUTO_ENTREPRENEUR'
+
+const inputClass = 'w-full rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50'
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-sm text-white/70 mb-2 block">{label}</span>
+      {children}
+    </label>
+  )
 }
 
 // ─────────────────────────────────────────────
@@ -176,8 +206,9 @@ function Section({ title, icon, children }: {
 // ─────────────────────────────────────────────
 export default function ProfileSettings() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const role = user?.role || 'ARTIST'
+  const [account, setAccount] = useState<Account>(EMPTY_ACCOUNT)
 
   const [profile, setProfile] = useState<Profile>({
     id: 0,
@@ -192,7 +223,6 @@ export default function ProfileSettings() {
     showStyles: true,
     youtubeUrl: '',
     showYoutubeUrl: true,
-    availableForBooking: true,
     showRealName: false,
     avatar: null,
     banner: null,
@@ -249,10 +279,20 @@ export default function ProfileSettings() {
           showStyles: p.showStyles !== false,
           youtubeUrl: p.youtubeUrl || '',
           showYoutubeUrl: p.showYoutubeUrl !== false,
-          availableForBooking: p.availableForBooking ?? true,
           showRealName: p.showRealName ?? false,
           avatar: p.avatar || null,
           banner: p.banner || null,
+        })
+        setAccount({
+          pseudo: p.user?.pseudo || '',
+          firstName: p.user?.firstName || '',
+          lastName: p.user?.lastName || '',
+          dateOfBirth: p.user?.dateOfBirth ? String(p.user.dateOfBirth).slice(0, 10) : '',
+          phone: p.user?.phone || '',
+          countryOfResidence: p.user?.countryOfResidence || '',
+          legalStatus: p.legalStatus || '',
+          establishmentName: p.establishmentName || '',
+          siret: p.siret || '',
         })
       })
       .catch(console.error)
@@ -301,6 +341,34 @@ export default function ProfileSettings() {
     setSaving(true)
     setError(null)
     try {
+      if (!account.pseudo.trim() || !account.firstName.trim() || !account.lastName.trim()) {
+        throw new Error('Le pseudo, le prénom et le nom sont obligatoires.')
+      }
+      const professional = isProfessional(account.legalStatus)
+      const accountRes = await apiFetch(`${API}/api/profile/me/account`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pseudo: account.pseudo.trim(),
+          firstName: account.firstName.trim(),
+          lastName: account.lastName.trim(),
+          dateOfBirth: account.dateOfBirth || null,
+          phone: account.phone.trim() || null,
+          countryOfResidence: account.countryOfResidence.trim() || null,
+          ...(account.legalStatus ? { legalStatus: account.legalStatus } : {}),
+          ...(role === 'ORGANIZER' && account.legalStatus
+            ? { organizerType: professional ? 'PROFESSIONAL' : 'INDIVIDUAL' }
+            : {}),
+          establishmentName: role === 'ORGANIZER' && professional ? account.establishmentName.trim() || null : null,
+          siret: professional ? account.siret.replace(/\s/g, '') || null : null,
+        }),
+      })
+      if (!accountRes.ok) {
+        const d = await accountRes.json().catch(() => null)
+        throw new Error(d?.message || d?.error || 'Impossible d’enregistrer les informations du compte.')
+      }
+      setUser(u => (u ? { ...u, name: account.pseudo.trim() } : u))
+
       const res = await apiFetch(`${API}/api/profile/${profile.id}`, {
         method: 'PUT',
         credentials: 'include',
@@ -316,15 +384,14 @@ export default function ProfileSettings() {
           showStyles: profile.showStyles,
           youtubeUrl: profile.youtubeUrl,
           showYoutubeUrl: profile.showYoutubeUrl,
-          availableForBooking: profile.availableForBooking,
           showRealName: profile.showRealName,
           avatar: profile.avatar,
           banner: profile.banner,
         }),
       })
       if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d.error || 'Erreur serveur')
+        const d = await res.json().catch(() => null)
+        throw new Error(d?.message || d?.error || 'Erreur serveur')
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -362,7 +429,7 @@ export default function ProfileSettings() {
           fee:         offerForm.fee ? parseFloat(offerForm.fee) : null,
         }),
       })
-      if (!res.ok) throw new Error((await res.json()).error || 'Erreur')
+      if (!res.ok) { const d = await res.json().catch(() => null); throw new Error(d?.message || d?.error || 'Erreur') }
       const created = await res.json()
       setOffers(prev => [created, ...prev])
       setShowOfferForm(false)
@@ -377,9 +444,10 @@ export default function ProfileSettings() {
   const handleDeleteOffer = async (offerId: number) => {
     if (!confirm('Supprimer cette offre ?')) return
     try {
-      await apiFetch(`${API}/api/offers/${offerId}`, { method: 'DELETE' })
+      const res = await apiFetch(`${API}/api/offers/${offerId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Suppression refusée')
       setOffers(prev => prev.filter(o => o.id !== offerId))
-    } catch { /* silently */ }
+    } catch { alert('Impossible de supprimer cette offre.') }
   }
 
   if (loading) {
@@ -425,6 +493,57 @@ export default function ProfileSettings() {
           </div>
         )}
 
+        {/* ── SECTION : Informations du compte (privées) ── */}
+        <Section title="Informations du compte" icon={<IdCard size={18} />}>
+          <p className="text-xs text-white/45 -mt-3 mb-5">
+            Saisies à l&apos;inscription. Seul le pseudo (ou ton nom, si tu l&apos;as choisi ci-dessous) apparaît sur ton profil public ; le reste reste privé.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Pseudo">
+              <input value={account.pseudo} onChange={e => setAccount(a => ({ ...a, pseudo: e.target.value }))} maxLength={30} className={inputClass} />
+            </Field>
+            <Field label="Téléphone">
+              <input type="tel" value={account.phone} onChange={e => setAccount(a => ({ ...a, phone: e.target.value }))} maxLength={20} placeholder="06 12 34 56 78" className={inputClass} />
+            </Field>
+            <Field label="Prénom">
+              <input value={account.firstName} onChange={e => setAccount(a => ({ ...a, firstName: e.target.value }))} maxLength={50} className={inputClass} />
+            </Field>
+            <Field label="Nom">
+              <input value={account.lastName} onChange={e => setAccount(a => ({ ...a, lastName: e.target.value }))} maxLength={50} className={inputClass} />
+            </Field>
+            <Field label="Date de naissance">
+              <input type="date" value={account.dateOfBirth} onChange={e => setAccount(a => ({ ...a, dateOfBirth: e.target.value }))} className={`${inputClass} [color-scheme:dark]`} />
+            </Field>
+            <Field label="Pays de résidence">
+              <input value={account.countryOfResidence} onChange={e => setAccount(a => ({ ...a, countryOfResidence: e.target.value }))} maxLength={100} placeholder="France" className={inputClass} />
+            </Field>
+            <Field label="Statut">
+              <select
+                value={isProfessional(account.legalStatus) ? 'COMPANY' : account.legalStatus}
+                onChange={e => setAccount(a => ({ ...a, legalStatus: e.target.value as Account['legalStatus'] }))}
+                className={`${inputClass} [color-scheme:dark]`}
+              >
+                <option value="">Non renseigné</option>
+                <option value="INDIVIDUAL">Particulier</option>
+                <option value="INTERMITTENT">Intermittent du spectacle</option>
+                <option value="COMPANY">Professionnel (auto-entrepreneur, société…)</option>
+              </select>
+            </Field>
+            {isProfessional(account.legalStatus) && (
+              <Field label="Numéro SIRET">
+                <input value={account.siret} onChange={e => setAccount(a => ({ ...a, siret: e.target.value }))} inputMode="numeric" maxLength={17} placeholder="14 chiffres" className={inputClass} />
+              </Field>
+            )}
+            {role === 'ORGANIZER' && isProfessional(account.legalStatus) && (
+              <div className="sm:col-span-2">
+                <Field label="Nom de l&apos;établissement">
+                  <input value={account.establishmentName} onChange={e => setAccount(a => ({ ...a, establishmentName: e.target.value }))} maxLength={200} placeholder="Ex : Alta Rocca Club" className={inputClass} />
+                </Field>
+              </div>
+            )}
+          </div>
+        </Section>
+
         {/* ── SECTION : Identité publique ── */}
         <Section title="Identité publique" icon={<User size={18} />}>
           <div className="space-y-4">
@@ -434,14 +553,6 @@ export default function ProfileSettings() {
               label="Afficher mon nom et prénom"
               description="Si désactivé, seul ton pseudo sera visible"
             />
-            <div className="border-t border-white/8 pt-4">
-              <Toggle
-                value={profile.availableForBooking}
-                onChange={v => setProfile(p => ({ ...p, availableForBooking: v }))}
-                label="Disponible pour booking"
-                description="Indique aux organisateurs que tu es ouvert aux demandes"
-              />
-            </div>
             <div className="border-t border-white/8 pt-4">
               <label className="text-sm text-white/70 mb-2 block">Bio / Description</label>
               <textarea
@@ -473,10 +584,8 @@ export default function ProfileSettings() {
               <label className="text-sm text-white/70 mb-3 block">
                 Rayon d&apos;intervention
                 {profile.radiusKm
-                  ? <span className="text-emerald-400 ml-1">— {profile.radiusKm} km</span>
-                  : profile.radiusKm === null
-                    ? <span className="text-emerald-400 ml-1">— National</span>
-                    : null
+                  ? <span className="text-emerald-400 ml-1">— {profile.radiusKm >= 9999 ? 'National' : `${profile.radiusKm} km`}</span>
+                  : <span className="text-white/35 ml-1">— non renseigné</span>
                 }
               </label>
               <div className="flex flex-wrap gap-2">

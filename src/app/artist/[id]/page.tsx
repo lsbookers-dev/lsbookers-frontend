@@ -9,7 +9,10 @@ import FollowButton from '@/components/FollowButton'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
 import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
+import ReviewsPanel from '@/components/ReviewsPanel'
+import { useProfilePublications } from '@/hooks/useProfilePublications'
 import { useAuth } from '@/context/AuthContext'
+import { radiusLabel } from '@/utils/radius'
 
 /* ================== Types ================== */
 type ApiUser = {
@@ -92,7 +95,7 @@ export default function ArtistPublicProfilePage() {
   const isOwner = viewer && userId ? Number(viewer.id) === Number(userId) : false
 
   const [profile, setProfile]           = useState<ApiProfile | null>(null)
-  const [publications, setPublications] = useState<Publication[]>([])
+  const pubs = useProfilePublications<Publication>(profile?.id)
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState<string | null>(null)
   const [abonnesCount, setAbonnesCount] = useState(0)
@@ -115,13 +118,6 @@ export default function ArtistPublicProfilePage() {
         const p = profileData.profile
         setProfile(p)
         setAbonnesCount(p?.followersCount ?? 0)
-        if (p?.id) {
-          const pubsRes = await apiFetch(`${API_BASE}/api/publications/profile/${p.id}`, { cache: 'no-store' })
-          if (pubsRes.ok) {
-            const pubsData = await pubsRes.json()
-            setPublications(pubsData.publications || [])
-          }
-        }
       } catch (err) {
         console.error('Erreur profil public artiste:', err)
         setError("Impossible de charger ce profil.")
@@ -189,7 +185,7 @@ export default function ArtistPublicProfilePage() {
                 <h1 className="text-xl md:text-2xl font-bold truncate">{name}</h1>
                 <p className="text-xs text-white/45 mt-1">
                   {location ? `${location}${country ? `, ${country}` : ''}` : country}
-                  {profile.radiusKm ? ` • Rayon ${profile.radiusKm} km` : ''}
+                  {profile.radiusKm ? ` • ${radiusLabel(profile.radiusKm)}` : ''}
                 </p>
               </div>
             </div>
@@ -214,7 +210,7 @@ export default function ArtistPublicProfilePage() {
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">
-              <p className="text-base font-semibold text-white">{publications.length}</p>
+              <p className="text-base font-semibold text-white">{pubs.total}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">publications</p>
             </div>
           </div>
@@ -254,7 +250,7 @@ export default function ArtistPublicProfilePage() {
                 </button>
               </div>
               {pubTab === 'publications' ? (
-                <PublicationsSection publications={publications} ownerUserId={Number(userId)} />
+                <PublicationsSection publications={pubs.publications} total={pubs.total} hasMore={pubs.hasMore} loadingMore={pubs.loadingMore} onLoadMore={pubs.loadMore} ownerUserId={Number(userId)} />
               ) : profile ? (
                 <TaggedPublicationsTab profileId={profile.id} accentColor="bg-pink-600" />
               ) : null}
@@ -267,10 +263,7 @@ export default function ArtistPublicProfilePage() {
             )}
           </div>
           <aside className="space-y-6">
-            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-              <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Avis</h2>
-              <p className="text-white/40 text-sm">Les avis seront ajoutés prochainement.</p>
-            </section>
+            <ReviewsPanel profileId={profile.id} isOwner={isOwner} />
             {profile.showStyles !== false && styles.length > 0 && (
               <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
                 <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Styles musicaux</h2>

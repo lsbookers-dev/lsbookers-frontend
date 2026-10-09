@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
+import ReviewModal, { type PendingReview } from '@/components/ReviewModal'
 import {
   ArrowRight,
   Bell,
@@ -46,7 +47,6 @@ type Profile = {
   styles?: string[]
   followersCount?: number
   followingCount?: number
-  availableForBooking?: boolean
   typeEtablissement?: string | null
   radiusKm?: number | null
   cvText?: string | null
@@ -98,7 +98,6 @@ type Offer = {
   applicantCount?: number
 }
 
-type Review = { rating?: number | null }
 
 type Notification = {
   id: number
@@ -118,7 +117,9 @@ type DashboardData = {
   sent: BookingRequest[]
   events: EventItem[]
   offers: Offer[]
-  reviews: Review[]
+  reviewAverage: number | null
+  reviewCount: number
+  pendingReviews: PendingReview[]
   notifications: Notification[]
   unreadMessages: number
 }
@@ -129,7 +130,9 @@ const EMPTY_DATA: DashboardData = {
   sent: [],
   events: [],
   offers: [],
-  reviews: [],
+  reviewAverage: null,
+  reviewCount: 0,
+  pendingReviews: [],
   notifications: [],
   unreadMessages: 0,
 }
@@ -201,6 +204,7 @@ function relativeDate(value: string) {
 }
 
 function notificationLink(notification: Notification) {
+  if (notification.type === 'NEW_REVIEW') return '/studio-profile'
   if (notification.conversationId) return `/messages?c=${notification.conversationId}`
   if (notification.offerId || notification.type === 'NEW_OFFER' || notification.type === 'NEW_APPLICATION') return '/offers'
   if (notification.eventId || notification.type.startsWith('STAFF_')) return '/agenda'
@@ -214,6 +218,7 @@ function notificationLink(notification: Notification) {
 function notificationIcon(type: string) {
   if (type === 'NEW_MESSAGE') return MessageCircle
   if (type === 'NEW_FOLLOW') return Users
+  if (type === 'NEW_REVIEW') return Star
   if (type === 'NEW_OFFER' || type === 'NEW_APPLICATION') return BriefcaseBusiness
   if (BOOKING_NOTIFICATION_TYPES.has(type) || type.startsWith('STAFF_')) return CalendarClock
   return Bell
@@ -224,6 +229,7 @@ export default function SpacePage() {
   const [data, setData] = useState<DashboardData>(EMPTY_DATA)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [reviewing, setReviewing] = useState<PendingReview | null>(null)
 
   useEffect(() => {
     if (!user?.id) return
@@ -249,18 +255,19 @@ export default function SpacePage() {
           apiFetch(apiUrl('notifications'), authOptions),
           apiFetch(apiUrl('offers'), { cache: 'no-store' }),
           profile?.id ? apiFetch(apiUrl(`reviews/profile/${profile.id}`), { cache: 'no-store' }) : Promise.resolve(null),
+          apiFetch(apiUrl('reviews/pending'), authOptions),
         ]
 
-        const [bookingsRes, eventsRes, assignedRes, unreadRes, notificationsRes, offersRes, reviewsRes] = await Promise.allSettled(requests)
+        const [bookingsRes, eventsRes, assignedRes, unreadRes, notificationsRes, offersRes, reviewsRes, pendingRes] = await Promise.allSettled(requests)
 
         const readJson = async (result: PromiseSettledResult<Response | null>) => {
           if (result.status !== 'fulfilled' || !result.value?.ok) return null
           return result.value.json().catch(() => null)
         }
 
-        const [bookings, ownedEvents, assignedEvents, unread, notifications, offers, reviews] = await Promise.all([
+        const [bookings, ownedEvents, assignedEvents, unread, notifications, offers, reviews, pending] = await Promise.all([
           readJson(bookingsRes), readJson(eventsRes), readJson(assignedRes), readJson(unreadRes),
-          readJson(notificationsRes), readJson(offersRes), readJson(reviewsRes),
+          readJson(notificationsRes), readJson(offersRes), readJson(reviewsRes), readJson(pendingRes),
         ])
 
         const eventMap = new Map<number, EventItem>()
@@ -273,7 +280,9 @@ export default function SpacePage() {
             sent: bookings?.sent || [],
             events: [...eventMap.values()],
             offers: Array.isArray(offers) ? offers : [],
-            reviews: reviews?.reviews || [],
+            reviewAverage: reviews?.average ?? null,
+            reviewCount: reviews?.count ?? 0,
+            pendingReviews: pending?.pending || [],
             notifications: notifications?.notifications || [],
             unreadMessages: unread?.count || 0,
           })
@@ -328,10 +337,7 @@ export default function SpacePage() {
     }
   }, [profile, role])
 
-  const averageReview = useMemo(() => {
-    const ratings = data.reviews.map(review => Number(review.rating)).filter(rating => Number.isFinite(rating) && rating > 0)
-    return ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null
-  }, [data.reviews])
+  const averageReview = data.reviewAverage
 
   const allBookings = useMemo(() => {
     const byId = new Map<number, BookingRequest>()
@@ -377,7 +383,7 @@ export default function SpacePage() {
       ]
     : [
         { icon: Users, value: profile?.followersCount ?? 0, label: 'Abonnés' },
-        { icon: Star, value: averageReview ? averageReview.toFixed(1) : '—', label: `${data.reviews.length} avis` },
+        { icon: Star, value: averageReview ? averageReview.toFixed(1) : '—', label: `${data.reviewCount} avis` },
         { icon: CheckCircle2, value: acceptedBookings.length, label: role === 'ARTIST' ? 'Bookings confirmés' : 'Missions confirmées' },
         { icon: BriefcaseBusiness, value: matchedOffers.length, label: 'Opportunités adaptées' },
       ]
@@ -474,6 +480,43 @@ export default function SpacePage() {
           </Link>
         </div>
       </section>
+
+      {data.pendingReviews.length > 0 && (
+        <section className="lsb-space-panel lsb-space-reviews">
+          <div className="lsb-space-panel-heading">
+            <div><span>AVIS À LAISSER</span><h2>Comment se sont passées vos dernières prestations ?</h2></div>
+          </div>
+          <div className="lsb-space-request-list">
+            {data.pendingReviews.slice(0, 3).map(item => (
+              <article key={`${item.kind}-${item.id}`}>
+                <div className="lsb-space-request-date"><strong>{new Date(item.date).getDate()}</strong><span>{new Date(item.date).toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')}</span></div>
+                <div>
+                  <span>PRESTATION TERMINÉE</span>
+                  <h3>{item.counterpart.name}</h3>
+                  <p>{item.title ? `${item.title} · ` : ''}{formatDate(item.date, true)}</p>
+                </div>
+                <button type="button" onClick={() => setReviewing(item)}>Laisser un avis <Star /></button>
+              </article>
+            ))}
+          </div>
+          {data.pendingReviews.length > 3 && <p className="lsb-space-reviews-more">+ {data.pendingReviews.length - 3} autre{data.pendingReviews.length - 3 > 1 ? 's' : ''} prestation{data.pendingReviews.length - 3 > 1 ? 's' : ''} à évaluer</p>}
+        </section>
+      )}
+
+      {reviewing && (
+        <ReviewModal
+          prestation={reviewing}
+          onClose={() => setReviewing(null)}
+          onDone={() => {
+            const done = reviewing
+            setReviewing(null)
+            setData(previous => ({
+              ...previous,
+              pendingReviews: previous.pendingReviews.filter(item => !(item.kind === done.kind && item.id === done.id)),
+            }))
+          }}
+        />
+      )}
 
       <div className="lsb-space-main-grid">
         <section className="lsb-space-panel lsb-space-activity">

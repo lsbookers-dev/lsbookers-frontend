@@ -9,7 +9,10 @@ import FollowButton from '@/components/FollowButton'
 import AgendaCalendar from '@/components/AgendaCalendar'
 import PublicationsSection from '@/components/PublicationsSection'
 import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
+import ReviewsPanel from '@/components/ReviewsPanel'
+import { useProfilePublications } from '@/hooks/useProfilePublications'
 import { useAuth } from '@/context/AuthContext'
+import { radiusLabel } from '@/utils/radius'
 
 /* ================= Types ================= */
 
@@ -83,7 +86,7 @@ export default function ProviderPublicProfilePage() {
   const [abonnesCount, setAbonnesCount] = useState(0)
 
   const [profile, setProfile] = useState<PublicProfile | null>(null)
-  const [publications, setPublications] = useState<Publication[]>([])
+  const pubs = useProfilePublications<Publication>(profile?.id)
   const [pubTab, setPubTab] = useState<'publications' | 'identifications'>('publications')
 
   const defaults = useMemo(() => ({
@@ -112,24 +115,6 @@ export default function ProviderPublicProfilePage() {
 
         setProfile(loadedProfile)
         setAbonnesCount(loadedProfile?.followersCount ?? 0)
-
-        if (loadedProfile?.id) {
-
-          const pubsRes = await apiFetch(`${API_BASE}/api/publications/profile/${loadedProfile.id}`, { cache: 'no-store' })
-
-          if (pubsRes.ok) {
-
-            const pubsData = await pubsRes.json()
-
-            setPublications(pubsData.publications || [])
-
-          } else {
-
-            setPublications([])
-
-          }
-
-        }
 
       } catch (err) {
 
@@ -222,7 +207,7 @@ export default function ProviderPublicProfilePage() {
                 <p className="text-[10px] uppercase tracking-widest text-white/35 mb-1">{role}{etab ? ` · ${etab}` : ''}</p>
                 <h1 className="text-xl md:text-2xl font-bold truncate">{name}</h1>
                 <p className="text-xs text-white/45 mt-1">
-                  {location}{country ? `, ${country}` : ''}{radius ? ` · Rayon ${radius} km` : ''}
+                  {location}{country ? `, ${country}` : ''}{radius ? ` · ${radiusLabel(radius)}` : ''}
                 </p>
               </div>
             </div>
@@ -256,7 +241,7 @@ export default function ProviderPublicProfilePage() {
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">
-              <p className="text-base font-semibold text-white">{publications.length}</p>
+              <p className="text-base font-semibold text-white">{pubs.total}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">publications</p>
             </div>
           </div>
@@ -299,7 +284,7 @@ export default function ProviderPublicProfilePage() {
                 </button>
               </div>
               {pubTab === 'publications' ? (
-                <PublicationsSection publications={publications} ownerUserId={Number(userId)} />
+                <PublicationsSection publications={pubs.publications} total={pubs.total} hasMore={pubs.hasMore} loadingMore={pubs.loadingMore} onLoadMore={pubs.loadMore} ownerUserId={Number(userId)} />
               ) : profile ? (
                 <TaggedPublicationsTab profileId={profile.id} accentColor="bg-pink-600" />
               ) : null}
@@ -326,10 +311,7 @@ export default function ProviderPublicProfilePage() {
           {/* Colonne droite */}
           <aside className="space-y-6">
 
-            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-              <h2 className="text-xs uppercase tracking-widest text-white/35 mb-3">Avis</h2>
-              <p className="text-white/40 text-sm">Les avis seront ajoutés prochainement.</p>
-            </section>
+            <ReviewsPanel profileId={profile.id} isOwner={isOwner} />
 
             {profile.feeInfo && (
               <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">

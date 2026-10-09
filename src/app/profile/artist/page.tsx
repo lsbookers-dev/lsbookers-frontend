@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Settings2, MessageCircle, Star, Plus, Music,
+  Settings2, MessageCircle, Plus, Music,
   Globe, Youtube, Instagram, Twitter, Facebook, Linkedin, Link,
   Pencil, Check, Users, Euro, FileText,
 } from 'lucide-react'
@@ -15,7 +15,10 @@ import CropModal from '@/components/CropModal'
 import AddPublicationModal from '@/components/AddPublicationModal'
 import AlbumsTab from '@/components/AlbumsTab'
 import TaggedPublicationsTab from '@/components/TaggedPublicationsTab'
+import ReviewsPanel from '@/components/ReviewsPanel'
+import { useProfilePublications } from '@/hooks/useProfilePublications'
 import { getAuthToken, apiFetch } from '@/utils/auth'
+import { radiusLabel } from '@/utils/radius'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -47,12 +50,9 @@ type ApiProfile = {
   websiteUrl?: string | null
   cvText?: string | null
   feeInfo?: string | null
-  availableForBooking?: boolean
   showRealName?: boolean
   followersCount?: number
   followingCount?: number
-  reviewsAvg?: number | null
-  reviewsCount?: number
   user?: {
     id: number
     pseudo?: string | null
@@ -73,16 +73,6 @@ type Publication = {
   _count?: { likes: number; comments: number }
 }
 
-type Review = {
-  id: number
-  rating: number
-  comment?: string | null
-  createdAt: string
-  author?: {
-    user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null }
-    avatar?: string | null
-  }
-}
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -127,8 +117,7 @@ export default function ArtistProfilePage() {
   const { user } = useAuth()
 
   const [profile, setProfile]           = useState<ApiProfile | null>(null)
-  const [publications, setPublications] = useState<Publication[]>([])
-  const [reviews, setReviews]           = useState<Review[]>([])
+  const pubs = useProfilePublications<Publication>(profile?.id)
   const [loading, setLoading]           = useState(true)
   const [pubTab, setPubTab]             = useState<'publications' | 'albums' | 'identifications'>('publications')
 
@@ -180,15 +169,7 @@ export default function ArtistProfilePage() {
         })
 
         if (p.id) {
-          apiFetch(`${API}/api/publications/profile/${p.id}`)
-            .then(r => r.json())
-            .then(d => setPublications(d.publications || []))
-            .catch(() => {})
 
-          apiFetch(`${API}/api/reviews/profile/${p.id}`)
-            .then(r => r.json())
-            .then(d => setReviews(d.reviews || []))
-            .catch(() => {})
         }
       })
       .catch(console.error)
@@ -210,7 +191,7 @@ export default function ArtistProfilePage() {
       return true
     }
     const err = await res.json().catch(() => null)
-    alert(err?.message || 'Impossible d\'enregistrer la modification.')
+    alert(err?.message || err?.error || 'Impossible d\'enregistrer la modification.')
     return false
   }
 
@@ -238,7 +219,7 @@ export default function ArtistProfilePage() {
       const res = await apiFetch(`${API}/api/publications/${id}`, {
         method: 'DELETE', credentials: 'include', })
       if (!res.ok) throw new Error('Échec')
-      setPublications(prev => prev.filter(p => p.id !== id))
+      pubs.remove(id)
     } catch { alert('Impossible de supprimer') }
   }
 
@@ -365,7 +346,7 @@ export default function ArtistProfilePage() {
                 <h1 className="text-xl md:text-2xl font-bold truncate">{displayName(profile)}</h1>
                 <p className="text-xs text-white/45 mt-1">
                   {[profile?.location, profile?.country].filter(Boolean).join(', ')}
-                  {profile?.radiusKm ? ` · Rayon ${profile.radiusKm} km` : ''}
+                  {profile?.radiusKm ? ` · ${radiusLabel(profile.radiusKm)}` : ''}
                 </p>
               </div>
             </div>
@@ -389,7 +370,7 @@ export default function ArtistProfilePage() {
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">abonnements</p>
             </div>
             <div className="flex-1 py-3 text-center">
-              <p className="text-base font-semibold text-white">{publications.length}</p>
+              <p className="text-base font-semibold text-white">{pubs.total}</p>
               <p className="text-[10px] text-white/35 uppercase tracking-wide mt-0.5">publications</p>
             </div>
           </div>
@@ -462,7 +443,11 @@ export default function ArtistProfilePage() {
 
               {pubTab === 'publications' ? (
                 <PublicationsSection
-                  publications={publications}
+                  publications={pubs.publications}
+                  total={pubs.total}
+                  hasMore={pubs.hasMore}
+                  loadingMore={pubs.loadingMore}
+                  onLoadMore={pubs.loadMore}
                   isOwner={true}
                   ownerUserId={user?.id ? Number(user.id) : undefined}
                   onDelete={handleDeletePub}
@@ -473,7 +458,7 @@ export default function ArtistProfilePage() {
                   isOwner={true}
                   token={getAuthToken() ?? ''}
                   accent="pink"
-                  publications={publications}
+                  publications={pubs.publications}
                 />
               ) : pubTab === 'identifications' && profile ? (
                 <TaggedPublicationsTab profileId={profile.id} accentColor="bg-pink-600" />
@@ -517,41 +502,7 @@ export default function ArtistProfilePage() {
           <aside className="space-y-5">
 
             {/* Avis */}
-            <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Star size={15} className="text-yellow-400" />
-                <h2 className="text-xs uppercase tracking-widest text-white/35">Avis reçus</h2>
-                {(profile?.reviewsAvg ?? 0) > 0 && (
-                  <span className="ml-auto text-sm font-medium text-yellow-400">
-                    {profile?.reviewsAvg?.toFixed(1)}<span className="text-white/35 text-xs font-normal"> / 5</span>
-                  </span>
-                )}
-              </div>
-              {reviews.length === 0
-                ? <p className="text-xs text-white/35 text-center py-3">Aucun avis pour l&apos;instant</p>
-                : <div className="space-y-3">
-                    {reviews.slice(0, 4).map(r => (
-                      <div key={r.id} className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          {r.author?.avatar
-                            ? <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0"><Image src={r.author.avatar} alt="" fill className="object-cover" /></div>
-                            : <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/50 flex-shrink-0">{r.author?.user?.pseudo?.[0]?.toUpperCase() || '?'}</div>
-                          }
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate text-white/70">{r.author?.user?.pseudo || r.author?.user?.firstName || 'Anonyme'}</p>
-                            <div className="flex items-center gap-0.5">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <Star key={i} size={10} className={i < r.rating ? 'fill-yellow-400 text-yellow-400' : 'text-white/20'} />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        {r.comment && <p className="text-xs text-white/70 leading-relaxed">{r.comment}</p>}
-                      </div>
-                    ))}
-                  </div>
-              }
-            </section>
+            {profile && <ReviewsPanel profileId={profile.id} isOwner />}
 
             {/* Styles musicaux */}
             {profile?.showStyles !== false && profile?.styles && profile.styles.length > 0 && (
@@ -720,7 +671,7 @@ export default function ArtistProfilePage() {
           token={getAuthToken() ?? ''}
           accent="pink"
           onClose={() => setShowAddPub(false)}
-          onPublished={(pub) => setPublications(prev => [pub, ...prev])}
+          onPublished={pubs.add}
         />
       )}
     </div>

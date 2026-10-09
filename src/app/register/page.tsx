@@ -357,7 +357,7 @@ export default function RegisterPage() {
           dateOfBirth: dateOfBirth || undefined,
           phone: phone || undefined,
           countryOfResidence: country,
-          legalStatus: legalType === 'PROFESSIONAL' ? 'COMPANY' : 'INDIVIDUAL',
+          legalStatus: legalType === 'PROFESSIONAL' ? 'COMPANY' : legalType === 'INTERMITTENT' ? 'INTERMITTENT' : 'INDIVIDUAL',
           organizerType: role === 'ORGANIZER' ? (legalType === 'PROFESSIONAL' ? 'PROFESSIONAL' : 'INDIVIDUAL') : undefined,
           siret: legalType === 'PROFESSIONAL' ? siret.replace(/\s/g, '') : undefined,
           city: city,

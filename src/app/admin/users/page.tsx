@@ -47,7 +47,6 @@ type DetailUser = {
     styles?: string[]
     typeEtablissement?: string | null
     avatar?: string | null
-    availableForBooking?: boolean
     showRealName?: boolean
     legalStatus?: string | null
     siret?: string | null
@@ -73,6 +72,7 @@ const LEGAL_LABELS: Record<string, string> = {
   INDIVIDUAL: 'Particulier',
   AUTO_ENTREPRENEUR: 'Auto-entrepreneur',
   COMPANY: 'Société',
+  INTERMITTENT: 'Intermittent du spectacle',
 }
 
 const displayName = (u: ListedUser | DetailUser) =>
@@ -430,7 +430,6 @@ export default function AdminUsersPage() {
                   <InfoRow label="Localisation" value={detailUser.profile?.location} />
                   <InfoRow label="Pays" value={detailUser.profile?.country} />
                   <InfoRow label="Rayon (km)" value={detailUser.profile?.radiusKm} />
-                  <InfoRow label="Disponible au booking" value={detailUser.profile?.availableForBooking} />
                   {detailUser.profile?.specialties?.length ? (
                     <InfoRow label="Spécialités" value={detailUser.profile.specialties.join(', ')} />
                   ) : null}
