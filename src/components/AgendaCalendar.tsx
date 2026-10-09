@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, BookOpen, X, CheckSquare } from 'lucide-react'
 
 import {
@@ -347,6 +347,20 @@ export default function AgendaCalendar({
       openEventDetail(id)
     }
   }, [events, openEventDetail])
+
+  /* ── Lien direct depuis une notification : /agenda?event=12&tab=bookings ── */
+  const deepLinkHandled = useRef(false)
+  useEffect(() => {
+    if (!isOwner || loading || deepLinkHandled.current) return
+    const params = new URLSearchParams(window.location.search)
+    const id = Number(params.get('event'))
+    if (!id) return
+    deepLinkHandled.current = true
+    openEventFromCalendar(id)
+    const iAmBooked = events.some(e => e.id === id && e.staffStatus === 'BOOKED')
+    if (params.get('tab') === 'bookings' && !iAmBooked) setDetailTab('bookings')
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [isOwner, loading, events, openEventFromCalendar])
 
   /* ── openCreateFromDate : ouvre le formulaire créer événement pré-rempli ── */
   const openCreateFromDate = useCallback((date: Date) => {

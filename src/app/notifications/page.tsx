@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
 import { apiFetch } from '@/utils/auth'
+import { reviewOrBookingItemLink } from '@/utils/notificationLinks'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ const TYPE_CONFIG: Record<string, TypeConfig> = {
   NEW_COMMENT:           { icon: '💭', color: 'bg-indigo-500/15 text-indigo-300', label: 'Commentaire' },
   NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300',     label: 'Like' },
   NEW_REVIEW:            { icon: '⭐', color: 'bg-yellow-500/15 text-yellow-300', label: 'Nouvel avis' },
+  REVIEW_AVAILABLE:      { icon: '⭐', color: 'bg-yellow-500/15 text-yellow-300', label: 'Avis à laisser' },
+  BOOKING_ITEM_ADDED:    { icon: '📎', color: 'bg-sky-500/15 text-sky-300',       label: 'Booking mis à jour' },
   // Sécurité
   NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300',   label: 'Sécurité' },
   // Invitations staff événement
@@ -73,9 +76,9 @@ function getLink(notif: Notif): string | null {
   // Offres
   if (notif.type === 'NEW_OFFER')
     return `/offers`
-  // Avis reçu → mon Studio profil (où s'affichent mes avis)
-  if (notif.type === 'NEW_REVIEW')
-    return '/studio-profile'
+  // Avis (reçu / à laisser) et ajouts dans un booking
+  const reviewOrItem = reviewOrBookingItemLink(notif.type, notif.eventId)
+  if (reviewOrItem) return reviewOrItem
   // Réseau social → profil de l'acteur
   if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()

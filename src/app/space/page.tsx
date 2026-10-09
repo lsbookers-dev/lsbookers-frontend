@@ -23,6 +23,7 @@ import {
   Star,
   Users,
 } from 'lucide-react'
+import { agendaEventLink, reviewOrBookingItemLink } from '@/utils/notificationLinks'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
@@ -204,10 +205,11 @@ function relativeDate(value: string) {
 }
 
 function notificationLink(notification: Notification) {
-  if (notification.type === 'NEW_REVIEW') return '/studio-profile'
+  const reviewOrItem = reviewOrBookingItemLink(notification.type, notification.eventId)
+  if (reviewOrItem) return reviewOrItem
   if (notification.conversationId) return `/messages?c=${notification.conversationId}`
   if (notification.offerId || notification.type === 'NEW_OFFER' || notification.type === 'NEW_APPLICATION') return '/offers'
-  if (notification.eventId || notification.type.startsWith('STAFF_')) return '/agenda'
+  if (notification.eventId || notification.type.startsWith('STAFF_')) return agendaEventLink(notification.eventId)
   if (notification.actor?.id && ['ARTIST', 'ORGANIZER', 'PROVIDER'].includes(notification.actor.role || '')) {
     return `/${notification.actor.role?.toLowerCase()}/${notification.actor.id}`
   }
@@ -218,7 +220,8 @@ function notificationLink(notification: Notification) {
 function notificationIcon(type: string) {
   if (type === 'NEW_MESSAGE') return MessageCircle
   if (type === 'NEW_FOLLOW') return Users
-  if (type === 'NEW_REVIEW') return Star
+  if (type === 'NEW_REVIEW' || type === 'REVIEW_AVAILABLE') return Star
+  if (type === 'BOOKING_ITEM_ADDED') return CalendarClock
   if (type === 'NEW_OFFER' || type === 'NEW_APPLICATION') return BriefcaseBusiness
   if (BOOKING_NOTIFICATION_TYPES.has(type) || type.startsWith('STAFF_')) return CalendarClock
   return Bell
@@ -297,6 +300,12 @@ export default function SpacePage() {
     loadDashboard()
     return () => { cancelled = true }
   }, [user?.id])
+
+  // Lien « laissez votre avis » (/space#avis) : la zone n'existe qu'une fois les données chargées
+  useEffect(() => {
+    if (loading || window.location.hash !== '#avis') return
+    document.getElementById('avis')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [loading])
 
   const role = (user?.role === 'ADMIN' ? 'ORGANIZER' : user?.role || 'ARTIST') as Exclude<Role, 'ADMIN'>
   const content = ROLE_CONTENT[role]
@@ -482,7 +491,7 @@ export default function SpacePage() {
       </section>
 
       {data.pendingReviews.length > 0 && (
-        <section className="lsb-space-panel lsb-space-reviews">
+        <section id="avis" className="lsb-space-panel lsb-space-reviews">
           <div className="lsb-space-panel-heading">
             <div><span>AVIS À LAISSER</span><h2>Comment se sont passées vos dernières prestations ?</h2></div>
           </div>
