@@ -1,8 +1,8 @@
 @import "tailwindcss";
 @import url('leaflet/dist/leaflet.css');
 
-/* ── Identité LS Bookers (choix B4 du 13/10/2026) ─────────────────────────
-   Police : Bodoni Moda (grands titres) + Montserrat (texte), chargées dans app/layout.tsx.
+/* ── Identité LS Bookers (choix C4 du 13/10/2026) ─────────────────────────
+   Police : Sora partout (titres et texte), chargée dans app/layout.tsx.
    Palette « Violet & or » : violet pour les actions, or du logo pour les détails
    qui ont de la valeur (notes, cachets, bookings confirmés).
    Utiliser ces variables (ou les classes Tailwind bg-accent, text-gold, bg-surface…)
@@ -22,8 +22,8 @@
   --lsb-gold-light: #e8cf9c;
   --lsb-gold-soft: rgba(212, 175, 106, 0.16);
   --lsb-pink: #f472b6;
-  --lsb-font-display: var(--font-bodoni), 'Didot', Georgia, serif;
-  --lsb-font-body: var(--font-montserrat), Arial, Helvetica, sans-serif;
+  --lsb-font-display: var(--font-sora), system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --lsb-font-body: var(--font-sora), system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
 }
 
 @theme inline {
@@ -43,8 +43,8 @@
   --font-display: var(--lsb-font-display);
 }
 
-/* Grands titres de page en Bodoni (les petits titres restent en Montserrat, plus lisible) */
-h1, .lsb-display { font-family: var(--lsb-font-display); letter-spacing: -0.01em; }
+/* Grands titres de page : même police, plus serrée */
+h1, .lsb-display { font-family: var(--lsb-font-display); letter-spacing: -0.02em; }
 
 body {
   background: radial-gradient(circle at 70% -10%, rgba(139,92,246,.10), transparent 30rem), var(--background);
