@@ -47,3 +47,10 @@ export function getSpecialtiesForOfferType(type: 'ARTIST' | 'PROVIDER' | 'ALL'):
   if (type === 'ALL') return [...SPECIALTIES_BY_ROLE.ARTIST, ...SPECIALTIES_BY_ROLE.PROVIDER].sort()
   return SPECIALTIES_BY_ROLE[type] ?? []
 }
+
+/** Styles musicaux proposés aux artistes */
+export const MUSIC_STYLES = [
+  'Electro', 'House', 'Techno', 'Deep House', 'RNB', 'Hip-Hop', 'Rap', 'Trap',
+  'Reggaeton', 'Afrobeats', 'Dancehall', 'Jazz', 'Blues', 'Soul', 'Funk',
+  'Pop', 'Rock', 'Latino', 'Salsa', 'Bachata', 'Kizomba', 'Gospel', 'Classique',
+]

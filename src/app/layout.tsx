@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { AuthProvider } from '@/context/AuthContext'
 import { PublicSettingsProvider } from '@/context/PublicSettingsContext'
 import ClientLayout from '@/components/ClientLayout'
+import { FeedbackProvider } from '@/components/ui/Feedback'
 import { getPublicSettings } from '@/lib/publicSettings'
 
 const SITE_URL = 'https://lsbookers.com'
@@ -55,7 +56,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body>
         <PublicSettingsProvider settings={publicSettings}>
           <AuthProvider>
-            <ClientLayout>{children}</ClientLayout>
+            <FeedbackProvider>
+              <ClientLayout>{children}</ClientLayout>
+            </FeedbackProvider>
           </AuthProvider>
         </PublicSettingsProvider>
       </body>

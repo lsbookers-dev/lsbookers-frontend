@@ -1,6 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/utils/auth'
+import { useFeedback } from '@/components/ui/Feedback'
 /**
  * AlbumsTab — Onglet Albums sur les profils
  * Affiche la grille d'albums, permet de créer / supprimer un album (owner),
@@ -69,6 +70,7 @@ export default function AlbumsTab({
   publications = [],
 }: Props) {
   const { btn, ring } = ACCENT_CLASSES[accent] ?? ACCENT_CLASSES.pink
+  const { notify, confirm } = useFeedback()
 
   const [albums, setAlbums]           = useState<AlbumSummary[]>([])
   const [loading, setLoading]         = useState(true)
@@ -128,7 +130,7 @@ export default function AlbumsTab({
       setNewTitle(''); setNewDesc(''); setNewPrivate(false); setShowCreate(false)
       await loadAlbums()
     } catch {
-      alert('Impossible de créer l\'album')
+      notify('Impossible de créer l\'album', 'error')
     } finally {
       setCreating(false)
     }
@@ -138,7 +140,7 @@ export default function AlbumsTab({
 
   const handleDeleteAlbum = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Supprimer cet album ?')) return
+    if (!(await confirm({ title: 'Supprimer cet album ?', message: 'Les publications qu’il contient ne sont pas supprimées.', danger: true }))) return
     try {
       await apiFetch(`${API_BASE}/api/albums/${id}`, {
         method: 'DELETE',
@@ -146,7 +148,7 @@ export default function AlbumsTab({
       setAlbums(prev => prev.filter(a => a.id !== id))
       if (openAlbum?.id === id) setOpenAlbum(null)
     } catch {
-      alert('Impossible de supprimer l\'album')
+      notify('Impossible de supprimer l\'album', 'error')
     }
   }
 
@@ -160,7 +162,7 @@ export default function AlbumsTab({
       const data = await res.json()
       setOpenAlbum(data.album ?? null)
     } catch {
-      alert('Impossible de charger l\'album')
+      notify('Impossible de charger l\'album', 'error')
     } finally {
       setLoadingAlbum(false)
     }
@@ -182,7 +184,7 @@ export default function AlbumsTab({
       await handleOpenAlbum(openAlbum.id)
       setShowAddPub(false)
     } catch {
-      alert('Impossible d\'ajouter la publication')
+      notify('Impossible d\'ajouter la publication', 'error')
     } finally {
       setAddingPubId(null)
     }
@@ -200,7 +202,7 @@ export default function AlbumsTab({
       // Mettre à jour le count dans la liste
       setAlbums(prev => prev.map(a => a.id === openAlbum.id ? { ...a, itemCount: Math.max(0, a.itemCount - 1) } : a))
     } catch {
-      alert('Impossible de retirer cet item')
+      notify('Impossible de retirer cet item', 'error')
     }
   }
 

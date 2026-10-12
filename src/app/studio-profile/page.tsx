@@ -11,9 +11,11 @@ export default function StudioProfileRedirect() {
   useEffect(() => {
     if (loading) return
     if (!user) return router.replace('/login')
-    if (user.role === 'ARTIST') return router.replace('/profile/artist')
-    if (user.role === 'ORGANIZER') return router.replace('/profile/organizer')
-    if (user.role === 'PROVIDER') return router.replace('/profile/provider')
+    // On garde ?edit=… (ouverture directe de l'éditeur depuis Mon espace)
+    const query = window.location.search
+    if (user.role === 'ARTIST') return router.replace(`/profile/artist${query}`)
+    if (user.role === 'ORGANIZER') return router.replace(`/profile/organizer${query}`)
+    if (user.role === 'PROVIDER') return router.replace(`/profile/provider${query}`)
     router.replace('/admin/dashboard')
   }, [loading, router, user])
 

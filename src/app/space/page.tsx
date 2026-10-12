@@ -139,25 +139,21 @@ const EMPTY_DATA: DashboardData = {
 }
 
 const ROLE_CONTENT: Record<Exclude<Role, 'ADMIN'>, {
-  label: string
   eyebrow: string
   intro: string
   priorityHint: string
 }> = {
   ARTIST: {
-    label: 'Artiste',
     eyebrow: 'VOTRE ACTIVITÉ ARTISTIQUE',
     intro: 'Vos demandes, vos prochaines dates et les opportunités qui correspondent à votre univers.',
     priorityHint: 'Les actions qui font avancer votre activité',
   },
   ORGANIZER: {
-    label: 'Organisateur',
     eyebrow: 'VOS PROJETS',
     intro: 'Vos événements, vos recrutements et vos collaborations au même endroit.',
     priorityHint: 'Les décisions qui font avancer vos événements',
   },
   PROVIDER: {
-    label: 'Prestataire',
     eyebrow: 'VOTRE ACTIVITÉ PROFESSIONNELLE',
     intro: 'Vos missions, vos demandes et les projets qui recherchent votre savoir-faire.',
     priorityHint: 'Les actions qui font avancer vos missions',
@@ -172,6 +168,11 @@ const BOOKING_NOTIFICATION_TYPES = new Set([
 function displayName(profile?: BookingProfile | null) {
   const identity = profile?.user
   return identity?.pseudo || [identity?.firstName, identity?.lastName].filter(Boolean).join(' ') || 'Profil LSBookers'
+}
+
+// « Bonjour » jusqu'à 18 h, « Bonsoir » ensuite (heure de l'appareil)
+function greeting() {
+  return new Date().getHours() >= 18 ? 'Bonsoir' : 'Bonjour'
 }
 
 function formatDate(value?: string | null, withYear = false) {
@@ -256,7 +257,8 @@ export default function SpacePage() {
           apiFetch(apiUrl('events/assigned'), authOptions),
           apiFetch(apiUrl('messages/unread-count'), authOptions),
           apiFetch(apiUrl('notifications'), authOptions),
-          apiFetch(apiUrl('offers'), { cache: 'no-store' }),
+          // Organisateur : seulement ses offres ; artiste / prestataire : toutes (pour trouver celles qui lui correspondent)
+          apiFetch(apiUrl(user?.role === 'ORGANIZER' && profile?.id ? `offers?organizerId=${profile.id}` : 'offers'), { cache: 'no-store' }),
           profile?.id ? apiFetch(apiUrl(`reviews/profile/${profile.id}`), { cache: 'no-store' }) : Promise.resolve(null),
           apiFetch(apiUrl('reviews/pending'), authOptions),
         ]
@@ -299,7 +301,7 @@ export default function SpacePage() {
 
     loadDashboard()
     return () => { cancelled = true }
-  }, [user?.id])
+  }, [user?.id, user?.role])
 
   // Lien « laissez votre avis » (/space#avis) : la zone n'existe qu'une fois les données chargées
   useEffect(() => {
@@ -314,35 +316,38 @@ export default function SpacePage() {
   const publicProfileHref = user?.id ? `/${role.toLowerCase()}/${user.id}` : '/studio-profile'
 
   const profileProgress = useMemo(() => {
-    if (!profile) return { value: 0, missing: 'Complétez les informations principales' }
+    if (!profile) return { value: 0, missing: 'Complétez les informations principales', href: '/studio-profile' }
+    // edit : partie de l'éditeur du Studio à ouvrir (null = photo / bannière, directement sur le Studio)
     const common = [
-      { value: profile.avatar, label: 'Ajoutez une photo de profil' },
-      { value: profile.banner, label: 'Ajoutez une bannière' },
-      { value: profile.bio, label: 'Présentez votre activité' },
-      { value: profile.location, label: 'Ajoutez votre localisation' },
+      { value: profile.avatar, label: 'Ajoutez une photo de profil', edit: null },
+      { value: profile.banner, label: 'Ajoutez une bannière', edit: null },
+      { value: profile.bio, label: 'Présentez votre activité', edit: 'presentation' },
+      { value: profile.location, label: 'Ajoutez votre localisation', edit: 'location' },
     ]
     const specific = role === 'ORGANIZER'
       ? [
-          { value: profile.typeEtablissement || profile.profession, label: 'Précisez votre type de structure' },
-          { value: profile.websiteUrl || profile.instagramUrl, label: 'Ajoutez un lien professionnel' },
+          { value: profile.typeEtablissement || profile.profession, label: 'Précisez votre type d’établissement', edit: 'presentation' },
+          { value: profile.websiteUrl || profile.instagramUrl, label: 'Ajoutez un lien professionnel', edit: 'socials' },
         ]
       : role === 'PROVIDER'
         ? [
-            { value: profile.profession, label: 'Précisez votre métier' },
-            { value: profile.specialties?.length, label: 'Ajoutez vos spécialités' },
-            { value: profile.cvText, label: 'Complétez votre présentation professionnelle' },
+            { value: profile.profession, label: 'Précisez votre métier', edit: 'presentation' },
+            { value: profile.specialties?.length, label: 'Ajoutez vos spécialités', edit: 'specialties' },
+            { value: profile.cvText, label: 'Complétez votre parcours', edit: 'career' },
           ]
         : [
-            { value: profile.profession, label: 'Précisez votre activité artistique' },
-            { value: profile.specialties?.length, label: 'Ajoutez vos spécialités' },
-            { value: profile.styles?.length, label: 'Ajoutez vos styles' },
-            { value: profile.youtubeUrl || profile.soundcloudUrl, label: 'Ajoutez un média de prestation' },
+            { value: profile.profession, label: 'Précisez votre activité artistique', edit: 'presentation' },
+            { value: profile.specialties?.length, label: 'Ajoutez vos spécialités', edit: 'specialties' },
+            { value: profile.styles?.length, label: 'Ajoutez vos styles', edit: 'specialties' },
+            { value: profile.youtubeUrl || profile.soundcloudUrl, label: 'Ajoutez une vidéo ou un son', edit: 'media' },
           ]
     const fields = [...common, ...specific]
     const completed = fields.filter(field => Boolean(field.value)).length
+    const next = fields.find(field => !field.value)
     return {
       value: Math.round((completed / fields.length) * 100),
-      missing: fields.find(field => !field.value)?.label || 'Votre profil est prêt à être présenté',
+      missing: next?.label || 'Votre profil est prêt à être présenté',
+      href: next?.edit ? `/studio-profile?edit=${next.edit}` : '/studio-profile',
     }
   }, [profile, role])
 
@@ -427,7 +432,7 @@ export default function SpacePage() {
       <header className="lsb-space-heading">
         <div>
           <span>{content.eyebrow}</span>
-          <h1>Bonsoir, {name}<em>.</em></h1>
+          <h1>{greeting()}, {name}<em>.</em></h1>
           <p>{content.intro}</p>
         </div>
         <div className="lsb-space-heading-actions">
@@ -447,7 +452,7 @@ export default function SpacePage() {
                 : name.slice(0, 2).toUpperCase()}
             </div>
             <div className="lsb-space-profile-copy">
-              <span>{content.label} · {profile.profession || profile.typeEtablissement || 'Profil professionnel'}</span>
+              {(profile.profession || profile.typeEtablissement) && <span>{profile.profession || profile.typeEtablissement}</span>}
               <h2>{name}</h2>
               <p><MapPin /> {profile.location || 'Localisation à compléter'}{profile.country ? `, ${profile.country}` : ''}</p>
             </div>
@@ -482,7 +487,7 @@ export default function SpacePage() {
             <span><strong>Nouveaux messages</strong><small>{data.unreadMessages ? `${data.unreadMessages} message${data.unreadMessages > 1 ? 's' : ''} non lu${data.unreadMessages > 1 ? 's' : ''}` : 'Vous êtes à jour'}</small></span>
             {data.unreadMessages > 0 && <b>{data.unreadMessages}</b>}
           </Link>
-          <Link href="/studio-profile" className={profileProgress.value < 100 ? 'has-alert' : ''}>
+          <Link href={profileProgress.href} className={profileProgress.value < 100 ? 'has-alert' : ''}>
             <i><ImagePlus /></i>
             <span><strong>{profileProgress.value < 100 ? 'Profil à compléter' : 'Profil complété'}</strong><small>{profileProgress.missing}</small></span>
             <em>{profileProgress.value}%</em>
