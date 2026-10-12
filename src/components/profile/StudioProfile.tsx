@@ -152,7 +152,7 @@ export default function StudioProfile() {
         onPickAvatar={() => avatarInput.current?.click()}
         actions={(
           <>
-            <button type="button" onClick={() => setEditorSection('identity')} className="flex items-center gap-2 whitespace-nowrap rounded-full bg-white px-4 py-2 text-sm text-black">
+            <button type="button" onClick={() => setEditorSection('identity')} className="flex items-center gap-2 whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
               <Sparkles size={15} /> Modifier mon profil
             </button>
             {publicHref && (

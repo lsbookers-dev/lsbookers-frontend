@@ -109,8 +109,8 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
           following
             ? 'border border-white/20 bg-white/10 text-white hover:bg-white/20'
             : followsYou
-            ? 'bg-blue-600 hover:bg-blue-500 text-white'
-            : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+            ? 'border border-gold/40 bg-gold/15 text-gold-light hover:bg-gold/25'
+            : 'border border-gold/35 bg-transparent text-gold-light hover:bg-gold/10'
         }`}
       >
         {following ? <UserMinus size={16} /> : <UserPlus size={16} />}

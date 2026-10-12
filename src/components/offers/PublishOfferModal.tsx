@@ -28,9 +28,9 @@ const EMPTY_FORM: OfferForm = {
 const PUB_LABEL = 'mb-1.5 text-[11px] text-white/50'
 const PUB_INPUT = 'w-full rounded-xl border border-white/10 bg-[#11101a]/75 px-3 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15'
 const TYPE_CHIP = {
-  ARTIST:   'border-pink-400/50 bg-pink-500/15 text-pink-100',
-  PROVIDER: 'border-violet-400/50 bg-violet-500/15 text-violet-100',
-  ALL:      'border-indigo-400/50 bg-indigo-500/15 text-indigo-100',
+  ARTIST:   'border-violet-400/50 bg-violet-500/15 text-violet-100',
+  PROVIDER: 'border-gold/50 bg-gold/15 text-gold-light',
+  ALL:      'border-gold/40 bg-violet-500/10 text-gold-light',
 } as const
 
 type Props = {
@@ -244,7 +244,7 @@ export default function PublishOfferModal({ onClose, onPublished, defaultLocatio
               Annuler
             </button>
             <button onClick={submitPublish} disabled={pubSubmitting}
-              className="min-h-11 flex-[2] rounded-xl bg-gradient-to-r from-violet-600 to-indigo-500 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(139,92,246,0.9)] transition hover:from-violet-500 hover:to-indigo-400 disabled:opacity-50">
+              className="min-h-11 flex-[2] rounded-xl bg-gradient-to-r from-accent-strong to-accent text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(139,92,246,0.9)] transition hover:brightness-110 disabled:opacity-50">
               {pubSubmitting ? 'Publication…' : 'Publier l’offre'}
             </button>
           </div>

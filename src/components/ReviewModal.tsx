@@ -63,7 +63,7 @@ export default function ReviewModal({ prestation, onClose, onDone }: {
       <section role="dialog" aria-modal="true" aria-label="Laisser un avis" className="w-full max-w-md rounded-t-2xl border border-white/10 bg-[#0f0e13] p-5 text-white shadow-2xl sm:rounded-2xl">
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-[.18em] text-yellow-300/80">Votre avis</span>
+            <span className="text-[10px] font-bold uppercase tracking-[.18em] text-gold">Votre avis</span>
             <h2 className="mt-1 text-lg font-semibold truncate">{prestation.counterpart.name}</h2>
             <p className="text-xs text-white/45">{prestation.title ? `${prestation.title} · ` : ''}{date}</p>
           </div>
@@ -74,7 +74,7 @@ export default function ReviewModal({ prestation, onClose, onDone }: {
           <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
             {[1, 2, 3, 4, 5].map(value => (
               <button key={value} type="button" onClick={() => setRating(value)} onMouseEnter={() => setHover(value)} aria-label={`${value} étoile${value > 1 ? 's' : ''}`} className="p-1">
-                <Star size={30} className={value <= shown ? 'fill-yellow-400 text-yellow-400' : 'text-white/20'} />
+                <Star size={30} className={value <= shown ? 'fill-gold text-gold' : 'text-white/20'} />
               </button>
             ))}
           </div>
@@ -95,7 +95,7 @@ export default function ReviewModal({ prestation, onClose, onDone }: {
 
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-white/50 hover:text-white">Plus tard</button>
-          <button type="button" onClick={submit} disabled={saving} className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-black disabled:opacity-50">
+          <button type="button" onClick={submit} disabled={saving} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-50">
             {saving ? 'Envoi…' : 'Publier mon avis'}
           </button>
         </div>

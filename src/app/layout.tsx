@@ -1,11 +1,16 @@
 import './globals.css'
 import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
+import { Bodoni_Moda, Montserrat } from 'next/font/google'
 import { AuthProvider } from '@/context/AuthContext'
 import { PublicSettingsProvider } from '@/context/PublicSettingsContext'
 import ClientLayout from '@/components/ClientLayout'
 import { FeedbackProvider } from '@/components/ui/Feedback'
 import { getPublicSettings } from '@/lib/publicSettings'
+
+// Police de marque (choix B4, 13/10/2026) : Bodoni Moda pour les grands titres, Montserrat pour le texte
+const displayFont = Bodoni_Moda({ subsets: ['latin', 'latin-ext'], weight: ['500', '600', '700'], variable: '--font-bodoni', display: 'swap' })
+const bodyFont = Montserrat({ subsets: ['latin', 'latin-ext'], weight: ['400', '500', '600', '700'], variable: '--font-montserrat', display: 'swap' })
 
 const SITE_URL = 'https://lsbookers.com'
 const DESCRIPTION =
@@ -38,11 +43,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const publicSettings = await getPublicSettings()
 
   return (
-    <html lang="fr">
+    <html lang="fr" className={`${displayFont.variable} ${bodyFont.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#08070b" />
-        <meta name="msapplication-TileColor" content="#7C3AED" />
+        <meta name="theme-color" content="#0b0a10" />
+        <meta name="msapplication-TileColor" content="#8b5cf6" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black" />
         <meta name="apple-mobile-web-app-title" content="LSBookers" />

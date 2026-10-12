@@ -82,13 +82,13 @@ export default function PublicProfile({ userId }: { userId: string }) {
         followersCount={followers}
         publicationsCount={pubs.total}
         actions={isOwner ? (
-          <Link href="/studio-profile" className="flex items-center gap-2 whitespace-nowrap rounded-full bg-white px-4 py-2 text-sm text-black">
+          <Link href="/studio-profile" className="flex items-center gap-2 whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
             <Sparkles size={15} /> Modifier mon profil
           </Link>
         ) : (
           <>
             <FollowButton targetUserId={profile.userId} onFollowChange={following => setFollowers(c => following ? c + 1 : Math.max(0, c - 1))} />
-            <Link href={`/messages?to=${profile.userId}`} className="whitespace-nowrap rounded-full bg-white px-4 py-2 text-sm text-black">
+            <Link href={`/messages?to=${profile.userId}`} className="whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
               Contacter
             </Link>
           </>

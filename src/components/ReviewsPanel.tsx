@@ -39,7 +39,7 @@ export function Stars({ value, size = 10 }: { value: number; size?: number }) {
   return (
     <span className="flex items-center gap-0.5" aria-label={`${value} sur 5`}>
       {Array.from({ length: 5 }).map((_, i) => (
-        <Star key={i} size={size} className={i < Math.round(value) ? 'fill-yellow-400 text-yellow-400' : 'text-white/20'} />
+        <Star key={i} size={size} className={i < Math.round(value) ? 'fill-gold text-gold' : 'text-white/20'} />
       ))}
     </span>
   )
@@ -92,10 +92,10 @@ export default function ReviewsPanel({ profileId, isOwner = false }: { profileId
   return (
     <section className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
       <div className="flex items-center gap-2 mb-3">
-        <Star size={15} className="text-yellow-400" />
+        <Star size={15} className="text-gold" />
         <h2 className="text-xs uppercase tracking-widest text-white/35">Avis</h2>
         {average != null && count > 0 && (
-          <span className="ml-auto text-sm font-medium text-yellow-400">
+          <span className="ml-auto text-sm font-semibold text-gold">
             {average.toFixed(1)}<span className="text-white/35 text-xs font-normal"> / 5 · {count} avis</span>
           </span>
         )}

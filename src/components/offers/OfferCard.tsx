@@ -31,9 +31,9 @@ export type Offer = {
 
 /* ─── Config couleurs par type d'offre ──────────────────── */
 export const OFFER_TYPE_CONFIG = {
-  ARTIST:   { label: 'Artiste',      gradient: 'from-pink-500 to-rose-600',     border: 'border-pink-500/25',   badge: 'bg-pink-500/15 text-pink-300 border-pink-500/25',   apply: 'from-pink-600 to-rose-600' },
-  PROVIDER: { label: 'Prestataire',  gradient: 'from-violet-500 to-purple-600', border: 'border-violet-500/25', badge: 'bg-violet-500/15 text-violet-300 border-violet-500/25', apply: 'from-violet-600 to-purple-600' },
-  ALL:      { label: 'Tous profils', gradient: 'from-purple-500 to-indigo-600', border: 'border-purple-500/25', badge: 'bg-purple-500/15 text-purple-300 border-purple-500/25', apply: 'from-purple-600 to-indigo-600' },
+  ARTIST:   { label: 'Artiste',      gradient: 'from-violet-600 to-violet-500',     border: 'border-violet-400/30', badge: 'bg-violet-500/15 text-violet-200 border-violet-400/30', apply: 'from-violet-600 to-violet-500' },
+  PROVIDER: { label: 'Prestataire',  gradient: 'from-[#8a6a2e] to-[#b8914a]',       border: 'border-gold/30',       badge: 'bg-gold/15 text-gold-light border-gold/30',               apply: 'from-[#8a6a2e] to-[#b8914a]' },
+  ALL:      { label: 'Tous profils', gradient: 'from-violet-600 to-[#b8914a]',      border: 'border-gold/25',       badge: 'bg-violet-500/10 text-gold-light border-gold/25',         apply: 'from-violet-600 to-[#b8914a]' },
 } as const
 
 /* ─── Carte d'offre ─────────────────────────────────────── */

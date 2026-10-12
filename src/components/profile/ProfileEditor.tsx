@@ -204,7 +204,7 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
         <header className="flex items-center justify-between gap-3 border-b border-white/[0.08] px-4 py-3.5 sm:px-5">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-300/80">Studio profil</span>
-            <h2 className="text-base font-semibold">Modifier mon profil</h2>
+            <h2 className="font-display text-xl font-semibold">Modifier mon profil</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="grid h-10 w-10 place-items-center rounded-xl text-white/50 hover:bg-white/5 hover:text-white"><X size={18} /></button>
         </header>
@@ -360,7 +360,7 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
           {error && <p className="mb-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm text-white/55 hover:text-white">Annuler</button>
-            <button type="button" onClick={save} disabled={saving} className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black disabled:opacity-50">
+            <button type="button" onClick={save} disabled={saving} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-50">
               {saving ? 'Enregistrement…' : 'Enregistrer'}
             </button>
           </div>

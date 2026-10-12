@@ -121,13 +121,13 @@ export default function BottomNav() {
                   href={href}
                   onClick={() => setMoreOpen(false)}
                   className={`relative flex flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-3.5 text-[11px] font-medium transition ${
-                    isActive ? 'bg-purple-500/20 text-white' : 'bg-white/[0.05] text-white/75'
+                    isActive ? 'bg-violet-500/20 text-white' : 'bg-white/[0.05] text-white/75'
                   }`}
                 >
-                  <Icon className={`h-5 w-5 ${isActive ? 'text-purple-300' : 'text-purple-300/80'}`} strokeWidth={1.75} />
+                  <Icon className={`h-5 w-5 ${isActive ? 'text-violet-300' : 'text-violet-300/80'}`} strokeWidth={1.75} />
                   {label}
                   {badge > 0 && (
-                    <span className="absolute top-2 right-3 min-w-[16px] h-4 px-1 bg-purple-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                    <span className="absolute top-2 right-3 min-w-[16px] h-4 px-1 bg-violet-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
                       {badge > 99 ? '99+' : badge}
                     </span>
                   )}
@@ -170,13 +170,13 @@ export default function BottomNav() {
                 href={href}
                 className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition-all duration-200 ${
                   isActive
-                    ? 'text-purple-400'
+                    ? 'text-violet-400'
                     : 'text-white/35 hover:text-white/60'
                 }`}
               >
                 {/* Indicateur actif (barre en haut) */}
                 {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-purple-400 rounded-full" />
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-violet-400 rounded-full" />
                 )}
 
                 {/* Icône + badge */}
@@ -188,14 +188,14 @@ export default function BottomNav() {
                     />
                   </div>
                   {badge > 0 && (
-                    <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 bg-purple-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none shadow-lg">
+                    <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 bg-violet-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none shadow-lg">
                       {badge > 99 ? '99+' : badge}
                     </span>
                   )}
                 </div>
 
                 {/* Label */}
-                <span className={`text-[9px] font-medium leading-none tracking-wide ${isActive ? 'text-purple-400' : ''}`}>
+                <span className={`text-[9px] font-medium leading-none tracking-wide ${isActive ? 'text-violet-400' : ''}`}>
                   {label}
                 </span>
               </Link>
@@ -206,18 +206,18 @@ export default function BottomNav() {
             onClick={() => setMoreOpen(o => !o)}
             aria-expanded={moreOpen}
             className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition-all duration-200 ${
-              moreOpen || moreActive ? 'text-purple-400' : 'text-white/35 hover:text-white/60'
+              moreOpen || moreActive ? 'text-violet-400' : 'text-white/35 hover:text-white/60'
             }`}
           >
             {(moreOpen || moreActive) && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-purple-400 rounded-full" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-violet-400 rounded-full" />
             )}
             <div className="relative">
               {moreOpen
                 ? <X className="w-[22px] h-[22px]" strokeWidth={2.5} />
                 : <Menu className="w-[22px] h-[22px]" strokeWidth={moreActive ? 2.5 : 1.75} />}
               {unreadNotif > 0 && !moreOpen && (
-                <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 bg-purple-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none shadow-lg">
+                <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 bg-violet-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none shadow-lg">
                   {unreadNotif > 99 ? '99+' : unreadNotif}
                 </span>
               )}

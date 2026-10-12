@@ -64,7 +64,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
             {pending.message && <p className="mt-2 text-sm leading-relaxed text-white/55">{pending.message}</p>}
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" onClick={() => close(false)} className="rounded-xl px-4 py-2 text-sm text-white/55 hover:text-white">Annuler</button>
-              <button type="button" autoFocus onClick={() => close(true)} className={`rounded-xl px-4 py-2 text-sm font-semibold ${pending.danger ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-white text-black'}`}>
+              <button type="button" autoFocus onClick={() => close(true)} className={`rounded-xl px-4 py-2 text-sm font-semibold ${pending.danger ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-accent text-white hover:bg-accent-strong'}`}>
                 {pending.confirmLabel || (pending.danger ? 'Supprimer' : 'Confirmer')}
               </button>
             </div>

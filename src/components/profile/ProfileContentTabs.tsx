@@ -39,13 +39,13 @@ export default function ProfileContentTabs({ profileId, ownerUserId, role, mode,
         <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist">
           {tabs.map(item => (
             <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${tab === item.key ? 'bg-violet-600 text-white' : 'text-white/50 hover:text-white'}`}>
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${tab === item.key ? 'bg-accent text-white' : 'text-white/50 hover:text-white'}`}>
               {item.label}
             </button>
           ))}
         </div>
         {isOwner && tab === 'publications' && onAdd && (
-          <button type="button" onClick={onAdd} className="flex items-center gap-1 rounded-full bg-violet-600 px-3 py-1.5 text-xs text-white transition hover:bg-violet-500">
+          <button type="button" onClick={onAdd} className="flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent-strong">
             <Plus size={13} /> Ajouter
           </button>
         )}

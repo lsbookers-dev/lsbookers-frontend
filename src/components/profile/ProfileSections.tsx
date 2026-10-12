@@ -44,7 +44,7 @@ export function EmptyHint({ text, onAdd }: { text: string; onAdd?: () => void })
   return (
     <p className="text-sm text-white/35">
       {text}{' '}
-      {onAdd && <button type="button" onClick={onAdd} className="text-violet-300 hover:underline">Ajouter</button>}
+      {onAdd && <button type="button" onClick={onAdd} className="text-accent-light hover:underline">Ajouter</button>}
     </p>
   )
 }
@@ -78,8 +78,8 @@ export function TextSection({ title, icon, value, emptyText, section, mode, onEd
   )
 }
 
-export const CvIcon = <FileText size={15} className="text-purple-400" />
-export const FeesIcon = <Euro size={15} className="text-green-400" />
+export const CvIcon = <FileText size={15} className="text-accent-light" />
+export const FeesIcon = <Euro size={15} className="text-gold" />
 
 /* ── Styles musicaux ──────────────────────────────────────────────────────── */
 
@@ -89,7 +89,7 @@ export function StylesSection({ profile, mode, onEdit }: SectionProps) {
   const hidden = profile.showStyles === false
   if (mode === 'public' && (hidden || !styles.length)) return null
   return (
-    <Panel title="Styles musicaux" icon={<Music size={15} className="text-pink-400" />} onEdit={styles.length ? edit : undefined}>
+    <Panel title="Styles musicaux" icon={<Music size={15} className="text-accent-light" />} onEdit={styles.length ? edit : undefined}>
       {styles.length ? (
         <>
           <div className="flex flex-wrap gap-2">
@@ -212,9 +212,9 @@ export function OffersSection({ offers, mode, onPublish, onDelete }: {
   return (
     <Panel
       title={mode === 'studio' ? 'Mes offres' : 'Offres'}
-      icon={<Briefcase size={15} className="text-purple-400" />}
+      icon={<Briefcase size={15} className="text-accent-light" />}
       action={onPublish && (
-        <button type="button" onClick={onPublish} className="flex items-center gap-1 rounded-full bg-violet-600 px-3 py-1 text-xs text-white transition hover:bg-violet-500">
+        <button type="button" onClick={onPublish} className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-white transition hover:bg-accent-strong">
           <Plus size={12} /> Publier
         </button>
       )}
@@ -236,7 +236,7 @@ export function OffersSection({ offers, mode, onPublish, onDelete }: {
                     {offer.specialty && <span>{offer.specialty}</span>}
                     <span className="flex items-center gap-1"><Calendar size={11} />{new Date(offer.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     <span className="flex items-center gap-1"><MapPin size={11} />{offer.location}</span>
-                    {offer.fee != null && <span className="text-green-400/80">{offer.fee.toLocaleString('fr-FR')} €</span>}
+                    {offer.fee != null && <span className="font-semibold text-gold">{offer.fee.toLocaleString('fr-FR')} €</span>}
                   </p>
                 </Link>
                 {onDelete && (
