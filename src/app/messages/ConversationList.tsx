@@ -5,6 +5,7 @@ import { Search, MessageCircle, Loader2, Trash2, SquarePen } from 'lucide-react'
 import { Avatar } from './MessageUI'
 import { ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatTime } from './_helpers'
 import type { Conversation, SearchUser } from './types'
+import { stripLeadingEmoji } from '@/components/ui/LsIcon'
 
 interface ConversationListProps {
   conversations: Conversation[]
@@ -27,9 +28,6 @@ function getDisplayName(u: SearchUser) {
   return u.pseudo || [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Utilisateur'
 }
 
-function cleanPreview(value: string) {
-  return value.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, '').trim()
-}
 
 export default function ConversationList({
   conversations, convLoaded, currentUserId, search, setSearch, contacts,
@@ -103,7 +101,7 @@ export default function ConversationList({
             </div>
             <div className="flex items-center justify-between gap-2 mt-0.5">
               <p className={`text-xs truncate ${isUnread ? 'text-white/60' : 'text-white/30'}`}>
-                {conv.lastMessage ? cleanPreview(conv.lastMessage) : <span className="italic text-white/20">Nouvelle conversation</span>}
+                {conv.lastMessage ? stripLeadingEmoji(conv.lastMessage) : <span className="italic text-white/20">Nouvelle conversation</span>}
               </p>
               <button onClick={(e) => deleteConversation(conv.id, e)} disabled={deletingId === conv.id}
                 aria-label={`Supprimer la conversation avec ${other?.name || 'cet utilisateur'}`}

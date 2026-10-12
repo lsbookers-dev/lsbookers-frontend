@@ -10,6 +10,7 @@ import { apiUrl } from '@/utils/api'
 import { usePublicSettings } from '@/context/PublicSettingsContext'
 import { PUBLIC_IMAGE_BLUR } from '@/lib/publicSettings.shared'
 import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Gift, Mail, Lock, Camera, CalendarDays, Building2 } from 'lucide-react'
+import LsIcon, { LsBullet } from '@/components/ui/LsIcon'
 import CityAutocomplete from '@/components/CityAutocomplete'
 import PublicBrand from '@/components/PublicBrand'
 
@@ -196,7 +197,7 @@ function BrandingPanel({ step, logoUrl }: { step: number; logoUrl?: string | nul
           <ul className="mt-6 space-y-3">
             {content.items.map(item => (
               <li key={item} className="flex items-start gap-2.5 text-sm text-white/60">
-                <span className="text-violet-400 mt-0.5 flex-shrink-0">✦</span>
+                <LsBullet className="mt-1" />
                 {item}
               </li>
             ))}
@@ -560,8 +561,8 @@ export default function RegisterPage() {
                           <p className="text-sm font-semibold text-white/80">Tes spécialités <span className="text-white/30 font-normal">(optionnel)</span></p>
                         </div>
                         {specialties.length > 0 && (
-                          <span className="rounded-full bg-violet-500/20 border border-violet-400/30 px-2 py-0.5 text-[10px] text-violet-200 font-medium flex-shrink-0">
-                            {specialties.length} ✓
+                          <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/20 border border-violet-400/30 px-2 py-0.5 text-[10px] text-violet-200 font-medium flex-shrink-0">
+                            {specialties.length} <LsIcon name="check" size={13} tone="inherit" />
                           </span>
                         )}
                       </div>
@@ -590,8 +591,8 @@ export default function RegisterPage() {
                         {role === 'ARTIST' ? 'Pseudo / Nom de scène' : role === 'ORGANIZER' ? "Nom de l'établissement" : 'Nom commercial'}
                       </label>
                       {pseudoStatus === 'checking' && <span className="text-xs text-white/40">Vérification…</span>}
-                      {pseudoStatus === 'available' && <span className="text-xs text-emerald-400">✓ Disponible</span>}
-                      {pseudoStatus === 'taken'     && <span className="text-xs text-red-400">✗ Déjà utilisé</span>}
+                      {pseudoStatus === 'available' && <span className="flex items-center gap-1 text-xs text-emerald-400"><LsIcon name="check" size={14} tone="inherit" />Disponible</span>}
+                      {pseudoStatus === 'taken'     && <span className="flex items-center gap-1 text-xs text-red-400"><LsIcon name="close" size={14} tone="inherit" />Déjà utilisé</span>}
                     </div>
                     <input
                       type="text" value={pseudo}

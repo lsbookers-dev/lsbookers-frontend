@@ -9,6 +9,7 @@ import { apiFetch } from '@/utils/auth'
 import CityAutocomplete from '@/components/CityAutocomplete'
 import OfferCard, { type Offer } from '@/components/offers/OfferCard'
 import PublishOfferModal from '@/components/offers/PublishOfferModal'
+import LsIcon from '@/components/ui/LsIcon'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -362,7 +363,7 @@ function OffersInner() {
               <button onClick={() => setShareOffer(null)} className="text-neutral-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             {shareSuccess ? (
-              <p className="text-center text-green-400 py-6">✅ Offre partagée !</p>
+              <p className="flex items-center justify-center gap-2 text-green-400 py-6"><LsIcon name="check" size={18} tone="inherit" />Offre partagée !</p>
             ) : (
               <>
                 <input

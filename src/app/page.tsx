@@ -6,11 +6,7 @@ import Link from 'next/link'
 import PublicBrand from '@/components/PublicBrand'
 import { usePublicSettings } from '@/context/PublicSettingsContext'
 import { PUBLIC_IMAGE_BLUR } from '@/lib/publicSettings.shared'
-import {
-  Mic2, CalendarDays, Camera, Lock, CreditCard, Globe,
-  Smartphone, Bell, Zap, WifiOff, ArrowUp, Plus, CheckCircle2,
-  Star, Home, Search, Mail,
-} from 'lucide-react'
+import LsIcon, { LsBullet } from '@/components/ui/LsIcon'
 
 /* ─────────────────────────────────────────────────────────
    COMPOSANTS UI
@@ -53,7 +49,7 @@ function AudienceCard({
       <ul className="space-y-1.5 mt-1">
         {items.map(item => (
           <li key={item} className="flex items-center gap-2 text-sm text-white/70">
-            <span className="text-purple-400 text-xs">✦</span>
+            <LsBullet />
             {item}
           </li>
         ))}
@@ -144,10 +140,10 @@ function PhoneMockup() {
           {/* Bottom nav mockup */}
           <div className="border-t border-white/8 pt-2 flex justify-around px-2">
             {[
-              <Home key="home" className="w-2.5 h-2.5" />,
-              <Search key="search" className="w-2.5 h-2.5" />,
-              <Mail key="mail" className="w-2.5 h-2.5" />,
-              <Bell key="bell" className="w-2.5 h-2.5" />,
+              <LsIcon key="home" name="home" size={10} tone="inherit" />,
+              <LsIcon key="search" name="search" size={10} tone="inherit" />,
+              <LsIcon key="mail" name="mail" size={10} tone="inherit" />,
+              <LsIcon key="bell" name="bell" size={10} tone="inherit" />,
             ].map((icon, i) => (
               <div key={i} className={`flex flex-col items-center gap-0.5 ${i === 0 ? 'opacity-100 text-purple-400' : 'opacity-30 text-white/60'}`}>
                 {icon}
@@ -218,7 +214,7 @@ function AppSection() {
             {/* Pill badge */}
             <div className="inline-flex justify-center lg:justify-start">
               <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-xs text-purple-300 font-medium">
-                <Smartphone className="h-3 w-3" /> Application mobile disponible
+                <LsIcon name="phone" size={12} tone="inherit" /> Application mobile disponible
               </span>
             </div>
 
@@ -238,9 +234,9 @@ function AppSection() {
             {/* Points forts */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { icon: <Zap className="h-5 w-5 text-purple-400" />, label: 'Ultra rapide', desc: 'Chargement instantané' },
-                { icon: <Bell className="h-5 w-5 text-purple-400" />, label: 'Notifications', desc: 'Ne ratez rien' },
-                { icon: <WifiOff className="h-5 w-5 text-purple-400" />, label: 'Hors ligne', desc: 'Fonctionne sans réseau' },
+                { icon: <LsIcon name="bolt" />, label: 'Ultra rapide', desc: 'Chargement instantané' },
+                { icon: <LsIcon name="bell" />, label: 'Notifications', desc: 'Ne ratez rien' },
+                { icon: <LsIcon name="offline" />, label: 'Hors ligne', desc: 'Fonctionne sans réseau' },
               ].map(({ icon, label, desc }) => (
                 <div key={label} className="rounded-xl border border-white/8 bg-white/3 p-3 text-center flex flex-col items-center">
                   {icon}
@@ -257,7 +253,7 @@ function AppSection() {
                   onClick={handleInstall}
                   className="flex items-center justify-center gap-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 px-6 py-3.5 text-white font-semibold transition shadow-lg shadow-purple-900/40"
                 >
-                  <Smartphone className="h-5 w-5" />
+                  <LsIcon name="phone" tone="inherit" />
                   <div className="text-left">
                     <p className="text-[10px] text-purple-200 leading-none mb-0.5">Installer sur</p>
                     <p className="text-sm font-bold leading-none">Android</p>
@@ -273,7 +269,7 @@ function AppSection() {
                     : 'border border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
                 }`}
               >
-                <Smartphone className={`h-5 w-5 ${isIOS ? 'text-neutral-700' : ''}`} />
+                <LsIcon name="phone" tone="inherit" className={isIOS ? 'text-neutral-700' : ''} />
                 <div className="text-left">
                   <p className={`text-[10px] leading-none mb-0.5 ${isIOS ? 'text-neutral-500' : 'text-white/50'}`}>Installer sur</p>
                   <p className="text-sm font-bold leading-none">iPhone / iPad</p>
@@ -301,9 +297,9 @@ function AppSection() {
 
             <div className="space-y-4 mb-6">
               {[
-                { step: 1, icon: <ArrowUp className="h-4 w-4 text-purple-400" />, text: 'Appuyez sur le bouton Partager en bas de Safari' },
-                { step: 2, icon: <Plus className="h-4 w-4 text-purple-400" />, text: 'Faites défiler et appuyez sur « Sur l\'écran d\'accueil »' },
-                { step: 3, icon: <CheckCircle2 className="h-4 w-4 text-purple-400" />, text: 'Confirmez en appuyant sur « Ajouter » en haut à droite' },
+                { step: 1, icon: <LsIcon name="share" size={16} />, text: 'Appuyez sur le bouton Partager en bas de Safari' },
+                { step: 2, icon: <LsIcon name="plus" size={16} />, text: 'Faites défiler et appuyez sur « Sur l\'écran d\'accueil »' },
+                { step: 3, icon: <LsIcon name="check" size={16} />, text: 'Confirmez en appuyant sur « Ajouter » en haut à droite' },
               ].map(({ step, icon, text }) => (
                 <div key={step} className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
@@ -395,7 +391,7 @@ export default function LandingPage() {
             <div className="max-w-3xl w-full text-center flex flex-col items-center gap-6">
 
               <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-1.5 text-xs text-white/75 backdrop-blur">
-                ✦ Réseau social &amp; Plateforme de mise en relation événementielle
+                <LsBullet /> Réseau social &amp; Plateforme de mise en relation événementielle
               </p>
 
               <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05]">
@@ -445,23 +441,23 @@ export default function LandingPage() {
           {/* Promesses produit */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-white/60">
             <span className="flex items-center gap-2">
-              <span className="text-purple-400">✦</span> Gratuit pour commencer
+              <LsBullet /> Gratuit pour commencer
             </span>
             <span className="hidden sm:block text-white/15">|</span>
             <span className="flex items-center gap-2">
-              <span className="text-purple-400">✦</span> Agenda professionnel intégré
+              <LsBullet /> Agenda professionnel intégré
             </span>
             <span className="hidden sm:block text-white/15">|</span>
             <span className="flex items-center gap-2">
-              <span className="text-purple-400">✦</span> Messagerie directe
+              <LsBullet /> Messagerie directe
             </span>
             <span className="hidden sm:block text-white/15">|</span>
             <span className="flex items-center gap-2">
-              <span className="text-purple-400">✦</span> Offres d&apos;emploi événementiel
+              <LsBullet /> Offres d&apos;emploi événementiel
             </span>
             <span className="hidden sm:block text-white/15">|</span>
             <span className="flex items-center gap-2">
-              <span className="text-purple-400">✦</span> Système d&apos;avis
+              <LsBullet /> Système d&apos;avis
             </span>
           </div>
 
@@ -470,11 +466,11 @@ export default function LandingPage() {
 
           {/* Confiance technique */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-white/35">
-            <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Données sécurisées</span>
+            <span className="flex items-center gap-1.5"><LsIcon name="lock" size={13} tone="inherit" /> Données sécurisées</span>
             <span className="hidden sm:block text-white/10">·</span>
-            <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Hébergé en Europe</span>
+            <span className="flex items-center gap-1.5"><LsIcon name="globe" size={13} tone="inherit" /> Hébergé en Europe</span>
             <span className="hidden sm:block text-white/10">·</span>
-            <span className="flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Paiements via Stripe</span>
+            <span className="flex items-center gap-1.5"><LsIcon name="payment" size={13} tone="inherit" /> Paiements via Stripe</span>
             <span className="hidden sm:block text-white/10">·</span>
             <span>Support francophone</span>
           </div>
@@ -499,7 +495,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <AudienceCard
-            icon={<Mic2 className="h-6 w-6 text-purple-400" />}
+            icon={<LsIcon name="mic" size={24} />}
             title="Artistes"
             subtitle="DJ · Chanteur · Saxophoniste · Danseur…"
             items={[
@@ -510,7 +506,7 @@ export default function LandingPage() {
             ]}
           />
           <AudienceCard
-            icon={<CalendarDays className="h-6 w-6 text-purple-400" />}
+            icon={<LsIcon name="venue" size={24} />}
             title="Organisateurs"
             subtitle="Club · Festival · Agence · Soirée privée…"
             items={[
@@ -521,7 +517,7 @@ export default function LandingPage() {
             ]}
           />
           <AudienceCard
-            icon={<Camera className="h-6 w-6 text-purple-400" />}
+            icon={<LsIcon name="tools" size={24} />}
             title="Prestataires"
             subtitle="Photo · Son · Décoration · Traiteur…"
             items={[
@@ -576,7 +572,7 @@ export default function LandingPage() {
                 {/* Carte principale */}
                 <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 shadow-2xl">
                   <div className="flex items-center gap-3 mb-5">
-                    <div className="h-10 w-10 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center"><Mic2 className="h-5 w-5 text-purple-400" /></div>
+                    <div className="h-10 w-10 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center"><LsIcon name="mic" /></div>
                     <div>
                       <p className="text-sm font-semibold text-white">DJ Nova</p>
                       <p className="text-xs text-white/45">Paris · Disponible ce week-end</p>
@@ -590,7 +586,7 @@ export default function LandingPage() {
                   </div>
                   <div className="h-px bg-white/8 mb-4" />
                   <div className="flex items-center justify-between text-xs text-white/45">
-                    <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-yellow-400 text-yellow-400" /> 4.9 · 48 avis</span>
+                    <span className="flex items-center gap-1"><LsIcon name="star" size={13} tone="gold" /> 4.9 · 48 avis</span>
                     <span>127 abonnés</span>
                   </div>
                 </div>
@@ -603,8 +599,8 @@ export default function LandingPage() {
 
                 {/* Badge flottant bas */}
                 <div className="absolute -bottom-4 -left-4 rounded-xl border border-white/10 bg-neutral-900/90 backdrop-blur px-4 py-2.5 shadow-xl">
-                  <p className="text-xs text-white/60">Message reçu</p>
-                  <p className="text-sm font-semibold text-white">Club Nova t&apos;a contacté ✉️</p>
+                  <p className="flex items-center gap-1.5 text-xs text-white/60"><LsIcon name="message" size={14} />Message reçu</p>
+                  <p className="text-sm font-semibold text-white">Club Nova t&apos;a contacté</p>
                 </div>
 
               </div>

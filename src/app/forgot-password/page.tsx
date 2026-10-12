@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import axios from 'axios'
 import { apiUrl } from '@/utils/api'
+import LsIcon from '@/components/ui/LsIcon'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail]     = useState('')
@@ -46,8 +47,8 @@ export default function ForgotPasswordPage() {
 
           {sent ? (
             <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 text-3xl">
-                📬
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
+                <LsIcon name="mail" size={30} tone="ok" />
               </div>
               <h2 className="text-xl font-black mb-2">Email envoyé !</h2>
               <p className="text-sm text-white/55 leading-relaxed">
@@ -82,7 +83,7 @@ export default function ForgotPasswordPage() {
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-white/75">Email</label>
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">✉️</span>
+                    <LsIcon name="mail" size={17} tone="muted" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
                       value={email}

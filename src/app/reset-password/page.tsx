@@ -6,6 +6,7 @@ import Link from 'next/link'
 import axios, { isAxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import { apiUrl } from '@/utils/api'
+import LsIcon from '@/components/ui/LsIcon'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -68,8 +69,8 @@ function ResetPasswordForm() {
       {success ? (
         /* ── Succès ── */
         <div className="text-center py-4">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 text-3xl">
-            ✅
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
+            <LsIcon name="check" size={30} tone="ok" />
           </div>
           <h2 className="text-xl font-black mb-2">Mot de passe mis à jour !</h2>
           <p className="text-sm text-white/55 leading-relaxed">
@@ -113,7 +114,7 @@ function ResetPasswordForm() {
                 Nouveau mot de passe
               </label>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">🔒</span>
+                <LsIcon name="lock" size={17} tone="muted" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -139,7 +140,7 @@ function ResetPasswordForm() {
                 Confirmer le mot de passe
               </label>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-base">🔒</span>
+                <LsIcon name="lock" size={17} tone="muted" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showConfirm ? 'text' : 'password'}
                   value={confirm}
@@ -159,8 +160,9 @@ function ResetPasswordForm() {
               </div>
               {/* Indicateur concordance */}
               {confirm && (
-                <p className={`mt-1 text-xs ${password === confirm ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {password === confirm ? '✓ Les mots de passe correspondent' : '✗ Les mots de passe ne correspondent pas'}
+                <p className={`mt-1 flex items-center gap-1 text-xs ${password === confirm ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <LsIcon name={password === confirm ? 'check' : 'close'} size={14} tone="inherit" />
+                  {password === confirm ? 'Les mots de passe correspondent' : 'Les mots de passe ne correspondent pas'}
                 </p>
               )}
             </div>

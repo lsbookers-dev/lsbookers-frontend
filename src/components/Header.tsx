@@ -14,6 +14,8 @@ import { getSocket } from '@/lib/socket'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
 import { reviewOrBookingItemLink } from '@/utils/notificationLinks'
+import LsIcon from '@/components/ui/LsIcon'
+import { NotificationIcon } from '@/lib/notificationTypes'
 
 /* ─────────────────────────────────────────────────────────
    TYPES
@@ -33,32 +35,6 @@ type PopupNotif = {
   staffId?: number | null
   eventId?: number | null
   staffStatus?: string | null
-}
-
-const POPUP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
-  NEW_MESSAGE:           { icon: '💬', color: 'bg-blue-500/15 text-blue-300' },
-  BOOKING_REQUEST:       { icon: '📩', color: 'bg-violet-500/15 text-violet-300' },
-  BOOKING_ACCEPTED:      { icon: '✅', color: 'bg-green-500/15 text-green-300' },
-  BOOKING_DECLINED:      { icon: '❌', color: 'bg-red-500/15 text-red-300' },
-  BOOKING_CANCELLED:     { icon: '🚫', color: 'bg-red-500/15 text-red-300' },
-  CANCELLATION_REQUEST:  { icon: '⚠️', color: 'bg-orange-500/15 text-orange-300' },
-  CANCELLATION_ACCEPTED: { icon: '✅', color: 'bg-green-500/15 text-green-300' },
-  CANCELLATION_DECLINED: { icon: '❌', color: 'bg-red-500/15 text-red-300' },
-  PAYMENT_RECEIVED:      { icon: '💳', color: 'bg-green-500/15 text-green-300' },
-  NEW_OFFER:             { icon: '🎯', color: 'bg-pink-500/15 text-pink-300' },
-  NEW_FOLLOW:            { icon: '👤', color: 'bg-teal-500/15 text-teal-300' },
-  NEW_COMMENT:           { icon: '💭', color: 'bg-indigo-500/15 text-indigo-300' },
-  NEW_COMMENT_REPLY:     { icon: '↩️', color: 'bg-indigo-500/15 text-indigo-300' },
-  NEW_COMMENT_LIKE:      { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
-  NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300' },
-  NEW_REVIEW:            { icon: '⭐', color: 'bg-yellow-500/15 text-yellow-300' },
-  REVIEW_AVAILABLE:      { icon: '⭐', color: 'bg-yellow-500/15 text-yellow-300' },
-  BOOKING_ITEM_ADDED:    { icon: '📎', color: 'bg-sky-500/15 text-sky-300' },
-  NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300' },
-  STAFF_INVITATION:      { icon: '🎤', color: 'bg-violet-500/15 text-violet-300' },
-  STAFF_ACCEPTED:        { icon: '✅', color: 'bg-green-500/15 text-green-300' },
-  STAFF_REFUSED:         { icon: '❌', color: 'bg-red-500/15 text-red-300' },
-  DEFAULT:               { icon: '🔔', color: 'bg-white/10 text-white/50' },
 }
 
 const BOOKING_TYPES = [
@@ -364,13 +340,12 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
                         </div>
                       ) : notifList.length === 0 ? (
                         <div className="text-center py-10">
-                          <p className="text-2xl mb-2">🔔</p>
+                          <LsIcon name="bell" size={26} tone="muted" className="mx-auto mb-2" />
                           <p className="text-xs text-white/30">Aucune notification</p>
                         </div>
                       ) : (
                         <div className="p-2 space-y-0.5">
                           {notifList.slice(0, 20).map(notif => {
-                            const cfg  = POPUP_TYPE_CONFIG[notif.type] || POPUP_TYPE_CONFIG.DEFAULT
                             const link = getPopupLink(notif)
                             const inner = (
                               <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
@@ -381,9 +356,7 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
                                   {notif.actor?.avatar ? (
                                     <img src={notif.actor.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
                                   ) : (
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${cfg.color}`}>
-                                      {cfg.icon}
-                                    </div>
+                                    <NotificationIcon type={notif.type} />
                                   )}
                                 </div>
                                 {/* Texte */}
@@ -408,7 +381,7 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
                                   <div className="shrink-0 mt-0.5">
                                     {notif.actor?.avatar
                                       ? <img src={notif.actor.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                                      : <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${cfg.color}`}>{cfg.icon}</div>
+                                      : <NotificationIcon type={notif.type} />
                                     }
                                   </div>
                                   <div className="flex-1 min-w-0">
@@ -417,9 +390,9 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
                                       {new Date(notif.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                     {notif.staffStatus === 'BOOKED' ? (
-                                      <p className="mt-2 text-[10px] text-emerald-400 font-medium">✓ Invitation acceptée</p>
+                                      <p className="mt-2 flex items-center gap-1 text-[10px] text-emerald-400 font-medium"><LsIcon name="check" tone="inherit" size={13} />Invitation acceptée</p>
                                     ) : notif.staffStatus === 'CANCELLED' ? (
-                                      <p className="mt-2 text-[10px] text-red-400 font-medium">✕ Invitation refusée</p>
+                                      <p className="mt-2 flex items-center gap-1 text-[10px] text-red-400 font-medium"><LsIcon name="close" tone="inherit" size={13} />Invitation refusée</p>
                                     ) : (
                                       <div className="mt-2 flex gap-1.5">
                                         <button
@@ -427,14 +400,14 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
                                           disabled={!!respondingStaff[notif.id]}
                                           className="flex-1 py-1 rounded-lg bg-emerald-600/70 hover:bg-emerald-600 text-white text-[10px] font-medium transition disabled:opacity-40"
                                         >
-                                          {respondingStaff[notif.id] ? '…' : '✓ Accepter'}
+                                          {respondingStaff[notif.id] ? '…' : 'Accepter'}
                                         </button>
                                         <button
                                           onClick={() => respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'REFUSE')}
                                           disabled={!!respondingStaff[notif.id]}
                                           className="flex-1 py-1 rounded-lg bg-red-600/50 hover:bg-red-600/80 text-white text-[10px] font-medium transition disabled:opacity-40"
                                         >
-                                          {respondingStaff[notif.id] ? '…' : '✕ Refuser'}
+                                          {respondingStaff[notif.id] ? '…' : 'Refuser'}
                                         </button>
                                       </div>
                                     )}
@@ -451,13 +424,11 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
                                     notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
                                   }`}>
                                     <div className="shrink-0 mt-0.5">
-                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${POPUP_TYPE_CONFIG.NEW_DEVICE_LOGIN.color}`}>
-                                        {POPUP_TYPE_CONFIG.NEW_DEVICE_LOGIN.icon}
-                                      </div>
+                                      <NotificationIcon type="NEW_DEVICE_LOGIN" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <p className="text-xs text-white/75 leading-relaxed line-clamp-2">{notif.content}</p>
-                                      <p className="text-[10px] text-amber-400/80 mt-1 font-medium">Gérer → voir les détails</p>
+                                      <p className="text-[10px] text-gold mt-1 font-medium">Gérer → voir les détails</p>
                                     </div>
                                     {!notif.read && (
                                       <span className="shrink-0 w-2 h-2 rounded-full bg-violet-400 mt-1" />

@@ -10,6 +10,7 @@ import Image from 'next/image'
 import { X, Tag, UserMinus, Search } from 'lucide-react'
 import type { PubTag } from './PublicationCard'
 import { getAuthToken, apiFetch } from '@/utils/auth'
+import LsIcon from '@/components/ui/LsIcon'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -141,7 +142,7 @@ export default function TagModal({ pubId, initialTags, onClose, onTagsChange }: 
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{displayName(t.taggedUser)}</p>
-                        <p className="text-[10px] text-green-400">✓ Accepté</p>
+                        <p className="flex items-center gap-1 text-[10px] text-green-400"><LsIcon name="check" size={11} tone="inherit" />Accepté</p>
                       </div>
                       <button onClick={() => handleRemove(t.id)} className="text-white/25 hover:text-red-400 transition shrink-0">
                         <UserMinus size={14} />
@@ -166,7 +167,7 @@ export default function TagModal({ pubId, initialTags, onClose, onTagsChange }: 
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{displayName(t.taggedUser)}</p>
-                        <p className="text-[10px] text-amber-400">⏳ En attente de confirmation</p>
+                        <p className="flex items-center gap-1 text-[10px] text-gold"><LsIcon name="hourglass" size={11} tone="inherit" />En attente de confirmation</p>
                       </div>
                       <button onClick={() => handleRemove(t.id)} className="text-white/25 hover:text-red-400 transition shrink-0">
                         <UserMinus size={14} />

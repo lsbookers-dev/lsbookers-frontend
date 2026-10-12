@@ -3,6 +3,7 @@
 import { apiFetch } from '@/utils/auth'
 import { useState } from 'react'
 import { Mail, MessageSquare, User, AtSign, Tag, Send, CheckCircle } from 'lucide-react'
+import LsIcon from '@/components/ui/LsIcon'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -170,23 +171,23 @@ export default function ContactPage() {
         <aside className="space-y-4 lg:pt-2">
           {[
             {
-              icon: '⏱',
+              icon: 'clock' as const,
               title: 'Délai de réponse',
               desc: 'Nous lisons tous les messages et répondons par email sous 24 à 48h.',
             },
             {
-              icon: '🔒',
+              icon: 'shield' as const,
               title: 'Vos données sont protégées',
               desc: 'Vos informations ne sont jamais partagées avec des tiers.',
             },
             {
-              icon: '🐛',
+              icon: 'bug' as const,
               title: 'Signaler un bug',
               desc: 'Décrivez précisément le problème et les étapes pour le reproduire.',
             },
           ].map(card => (
             <div key={card.title} className="bg-white/5 border border-white/10 rounded-2xl p-5">
-              <div className="text-2xl mb-2">{card.icon}</div>
+              <LsIcon name={card.icon} size={24} className="mb-2" />
               <h3 className="font-semibold text-sm mb-1">{card.title}</h3>
               <p className="text-xs text-white/50 leading-relaxed">{card.desc}</p>
             </div>

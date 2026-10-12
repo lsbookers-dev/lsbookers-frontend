@@ -18,6 +18,7 @@ import { BookingRequestCard, CancellationRequestCard } from './BookingCards'
 import { API_BASE, ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatMessageTime } from './_helpers'
 import type { Conversation, Message, BookingRequestData } from './types'
 import OfferModal, { type OfferDetail } from '@/components/OfferModal'
+import { stripLeadingEmoji } from '@/components/ui/LsIcon'
 
 interface MessageThreadProps {
   activeConv: Conversation | null
@@ -568,7 +569,7 @@ export default function MessageThread({
                         ? 'lsb-message-bubble-me bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-violet-900/30'
                         : 'lsb-message-bubble-them bg-[#1c1c2e] border border-white/[0.06] text-white/90'
                     }`}>
-                      {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                      {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.bookingRequestId ? stripLeadingEmoji(msg.content) : msg.content}</p>}
                       <AttachmentBubble msg={msg} onImageClick={(url, name) => setLightbox({ url, name })} />
                     </div>
                     {/* Heure + lu — seulement sur le dernier du groupe */}

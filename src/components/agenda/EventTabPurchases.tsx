@@ -2,6 +2,7 @@
 
 import { PurchaseItem, DocumentItem } from './types'
 import { DocumentsSection } from './helpers'
+import LsIcon from '@/components/ui/LsIcon'
 
 interface Props {
   isBookedEvent: boolean
@@ -54,8 +55,8 @@ export default function EventTabPurchases(p: Props) {
                 </p>
               )}
             </div>
-            <button onClick={() => p.deletePurchase(pu.id)}
-              className="text-white/20 hover:text-red-400 transition text-xs shrink-0">✕</button>
+            <button onClick={() => p.deletePurchase(pu.id)} aria-label="Supprimer cet achat"
+              className="text-white/25 hover:text-red-400 transition shrink-0"><LsIcon name="close" size={16} tone="inherit" /></button>
           </div>
         ))}
         {p.purchases.length === 0 && (

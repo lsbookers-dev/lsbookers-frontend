@@ -4,6 +4,8 @@ import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
 import { apiFetch } from '@/utils/auth'
 import { reviewOrBookingItemLink } from '@/utils/notificationLinks'
+import LsIcon from '@/components/ui/LsIcon'
+import { NotificationIcon, notificationType } from '@/lib/notificationTypes'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -21,44 +23,7 @@ type Notif = {
   staffStatus?: string | null
 }
 
-// ─── Config types visuels ────────────────────────────────────────────────────
-
-type TypeConfig = { icon: string; color: string; label: string }
-
-const TYPE_CONFIG: Record<string, TypeConfig> = {
-  // Messages
-  NEW_MESSAGE:           { icon: '💬', color: 'bg-blue-500/15 text-blue-300',    label: 'Message' },
-  // Bookings
-  BOOKING_REQUEST:       { icon: '📩', color: 'bg-violet-500/15 text-violet-300', label: 'Demande booking' },
-  BOOKING_ACCEPTED:      { icon: '✅', color: 'bg-green-500/15 text-green-300',   label: 'Booking accepté' },
-  BOOKING_DECLINED:      { icon: '❌', color: 'bg-red-500/15 text-red-300',       label: 'Booking refusé' },
-  BOOKING_CANCELLED:     { icon: '🚫', color: 'bg-red-500/15 text-red-300',       label: 'Booking annulé' },
-  CANCELLATION_REQUEST:  { icon: '⚠️', color: 'bg-orange-500/15 text-orange-300', label: "Demande d'annulation" },
-  CANCELLATION_ACCEPTED: { icon: '✅', color: 'bg-green-500/15 text-green-300',   label: 'Annulation confirmée' },
-  CANCELLATION_DECLINED: { icon: '❌', color: 'bg-red-500/15 text-red-300',       label: 'Annulation refusée' },
-  PAYMENT_RECEIVED:      { icon: '💳', color: 'bg-green-500/15 text-green-300',   label: 'Paiement reçu' },
-  // Offres
-  NEW_OFFER:             { icon: '🎯', color: 'bg-pink-500/15 text-pink-300',     label: 'Nouvelle offre' },
-  // Réseau social
-  NEW_FOLLOW:            { icon: '👤', color: 'bg-teal-500/15 text-teal-300',     label: 'Nouvel abonné' },
-  NEW_COMMENT:           { icon: '💭', color: 'bg-indigo-500/15 text-indigo-300', label: 'Commentaire' },
-  NEW_LIKE:              { icon: '❤️', color: 'bg-rose-500/15 text-rose-300',     label: 'Like' },
-  NEW_REVIEW:            { icon: '⭐', color: 'bg-yellow-500/15 text-yellow-300', label: 'Nouvel avis' },
-  REVIEW_AVAILABLE:      { icon: '⭐', color: 'bg-yellow-500/15 text-yellow-300', label: 'Avis à laisser' },
-  BOOKING_ITEM_ADDED:    { icon: '📎', color: 'bg-sky-500/15 text-sky-300',       label: 'Booking mis à jour' },
-  // Sécurité
-  NEW_DEVICE_LOGIN:      { icon: '🔐', color: 'bg-amber-500/15 text-amber-300',   label: 'Sécurité' },
-  // Invitations staff événement
-  STAFF_INVITATION:      { icon: '🎪', color: 'bg-violet-500/15 text-violet-300', label: 'Invitation événement' },
-  STAFF_ACCEPTED:        { icon: '✅', color: 'bg-emerald-500/15 text-emerald-300', label: 'Invitation acceptée' },
-  STAFF_REFUSED:         { icon: '❌', color: 'bg-red-500/15 text-red-300',        label: 'Invitation refusée' },
-  // Fallback
-  DEFAULT:               { icon: '🔔', color: 'bg-white/10 text-white/50',        label: 'Notification' },
-}
-
-function getConfig(type: string): TypeConfig {
-  return TYPE_CONFIG[type] || TYPE_CONFIG.DEFAULT
-}
+// Pictos et libellés des types : lib/notificationTypes
 
 const BOOKING_TYPES = [
   'BOOKING_REQUEST', 'BOOKING_ACCEPTED', 'BOOKING_DECLINED',
@@ -240,7 +205,7 @@ export default function NotificationsPage() {
           </div>
         ) : paginated.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-3xl mb-3">🔔</p>
+            <LsIcon name="bell" size={34} tone="muted" className="mx-auto mb-3" />
             <p className="text-sm text-white/30">
               {filterUnread ? 'Aucune notification non lue.' : 'Aucune notification.'}
             </p>
@@ -248,7 +213,7 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-2">
             {paginated.map(notif => {
-              const cfg  = getConfig(notif.type)
+              const cfg  = notificationType(notif.type)
               const link = getLink(notif)
               const content = (
                 <div
@@ -270,16 +235,14 @@ export default function NotificationsPage() {
                       {notif.actor?.avatar ? (
                         <img src={notif.actor.avatar} alt="" className="w-9 h-9 rounded-full object-cover" />
                       ) : (
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base ${cfg.color}`}>
-                          {cfg.icon}
-                        </div>
+                        <NotificationIcon type={notif.type} box={36} />
                       )}
                     </div>
 
                     {/* Contenu */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cfg.color}`}>
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.04] text-white/60">
                           {cfg.label}
                         </span>
                       </div>
@@ -295,30 +258,30 @@ export default function NotificationsPage() {
 
                       {/* Alerte sécurité — action par email */}
                       {notif.type === 'NEW_DEVICE_LOGIN' && (
-                        <p className="mt-2 text-xs text-amber-400/80">
-                          📧 Un email a été envoyé à votre adresse pour confirmer ou sécuriser votre compte.
+                        <p className="mt-2 flex items-center gap-1.5 text-xs text-gold">
+                          <LsIcon name="mail" tone="inherit" size={15} />Un email a été envoyé à votre adresse pour confirmer ou sécuriser votre compte.
                         </p>
                       )}
 
                       {/* Invitation staff — boutons Accepter / Refuser */}
                       {notif.type === 'STAFF_INVITATION' && notif.staffId && notif.eventId && (
                         notif.staffStatus === 'BOOKED' ? (
-                          <p className="mt-2 text-xs text-emerald-400">✓ Invitation acceptée</p>
+                          <p className="mt-2 flex items-center gap-1 text-xs text-emerald-400"><LsIcon name="check" tone="inherit" size={15} />Invitation acceptée</p>
                         ) : notif.staffStatus === 'CANCELLED' ? (
-                          <p className="mt-2 text-xs text-red-400">✕ Invitation refusée</p>
+                          <p className="mt-2 flex items-center gap-1 text-xs text-red-400"><LsIcon name="close" tone="inherit" size={15} />Invitation refusée</p>
                         ) : (
                           <div className="mt-3 flex gap-2">
                             <button
                               onClick={e => { e.preventDefault(); respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'ACCEPT') }}
                               className="flex-1 py-1.5 rounded-lg bg-emerald-600/70 hover:bg-emerald-600 text-white text-xs font-medium transition"
                             >
-                              ✓ Accepter
+                              Accepter
                             </button>
                             <button
                               onClick={e => { e.preventDefault(); respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'REFUSE') }}
                               className="flex-1 py-1.5 rounded-lg bg-red-600/50 hover:bg-red-600/80 text-white text-xs font-medium transition"
                             >
-                              ✕ Refuser
+                              Refuser
                             </button>
                           </div>
                         )

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import LsIcon from '@/components/ui/LsIcon'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -123,13 +124,13 @@ export default function InstallPrompt() {
 
             <div className="space-y-4 mb-6">
               {[
-                { step: '1', icon: '⬆️', text: 'Appuyez sur le bouton Partager en bas de Safari' },
-                { step: '2', icon: '➕', text: 'Faites défiler et appuyez sur « Sur l\'écran d\'accueil »' },
-                { step: '3', icon: '✅', text: 'Appuyez sur « Ajouter » en haut à droite' },
+                { step: '1', icon: 'share' as const, text: 'Appuyez sur le bouton Partager en bas de Safari' },
+                { step: '2', icon: 'plus' as const, text: 'Faites défiler et appuyez sur « Sur l\'écran d\'accueil »' },
+                { step: '3', icon: 'check' as const, text: 'Appuyez sur « Ajouter » en haut à droite' },
               ].map(({ step, icon, text }) => (
                 <div key={step} className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-sm flex-shrink-0">
-                    <span>{icon}</span>
+                    <LsIcon name={icon} size={16} />
                   </div>
                   <p className="text-sm text-white/75 leading-relaxed pt-1">{text}</p>
                 </div>
@@ -141,7 +142,7 @@ export default function InstallPrompt() {
               <div className="h-px w-full bg-white/10" />
               <p className="text-xs text-white/30 text-center">
                 Le bouton Partager ressemble à ça →{' '}
-                <span className="text-white/60">⬆️</span>
+                <LsIcon name="share" size={15} tone="muted" className="align-text-bottom" />
               </p>
             </div>
 

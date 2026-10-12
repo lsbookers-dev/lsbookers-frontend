@@ -24,6 +24,8 @@ import {
   Users,
 } from 'lucide-react'
 import { agendaEventLink, reviewOrBookingItemLink } from '@/utils/notificationLinks'
+import LsIcon from '@/components/ui/LsIcon'
+import { notificationType } from '@/lib/notificationTypes'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
@@ -218,15 +220,6 @@ function notificationLink(notification: Notification) {
   return '/notifications'
 }
 
-function notificationIcon(type: string) {
-  if (type === 'NEW_MESSAGE') return MessageCircle
-  if (type === 'NEW_FOLLOW') return Users
-  if (type === 'NEW_REVIEW' || type === 'REVIEW_AVAILABLE') return Star
-  if (type === 'BOOKING_ITEM_ADDED') return CalendarClock
-  if (type === 'NEW_OFFER' || type === 'NEW_APPLICATION') return BriefcaseBusiness
-  if (BOOKING_NOTIFICATION_TYPES.has(type) || type.startsWith('STAFF_')) return CalendarClock
-  return Bell
-}
 
 export default function SpacePage() {
   const { user } = useAuth()
@@ -541,10 +534,10 @@ export default function SpacePage() {
           {activity.length ? (
             <div className="lsb-space-activity-list">
               {activity.map(notification => {
-                const Icon = notificationIcon(notification.type)
+                const type = notificationType(notification.type)
                 return (
                   <Link key={notification.id} href={notificationLink(notification)} className={!notification.read ? 'is-unread' : ''}>
-                    <i><Icon /></i>
+                    <i><LsIcon name={type.icon} tone={type.tone} size={15} /></i>
                     <span><strong>{notification.content || 'Nouvelle activité sur votre profil'}</strong><small>{notification.actor?.name || 'LSBookers'}</small></span>
                     <time>{relativeDate(notification.createdAt)}</time>
                   </Link>

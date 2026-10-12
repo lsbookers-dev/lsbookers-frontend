@@ -16,7 +16,7 @@ export default function ProfileRedirectPage() {
     } else {
       router.push('/home')
     }
-  }, [user, router]) // ✅ Ajouté router ici
+  }, [user, router])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">

@@ -124,7 +124,7 @@ export default function AdminSubscriptionsPage() {
       await loadAll()
       setEditing(null)
       startCreate()
-      alert('Plan enregistré ✅')
+      alert('Plan enregistré')
     } catch (e) {
       console.error(e)
       alert('Échec de sauvegarde du plan')
@@ -151,7 +151,7 @@ export default function AdminSubscriptionsPage() {
       const r = await apiFetch(`${API_BASE}/api/admin/plans/${id}`, authed({ method: 'DELETE' }))
       if (!r.ok) throw new Error('HTTP ' + r.status)
       setPlans(prev => prev.filter(x => x.id !== id))
-      alert('Plan supprimé ✅')
+      alert('Plan supprimé')
     } catch (e) {
       console.error(e)
       alert('Suppression impossible.')
@@ -178,7 +178,7 @@ export default function AdminSubscriptionsPage() {
       {/* Banner Stripe non configuré */}
       {plans.length === 0 && subs.length === 0 && !error && (
         <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-amber-300 text-sm">
-          <p className="font-semibold mb-1">⚠ Stripe non configuré</p>
+          <p className="font-semibold mb-1">Stripe non configuré</p>
           <p className="text-amber-300/70">Les paiements et abonnements seront disponibles une fois Stripe connecté. Vous pouvez préparer vos plans ci-dessous — ils seront activés dès la configuration.</p>
         </div>
       )}

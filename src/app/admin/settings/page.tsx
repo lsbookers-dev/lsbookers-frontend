@@ -61,7 +61,7 @@ export default function AdminSettingsPage() {
       })
     } catch (e) {
       console.error(e)
-      show('❌ Erreur de chargement.')
+      show('Erreur de chargement.')
     } finally {
       setLoading(false)
     }
@@ -85,10 +85,10 @@ export default function AdminSettingsPage() {
           body: JSON.stringify(body),
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        show('✅ Enregistré')
+        show('Enregistré')
       } catch (e) {
         console.error(e)
-        show('❌ Erreur de sauvegarde.')
+        show('Erreur de sauvegarde.')
       }
     },
     [settings, token]
@@ -124,7 +124,7 @@ export default function AdminSettingsPage() {
         await saveAll({ [field]: url } as Partial<AdminSettings>)
       } catch (e) {
         console.error(e)
-        show("❌ Échec de l'upload.")
+        show("Échec de l'upload.")
       }
     },
     [token, saveAll]

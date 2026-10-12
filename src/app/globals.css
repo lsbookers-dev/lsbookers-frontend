@@ -1872,3 +1872,6 @@ a:focus:not(:focus-visible) {
   .lsb-month-more { display: none; }
   .lsb-month-availability-dot { top: .3rem; right: .3rem; bottom: auto; width: .38rem; height: .38rem; }
 }
+
+/* Pictos LS (components/ui/LsIcon) : les points pleins prennent la couleur du trait */
+.ls-icon .ls-dot { fill: currentColor; stroke: none; }

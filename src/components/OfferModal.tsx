@@ -337,7 +337,7 @@ export default function OfferModal({ offer, onClose, isLoggedIn }: Props) {
             {applyStep === 'done' && (
               <div className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400">
                 <CheckCircle size={18} />
-                <span className="text-xs font-medium">Envoyée ✓</span>
+                <span className="text-xs font-medium">Candidature envoyée</span>
               </div>
             )}
 

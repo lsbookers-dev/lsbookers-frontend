@@ -14,6 +14,7 @@ import AddPublicationModal from '@/components/AddPublicationModal'
 import OfferModal, { type OfferDetail } from '@/components/OfferModal'
 import { getAuthToken, apiFetch } from '@/utils/auth'
 import CityAutocomplete from '@/components/CityAutocomplete'
+import LsIcon from '@/components/ui/LsIcon'
 
 /* ─────────────────────────────────────────────────────────────
    TYPES
@@ -454,7 +455,7 @@ function TopList({ title, role, apiBase }: { title: string; role: 'ARTIST' | 'PR
     return () => clearTimeout(t)
   }, [filter, fetch_])
 
-  const icon = role === 'ARTIST' ? '🎤' : '🛠️'
+  const icon = role === 'ARTIST' ? 'mic' : 'tools'
 
   return (
     <div className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden">
@@ -489,7 +490,7 @@ function TopList({ title, role, apiBase }: { title: string; role: 'ARTIST' | 'PR
                   {it.avatar ? (
                     <Image src={it.avatar} alt={it.name} fill className="object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white/30 text-xs font-bold">{icon}</div>
+                    <div className="w-full h-full flex items-center justify-center"><LsIcon name={icon} size={15} tone="muted" /></div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -562,7 +563,7 @@ function SuggestedProfiles({ items }: { items: SuggestedProfile[] }) {
                   : 'bg-purple-600/80 hover:bg-purple-500 text-white border border-purple-500/40'
               }`}
             >
-              {followed.has(p.id) ? 'Suivi ✓' : 'Suivre'}
+              {followed.has(p.id) ? <span className="inline-flex items-center gap-1">Suivi <LsIcon name="check" size={12} tone="inherit" /></span> : 'Suivre'}
             </button>
           </li>
         ))}
@@ -838,7 +839,7 @@ export default function HomePage() {
             </div>
           ) : activeTab === 'nearby' ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-8">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl">📍</div>
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center"><LsIcon name="pin" size={28} /></div>
               <div>
                 <p className="text-white/60 font-medium">Bientôt disponible</p>
                 <p className="text-white/30 text-sm mt-1">Les publications à proximité seront disponibles prochainement.</p>
@@ -846,7 +847,7 @@ export default function HomePage() {
             </div>
           ) : filteredFeed.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-8">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl">📸</div>
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center"><LsIcon name="camera" size={28} /></div>
               <div>
                 <p className="text-white/60 font-medium">Aucune publication pour l&apos;instant</p>
                 <p className="text-white/30 text-sm mt-1">{activeTab === 'network' ? 'Suis des artistes et prestataires pour voir leurs publications ici.' : 'Aucune publication pour l\'instant.'}</p>
