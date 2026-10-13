@@ -55,7 +55,7 @@ function getPopupLink(notif: PopupNotif): string | null {
   // NEW_COMMENT / NEW_LIKE / NEW_COMMENT_REPLY / NEW_COMMENT_LIKE avec publicationId → modal inline, pas de navigation
   if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE'].includes(notif.type) && notif.publicationId)
     return null
-  if (notif.type === 'NEW_FOLLOW' && notif.actor?.id) {
+  if (['NEW_FOLLOW', 'REVIEW_REPLY'].includes(notif.type) && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()
     if (role === 'artist')    return `/artist/${notif.actor.id}`
     if (role === 'organizer') return `/organizer/${notif.actor.id}`

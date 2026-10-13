@@ -9,7 +9,9 @@ import Image from 'next/image'
 import {
   X, MapPin, Calendar, Clock, Tag, Briefcase, Euro, UserRound, Loader2,
   ListChecks, FileSignature, Plane, Image as ImageIcon, StickyNote, Download, Paperclip,
+  ListTodo,
 } from 'lucide-react'
+import EventChecklist from './EventChecklist'
 import { apiFetch } from '@/utils/auth'
 import type { BookingContract, BookingDetail, BookingLogistic, DocumentItem } from './types'
 import { PAYMENT_LABEL, TabContrat, TabLogement, TabMedia, TabNotes } from './EventTabBookings'
@@ -34,7 +36,7 @@ type StaffViewData = {
   booking: { id: number; fee: number | null; paymentStatus: string | null } | null
 }
 
-type TabKey = 'details' | 'contract' | 'travel' | 'media' | 'notes'
+type TabKey = 'details' | 'contract' | 'travel' | 'media' | 'notes' | 'checklist'
 
 const TABS: { key: TabKey; label: string; Icon: ElementType }[] = [
   { key: 'details',  label: 'Détails',                   Icon: ListChecks },
@@ -42,6 +44,7 @@ const TABS: { key: TabKey; label: string; Icon: ElementType }[] = [
   { key: 'travel',   label: 'Transports & Hébergement',  Icon: Plane },
   { key: 'media',    label: 'Médias',                    Icon: ImageIcon },
   { key: 'notes',    label: 'Matériel & Notes',          Icon: StickyNote },
+  { key: 'checklist', label: 'Checklist',                Icon: ListTodo },
 ]
 
 const ROLE_LABEL: Record<string, string> = { ARTIST: 'Artiste', PROVIDER: 'Prestataire', ORGANIZER: 'Organisateur' }
@@ -301,6 +304,9 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
                 </div>
               ) : noBooking
             )}
+
+            {/* ── Checklist (facultative, personnelle) ── */}
+            {tab === 'checklist' && <EventChecklist eventId={eventId} />}
           </div>
         )}
       </div>

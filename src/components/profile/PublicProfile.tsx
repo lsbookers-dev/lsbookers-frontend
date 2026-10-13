@@ -55,6 +55,13 @@ export default function PublicProfile({ userId }: { userId: string }) {
     if (expected && !window.location.pathname.startsWith(expected)) router.replace(expected)
   }, [role, router, userId])
 
+  // Lien de booking / équipe habituelle : /artist/7#agenda ouvre directement les disponibilités
+  useEffect(() => {
+    if (status !== 'ready' || window.location.hash !== '#agenda') return
+    const timer = setTimeout(() => document.getElementById('agenda')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
+    return () => clearTimeout(timer)
+  }, [status])
+
   useEffect(() => {
     if (!profile?.id || role === 'ARTIST') return
     apiFetch(apiUrl(`offers?organizerId=${profile.id}`), { cache: 'no-store' })

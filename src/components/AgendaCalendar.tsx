@@ -102,7 +102,7 @@ export default function AgendaCalendar({
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null)
   const [eventDetailLoading, setEventDetailLoading] = useState(false)
   const [eventDetailError, setEventDetailError] = useState(false)
-  const [detailTab, setDetailTab] = useState<'details' | 'staff' | 'notes' | 'purchases' | 'bookings' | 'offers'>('details')
+  const [detailTab, setDetailTab] = useState<'details' | 'staff' | 'notes' | 'purchases' | 'bookings' | 'offers' | 'checklist'>('details')
 
   // Offres liées à l'événement
   const [eventOffers, setEventOffers] = useState<EventOffer[]>([])
@@ -358,7 +358,8 @@ export default function AgendaCalendar({
     deepLinkHandled.current = true
     openEventFromCalendar(id)
     const iAmBooked = events.some(e => e.id === id && e.staffStatus === 'BOOKED')
-    if (params.get('tab') === 'bookings' && !iAmBooked) setDetailTab('bookings')
+    const tab = params.get('tab')
+    if ((tab === 'bookings' || tab === 'checklist') && !iAmBooked) setDetailTab(tab)
     window.history.replaceState(null, '', window.location.pathname)
   }, [isOwner, loading, events, openEventFromCalendar])
 

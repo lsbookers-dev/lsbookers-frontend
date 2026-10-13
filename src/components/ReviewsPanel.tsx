@@ -24,6 +24,7 @@ type Review = {
   id: number
   rating: number
   comment?: string | null
+  reply?: string | null
   createdAt: string
   author: ReviewPerson
 }
@@ -129,6 +130,11 @@ export default function ReviewsPanel({ profileId, isOwner = false }: { profileId
                   </time>
                 </div>
                 {review.comment && <p className="text-xs text-white/70 leading-relaxed whitespace-pre-wrap">{review.comment}</p>}
+                {review.reply && (
+                  <div className="mt-2 rounded-r-lg border-l-2 border-accent bg-accent/[0.07] px-3 py-2 text-xs leading-relaxed text-white/60">
+                    <span className="font-semibold text-accent-light">Réponse</span> · <span className="whitespace-pre-wrap">{review.reply}</span>
+                  </div>
+                )}
               </div>
             )
           })}

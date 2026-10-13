@@ -48,7 +48,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
     '/', '/login', '/register', '/forgot-password', '/reset-password',
     '/verify-email', '/device-verified', '/contact',
   ]
-  const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/legal/')
+  const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/legal/') || pathname.startsWith('/b/')
   const isAdminPage = pathname.startsWith('/admin')
   const showAppNav = !isPublicPage && !isAdminPage && !!user
 

@@ -45,7 +45,7 @@ function getLink(notif: Notif): string | null {
   const reviewOrItem = reviewOrBookingItemLink(notif.type, notif.eventId)
   if (reviewOrItem) return reviewOrItem
   // Réseau social → profil de l'acteur
-  if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE'].includes(notif.type) && notif.actor?.id) {
+  if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE', 'REVIEW_REPLY'].includes(notif.type) && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()
     if (role === 'artist')    return `/artist/${notif.actor.id}`
     if (role === 'organizer') return `/organizer/${notif.actor.id}`

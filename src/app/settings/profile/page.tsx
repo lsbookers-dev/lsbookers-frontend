@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, ShieldAlert, ShieldOff, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Mail, ShieldAlert, ShieldOff, Sparkles } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
@@ -43,6 +43,9 @@ export default function AccountSettingsPage() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([])
   const [loadingBlocked, setLoadingBlocked] = useState(true)
   const [unblockingId, setUnblockingId] = useState<number | null>(null)
+  const [profileId, setProfileId] = useState<number | null>(null)
+  const [weeklyRecap, setWeeklyRecap] = useState(false)
+  const [savingRecap, setSavingRecap] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -51,7 +54,32 @@ export default function AccountSettingsPage() {
       .then(data => setBlockedUsers(data.blocked || []))
       .catch(() => {})
       .finally(() => setLoadingBlocked(false))
+    apiFetch(apiUrl('profile/me'), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (data?.profile) { setProfileId(data.profile.id); setWeeklyRecap(Boolean(data.profile.weeklyRecap)) } })
+      .catch(() => {})
   }, [user])
+
+  const toggleRecap = async () => {
+    if (!profileId) return
+    const next = !weeklyRecap
+    setWeeklyRecap(next)
+    setSavingRecap(true)
+    try {
+      const res = await apiFetch(apiUrl(`profile/${profileId}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weeklyRecap: next }),
+      })
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Impossible d’enregistrer ce choix.'))
+      notify(next ? 'Vous recevrez le récap chaque lundi matin' : 'Récap de la semaine désactivé')
+    } catch (err) {
+      setWeeklyRecap(!next)
+      notify(err instanceof Error ? err.message : 'Impossible d’enregistrer ce choix.', 'error')
+    } finally {
+      setSavingRecap(false)
+    }
+  }
 
   const unblock = async (targetId: number) => {
     setUnblockingId(targetId)
@@ -89,6 +117,20 @@ export default function AccountSettingsPage() {
             </span>
             <ArrowRight size={16} className="text-white/40" />
           </Link>
+        )}
+
+        {user?.role !== 'ADMIN' && (
+          <Section title="E-mails" icon={<Mail size={18} />}>
+            <button type="button" onClick={toggleRecap} disabled={savingRecap || !profileId} aria-pressed={weeklyRecap} className="flex w-full items-center justify-between gap-4 text-left disabled:opacity-60">
+              <span>
+                <span className="block text-sm font-medium text-white/90">Récap de la semaine</span>
+                <span className="mt-0.5 block text-xs text-white/45">Chaque lundi matin : vos dates de la semaine, les vues de votre profil, vos nouveaux abonnés et avis, les nouvelles offres.</span>
+              </span>
+              <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${weeklyRecap ? 'bg-accent' : 'bg-white/10'}`}>
+                <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${weeklyRecap ? 'translate-x-5' : ''}`} />
+              </span>
+            </button>
+          </Section>
         )}
 
         <Section title="Utilisateurs bloqués" icon={<ShieldAlert size={18} />}>

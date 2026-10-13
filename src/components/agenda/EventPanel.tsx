@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CalendarRange,
   Handshake,
+  ListTodo,
   ListChecks,
   MapPin,
   ReceiptText,
@@ -22,6 +23,7 @@ import EventTabStaff    from './EventTabStaff'
 import EventTabNotes    from './EventTabNotes'
 import EventTabBookings from './EventTabBookings'
 import EventTabOffers   from './EventTabOffers'
+import EventChecklist   from './EventChecklist'
 
 
 interface EventPanelProps {
@@ -50,8 +52,8 @@ interface EventPanelProps {
   eventDetailLoading: boolean
   eventDetailError: boolean
   linkedBooking: LinkedBooking | null
-  detailTab: 'details' | 'staff' | 'notes' | 'purchases' | 'bookings' | 'offers'
-  setDetailTab: (tab: 'details' | 'staff' | 'notes' | 'purchases' | 'bookings' | 'offers') => void
+  detailTab: 'details' | 'staff' | 'notes' | 'purchases' | 'bookings' | 'offers' | 'checklist'
+  setDetailTab: (tab: 'details' | 'staff' | 'notes' | 'purchases' | 'bookings' | 'offers' | 'checklist') => void
   /* Mode édition détail */
   editMode: boolean; setEditMode: (v: boolean) => void
   editTitle: string; setEditTitle: (v: string) => void
@@ -446,12 +448,14 @@ export default function EventPanel(p: EventPanelProps) {
     { key: 'notes'    as const, label: 'Dépenses', icon: ReceiptText },
     { key: 'bookings' as const, label: 'Bookings', icon: Handshake },
     { key: 'offers'   as const, label: 'Offres', icon: BriefcaseBusiness },
+    { key: 'checklist' as const, label: 'Checklist', icon: ListTodo },
   ]
   const BOOKED_TABS = [
     { key: 'details'  as const, label: 'Détails', icon: ListChecks },
     { key: 'staff'    as const, label: 'Matériel', icon: UsersRound },
     { key: 'notes'    as const, label: 'Contrat', icon: ReceiptText },
     { key: 'bookings' as const, label: 'Paiement', icon: WalletCards },
+    { key: 'checklist' as const, label: 'Checklist', icon: ListTodo },
   ]
   const DETAIL_TABS = isBookedEvent ? BOOKED_TABS : ORGANIZER_TABS
 
@@ -518,6 +522,8 @@ export default function EventPanel(p: EventPanelProps) {
 
       {/* Contenu onglets */}
       <div className="p-3 sm:p-4 space-y-3">
+
+        {detailTab === 'checklist' && <EventChecklist eventId={eventDetail.id} />}
 
         {detailTab === 'details' && (
           <EventTabDetail

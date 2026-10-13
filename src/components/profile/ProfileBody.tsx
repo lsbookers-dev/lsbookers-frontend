@@ -47,13 +47,15 @@ export default function ProfileBody({
       <div className="mt-6 grid grid-cols-1 gap-6 pb-16 lg:grid-cols-[1fr_340px]">
         <div className="min-w-0 space-y-6">
           <TextSection title={text.about} value={profile.bio} emptyText="Présente-toi en quelques lignes." section="presentation" mode={mode} onEdit={onEdit} />
-          <AgendaCalendar
-            profileId={profile.id}
-            isOwner={false}
-            showAvailability
-            viewerRole={mode === 'public' ? viewer?.role ?? null : null}
-            viewerProfileId={mode === 'public' ? viewer?.profileId ?? null : null}
-          />
+          <div id="agenda" className="scroll-mt-20">
+            <AgendaCalendar
+              profileId={profile.id}
+              isOwner={false}
+              showAvailability
+              viewerRole={mode === 'public' ? viewer?.role ?? null : null}
+              viewerProfileId={mode === 'public' ? viewer?.profileId ?? null : null}
+            />
+          </div>
           {role === 'ORGANIZER' && <MapSection {...section} />}
           <ProfileContentTabs
             profileId={profile.id}

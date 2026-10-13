@@ -162,7 +162,7 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
           bio: form.bio.trim() || null,
           location: form.location.trim() || null,
           radiusKm: form.radiusKm,
-          ...(role === 'ORGANIZER' ? { address: form.address.trim() || null, postalCode: form.postalCode.trim() || null, city: form.city.trim() || null } : {}),
+          address: form.address.trim() || null, postalCode: form.postalCode.trim() || null, city: form.city.trim() || null,
           specialties: form.specialties,
           ...(role === 'ARTIST' ? {
             styles: form.styles, showStyles: form.showStyles,
@@ -260,16 +260,6 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
                   </div>
                   <p className="mt-2 text-[11px] text-white/35">Clique à nouveau sur un choix pour le retirer.</p>
                 </div>
-                {role === 'ORGANIZER' && (
-                  <div className="space-y-3 rounded-xl border border-white/[0.08] p-4">
-                    <p className="text-sm text-white/70">Adresse de l&apos;établissement <span className="text-white/35">(privée, jamais affichée)</span></p>
-                    <input value={form.address} onChange={e => set('address', e.target.value)} maxLength={200} placeholder="12 rue de la République" className={INPUT} />
-                    <div className="grid grid-cols-[8rem_1fr] gap-3">
-                      <input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} maxLength={10} placeholder="69001" className={INPUT} />
-                      <input value={form.city} onChange={e => set('city', e.target.value)} maxLength={100} placeholder="Lyon" className={INPUT} />
-                    </div>
-                  </div>
-                )}
               </>
             )}
 
@@ -350,6 +340,14 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
                   {role === 'ORGANIZER' && isProfessional(form.legalStatus) && (
                     <Field label="Nom de l’établissement"><input value={form.establishmentName} onChange={e => set('establishmentName', e.target.value)} maxLength={200} className={INPUT} /></Field>
                   )}
+                </div>
+                <div className="space-y-3 rounded-xl border border-white/[0.08] p-4">
+                  <p className="text-sm text-white/70">{role === 'ORGANIZER' ? 'Adresse de l’établissement' : 'Adresse postale'} <span className="text-white/35">(utilisée sur vos devis et factures)</span></p>
+                  <input value={form.address} onChange={e => set('address', e.target.value)} maxLength={200} placeholder="12 rue de la République" aria-label="Adresse" className={INPUT} />
+                  <div className="grid grid-cols-[8rem_1fr] gap-3">
+                    <input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} maxLength={10} placeholder="69001" aria-label="Code postal" className={INPUT} />
+                    <input value={form.city} onChange={e => set('city', e.target.value)} maxLength={100} placeholder="Lyon" aria-label="Ville" className={INPUT} />
+                  </div>
                 </div>
               </>
             )}

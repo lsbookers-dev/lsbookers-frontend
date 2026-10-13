@@ -33,6 +33,9 @@ export const NOTIFICATION_TYPES: Record<string, NotificationType> = {
   // Avis
   NEW_REVIEW:            { icon: 'star',     tone: 'gold',   label: 'Nouvel avis' },
   REVIEW_AVAILABLE:      { icon: 'star',     tone: 'gold',   label: 'Avis à laisser' },
+  REVIEW_REPLY:          { icon: 'reply',    tone: 'accent', label: 'Réponse à votre avis' },
+  // Checklist d'un événement
+  CHECKLIST_REMINDER:    { icon: 'clock',    tone: 'gold',   label: 'Rappel checklist' },
   // Sécurité
   NEW_DEVICE_LOGIN:      { icon: 'shield',   tone: 'gold',   label: 'Sécurité' },
   // Équipe d'un événement

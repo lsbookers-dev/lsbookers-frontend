@@ -1,5 +1,5 @@
 /** Ouvre un événement de l'agenda (et l'onglet Bookings pour l'organisateur). */
-export function agendaEventLink(eventId?: number | null, tab?: 'bookings') {
+export function agendaEventLink(eventId?: number | null, tab?: 'bookings' | 'checklist') {
   if (!eventId) return '/agenda'
   return `/agenda?event=${eventId}${tab ? `&tab=${tab}` : ''}`
 }
@@ -9,5 +9,6 @@ export function reviewOrBookingItemLink(type: string, eventId?: number | null): 
   if (type === 'NEW_REVIEW') return '/studio-profile'
   if (type === 'REVIEW_AVAILABLE') return '/space#avis'
   if (type === 'BOOKING_ITEM_ADDED') return agendaEventLink(eventId, 'bookings')
+  if (type === 'CHECKLIST_REMINDER') return agendaEventLink(eventId, 'checklist')
   return null
 }

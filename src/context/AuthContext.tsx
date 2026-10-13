@@ -85,6 +85,7 @@ const PUBLIC_PATHS = [
 const isPublicPath = (pathname: string) => {
   if (PUBLIC_PATHS.includes(pathname)) return true
   if (pathname.startsWith('/legal/')) return true
+  if (pathname.startsWith('/b/')) return true // lien de booking partagé (visible sans compte)
   return false
 }
 
