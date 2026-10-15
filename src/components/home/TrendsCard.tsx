@@ -3,20 +3,18 @@
 import { useState } from 'react'
 import CityAutocomplete from '@/components/CityAutocomplete'
 import LsIcon from '@/components/ui/LsIcon'
-import type { TrendCriterion } from './types'
-import { TREND_CRITERIA, useTrends, type TrendRole } from './trends'
+import { useTrends, type TrendRole } from './trends'
 import TrendsList from './TrendsList'
 import TrendsModal from './TrendsModal'
 
 /**
- * Bloc « Tendances » de la colonne de droite : 4 classements (recherchés, visités, bookés, aimés),
- * les 5 premiers, et « Voir plus » pour le classement complet par spécialité.
+ * Bloc « Tendances » de la colonne de droite : un seul classement (bookings, recherches, visites
+ * et J'aime mélangés en points), les 5 premiers, et « Voir plus » pour le classement par spécialité.
  */
 export default function TrendsCard({ title, role }: { title: string; role: TrendRole }) {
-  const [criterion, setCriterion] = useState<TrendCriterion>('views')
   const [city, setCity] = useState('')
   const [open, setOpen] = useState(false)
-  const { items, loading } = useTrends(role, criterion, { city, limit: 5 })
+  const { items, loading } = useTrends(role, { city, limit: 5 })
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/3">
@@ -38,23 +36,7 @@ export default function TrendsCard({ title, role }: { title: string; role: Trend
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-1 px-3 pt-3" role="tablist" aria-label={`Classements ${title}`}>
-        {TREND_CRITERIA.map(c => (
-          <button
-            key={c.key}
-            type="button"
-            role="tab"
-            aria-selected={criterion === c.key}
-            onClick={() => setCriterion(c.key)}
-            className={`flex items-center justify-center gap-1.5 truncate rounded-lg px-1 py-1.5 text-[11px] font-medium transition ${criterion === c.key ? 'bg-accent/20 text-white' : 'text-white/45 hover:bg-white/5 hover:text-white/75'}`}
-          >
-            <LsIcon name={c.icon} size={13} tone="inherit" />
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      <TrendsList items={items} loading={loading} criterion={criterion} role={role} />
+      <TrendsList items={items} loading={loading} role={role} />
 
       <div className="border-t border-white/8 px-4 py-3">
         <button type="button" onClick={() => setOpen(true)} className="text-xs text-accent-light transition-colors hover:text-white">
@@ -62,7 +44,7 @@ export default function TrendsCard({ title, role }: { title: string; role: Trend
         </button>
       </div>
 
-      {open && <TrendsModal title={title} role={role} initialCriterion={criterion} initialCity={city} onClose={() => setOpen(false)} />}
+      {open && <TrendsModal title={title} role={role} initialCity={city} onClose={() => setOpen(false)} />}
     </div>
   )
 }

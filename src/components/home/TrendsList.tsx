@@ -3,15 +3,14 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import LsIcon from '@/components/ui/LsIcon'
-import type { TrendCriterion, TrendItem } from './types'
-import { trendCriterion, type TrendRole } from './trends'
+import type { TrendItem } from './types'
+import type { TrendRole } from './trends'
 import { TrendRowsSkeleton } from './FeedSkeleton'
 
 /** Lignes d'un classement (colonne de droite et fenêtre « Voir plus »). */
-export default function TrendsList({ items, loading, criterion, role, rows = 5, onNavigate }: {
+export default function TrendsList({ items, loading, role, rows = 5, onNavigate }: {
   items: TrendItem[]
   loading: boolean
-  criterion: TrendCriterion
   role: TrendRole
   rows?: number
   onNavigate?: () => void
@@ -28,7 +27,6 @@ export default function TrendsList({ items, loading, criterion, role, rows = 5, 
     )
   }
 
-  const { unit } = trendCriterion(criterion)
   const placeholder = role === 'ARTIST' ? 'mic' : 'tools'
 
   return (
@@ -47,8 +45,8 @@ export default function TrendsList({ items, loading, criterion, role, rows = 5, 
               <span className="block truncate text-xs text-white/40">{[it.profession, it.location].filter(Boolean).join(' · ')}</span>
             </span>
             <span className="flex-shrink-0 text-right">
-              <span className="block text-xs font-semibold text-white/80">{it.count}</span>
-              <span className="block text-[9px] text-white/35">{unit(it.count)}</span>
+              <span className="block text-xs font-semibold text-white/80">{it.score}</span>
+              <span className="block text-[9px] text-white/35">{it.score > 1 ? 'points' : 'point'}</span>
             </span>
           </Link>
         </li>

@@ -52,8 +52,6 @@ export type AdminPost = {
 
 export type Offer = OfferDetail & { endDate?: string | null }
 
-export type TrendCriterion = 'search' | 'views' | 'bookings' | 'likes'
-
 export type TrendItem = {
   id: number
   profileId: number
@@ -61,6 +59,7 @@ export type TrendItem = {
   avatar: string | null
   profession: string | null
   location: string | null
-  count: number
+  /** Points sur 30 jours (bookings, recherches, visites, J'aime) */
+  score: number
   profileUrl: string
 }
