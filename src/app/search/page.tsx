@@ -285,6 +285,8 @@ export default function SearchPage() {
   }
 
   const goToProfile = (user: User) => {
+    // Compte pour le classement « les plus recherchés » (une fois par jour et par profil)
+    apiFetch(`${API_BASE}/api/profile/user/${user.id}/search-hit`, { method: 'POST', keepalive: true }).catch(() => {})
     router.push(
       user.role === 'ARTIST' ? `/artist/${user.id}` :
       user.role === 'ORGANIZER' ? `/organizer/${user.id}` :

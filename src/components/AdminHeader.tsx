@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  LayoutDashboard, Users, Mail, FileImage,
+  LayoutDashboard, Users, Mail, FileImage, Star,
   CreditCard, BarChart2, Settings, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: '/admin/users',         label: 'Utilisateurs',  icon: Users },
   { href: '/admin/messages',      label: 'Messages',      icon: Mail },
   { href: '/admin/publications',  label: 'Publications',  icon: FileImage },
+  { href: '/admin/featured',      label: 'Carrousel',     icon: Star },
   { href: '/admin/subscriptions', label: 'Abonnements',   icon: CreditCard },
   { href: '/admin/stats',         label: 'Statistiques',  icon: BarChart2 },
   { href: '/admin/settings',      label: 'Paramètres',    icon: Settings },

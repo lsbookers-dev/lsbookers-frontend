@@ -835,7 +835,7 @@ body {
 .lsb-header-search svg { width: 1rem; color: var(--lsb-muted); }.lsb-header-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: white; font-size: .78rem; }.lsb-header-search input::placeholder { color: var(--lsb-muted); }
 
 .lsb-composer { display: grid; grid-template-columns: 2.7rem minmax(0,1fr) auto auto; align-items: center; gap: .7rem; margin-bottom: 1rem; padding: .8rem; border: 1px solid var(--lsb-line); border-radius: 1rem; background: linear-gradient(110deg,rgba(17,16,22,.96),rgba(139,92,246,.06)); }
-.lsb-composer-avatar { width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(135deg,#7c3aed,#f472b6); font-size: .55rem; font-weight: 800; }
+.lsb-composer-avatar { width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(135deg,var(--lsb-accent-strong),var(--lsb-accent-light)); font-size: .55rem; font-weight: 800; }
 .lsb-composer > a { padding: .75rem .9rem; border-radius: .75rem; color: var(--lsb-muted); background: rgba(255,255,255,.035); font-size: .78rem; }
 .lsb-composer > span { color: var(--lsb-muted); font-size: .7rem; }
 .lsb-feed-tabs { display: flex; gap: 1.7rem; margin-bottom: 1rem; border-bottom: 1px solid var(--lsb-line); }
