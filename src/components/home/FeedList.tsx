@@ -8,9 +8,9 @@ import PostCard from './PostCard'
 import { PostCardSkeleton } from './FeedSkeleton'
 
 /**
- * Liste du fil : publications officielles épinglées puis les autres, puis les publications
- * dans l'ordre choisi par le serveur. La page suivante se charge toute seule en arrivant en bas
- * (le bouton reste là si le chargement automatique ne se déclenche pas).
+ * Liste du fil, comme avant la refonte : publications officielles épinglées tout en haut,
+ * puis les officielles non épinglées mélangées aux publications, de la plus récente à la plus ancienne.
+ * La page suivante se charge toute seule en arrivant en bas (le bouton reste là au cas où).
  */
 export default function FeedList({ posts, adminPosts = [], hasMore, loadingMore, onLoadMore, onLike, onOpen, currentUserId, isMuted, onToggleMute }: {
   posts: Post[]
@@ -36,16 +36,20 @@ export default function FeedList({ posts, adminPosts = [], hasMore, loadingMore,
     return () => observer.disconnect()
   }, [hasMore, onLoadMore])
 
-  const official = [...adminPosts].sort((a, b) => Number(b.pinned) - Number(a.pinned))
+  type Item = { kind: 'admin'; data: AdminPost } | { kind: 'post'; data: Post }
+  const pinned: Item[] = adminPosts.filter(p => p.pinned).map(data => ({ kind: 'admin', data }))
+  const mixed: Item[] = [
+    ...adminPosts.filter(p => !p.pinned).map(data => ({ kind: 'admin' as const, data })),
+    ...posts.map(data => ({ kind: 'post' as const, data })),
+  ].sort((a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime())
 
   return (
     <div className="space-y-4">
-      {official.map(post => <AdminPostCard key={`admin-${post.id}`} post={post} />)}
-      {posts.map(post => (
+      {[...pinned, ...mixed].map(item => item.kind === 'admin' ? <AdminPostCard key={`admin-${item.data.id}`} post={item.data} /> : (
         <PostCard
-          key={post.id}
-          post={post}
-          onLike={() => onLike(post)}
+          key={item.data.id}
+          post={item.data}
+          onLike={() => onLike(item.data)}
           onOpenModal={onOpen}
           currentUserId={currentUserId}
           isMuted={isMuted}
