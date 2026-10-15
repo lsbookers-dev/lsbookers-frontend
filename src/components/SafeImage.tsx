@@ -21,6 +21,8 @@ interface AvatarProps {
   name?: string
   size?: number
   className?: string
+  /** Photo visible dès l'arrivée sur la page (en-tête de profil) : chargée tout de suite */
+  priority?: boolean
 }
 
 /* ── Bannière ────────────────────────────────────────────────── */
@@ -39,7 +41,7 @@ export default function SafeImage(props: Props) {
 
   /* ── AVATAR ─────────────────────────────────────────────── */
   if (props.type === 'avatar') {
-    const { src, name = '?', size = 40, className = '' } = props
+    const { src, name = '?', size = 40, className = '', priority = false } = props
     const initial = (name || '?')[0]?.toUpperCase() ?? '?'
 
     if (!src || broken) {
@@ -65,6 +67,7 @@ export default function SafeImage(props: Props) {
           sizes={`${size}px`}
           className="object-cover"
           unoptimized
+          priority={priority}
           onError={() => setBroken(true)}
         />
       </span>

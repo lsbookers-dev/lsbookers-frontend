@@ -185,7 +185,7 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
     // Fetch liste + mark-all-read en parallèle
     try {
       const [listRes] = await Promise.all([
-        apiFetch(`${API_BASE}/api/notifications`),
+        apiFetch(`${API_BASE}/api/notifications?limit=20`),
         apiFetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH' }),
       ])
       if (listRes.ok) {

@@ -18,11 +18,11 @@ export type SpaceOffer = {
   organizer?: { name: string }
 }
 
-export default function OpportunitiesPanel({ organizer, offers }: { organizer: boolean; offers: SpaceOffer[] }) {
+export default function OpportunitiesPanel({ organizer, offers, total }: { organizer: boolean; offers: SpaceOffer[]; total: number }) {
   const applications = offers.reduce((sum, o) => sum + (o.applicantCount || 0), 0)
   const title = organizer
     ? `${applications} candidature${applications > 1 ? 's' : ''} sur vos offres`
-    : `${offers.length} offre${offers.length > 1 ? 's' : ''} correspond${offers.length > 1 ? 'ent' : ''} à votre profil`
+    : `${total} offre${total > 1 ? 's' : ''} correspond${total > 1 ? 'ent' : ''} à votre profil`
 
   return (
     <SpacePanel

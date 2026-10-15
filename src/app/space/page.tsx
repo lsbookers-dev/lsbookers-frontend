@@ -49,7 +49,8 @@ type SpaceData = {
   profile: Profile
   dashboard: Dashboard
   offers: SpaceOffer[]
-  events: NextEvent[]
+  offersTotal: number
+  nextEvent: NextEvent | null
   notifications: SpaceNotification[]
   unreadMessages: number
   reviews: { list: ReceivedReview[]; average: number | null; count: number }
@@ -97,16 +98,6 @@ function profileProgress(profile: Profile, role: string) {
   }
 }
 
-function matchesProfile(offer: SpaceOffer, role: string, profile: Profile) {
-  if (offer.organizerId === profile.id) return false
-  if (offer.type !== role && offer.type !== 'ALL') return false
-  if (!offer.specialty || !profile.specialties?.length) return true
-  const wanted = offer.specialty.toLocaleLowerCase('fr-FR')
-  return profile.specialties.some(item => {
-    const own = item.toLocaleLowerCase('fr-FR')
-    return own === wanted || own.includes(wanted) || wanted.includes(own)
-  })
-}
 
 export default function SpacePage() {
   const { user } = useAuth()
@@ -128,25 +119,23 @@ export default function SpacePage() {
       const profile: Profile | null = me?.profile ?? null
       if (!profile || !dashboard) { if (!cancelled) setStatus('error'); return }
       const organizer = dashboard.role === 'ORGANIZER'
-      const [offers, owned, assigned, notifications, unread, reviews, pending] = await Promise.all([
-        get(organizer ? `offers?organizerId=${profile.id}` : 'offers'),
-        get('events/all'),
-        get('events/assigned'),
-        get('notifications'),
+      // Chargements légers : la base renvoie seulement ce que la page affiche
+      const [offers, next, notifications, unread, reviews, pending] = await Promise.all([
+        get(organizer ? `offers?organizerId=${profile.id}` : 'space/opportunities'),
+        get('space/next-event'),
+        get('notifications?limit=10'),
         get('messages/unread-count'),
         get(`reviews/profile/${profile.id}`),
         get('reviews/pending'),
       ])
-      const events = new Map<number, NextEvent & { status?: string }>()
-      for (const e of [...(owned?.events || []), ...(assigned?.events || [])]) events.set(e.id, e)
       if (cancelled) return
+      const offerList: SpaceOffer[] = organizer ? (Array.isArray(offers) ? offers : []) : offers?.offers || []
       setData({
         profile,
         dashboard,
-        offers: Array.isArray(offers) ? offers : [],
-        events: [...events.values()]
-          .filter(e => new Date(e.start).getTime() >= Date.now() && !['CANCELLED', 'COMPLETED'].includes(e.status || ''))
-          .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()),
+        offers: offerList,
+        offersTotal: organizer ? offerList.length : offers?.total ?? 0,
+        nextEvent: next?.event ?? null,
         notifications: notifications?.notifications || [],
         unreadMessages: unread?.count || 0,
         reviews: { list: reviews?.reviews || [], average: reviews?.average ?? null, count: reviews?.count ?? 0 },
@@ -194,7 +183,6 @@ export default function SpacePage() {
   }
 
   const { dashboard } = data
-  const offers = organizer ? data.offers : data.offers.filter(o => matchesProfile(o, role, data.profile))
   const alerts: { icon: LsIconName; text: React.ReactNode; href: string }[] = [
     ...(data.unreadMessages ? [{ icon: 'message' as const, text: <><b className="text-white">{data.unreadMessages}</b> message{data.unreadMessages > 1 ? 's' : ''} non lu{data.unreadMessages > 1 ? 's' : ''}</>, href: '/messages' }] : []),
     ...(dashboard.kpis.upcomingPending ? [{ icon: organizer ? 'hourglass' as const : 'booking' as const, text: <><b className="text-white">{dashboard.kpis.upcomingPending}</b> {organizer ? `booking${dashboard.kpis.upcomingPending > 1 ? 's' : ''} sans réponse` : `demande${dashboard.kpis.upcomingPending > 1 ? 's' : ''} de booking à examiner`}</>, href: '/agenda' }] : []),
@@ -232,11 +220,11 @@ export default function SpacePage() {
 
       <div className="grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
         <UpcomingPanel bookings={dashboard.upcoming} organizer={organizer} />
-        <OpportunitiesPanel organizer={organizer} offers={offers} />
+        <OpportunitiesPanel organizer={organizer} offers={data.offers} total={data.offersTotal} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
-        <NextDatePanel event={data.events[0] ?? null} />
+        <NextDatePanel event={data.nextEvent} />
         <RecentPanel notifications={data.notifications} />
       </div>
 

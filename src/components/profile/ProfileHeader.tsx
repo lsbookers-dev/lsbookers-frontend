@@ -54,7 +54,7 @@ export default function ProfileHeader({ profile, mode, followersCount, publicati
                 aria-label={editable ? 'Changer la photo de profil' : undefined}
                 className="group/avatar relative shrink-0 rounded-xl disabled:cursor-default"
               >
-                <SafeImage type="avatar" src={profile.avatar} name={name} size={82} className="rounded-xl ring-2 ring-gold/40" />
+                <SafeImage type="avatar" src={profile.avatar} name={name} size={82} priority className="rounded-xl ring-2 ring-gold/40" />
                 {editable && (
                   <span className={`absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 transition-opacity ${uploading === 'avatar' ? 'opacity-100' : 'opacity-0 group-hover/avatar:opacity-100'}`}>
                     {uploading === 'avatar' ? <Spinner size="h-4 w-4" /> : <Pencil size={16} />}

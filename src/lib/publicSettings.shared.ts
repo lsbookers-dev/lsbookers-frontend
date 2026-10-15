@@ -8,7 +8,9 @@ export type PublicSettings = {
 
 // Filet de sécurité : utilisé seulement si l'API ne répond pas (ex. juste après un déploiement).
 // Ces fichiers existent bien sur R2 — à mettre à jour si les images changent dans l'admin.
-const R2_BASE = 'https://pub-28115fb1c7084199a44966ca2924104c.r2.dev/lsbookers/media'
+/** Adresse publique du stockage R2 (photos, bannières, médias) */
+export const R2_ORIGIN = 'https://pub-28115fb1c7084199a44966ca2924104c.r2.dev'
+const R2_BASE = `${R2_ORIGIN}/lsbookers/media`
 
 export const FALLBACK_PUBLIC_SETTINGS: PublicSettings = {
   landingBgUrl: `${R2_BASE}/1789763713078-Fond_Landing_1.png`,

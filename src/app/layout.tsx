@@ -7,6 +7,7 @@ import { PublicSettingsProvider } from '@/context/PublicSettingsContext'
 import ClientLayout from '@/components/ClientLayout'
 import { FeedbackProvider } from '@/components/ui/Feedback'
 import { getPublicSettings } from '@/lib/publicSettings'
+import { R2_ORIGIN } from '@/lib/publicSettings.shared'
 
 // Police de marque (choix C4 du 13/10/2026) : Sora partout (titres et texte)
 const brandFont = Sora({ subsets: ['latin', 'latin-ext'], weight: ['400', '500', '600', '700'], variable: '--font-sora', display: 'swap' })
@@ -45,6 +46,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="fr" className={brandFont.variable}>
       <head>
         <link rel="manifest" href="/manifest.json" />
+        {/* Photos et médias sur R2 : connexion ouverte d'avance pour qu'ils s'affichent plus vite */}
+        <link rel="preconnect" href={R2_ORIGIN} crossOrigin="" />
+        <link rel="dns-prefetch" href={R2_ORIGIN} />
         <meta name="theme-color" content="#0b0a10" />
         <meta name="msapplication-TileColor" content="#8b5cf6" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
