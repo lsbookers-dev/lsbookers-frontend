@@ -6,9 +6,6 @@ import { API_BASE } from './format'
 
 export type TrendRole = 'ARTIST' | 'PROVIDER'
 
-/** Barème affiché dans la fenêtre « Voir plus » (même valeurs que le serveur) */
-export const TREND_POINTS_LABEL = 'Booking : 10 pts · Recherche : 3 pts · Visite : 1 pt · J’aime : 1 pt'
-
 type TrendsState = { items: TrendItem[]; specialties: string[]; periodDays: number; loading: boolean }
 
 /** Charge un classement ; `city` est attendu une demi-seconde (saisie au clavier). */

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import LsIcon from '@/components/ui/LsIcon'
-import { TREND_POINTS_LABEL, useTrends, type TrendRole } from './trends'
+import { useTrends, type TrendRole } from './trends'
 import TrendsList from './TrendsList'
 
 /** Fenêtre « Voir plus » : classement complet, filtrable par spécialité. */
@@ -46,7 +46,6 @@ export default function TrendsModal({ title, role, initialCity, onClose }: {
             <p className="mt-1 text-[11px] text-white/40">
               Sur les {shown.periodDays} derniers jours{initialCity ? ` · ${initialCity}` : ''}
             </p>
-            <p className="mt-0.5 text-[10px] text-white/30">{TREND_POINTS_LABEL}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 text-white/60 transition hover:bg-white/10 hover:text-white">
             <X size={16} />
