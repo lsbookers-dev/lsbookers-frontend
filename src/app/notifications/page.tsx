@@ -56,7 +56,7 @@ function getLink(notif: Notif): string | null {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 30
 
 // ─── Composant ───────────────────────────────────────────────────────────────
 
@@ -68,7 +68,8 @@ export default function NotificationsPage() {
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState(false)
   const [filterUnread, setFilterUnread] = useState(false)
-  const [page, setPage]           = useState(1)
+  const [cursor, setCursor]       = useState<number | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -77,12 +78,12 @@ export default function NotificationsPage() {
     setLoading(true)
     setError(false)
     try {
-      const res = await apiFetch(`${API_BASE}/api/notifications`, {
-        })
+      const res = await apiFetch(`${API_BASE}/api/notifications?limit=${PAGE_SIZE}`)
       if (!res.ok) throw new Error()
       const data = await res.json()
       const list: { read?: boolean }[] = data.notifications || []
       setAll(data.notifications || [])
+      setCursor(data.nextCursor ?? null)
       // Comme la cloche sur ordinateur : ouvrir la page vaut lecture. Les nouvelles
       // restent mises en avant pendant cette visite, mais les pastilles s'effacent.
       if (list.some(n => !n.read)) {
@@ -98,6 +99,24 @@ export default function NotificationsPage() {
   }, [API_BASE, user?.id])
 
   useEffect(() => { fetchNotifications() }, [fetchNotifications])
+
+  // Notifications plus anciennes, par paquets de 30
+  const loadMore = async () => {
+    if (!cursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const res = await apiFetch(`${API_BASE}/api/notifications?limit=${PAGE_SIZE}&before=${cursor}`)
+      if (res.ok) {
+        const data = await res.json()
+        setAll(prev => {
+          const seen = new Set(prev.map(n => n.id))
+          return [...prev, ...(data.notifications || []).filter((n: Notif) => !seen.has(n.id))]
+        })
+        setCursor(data.nextCursor ?? null)
+      }
+    } catch { /* silencieux */ }
+    setLoadingMore(false)
+  }
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -136,18 +155,12 @@ export default function NotificationsPage() {
     setMarkingAll(false)
   }
 
-  // ── Données filtrées + paginées ────────────────────────────────────────────
+  // ── Données filtrées ───────────────────────────────────────────────────────
 
   const filtered  = filterUnread ? all.filter(n => !n.read) : all
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const currentPage = Math.min(page, totalPages)
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
   const unreadCount = all.filter(n => !n.read).length
 
-  const handleFilterToggle = () => {
-    setFilterUnread(v => !v)
-    setPage(1)
-  }
+  const handleFilterToggle = () => setFilterUnread(v => !v)
 
   // ── Rendu ──────────────────────────────────────────────────────────────────
 
@@ -203,7 +216,7 @@ export default function NotificationsPage() {
               Réessayer
             </button>
           </div>
-        ) : paginated.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <LsIcon name="bell" size={34} tone="muted" className="mx-auto mb-3" />
             <p className="text-sm text-white/30">
@@ -212,7 +225,7 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {paginated.map(notif => {
+            {filtered.map(notif => {
               const cfg  = notificationType(notif.type)
               const link = getLink(notif)
               const content = (
@@ -302,25 +315,15 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {/* Pagination */}
-        {!loading && !error && totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8">
+        {/* Voir plus (notifications plus anciennes) */}
+        {!loading && !error && cursor && (
+          <div className="flex justify-center mt-8">
             <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white/60 hover:bg-white/10 disabled:opacity-30 transition"
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white/60 hover:bg-white/10 disabled:opacity-40 transition"
             >
-              ←
-            </button>
-            <span className="text-xs text-white/40">
-              Page {currentPage} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white/60 hover:bg-white/10 disabled:opacity-30 transition"
-            >
-              →
+              {loadingMore ? 'Chargement…' : 'Voir plus'}
             </button>
           </div>
         )}

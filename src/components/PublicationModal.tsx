@@ -54,6 +54,12 @@ const timeAgo = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
+/** Ajoute des commentaires à la liste sans doublon (un commentaire tout juste posté peut revenir avec la page suivante) */
+function appendUnique(list: Comment[], more: Comment[]): Comment[] {
+  const seen = new Set(list.map(c => c.id))
+  return [...list, ...more.filter(c => !seen.has(c.id))]
+}
+
 /** Met à jour le like d'un commentaire dans la liste (top-level ou reply) */
 function applyCommentLike(list: Comment[], id: number, liked: boolean, count: number): Comment[] {
   return list.map(c => {
@@ -82,6 +88,9 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
 
   const [comments,        setComments]        = useState<Comment[]>([])
   const [loadingComs,     setLoadingComs]     = useState(true)
+  const [commentsCursor,  setCommentsCursor]  = useState<number | null>(null)
+  const [loadingMoreComs, setLoadingMoreComs] = useState(false)
+  const [loadingReplies,  setLoadingReplies]  = useState<Record<number, boolean>>({})
   const [newComment,      setNewComment]      = useState('')
   const [submitting,      setSubmitting]      = useState(false)
 
@@ -132,6 +141,7 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
       if (res.ok) {
         const data = await res.json()
         setComments(data.comments || [])
+        setCommentsCursor(data.nextCursor ?? null)
       }
     } catch (err) {
       console.error('Erreur chargement commentaires:', err)
@@ -142,11 +152,57 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
 
   useEffect(() => { loadComments() }, [loadComments])
 
-  /* ── Scroll auto vers le bas quand nouveaux commentaires ── */
-  useEffect(() => {
-    const list = commentsListRef.current
-    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' })
-  }, [comments])
+  /* ── Commentaires suivants (par paquets de 20) ── */
+  const loadMoreComments = async () => {
+    if (!commentsCursor || loadingMoreComs) return
+    setLoadingMoreComs(true)
+    try {
+      const params = new URLSearchParams({ after: String(commentsCursor) })
+      if (user?.profile?.id) params.set('profileId', String(user.profile.id))
+      const res = await apiFetch(`${API_BASE}/api/publications/${pub.id}/comments?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setComments(prev => appendUnique(prev, data.comments || []))
+        setCommentsCursor(data.nextCursor ?? null)
+      }
+    } catch (err) {
+      console.error('Erreur chargement commentaires:', err)
+    } finally {
+      setLoadingMoreComs(false)
+    }
+  }
+
+  /* ── Réponses suivantes d'un commentaire ── */
+  const loadMoreReplies = async (parent: Comment) => {
+    if (loadingReplies[parent.id]) return
+    setLoadingReplies(prev => ({ ...prev, [parent.id]: true }))
+    try {
+      const params = new URLSearchParams({ after: String(parent.replies.at(-1)?.id ?? 0) })
+      if (user?.profile?.id) params.set('profileId', String(user.profile.id))
+      const res = await apiFetch(`${API_BASE}/api/publications/comments/${parent.id}/replies?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setComments(prev => prev.map(c => {
+          if (c.id !== parent.id) return c
+          const replies = appendUnique(c.replies, data.replies || [])
+          // Plus rien à charger : aligner le compteur (réponses de comptes bloqués non affichées)
+          return data.hasMore ? { ...c, replies } : { ...c, replies, _count: { ...c._count, replies: replies.length } }
+        }))
+      }
+    } catch (err) {
+      console.error('Erreur chargement réponses:', err)
+    } finally {
+      setLoadingReplies(prev => { const copy = { ...prev }; delete copy[parent.id]; return copy })
+    }
+  }
+
+  /* ── Descendre en bas de la liste après l'envoi d'un commentaire ── */
+  const scrollCommentsToEnd = () => {
+    requestAnimationFrame(() => {
+      const list = commentsListRef.current
+      if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' })
+    })
+  }
 
   /* ── Like publication ── */
   const handleLike = async () => {
@@ -222,6 +278,7 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
       if (res.ok) {
         const comment = await res.json()
         setComments(prev => [...prev, { ...comment, replies: comment.replies ?? [], likedByMe: false, _count: comment._count ?? { likes: 0, replies: 0 } }])
+        scrollCommentsToEnd()
         const newCount = commentCount + 1
         setCommentCount(newCount)
         onCountChange?.(pub.id, likeCount, newCount)
@@ -382,7 +439,7 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
                 onClick={() => handleLikeComment(c.id)}
                 disabled={!user}
                 className={`flex items-center gap-1 text-[9px] transition ${
-                  c.likedByMe ? 'text-pink-300' : 'text-white/30 hover:text-white/60'
+                  c.likedByMe ? 'text-accent' : 'text-white/30 hover:text-white/60'
                 } disabled:cursor-not-allowed`}
               >
                 <Heart
@@ -420,6 +477,18 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
           <div className="mt-3 space-y-3">
             {c.replies.map(r => renderComment(r, true))}
           </div>
+        )}
+
+        {!isReply && c._count.replies > (c.replies?.length ?? 0) && (
+          <button
+            type="button"
+            onClick={() => loadMoreReplies(c)}
+            disabled={!!loadingReplies[c.id]}
+            className="ml-8 mt-3 inline-flex items-center gap-1.5 text-[10px] text-white/40 transition hover:text-white/70 disabled:opacity-50 sm:ml-10"
+          >
+            {loadingReplies[c.id] && <Loader2 size={11} className="animate-spin" />}
+            Voir {c._count.replies - (c.replies?.length ?? 0) > 1 ? `les ${c._count.replies - (c.replies?.length ?? 0)} autres réponses` : 'l’autre réponse'}
+          </button>
         )}
 
         {isReplying && (
@@ -618,6 +687,17 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
                   <div><span className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-violet-500/10 text-violet-300/65"><MessageCircle size={18} /></span><p className="mt-3 text-xs font-medium text-white/60">Aucun commentaire pour l&apos;instant</p>{user && <p className="mt-1 text-[10px] text-white/30">Lancez la conversation.</p>}</div>
                 </div>
               ) : comments.map(comment => renderComment(comment, false))}
+              {commentsCursor && !loadingComs && (
+                <button
+                  type="button"
+                  onClick={loadMoreComments}
+                  disabled={loadingMoreComs}
+                  className="mx-auto flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[11px] text-white/55 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
+                >
+                  {loadingMoreComs && <Loader2 size={12} className="animate-spin" />}
+                  Voir plus de commentaires
+                </button>
+              )}
               <div ref={commentsEndRef} />
             </div>
 
