@@ -22,7 +22,7 @@ type LegalStatus = '' | 'INDIVIDUAL' | 'INTERMITTENT' | 'AUTO_ENTREPRENEUR' | 'C
 type Form = {
   pseudo: string; firstName: string; lastName: string; showRealName: boolean
   activity: string; bio: string
-  location: string; radiusKm: number | null; address: string; postalCode: string; city: string
+  location: string; radiusKm: number | null; address: string; postalCode: string; city: string; showAddress: boolean
   specialties: string[]; styles: string[]; showStyles: boolean
   youtubeUrl: string; showYoutubeUrl: boolean; soundcloudUrl: string; showSoundcloud: boolean
   instagramUrl: string; tiktokUrl: string; facebookUrl: string; twitterUrl: string; linkedinUrl: string; websiteUrl: string
@@ -44,7 +44,7 @@ function initialForm(profile: ProfileData, role: ProfileRole): Form {
     activity: (role === 'ORGANIZER' ? profile.typeEtablissement : profile.profession) || '',
     bio: profile.bio || '',
     location: profile.location || '', radiusKm: profile.radiusKm ?? null,
-    address: profile.address || '', postalCode: profile.postalCode || '', city: profile.city || '',
+    address: profile.address || '', postalCode: profile.postalCode || '', city: profile.city || '', showAddress: Boolean(profile.showAddress),
     specialties: profile.specialties || [], styles: profile.styles || [], showStyles: profile.showStyles !== false,
     youtubeUrl: profile.youtubeUrl || '', showYoutubeUrl: profile.showYoutubeUrl !== false,
     soundcloudUrl: profile.soundcloudUrl || '', showSoundcloud: Boolean(profile.showSoundcloud),
@@ -114,6 +114,17 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
   const text = ROLE_TEXT[role]
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm(f => ({ ...f, [key]: value }))
 
+  const addressFields = (label: string, hint: string) => (
+    <div className="space-y-3 rounded-xl border border-white/[0.08] p-4">
+      <p className="text-sm text-white/70">{label} <span className="text-white/35">{hint}</span></p>
+      <input value={form.address} onChange={e => set('address', e.target.value)} maxLength={200} placeholder="12 rue de la République" aria-label="Adresse" className={INPUT} />
+      <div className="grid grid-cols-[8rem_1fr] gap-3">
+        <input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} maxLength={10} placeholder="69001" aria-label="Code postal" className={INPUT} />
+        <input value={form.city} onChange={e => set('city', e.target.value)} maxLength={100} placeholder="Lyon" aria-label="Ville" className={INPUT} />
+      </div>
+    </div>
+  )
+
   const sections = useMemo(() => ([
     { key: 'identity', label: 'Identité' },
     { key: 'presentation', label: 'Présentation' },
@@ -163,6 +174,7 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
           location: form.location.trim() || null,
           radiusKm: form.radiusKm,
           address: form.address.trim() || null, postalCode: form.postalCode.trim() || null, city: form.city.trim() || null,
+          ...(role === 'ORGANIZER' ? { showAddress: form.showAddress } : {}),
           specialties: form.specialties,
           ...(role === 'ARTIST' ? {
             styles: form.styles, showStyles: form.showStyles,
@@ -260,6 +272,15 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
                   </div>
                   <p className="mt-2 text-[11px] text-white/35">Clique à nouveau sur un choix pour le retirer.</p>
                 </div>
+                {role === 'ORGANIZER' && (
+                  <>
+                    {addressFields('Adresse de l’établissement', '(facultative, aussi utilisée sur vos devis et factures)')}
+                    <div className="rounded-xl border border-white/[0.08] px-4 py-2">
+                      <Toggle value={form.showAddress} onChange={v => set('showAddress', v)} label="Afficher l’adresse exacte sur mon profil (la carte se place dessus)" />
+                      <p className="pb-2 text-[11px] text-white/35">Désactivé : seule votre ville apparaît sur la carte.</p>
+                    </div>
+                  </>
+                )}
               </>
             )}
 
@@ -341,14 +362,8 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
                     <Field label="Nom de l’établissement"><input value={form.establishmentName} onChange={e => set('establishmentName', e.target.value)} maxLength={200} className={INPUT} /></Field>
                   )}
                 </div>
-                <div className="space-y-3 rounded-xl border border-white/[0.08] p-4">
-                  <p className="text-sm text-white/70">{role === 'ORGANIZER' ? 'Adresse de l’établissement' : 'Adresse postale'} <span className="text-white/35">(utilisée sur vos devis et factures)</span></p>
-                  <input value={form.address} onChange={e => set('address', e.target.value)} maxLength={200} placeholder="12 rue de la République" aria-label="Adresse" className={INPUT} />
-                  <div className="grid grid-cols-[8rem_1fr] gap-3">
-                    <input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} maxLength={10} placeholder="69001" aria-label="Code postal" className={INPUT} />
-                    <input value={form.city} onChange={e => set('city', e.target.value)} maxLength={100} placeholder="Lyon" aria-label="Ville" className={INPUT} />
-                  </div>
-                </div>
+                {role !== 'ORGANIZER' && addressFields('Adresse postale', '(utilisée sur vos devis et factures, jamais affichée)')}
+                {role === 'ORGANIZER' && <p className="text-xs text-white/40">L’adresse de votre établissement se règle dans « Localisation ».</p>}
               </>
             )}
           </div>

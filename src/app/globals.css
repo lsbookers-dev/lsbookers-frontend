@@ -948,7 +948,6 @@ body {
 /* Concept C : cartes en verre sombre sur fond nuit, filet clair, ombre profonde */
 .lsb-profile-page section, .lsb-profile-page [class*="bg-white/\[0.04\]"] { border-color:var(--lsb-line) !important; background-color:rgba(19,18,27,.86) !important; backdrop-filter:blur(14px); }
 .lsb-profile-page [class*="-mt-12"] { box-shadow:0 24px 80px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06); }
-.lsb-profile-studio::before { content:'STUDIO PROFIL · APERÇU PUBLIC'; position:absolute; z-index:3; margin:1rem; padding:.45rem .7rem; border:1px solid rgba(139,92,246,.3); border-radius:999px; background:rgba(8,7,11,.72); color:#c4b5fd; font-size:.58rem; letter-spacing:.14em; backdrop-filter:blur(12px); }
 .lsb-public-profile::before { content:'PROFIL PUBLIC'; position:absolute; z-index:3; margin:1rem; padding:.45rem .7rem; border:1px solid rgba(139,92,246,.3); border-radius:999px; background:rgba(8,7,11,.72); color:#c4b5fd; font-size:.58rem; letter-spacing:.14em; backdrop-filter:blur(12px); }
 .lsb-settings-page input, .lsb-settings-page textarea, .lsb-settings-page select { border-color:var(--lsb-line) !important; background-color:rgba(17,16,22,.85) !important; }
 .lsb-admin-shell { background:radial-gradient(circle at 75% 0%,rgba(139,92,246,.12),transparent 32rem),var(--background); }.lsb-admin-shell main > div, .lsb-admin-shell main section { border-color:var(--lsb-line) !important; }

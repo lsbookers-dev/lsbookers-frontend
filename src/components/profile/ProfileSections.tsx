@@ -175,6 +175,8 @@ export function SocialSection({ profile, mode, onEdit }: SectionProps) {
 export function MapSection({ profile, mode, onEdit }: SectionProps) {
   const { latitude: lat, longitude: lng } = profile
   const hasCoords = lat != null && lng != null
+  // Adresse exacte : carte plus rapprochée que pour une simple ville
+  const zoom = profile.showAddress && profile.address ? 0.004 : 0.02
   const edit = editFor(mode, onEdit, 'location')
   if (!hasCoords && mode === 'public') return null
   return (
@@ -186,10 +188,16 @@ export function MapSection({ profile, mode, onEdit }: SectionProps) {
               title="Carte"
               loading="lazy"
               className="absolute inset-0 h-full w-full"
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng! - 0.03},${lat! - 0.02},${lng! + 0.03},${lat! + 0.02}&layer=mapnik&marker=${lat},${lng}`}
+              src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng! - zoom * 1.5},${lat! - zoom},${lng! + zoom * 1.5},${lat! + zoom}&layer=mapnik&marker=${lat},${lng}`}
             />
           </div>
-          <p className="mt-2 text-xs text-white/40">{[profile.location, profile.country].filter(Boolean).join(', ')}</p>
+          <p className="mt-2 flex items-start gap-1.5 text-xs text-white/55">
+            <MapPin size={13} className="mt-px shrink-0 text-white/35" />
+            {profile.showAddress && profile.address
+              ? [profile.address, [profile.postalCode, profile.city || profile.location].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+              : [profile.location, profile.country].filter(Boolean).join(', ')}
+          </p>
+          {mode === 'studio' && !profile.showAddress && <p className="mt-1 text-[11px] text-white/35">Seule votre ville est visible. Vous pouvez afficher l’adresse exacte dans Localisation.</p>}
         </>
       ) : <EmptyHint text="Ajoute ta ville pour afficher la carte." onAdd={edit} />}
     </Panel>

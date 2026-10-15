@@ -46,7 +46,8 @@ export type ProfileData = {
   followingCount?: number
   reviewsAvg?: number | null
   reviewsCount?: number
-  // Privé
+  showAddress?: boolean
+  // Privé (sauf adresse si showAddress)
   address?: string | null
   postalCode?: string | null
   city?: string | null

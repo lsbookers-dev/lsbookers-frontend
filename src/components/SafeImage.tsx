@@ -46,7 +46,7 @@ export default function SafeImage(props: Props) {
       return (
         <span
           style={{ width: size, height: size, fontSize: size * 0.4 }}
-          className={`flex-shrink-0 flex items-center justify-center rounded-full bg-zinc-800 text-white/60 font-bold select-none ${className}`}
+          className={`inline-flex flex-shrink-0 items-center justify-center rounded-full bg-zinc-800 text-white/60 font-bold select-none align-middle ${className}`}
         >
           {initial}
         </span>
@@ -56,7 +56,7 @@ export default function SafeImage(props: Props) {
     return (
       <span
         style={{ width: size, height: size }}
-        className={`relative flex-shrink-0 rounded-full overflow-hidden bg-zinc-800 ${className}`}
+        className={`relative inline-block flex-shrink-0 rounded-full overflow-hidden bg-zinc-800 align-middle ${className}`}
       >
         <Image
           src={src}
