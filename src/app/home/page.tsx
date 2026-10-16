@@ -45,7 +45,6 @@ export default function HomePage() {
   const [selectedPost, setSelectedPost]   = useState<Post | null>(null)
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null)
   const [showAddPubModal, setShowAddPubModal] = useState(false)
-  const [composerFiles, setComposerFiles] = useState<File[] | undefined>()
   const [isMuted, setIsMuted]             = useState(true)
   const [activeTab, setActiveTab]         = useState<Tab>('forYou')
   const toggleMute = useCallback(() => setIsMuted(m => !m), [])
@@ -148,7 +147,7 @@ export default function HomePage() {
           <HomeComposer
             firstName={user?.name}
             avatarUrl={user?.avatarUrl}
-            onOpen={files => { setComposerFiles(files); setShowAddPubModal(true) }}
+            onOpen={() => setShowAddPubModal(true)}
           />
 
           <div className="lsb-feed-tabs" role="tablist" aria-label="Fil d'actualité">
@@ -173,7 +172,6 @@ export default function HomePage() {
           profileId={user.profile?.id ?? 0}
           token={getAuthToken() ?? ''}
           accent="violet"
-          initialFiles={composerFiles}
           onClose={() => setShowAddPubModal(false)}
           onPublished={(pub) => {
             forYou.setPosts(prev => [{

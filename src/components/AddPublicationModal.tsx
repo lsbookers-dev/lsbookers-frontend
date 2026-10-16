@@ -32,8 +32,6 @@ type Props = {
   accent?: 'pink' | 'violet' | 'blue'
   onClose: () => void
   onPublished: (pub: PubCardData) => void
-  /** Fichiers déjà choisis avant l'ouverture (raccourcis Photo / Vidéo de l'accueil) */
-  initialFiles?: File[]
 }
 
 type FilePreview = {
@@ -60,7 +58,7 @@ const toAbsoluteUrl = (url?: string | null) => {
   return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
-export default function AddPublicationModal({ profileId, token, onClose, onPublished, initialFiles }: Props) {
+export default function AddPublicationModal({ profileId, token, onClose, onPublished }: Props) {
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const filesRef = useRef<FilePreview[]>([])
@@ -209,15 +207,6 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
     setError(nextError)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
-
-  // Fichiers choisis depuis les raccourcis de l'accueil : ajoutés une seule fois à l'ouverture
-  const initialAdded = useRef(false)
-  useEffect(() => {
-    if (initialAdded.current || !initialFiles?.length) return
-    initialAdded.current = true
-    addFiles(initialFiles)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const removeFile = (index: number) => {
     setFiles(previous => {
