@@ -8,12 +8,21 @@ import HeaderAnnouncement from '@/components/HeaderAnnouncement'
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 const MAX = 140
 
+// Date du champ en heure locale (AAAA-MM-JJ) ; la fin vaut 23 h 59 ce jour-là
+const toInputDate = (iso?: string | null) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const fromInputDate = (value: string) => (value ? new Date(`${value}T23:59:59`).toISOString() : null)
+
 /** Admin › Paramètres : annonce affichée au centre de l'en-tête pour tous les membres (choix B6). */
 export default function AnnouncementSettings() {
   const { notify } = useFeedback()
   const [text, setText]     = useState('')
   const [url, setUrl]       = useState('')
   const [active, setActive] = useState(false)
+  const [endsAt, setEndsAt] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -24,6 +33,7 @@ export default function AnnouncementSettings() {
         setText(d.announcementText || '')
         setUrl(d.announcementUrl || '')
         setActive(!!d.announcementActive)
+        setEndsAt(toInputDate(d.announcementEndsAt))
       })
       .catch(() => {})
   }, [])
@@ -31,6 +41,8 @@ export default function AnnouncementSettings() {
   const urlError = url && !/^\/(?!\/)/.test(url) && !/^https:\/\//i.test(url)
     ? 'Le lien doit commencer par / (page du site) ou https://'
     : ''
+
+  const expired = !!endsAt && new Date(`${endsAt}T23:59:59`) <= new Date()
 
   const save = async () => {
     if (urlError) return
@@ -40,10 +52,10 @@ export default function AnnouncementSettings() {
       const res = await apiFetch(`${API_BASE}/api/admin/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ announcementText: text.trim(), announcementUrl: url.trim(), announcementActive: active }),
+        body: JSON.stringify({ announcementText: text.trim(), announcementUrl: url.trim(), announcementActive: active, announcementEndsAt: fromInputDate(endsAt) }),
       })
       if (!res.ok) { notify(await apiErrorMessage(res, 'Enregistrement impossible.'), 'error'); return }
-      notify(active ? 'Annonce en ligne (visible d’ici une minute).' : 'Annonce enregistrée, masquée.')
+      notify(!active ? 'Annonce enregistrée, masquée.' : expired ? 'Enregistrée, mais la date de fin est passée : l’annonce reste masquée.' : 'Annonce en ligne (visible d’ici une minute).')
     } finally {
       setSaving(false)
     }
@@ -53,7 +65,7 @@ export default function AnnouncementSettings() {
     <section className="mb-8 rounded-2xl border border-white/10 bg-black/30 p-4">
       <h2 className="mb-1 text-lg font-semibold">Annonce de l&apos;en-tête</h2>
       <p className="mb-4 text-sm text-white/50">
-        Une ligne d&apos;information au centre de l&apos;en-tête, pour tous les membres (sur ordinateur et tablette).
+        Une ligne d&apos;information au centre de l&apos;en-tête, pour tous les membres (sur téléphone : en bandeau en haut des pages).
         Chacun peut la fermer ; si vous changez le texte ou le lien, elle réapparaît.
       </p>
 
@@ -79,6 +91,23 @@ export default function AnnouncementSettings() {
           className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-accent/40 focus:outline-none"
         />
         {urlError && <span className="mt-1 block text-xs text-red-300">{urlError}</span>}
+      </label>
+
+      <label className="mt-3 block">
+        <span className="mb-1.5 block text-xs uppercase tracking-wider text-white/50">Date de fin (facultatif)</span>
+        <input
+          type="date"
+          value={endsAt}
+          onChange={e => setEndsAt(e.target.value)}
+          className="w-48 rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white [color-scheme:dark] focus:border-accent/40 focus:outline-none"
+        />
+        <span className={`mt-1 block text-xs ${expired ? 'text-red-300' : 'text-white/40'}`}>
+          {!endsAt
+            ? 'Sans date de fin : l’annonce reste affichée tant que la case est cochée.'
+            : expired
+              ? 'Cette date est passée : l’annonce n’est plus affichée.'
+              : `L’annonce disparaît toute seule après le ${new Date(`${endsAt}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}.`}
+        </span>
       </label>
 
       <label className="mt-4 flex items-center gap-3 text-sm">

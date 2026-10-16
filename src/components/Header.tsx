@@ -15,7 +15,7 @@ import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
 import { reviewOrBookingItemLink } from '@/utils/notificationLinks'
 import LsIcon from '@/components/ui/LsIcon'
-import HeaderAnnouncement, { type Announcement } from './HeaderAnnouncement'
+import HeaderAnnouncement, { announcementFromSettings, type Announcement } from './HeaderAnnouncement'
 import { NotificationIcon } from '@/lib/notificationTypes'
 
 /* ─────────────────────────────────────────────────────────
@@ -142,7 +142,7 @@ export default function Header() {
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.headerLogoUrl) setHeaderLogoUrl(d.headerLogoUrl)
-        setAnnouncement(d?.announcementActive && d.announcementText ? { text: d.announcementText, url: d.announcementUrl || '' } : null)
+        setAnnouncement(announcementFromSettings(d))
       })
       .catch(() => {})
   }, [API_BASE])

@@ -11,6 +11,15 @@ export type Announcement = { text: string; url: string }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 const DISMISS_KEY = 'lsb:announcement-dismissed'
+type AnnouncementSettings = { announcementVisible?: boolean; announcementText?: string; announcementUrl?: string; announcementEndsAt?: string | null }
+
+/** Annonce à afficher d'après les réglages publics : activée, avec un texte, date de fin pas encore passée */
+export function announcementFromSettings(d: AnnouncementSettings | null): Announcement | null {
+  if (!d?.announcementVisible || !d.announcementText) return null
+  if (d.announcementEndsAt && new Date(d.announcementEndsAt) <= new Date()) return null
+  return { text: d.announcementText, url: d.announcementUrl || '' }
+}
+
 // Une annonce fermée ne revient pas ; une nouvelle annonce (texte ou lien différent) réapparaît
 const announcementKey = (a: Announcement) => `${a.text}|${a.url}`
 
@@ -73,7 +82,7 @@ export function MobileAnnouncement() {
   useEffect(() => {
     apiFetch(`${API_BASE}/api/admin/settings`)
       .then(r => (r.ok ? r.json() : null))
-      .then(d => setAnnouncement(d?.announcementActive && d.announcementText ? { text: d.announcementText, url: d.announcementUrl || '' } : null))
+      .then(d => setAnnouncement(announcementFromSettings(d)))
       .catch(() => {})
   }, [])
 
