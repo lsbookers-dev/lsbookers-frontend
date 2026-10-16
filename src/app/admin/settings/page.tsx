@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import CropModal from '@/components/CropModal'
+import AnnouncementSettings from '@/components/admin/AnnouncementSettings'
 import { getAuthToken, apiFetch } from '@/utils/auth'
 
 type AdminSettings = {
@@ -149,6 +150,8 @@ export default function AdminSettingsPage() {
   return (
     <div className="max-w-3xl mx-auto p-6 text-white">
       <h1 className="text-2xl font-bold mb-6">Paramètres du site</h1>
+
+      <AnnouncementSettings />
 
       {/* Welcome text */}
       <section className="mb-8 rounded-2xl border border-white/10 p-4 bg-black/30">

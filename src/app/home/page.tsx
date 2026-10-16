@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import PublicationModal from '@/components/PublicationModal'
@@ -10,6 +9,7 @@ import OfferModal from '@/components/OfferModal'
 import { getAuthToken, apiFetch } from '@/utils/auth'
 import LsIcon, { type LsIconName } from '@/components/ui/LsIcon'
 import FeaturedCarousel from '@/components/home/FeaturedCarousel'
+import HomeComposer from '@/components/home/HomeComposer'
 import FeedList from '@/components/home/FeedList'
 import FeedSkeleton from '@/components/home/FeedSkeleton'
 import OffersSidebar from '@/components/home/OffersSidebar'
@@ -45,6 +45,7 @@ export default function HomePage() {
   const [selectedPost, setSelectedPost]   = useState<Post | null>(null)
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null)
   const [showAddPubModal, setShowAddPubModal] = useState(false)
+  const [composerFiles, setComposerFiles] = useState<File[] | undefined>()
   const [isMuted, setIsMuted]             = useState(true)
   const [activeTab, setActiveTab]         = useState<Tab>('forYou')
   const toggleMute = useCallback(() => setIsMuted(m => !m), [])
@@ -144,16 +145,11 @@ export default function HomePage() {
             <div><span>VOTRE RÉSEAU</span><h1>La scène bouge<em>.</em></h1><p>Les nouveautés de votre univers professionnel.</p></div>
           </header>
 
-          <section className="lsb-composer" style={{ cursor: 'pointer' }} onClick={() => setShowAddPubModal(true)}>
-            <div className="lsb-composer-avatar overflow-hidden">
-              {user?.avatarUrl ? (
-                <Image src={user.avatarUrl} alt="" width={40} height={40} style={{ objectFit: 'cover', width: '100%', height: '100%' }} unoptimized />
-              ) : (
-                user?.name ? user.name[0].toUpperCase() : 'LS'
-              )}
-            </div>
-            <span className="flex-1 text-white/40">Ajouter une Publication</span>
-          </section>
+          <HomeComposer
+            firstName={user?.name}
+            avatarUrl={user?.avatarUrl}
+            onOpen={files => { setComposerFiles(files); setShowAddPubModal(true) }}
+          />
 
           <div className="lsb-feed-tabs" role="tablist" aria-label="Fil d'actualité">
             <button className={activeTab === 'forYou' ? 'is-active' : ''} onClick={() => setActiveTab('forYou')}>Pour vous</button>
@@ -177,6 +173,7 @@ export default function HomePage() {
           profileId={user.profile?.id ?? 0}
           token={getAuthToken() ?? ''}
           accent="violet"
+          initialFiles={composerFiles}
           onClose={() => setShowAddPubModal(false)}
           onPublished={(pub) => {
             forYou.setPosts(prev => [{

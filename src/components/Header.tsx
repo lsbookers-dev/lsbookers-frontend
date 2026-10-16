@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Bell, LogOut, Mail,
+  Bell, LogOut,
   Settings, UserRound, ChevronDown,
 } from 'lucide-react'
 import { getAuthToken, apiFetch } from '@/utils/auth'
@@ -15,6 +15,7 @@ import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
 import { reviewOrBookingItemLink } from '@/utils/notificationLinks'
 import LsIcon from '@/components/ui/LsIcon'
+import HeaderAnnouncement, { type Announcement } from './HeaderAnnouncement'
 import { NotificationIcon } from '@/lib/notificationTypes'
 
 /* ─────────────────────────────────────────────────────────
@@ -90,7 +91,7 @@ export default function Header() {
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
   const [menuOpen, setMenuOpen]           = useState(false)
   const [headerLogoUrl, setHeaderLogoUrl] = useState<string | null>(null)
-const [unreadMsg, setUnreadMsg]         = useState(0)
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [unreadNotif, setUnreadNotif]     = useState(0)
   const menuRef  = useRef<HTMLDivElement>(null)
 
@@ -139,7 +140,10 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
   useEffect(() => {
     apiFetch(`${API_BASE}/api/admin/settings`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.headerLogoUrl) setHeaderLogoUrl(d.headerLogoUrl) })
+      .then(d => {
+        if (d?.headerLogoUrl) setHeaderLogoUrl(d.headerLogoUrl)
+        setAnnouncement(d?.announcementActive && d.announcementText ? { text: d.announcementText, url: d.announcementUrl || '' } : null)
+      })
       .catch(() => {})
   }, [API_BASE])
 
@@ -207,11 +211,8 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
     const headers = { 'Cache-Control': 'no-store' }
 
     try {
-      const [msgRes, notifRes] = await Promise.all([
-        apiFetch(`${API_BASE}/api/messages/unread-count?t=${Date.now()}`, { headers }),
-        apiFetch(`${API_BASE}/api/notifications/unread-count?t=${Date.now()}`, { headers }),
-      ])
-      if (msgRes.ok) setUnreadMsg(Number((await msgRes.json()).count ?? 0))
+      // Les messages non lus sont comptés sur « Messages » dans le bandeau gauche (useUnreadMessages)
+      const notifRes = await apiFetch(`${API_BASE}/api/notifications/unread-count?t=${Date.now()}`, { headers })
       // Ne pas écraser le compteur si le popup est ouvert (évite la race condition)
       if (notifRes.ok && !notifOpenRef.current)
         setUnreadNotif(Number((await notifRes.json()).count ?? 0))
@@ -253,8 +254,6 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
     }
   }, [user?.id, fetchCounts])
 
-  /* ── Liens de navigation desktop ───────────────────── */
-  const navLinks: { label: string; href: string; active: boolean }[] = []
 
   return (
     <>
@@ -274,34 +273,12 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
               )}
             </Link>
 
-{/* ── Nav desktop ────────────────────────────── */}
-            <nav className="hidden lg:flex items-center gap-1">
-              {navLinks.map(link => (
-                <Link key={link.href} href={link.href}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    link.active
-                      ? 'bg-white/8 text-white'
-                      : 'text-white/55 hover:text-white hover:bg-white/5'
-                  }`}>
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+{/* ── Annonce LS Bookers (Admin › Paramètres) ─ */}
+            <HeaderAnnouncement announcement={announcement} />
 
             {/* ── Actions droite ─────────────────────────── */}
             <div className="flex items-center gap-1 md:gap-2">
 
-              {/* Messages — masqué sur mobile (dans bottom nav) */}
-              <Link href="/messages"
-                className="hidden md:flex relative rounded-full p-2.5 hover:bg-white/8 transition"
-                title="Messagerie">
-                <Mail className="h-5 w-5 text-white/80" />
-                {unreadMsg > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 rounded-full bg-pink-600 text-[9px] font-bold text-white grid place-items-center">
-                    {unreadMsg > 99 ? '99+' : unreadMsg}
-                  </span>
-                )}
-              </Link>
 
               {/* Notifications — popup desktop */}
               <div className="hidden md:block relative" ref={notifRef}>
@@ -312,7 +289,7 @@ const [unreadMsg, setUnreadMsg]         = useState(0)
                 >
                   <Bell className="h-5 w-5 text-white/80" />
                   {unreadNotif > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 rounded-full bg-purple-600 text-[9px] font-bold text-white grid place-items-center">
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 rounded-full bg-accent text-[9px] font-bold text-white grid place-items-center">
                       {unreadNotif > 99 ? '99+' : unreadNotif}
                     </span>
                   )}

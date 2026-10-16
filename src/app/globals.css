@@ -76,6 +76,8 @@ body {
 .lsb-side-link svg { width: 1.05rem; height: 1.05rem; stroke-width: 1.8; }
 .lsb-side-link:hover, .lsb-side-link.is-active { color: white; background: rgba(139,92,246,.12); }
 .lsb-side-link.is-active::before { content: ''; position: absolute; left: 0; width: 3px; height: 1.2rem; border-radius: 4px; background: var(--lsb-accent); box-shadow: 0 0 14px var(--lsb-accent); }
+.lsb-side-icon { position: relative; display: inline-grid; place-items: center; }
+.lsb-side-badge { position: absolute; top: -.45rem; right: -.6rem; min-width: 1rem; height: 1rem; padding: 0 .25rem; display: grid; place-items: center; border-radius: 999px; background: var(--lsb-accent); color: white; font-size: .55rem; font-weight: 700; line-height: 1; box-shadow: 0 0 0 2px rgba(8,7,11,.94); }
 .lsb-page { width: min(100%, 87rem); margin: 0 auto; padding: 2rem clamp(1rem, 3vw, 2.5rem) 4rem; }
 .lsb-page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
 .lsb-page-heading > div:first-child > span, .lsb-eyebrow { display: block; margin: 0 0 .45rem; color: var(--lsb-accent); font-size: .66rem; font-weight: 700; letter-spacing: .18em; }

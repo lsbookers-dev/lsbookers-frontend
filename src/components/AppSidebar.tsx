@@ -6,6 +6,7 @@ import {
   CalendarDays, Compass, Home, LayoutDashboard, Mail,
   Settings, Sparkles, TicketCheck,
 } from 'lucide-react'
+import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 
 const primary = [
   { href: '/home', label: 'Accueil', icon: Home },
@@ -23,15 +24,25 @@ const secondary = [
 
 export default function AppSidebar() {
   const pathname = usePathname()
+  const unreadMessages = useUnreadMessages()
   const active = (href: string, matches?: string[]) =>
     (matches || [href]).some(path => pathname === path || pathname.startsWith(`${path}/`))
 
-  const group = (items: typeof primary) => items.map(({ href, label, icon: Icon, match }) => (
-    <Link key={href} href={href} className={`lsb-side-link ${active(href, match) ? 'is-active' : ''}`}>
-      <Icon aria-hidden="true" />
-      <span>{label}</span>
-    </Link>
-  ))
+  // Pastille des messages non lus (l'enveloppe de l'en-tête a été retirée, choix B6)
+  const badgeFor = (href: string) => (href === '/messages' ? unreadMessages : 0)
+
+  const group = (items: typeof primary) => items.map(({ href, label, icon: Icon, match }) => {
+    const badge = badgeFor(href)
+    return (
+      <Link key={href} href={href} className={`lsb-side-link ${active(href, match) ? 'is-active' : ''}`}>
+        <span className="lsb-side-icon">
+          <Icon aria-hidden="true" />
+          {badge > 0 && <span className="lsb-side-badge" aria-label={`${badge} message${badge > 1 ? 's' : ''} non lu${badge > 1 ? 's' : ''}`}>{badge > 99 ? '99+' : badge}</span>}
+        </span>
+        <span>{label}</span>
+      </Link>
+    )
+  })
 
   return (
     <aside className="lsb-sidebar" aria-label="Navigation principale">
