@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import Header from '@/components/Header'
 import BottomNav from '@/components/BottomNav'
 import InstallPrompt from '@/components/InstallPrompt'
+import { MobileAnnouncement } from '@/components/HeaderAnnouncement'
 import AppSidebar from '@/components/AppSidebar'
 import { getAuthToken, apiFetch } from '@/utils/auth'
 
@@ -77,6 +78,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         }}
       >
         <style>{`@media (min-width: 768px) { main { padding-bottom: 0 !important; } }`}</style>
+        {showAppNav && <MobileAnnouncement />}
         {children}
       </main>
       {showAppNav && <BottomNav />}
