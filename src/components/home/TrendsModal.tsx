@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import LsIcon from '@/components/ui/LsIcon'
 import { SPECIALTIES_BY_ROLE } from '@/constants/specialties'
 import { useTrends, type TrendRole } from './trends'
 import TrendsList from './TrendsList'
+import SpecialtyPicker from './SpecialtyPicker'
 
 /** Fenêtre « Voir plus » : classement complet, avec un menu déroulant de toutes les spécialités du rôle. */
 export default function TrendsModal({ title, role, initialCity, onClose }: {
@@ -50,18 +51,7 @@ export default function TrendsModal({ title, role, initialCity, onClose }: {
         </header>
 
         <div className="px-4 pt-3">
-          <label className="relative block">
-            <span className="sr-only">Spécialité</span>
-            <select
-              value={specialty}
-              onChange={e => setSpecialty(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-white/10 bg-white/[0.04] py-2.5 pl-3.5 pr-10 text-sm text-white outline-none transition [color-scheme:dark] focus:border-accent/45"
-            >
-              <option value="">Toutes les spécialités</option>
-              {specialties.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45" />
-          </label>
+          <SpecialtyPicker value={specialty} options={specialties} onChange={setSpecialty} />
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
