@@ -475,9 +475,7 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
           </div>
 
           <aside className="hidden min-w-0 bg-[#09080c] p-5 lg:block lg:overflow-y-auto">
-            <div className="mb-3">
-              <p className="text-[11px] font-semibold text-white/75">Aperçu dans le fil</p>
-            </div>
+            <h3 className="mb-3 text-[11px] font-semibold text-white/75">Aperçu dans le fil</h3>
             <article className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-[#141019]">
               {selectedMedia ? (
                 selectedMedia.type === 'image'
