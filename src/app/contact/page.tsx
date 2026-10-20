@@ -2,8 +2,10 @@
 
 import { apiFetch } from '@/utils/auth'
 import { useEffect, useState } from 'react'
-import { Mail, MessageSquare, User, AtSign, Tag, Send, CheckCircle } from 'lucide-react'
+import { Mail, MessageSquare, User, AtSign, Tag, Send, CheckCircle, ChevronLeft } from 'lucide-react'
 import LsIcon from '@/components/ui/LsIcon'
+import Link from 'next/link'
+import { useAuth } from '@/context/AuthContext'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -17,6 +19,7 @@ const SUBJECTS = [
 ]
 
 export default function ContactPage() {
+  const { user } = useAuth()
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' })
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
@@ -59,13 +62,20 @@ export default function ContactPage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
+      {!user && (
+        <div className="absolute left-0 right-0 top-0 z-10 mx-auto flex max-w-5xl items-center px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          <Link href="/" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3.5 py-2 text-sm text-white/70 backdrop-blur transition hover:text-white">
+            <ChevronLeft size={16} /> Retour au site
+          </Link>
+        </div>
+      )}
 
       {/* Hero */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-black to-black pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-accent-strong/15 via-black to-black pointer-events-none" />
         <div className="relative max-w-5xl mx-auto px-4 pt-24 pb-16 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 mb-6">
-            <Mail size={26} className="text-emerald-400" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent/20 border border-accent/30 mb-6">
+            <Mail size={26} className="text-accent-light" />
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight">
             Contactez-nous
@@ -83,8 +93,8 @@ export default function ContactPage() {
         <div>
           {sent ? (
             <div className="flex flex-col items-center justify-center text-center py-20 gap-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center">
-                <CheckCircle size={32} className="text-emerald-400" />
+              <div className="w-16 h-16 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center">
+                <CheckCircle size={32} className="text-accent-light" />
               </div>
               <h2 className="text-2xl font-semibold">Message envoyé !</h2>
               <p className="text-white/50 max-w-sm">
@@ -110,7 +120,7 @@ export default function ContactPage() {
                   value={form.name}
                   onChange={e => set('name', e.target.value)}
                   placeholder="Jean Dupont"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition"
                 />
               </div>
 
@@ -124,7 +134,7 @@ export default function ContactPage() {
                   value={form.email}
                   onChange={e => set('email', e.target.value)}
                   placeholder="jean@exemple.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition"
                 />
               </div>
 
@@ -136,7 +146,7 @@ export default function ContactPage() {
                 <select
                   value={form.subject}
                   onChange={e => set('subject', e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition appearance-none cursor-pointer"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition appearance-none cursor-pointer"
                 >
                   <option value="">Choisir un sujet (optionnel)</option>
                   {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -153,7 +163,7 @@ export default function ContactPage() {
                   onChange={e => set('message', e.target.value)}
                   placeholder="Décrivez votre demande en détail…"
                   rows={7}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition resize-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition resize-none"
                 />
               </div>
 
@@ -166,7 +176,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={sending}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold transition"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent-strong hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold transition"
               >
                 <Send size={15} />
                 {sending ? 'Envoi en cours…' : 'Envoyer le message'}
