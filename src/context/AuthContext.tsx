@@ -80,6 +80,7 @@ const PUBLIC_PATHS = [
   '/verify-email',
   '/device-verified',
   '/contact',
+  '/confirm-email-change',
 ]
 
 const isPublicPath = (pathname: string) => {

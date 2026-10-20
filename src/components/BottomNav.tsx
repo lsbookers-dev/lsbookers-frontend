@@ -80,7 +80,7 @@ export default function BottomNav() {
     { href: '/offers',           icon: TicketCheck,     label: 'Opportunités',  badge: 0 },
     { href: '/studio-profile',   icon: Sparkles,        label: 'Studio profil', badge: 0 },
     { href: '/subscriptions',    icon: Crown,           label: 'Abonnements',   badge: 0 },
-    { href: '/settings/profile', icon: Settings,        label: 'Réglages',      badge: 0 },
+    { href: '/settings',         icon: Settings,        label: 'Réglages',      badge: 0 },
   ]
   const morePaths = [...moreItems.map(i => i.href), '/profile', '/settings', '/contact']
   const moreActive = morePaths.some(p => pathname === p || pathname.startsWith(p + '/'))

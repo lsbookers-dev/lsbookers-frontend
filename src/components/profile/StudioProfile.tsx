@@ -25,7 +25,7 @@ import type { EditorSection, ProfileData, ProfilePublication } from './types'
 import { isProfileRole, publicProfileHref, ROLE_TEXT } from './utils'
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024
-const EDITOR_SECTIONS: EditorSection[] = ['identity', 'presentation', 'location', 'specialties', 'media', 'socials', 'career', 'private']
+const EDITOR_SECTIONS: EditorSection[] = ['identity', 'presentation', 'location', 'specialties', 'media', 'socials', 'career']
 
 export default function StudioProfile() {
   const { user } = useAuth()

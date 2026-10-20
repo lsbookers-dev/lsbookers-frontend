@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useFeedback } from '@/components/ui/Feedback'
 import { Lightbox } from './MessageUI'
 import ConversationList from './ConversationList'
 import MessageThread from './MessageThread'
@@ -25,6 +26,7 @@ function MessagesContent() {
   const toUserId = searchParams.get('to') ? Number(searchParams.get('to')) : null
 
   /* ── State ── */
+  const { notify } = useFeedback()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [activeConv, setActiveConv] = useState<Conversation | null>(null)
@@ -416,6 +418,8 @@ function MessagesContent() {
       if (!res.ok) {
         const errData = await res.json().catch(() => null)
         if (errData?.error === 'BLOCKED') alert(sendErrorText('BLOCKED'))
+        // Réglages du destinataire : compte en pause, ou « seulement les membres que je suis »
+        else if (errData?.code === 'MESSAGES_RESTRICTED' || errData?.code === 'ACCOUNT_PAUSED') notify(errData.error, 'error')
         return
       }
       const data = await res.json()
@@ -433,7 +437,7 @@ function MessagesContent() {
         setSearch('')
       }
     } catch (err) { console.error('startConversation:', err) }
-  }, [token, conversations, selectConv, router])
+  }, [token, conversations, selectConv, router, notify])
 
   useEffect(() => {
     if (!toUserId || !token || autoStartedRef.current || !convLoaded) return

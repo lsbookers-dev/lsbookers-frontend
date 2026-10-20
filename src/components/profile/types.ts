@@ -71,4 +71,4 @@ export type ProfilePublication = {
 export type ProfileMode = 'studio' | 'public'
 
 /** Sections de l'éditeur du Studio (permet d'ouvrir l'éditeur au bon endroit). */
-export type EditorSection = 'identity' | 'presentation' | 'location' | 'specialties' | 'media' | 'socials' | 'career' | 'private'
+export type EditorSection = 'identity' | 'presentation' | 'location' | 'specialties' | 'media' | 'socials' | 'career'

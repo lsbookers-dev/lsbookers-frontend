@@ -1,7 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/utils/auth'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Mail, MessageSquare, User, AtSign, Tag, Send, CheckCircle } from 'lucide-react'
 import LsIcon from '@/components/ui/LsIcon'
 
@@ -12,6 +12,7 @@ const SUBJECTS = [
   'Question sur mon compte',
   'Demande de partenariat',
   'Signaler un abus',
+  'Question sur mes données personnelles',
   'Autre',
 ]
 
@@ -22,6 +23,13 @@ export default function ContactPage() {
   const [error, setError] = useState<string | null>(null)
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  // Sujet choisi d'avance depuis Réglages › Aide (?sujet=probleme | compte | abus | donnees)
+  useEffect(() => {
+    const key = new URLSearchParams(window.location.search).get('sujet')
+    const subject = { probleme: SUBJECTS[0], compte: SUBJECTS[1], abus: SUBJECTS[3], donnees: 'Question sur mes données personnelles' }[key || '']
+    if (subject) setForm(f => ({ ...f, subject }))
+  }, [])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()

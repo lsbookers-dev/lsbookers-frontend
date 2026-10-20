@@ -17,8 +17,6 @@ import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
 import { ROLE_TEXT, SOCIAL_FIELDS } from './utils'
 import type { EditorSection, ProfileData, ProfileRole } from './types'
 
-type LegalStatus = '' | 'INDIVIDUAL' | 'INTERMITTENT' | 'AUTO_ENTREPRENEUR' | 'COMPANY'
-
 type Form = {
   pseudo: string; firstName: string; lastName: string; showRealName: boolean
   activity: string; bio: string
@@ -27,12 +25,9 @@ type Form = {
   youtubeUrl: string; showYoutubeUrl: boolean; soundcloudUrl: string; showSoundcloud: boolean
   instagramUrl: string; tiktokUrl: string; facebookUrl: string; twitterUrl: string; linkedinUrl: string; websiteUrl: string
   cvText: string; feeInfo: string
-  dateOfBirth: string; phone: string; countryOfResidence: string
-  legalStatus: LegalStatus; establishmentName: string; siret: string
 }
 
 const RADIUS_CHOICES = [50, 100, 200, 500, 1000]
-const isProfessional = (status: LegalStatus) => status === 'COMPANY' || status === 'AUTO_ENTREPRENEUR'
 
 const INPUT = 'w-full rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-violet-500/50'
 
@@ -51,10 +46,6 @@ function initialForm(profile: ProfileData, role: ProfileRole): Form {
     instagramUrl: profile.instagramUrl || '', tiktokUrl: profile.tiktokUrl || '', facebookUrl: profile.facebookUrl || '',
     twitterUrl: profile.twitterUrl || '', linkedinUrl: profile.linkedinUrl || '', websiteUrl: profile.websiteUrl || '',
     cvText: profile.cvText || '', feeInfo: profile.feeInfo || '',
-    dateOfBirth: u?.dateOfBirth ? String(u.dateOfBirth).slice(0, 10) : '',
-    phone: u?.phone || '', countryOfResidence: u?.countryOfResidence || '',
-    legalStatus: (profile.legalStatus as LegalStatus) || '',
-    establishmentName: profile.establishmentName || '', siret: profile.siret || '',
   }
 }
 
@@ -133,7 +124,6 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
     { key: 'media', label: 'Vidéo & son' },
     { key: 'socials', label: 'Réseaux sociaux' },
     ...(role !== 'ORGANIZER' ? [{ key: 'career', label: 'Parcours & tarifs' }] : []),
-    { key: 'private', label: 'Infos privées' },
   ] as { key: EditorSection; label: string }[]), [role])
 
   const save = async () => {
@@ -145,7 +135,7 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
     setSaving(true)
     setError(null)
     try {
-      const professional = isProfessional(form.legalStatus)
+      // Les infos privées (naissance, téléphone, statut, SIRET…) se modifient dans Réglages › Mon compte
       const accountRes = await apiFetch(apiUrl('profile/me/account'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -153,13 +143,6 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
           pseudo: form.pseudo.trim(),
           firstName: form.firstName.trim(),
           lastName: form.lastName.trim(),
-          dateOfBirth: form.dateOfBirth || null,
-          phone: form.phone.trim() || null,
-          countryOfResidence: form.countryOfResidence.trim() || null,
-          ...(form.legalStatus ? { legalStatus: form.legalStatus } : {}),
-          ...(role === 'ORGANIZER' && form.legalStatus ? { organizerType: professional ? 'PROFESSIONAL' : 'INDIVIDUAL' } : {}),
-          establishmentName: role === 'ORGANIZER' && professional ? form.establishmentName.trim() || null : null,
-          siret: professional ? form.siret.replace(/\s/g, '') || null : null,
         }),
       })
       if (!accountRes.ok) throw new Error(await apiErrorMessage(accountRes, 'Impossible d’enregistrer ton identité.'))
@@ -173,8 +156,11 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
           bio: form.bio.trim() || null,
           location: form.location.trim() || null,
           radiusKm: form.radiusKm,
-          address: form.address.trim() || null, postalCode: form.postalCode.trim() || null, city: form.city.trim() || null,
-          ...(role === 'ORGANIZER' ? { showAddress: form.showAddress } : {}),
+          // Organisateur : adresse de l'établissement (Localisation). Les autres rôles : adresse postale dans les Réglages
+          ...(role === 'ORGANIZER' ? {
+            address: form.address.trim() || null, postalCode: form.postalCode.trim() || null, city: form.city.trim() || null,
+            showAddress: form.showAddress,
+          } : {}),
           specialties: form.specialties,
           ...(role === 'ARTIST' ? {
             styles: form.styles, showStyles: form.showStyles,
@@ -196,9 +182,6 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
         user: {
           ...profile.user,
           ...updated?.user,
-          dateOfBirth: form.dateOfBirth || null,
-          phone: form.phone.trim() || null,
-          countryOfResidence: form.countryOfResidence.trim() || null,
         },
       })
       notify('Profil enregistré')
@@ -340,32 +323,6 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
               </>
             )}
 
-            {section === 'private' && (
-              <>
-                <p className="text-xs text-white/45">Ces informations ne sont jamais affichées sur ton profil public.</p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Date de naissance"><input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={`${INPUT} [color-scheme:dark]`} /></Field>
-                  <Field label="Téléphone"><input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} maxLength={20} placeholder="06 12 34 56 78" className={INPUT} /></Field>
-                  <Field label="Pays de résidence"><input value={form.countryOfResidence} onChange={e => set('countryOfResidence', e.target.value)} maxLength={100} placeholder="France" className={INPUT} /></Field>
-                  <Field label="Statut">
-                    <select value={isProfessional(form.legalStatus) ? 'COMPANY' : form.legalStatus} onChange={e => set('legalStatus', e.target.value as LegalStatus)} className={`${INPUT} [color-scheme:dark]`}>
-                      <option value="">Non renseigné</option>
-                      <option value="INDIVIDUAL">Particulier</option>
-                      <option value="INTERMITTENT">Intermittent du spectacle</option>
-                      <option value="COMPANY">Professionnel (auto-entrepreneur, société…)</option>
-                    </select>
-                  </Field>
-                  {isProfessional(form.legalStatus) && (
-                    <Field label="Numéro SIRET"><input value={form.siret} onChange={e => set('siret', e.target.value)} inputMode="numeric" maxLength={17} placeholder="14 chiffres" className={INPUT} /></Field>
-                  )}
-                  {role === 'ORGANIZER' && isProfessional(form.legalStatus) && (
-                    <Field label="Nom de l’établissement"><input value={form.establishmentName} onChange={e => set('establishmentName', e.target.value)} maxLength={200} className={INPUT} /></Field>
-                  )}
-                </div>
-                {role !== 'ORGANIZER' && addressFields('Adresse postale', '(utilisée sur vos devis et factures, jamais affichée)')}
-                {role === 'ORGANIZER' && <p className="text-xs text-white/40">L’adresse de votre établissement se règle dans « Localisation ».</p>}
-              </>
-            )}
           </div>
         </div>
 

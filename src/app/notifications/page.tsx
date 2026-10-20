@@ -271,9 +271,9 @@ export default function NotificationsPage() {
 
                       {/* Alerte sécurité — action par email */}
                       {notif.type === 'NEW_DEVICE_LOGIN' && (
-                        <p className="mt-2 flex items-center gap-1.5 text-xs text-gold">
-                          <LsIcon name="mail" tone="inherit" size={15} />Un email a été envoyé à votre adresse pour confirmer ou sécuriser votre compte.
-                        </p>
+                        <Link href="/settings/security" className="mt-2 flex items-center gap-1.5 text-xs text-gold hover:text-gold-light">
+                          <LsIcon name="shield" tone="inherit" size={15} />Ce n’était pas vous ? Retirez l’appareil dans Réglages › Connexion et sécurité
+                        </Link>
                       )}
 
                       {/* Invitation staff — boutons Accepter / Refuser */}

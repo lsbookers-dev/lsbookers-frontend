@@ -393,10 +393,10 @@ export default function Header() {
                                 </div>
                               )
                             }
-                            // Notif NEW_DEVICE_LOGIN → lien vers la page notifications complète
+                            // Notif NEW_DEVICE_LOGIN → appareils connectés (Réglages › Connexion et sécurité)
                             if (notif.type === 'NEW_DEVICE_LOGIN') {
                               return (
-                                <Link key={notif.id} href="/notifications" onClick={() => setNotifOpen(false)} className="block">
+                                <Link key={notif.id} href="/settings/security" onClick={() => setNotifOpen(false)} className="block">
                                   <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
                                     notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
                                   }`}>
@@ -405,7 +405,7 @@ export default function Header() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <p className="text-xs text-white/75 leading-relaxed line-clamp-2">{notif.content}</p>
-                                      <p className="text-[10px] text-gold mt-1 font-medium">Gérer → voir les détails</p>
+                                      <p className="text-[10px] text-gold mt-1 font-medium">Voir mes appareils connectés</p>
                                     </div>
                                     {!notif.read && (
                                       <span className="shrink-0 w-2 h-2 rounded-full bg-violet-400 mt-1" />
@@ -490,7 +490,7 @@ export default function Header() {
                           <UserRound className="h-4 w-4 text-white/50" /> Mon espace
                         </button>
                         <button
-                          onClick={() => router.push('/settings/profile')}
+                          onClick={() => router.push('/settings')}
                           className="w-full px-4 py-2.5 text-left text-sm text-white/80 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-colors"
                         >
                           <Settings className="h-4 w-4 text-white/50" /> Paramètres
