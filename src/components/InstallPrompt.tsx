@@ -2,101 +2,71 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import LsIcon from '@/components/ui/LsIcon'
+import { usePathname } from 'next/navigation'
+import { X } from 'lucide-react'
+import InstallGuide from '@/components/install/InstallGuide'
+import { useInstall } from '@/lib/install'
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
+const SNOOZE_KEY = 'lsb:install-prompt-snoozed-until'
+const SNOOZE_DAYS = 7
 
+/**
+ * Petite fenêtre « Installer LS Bookers » en bas de l'écran (téléphone, tablette, ou ordinateur
+ * quand le navigateur propose l'installation). « Plus tard » la cache pendant 7 jours.
+ * Pas sur la landing, qui a déjà sa section d'installation.
+ */
 export default function InstallPrompt() {
-  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isIOS, setIsIOS]               = useState(false)
-  const [showIOSGuide, setShowIOSGuide] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
-  const [dismissed, setDismissed]       = useState(false)
-  const [mounted, setMounted]           = useState(false)
+  const pathname = usePathname()
+  const { ready, platform, standalone, canPrompt, promptInstall } = useInstall()
+  const [snoozed, setSnoozed] = useState(true)
+  const [showGuide, setShowGuide] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-    // Déjà installée ?
-    setIsStandalone(
-      window.matchMedia('(display-mode: standalone)').matches ||
-      ('standalone' in navigator && (navigator as { standalone?: boolean }).standalone === true)
-    )
-    // iOS ?
-    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window)
-    setIsIOS(ios)
-    // Déjà fermée cette session ?
-    const wasDismissed = sessionStorage.getItem('pwa-prompt-dismissed')
-    if (wasDismissed) setDismissed(true)
-
-    // Capture du prompt Android
-    const handler = (e: Event) => {
-      e.preventDefault()
-      setInstallEvent(e as BeforeInstallPromptEvent)
+    try {
+      const until = Number(localStorage.getItem(SNOOZE_KEY) || 0)
+      setSnoozed(Date.now() < until)
+    } catch {
+      setSnoozed(false)
     }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
-  const handleInstall = async () => {
-    if (!installEvent) return
-    await installEvent.prompt()
-    const { outcome } = await installEvent.userChoice
-    if (outcome === 'accepted') {
-      setInstallEvent(null)
-      setDismissed(true)
-    }
+  const snooze = () => {
+    try { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DAYS * 24 * 3600 * 1000)) } catch { /* stockage indisponible */ }
+    setSnoozed(true)
+    setShowGuide(false)
   }
 
-  const handleDismiss = () => {
-    sessionStorage.setItem('pwa-prompt-dismissed', '1')
-    setDismissed(true)
-    setShowIOSGuide(false)
-  }
+  useEffect(() => {
+    if (!showGuide) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowGuide(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showGuide])
 
-  if (!mounted || isStandalone || dismissed) return null
-  if (!installEvent && !isIOS) return null
+  const mobile = platform === 'ios' || platform === 'android'
+  if (!ready || standalone || pathname === '/' || (snoozed && !showGuide)) return null
+  if (!mobile && !canPrompt) return null
+
+  const install = async () => {
+    if (canPrompt) { if (await promptInstall()) snooze() }
+    else setShowGuide(true)
+  }
 
   return (
     <>
-      {/* ── Bannière flottante en bas ── */}
-      {!showIOSGuide && (
-        <div className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-80 z-[200] animate-in slide-in-from-bottom-4 duration-300">
-          <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-neutral-900/95 backdrop-blur-2xl p-3 shadow-2xl shadow-black/50">
-            {/* Icône app */}
-            <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 ring-1 ring-white/10">
-              <Image src="/icons/icon-192.png" alt="LSBookers" width={48} height={48} unoptimized />
+      {!showGuide && (
+        <div className="fixed bottom-20 left-4 right-4 z-[200] md:bottom-6 md:left-auto md:right-6 md:w-80">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/12 bg-surface/95 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl">
+            <Image src="/icons/icon-192.png" alt="" width={44} height={44} className="shrink-0 rounded-xl ring-1 ring-white/10" unoptimized />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight text-white">Installer LS Bookers</p>
+              <p className="mt-0.5 text-xs leading-tight text-white/50">Une icône sur votre écran d’accueil</p>
             </div>
-
-            {/* Texte */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white leading-tight">Installer LSBookers</p>
-              <p className="text-xs text-white/50 leading-tight mt-0.5">Accès rapide depuis votre écran</p>
-            </div>
-
-            {/* Boutons */}
-            <div className="flex flex-col gap-1.5 flex-shrink-0">
-              {installEvent ? (
-                <button
-                  onClick={handleInstall}
-                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg transition"
-                >
-                  Installer
-                </button>
-              ) : isIOS ? (
-                <button
-                  onClick={() => setShowIOSGuide(true)}
-                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg transition"
-                >
-                  Comment ?
-                </button>
-              ) : null}
-              <button
-                onClick={handleDismiss}
-                className="px-3 py-1.5 bg-white/8 hover:bg-white/15 text-white/60 text-xs rounded-lg transition"
-              >
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <button type="button" onClick={install} className="rounded-lg bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent">
+                {canPrompt ? 'Installer' : 'Comment faire ?'}
+              </button>
+              <button type="button" onClick={snooze} className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-xs text-white/60 transition hover:bg-white/10">
                 Plus tard
               </button>
             </div>
@@ -104,53 +74,29 @@ export default function InstallPrompt() {
         </div>
       )}
 
-      {/* ── Guide iOS (modal) ── */}
-      {showIOSGuide && (
-        <div className="fixed inset-0 z-[300] flex items-end justify-center p-4 pb-8">
+      {showGuide && (
+        <div className="fixed inset-0 z-[300] flex items-end justify-center sm:items-center sm:p-4" onClick={() => setShowGuide(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setShowIOSGuide(false)}
-          />
-          <div className="relative w-full max-w-sm rounded-3xl border border-white/15 bg-neutral-900/98 backdrop-blur-2xl p-6 shadow-2xl">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-white/10">
-                <Image src="/icons/icon-192.png" alt="LSBookers" width={48} height={48} unoptimized />
+            role="dialog"
+            aria-modal="true"
+            aria-label="Installer LS Bookers"
+            onClick={e => e.stopPropagation()}
+            className="relative max-h-[90dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl border border-white/12 bg-background p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl"
+          >
+            <div className="mb-4 flex items-center gap-3">
+              <Image src="/icons/icon-192.png" alt="" width={44} height={44} className="rounded-xl ring-1 ring-white/10" unoptimized />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-white">Installer LS Bookers</p>
+                <p className="text-xs text-white/50">En trois gestes, sans App Store ni Play Store</p>
               </div>
-              <div>
-                <p className="font-bold text-white">Installer LSBookers</p>
-                <p className="text-xs text-white/50">sur votre iPhone / iPad</p>
-              </div>
+              <button type="button" onClick={() => setShowGuide(false)} aria-label="Fermer" className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-white/60 transition hover:bg-white/10 hover:text-white">
+                <X size={16} />
+              </button>
             </div>
-
-            <div className="space-y-4 mb-6">
-              {[
-                { step: '1', icon: 'share' as const, text: 'Appuyez sur le bouton Partager en bas de Safari' },
-                { step: '2', icon: 'plus' as const, text: 'Faites défiler et appuyez sur « Sur l\'écran d\'accueil »' },
-                { step: '3', icon: 'check' as const, text: 'Appuyez sur « Ajouter » en haut à droite' },
-              ].map(({ step, icon, text }) => (
-                <div key={step} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-sm flex-shrink-0">
-                    <LsIcon name={icon} size={16} />
-                  </div>
-                  <p className="text-sm text-white/75 leading-relaxed pt-1">{text}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Indicateur flèche vers le bas (Safari share button) */}
-            <div className="flex flex-col items-center gap-2 mb-5">
-              <div className="h-px w-full bg-white/10" />
-              <p className="text-xs text-white/30 text-center">
-                Le bouton Partager ressemble à ça →{' '}
-                <LsIcon name="share" size={15} tone="muted" className="align-text-bottom" />
-              </p>
-            </div>
-
-            <button
-              onClick={handleDismiss}
-              className="w-full py-3 rounded-xl bg-white/8 hover:bg-white/15 text-white/60 text-sm font-medium transition"
-            >
-              Fermer
+            <InstallGuide onInstalled={snooze} />
+            <button type="button" onClick={snooze} className="mt-4 w-full rounded-xl bg-white/[0.06] py-3 text-sm text-white/60 transition hover:bg-white/10">
+              Plus tard
             </button>
           </div>
         </div>

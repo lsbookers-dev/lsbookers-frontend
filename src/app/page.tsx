@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import PublicBrand from '@/components/PublicBrand'
 import { usePublicSettings } from '@/context/PublicSettingsContext'
 import { PUBLIC_IMAGE_BLUR } from '@/lib/publicSettings.shared'
-import LsIcon, { LsBullet } from '@/components/ui/LsIcon'
+import LsIcon, { LsBullet, type LsIconName } from '@/components/ui/LsIcon'
+import InstallGuide from '@/components/install/InstallGuide'
+import { useInstall } from '@/lib/install'
 
 /* ─────────────────────────────────────────────────────────
    COMPOSANTS UI
@@ -59,266 +61,57 @@ function AudienceCard({
 }
 
 /* ─────────────────────────────────────────────────────────
-   SECTION APPLICATION PWA
+   SECTION APPLICATION : installer LS Bookers sur l'écran d'accueil (choix L2 d'Antho, 21/10/2026)
 ───────────────────────────────────────────────────────── */
-function PhoneMockup() {
-  return (
-    <div className="relative mx-auto w-[220px] sm:w-[240px]">
-      {/* Corps du téléphone */}
-      <div className="relative rounded-[36px] bg-neutral-900 border-[6px] border-neutral-700 shadow-[0_40px_80px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.05)] overflow-hidden">
-
-        {/* Dynamic Island / Notch */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-full z-10" />
-
-        {/* Écran */}
-        <div className="bg-neutral-950 min-h-[420px] pt-10 pb-4 px-3 flex flex-col gap-2">
-
-          {/* Status bar */}
-          <div className="flex justify-between items-center px-1 mb-1">
-            <span className="text-[8px] text-white/40 font-medium">9:41</span>
-            <div className="flex gap-1 items-center">
-              <div className="w-3 h-1.5 rounded-sm bg-white/30" />
-              <div className="w-1 h-1 rounded-full bg-white/30" />
-              <div className="w-2.5 h-2 rounded-sm bg-green-400" />
-            </div>
-          </div>
-
-          {/* Header app */}
-          <div className="flex items-center justify-between px-1 mb-2">
-            <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-md bg-purple-600 flex items-center justify-center">
-                <span className="text-[7px] font-black text-white">LS</span>
-              </div>
-              <span className="text-[9px] font-bold text-white">LSBookers</span>
-            </div>
-            <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-purple-400" />
-            </div>
-          </div>
-
-          {/* Feed card 1 */}
-          <div className="rounded-xl bg-white/5 border border-white/8 overflow-hidden">
-            <div className="h-16 bg-gradient-to-br from-purple-900/60 to-pink-900/40" />
-            <div className="px-2 py-1.5 flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-full bg-purple-500/30 flex-shrink-0" />
-              <div className="flex-1">
-                <div className="h-1.5 w-16 bg-white/25 rounded-full mb-1" />
-                <div className="h-1 w-10 bg-white/12 rounded-full" />
-              </div>
-              <div className="w-8 h-4 rounded-md bg-purple-600/60 flex items-center justify-center">
-                <div className="w-1 h-1 rounded-full bg-white/60" />
-              </div>
-            </div>
-          </div>
-
-          {/* Feed card 2 */}
-          <div className="rounded-xl bg-white/5 border border-white/8 overflow-hidden">
-            <div className="h-16 bg-gradient-to-br from-blue-900/50 to-violet-900/40" />
-            <div className="px-2 py-1.5 flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-full bg-blue-500/30 flex-shrink-0" />
-              <div className="flex-1">
-                <div className="h-1.5 w-20 bg-white/25 rounded-full mb-1" />
-                <div className="h-1 w-12 bg-white/12 rounded-full" />
-              </div>
-            </div>
-          </div>
-
-          {/* Feed card 3 (partielle) */}
-          <div className="rounded-xl bg-white/5 border border-white/8 overflow-hidden opacity-50">
-            <div className="h-10 bg-gradient-to-br from-pink-900/50 to-orange-900/30" />
-            <div className="px-2 py-1.5 flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-full bg-pink-500/30 flex-shrink-0" />
-              <div className="flex-1">
-                <div className="h-1.5 w-14 bg-white/25 rounded-full" />
-              </div>
-            </div>
-          </div>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Bottom nav mockup */}
-          <div className="border-t border-white/8 pt-2 flex justify-around px-2">
-            {[
-              <LsIcon key="home" name="home" size={10} tone="inherit" />,
-              <LsIcon key="search" name="search" size={10} tone="inherit" />,
-              <LsIcon key="mail" name="mail" size={10} tone="inherit" />,
-              <LsIcon key="bell" name="bell" size={10} tone="inherit" />,
-            ].map((icon, i) => (
-              <div key={i} className={`flex flex-col items-center gap-0.5 ${i === 0 ? 'opacity-100 text-purple-400' : 'opacity-30 text-white/60'}`}>
-                {icon}
-                {i === 0 && <div className="w-3 h-0.5 bg-purple-400 rounded-full" />}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Bouton power droite */}
-      <div className="absolute right-[-8px] top-24 w-1.5 h-12 bg-neutral-600 rounded-full" />
-      {/* Boutons volume gauche */}
-      <div className="absolute left-[-8px] top-20 w-1.5 h-8 bg-neutral-600 rounded-full" />
-      <div className="absolute left-[-8px] top-32 w-1.5 h-8 bg-neutral-600 rounded-full" />
-
-      {/* Glow derrière */}
-      <div className="absolute inset-0 -z-10 blur-3xl scale-75 opacity-40 bg-gradient-to-b from-purple-600 to-pink-600 rounded-full" />
-    </div>
-  )
-}
+const APP_BENEFITS: { icon: LsIconName; label: string; gold?: boolean }[] = [
+  { icon: 'home', label: 'Une icône comme une application' },
+  { icon: 'phone', label: 'En plein écran, sans barre du navigateur' },
+  { icon: 'bolt', label: 'Toujours à jour, rien à télécharger' },
+  { icon: 'star', label: 'Gratuit', gold: true },
+]
 
 function AppSection() {
-  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null)
-  const [isIOS, setIsIOS]                   = useState(false)
-  const [showIOSModal, setShowIOSModal]     = useState(false)
-  const [isStandalone, setIsStandalone]     = useState(false)
+  const { ready, standalone } = useInstall()
 
+  // Arrivée depuis le QR code (?installer=1) : on descend directement au guide
   useEffect(() => {
-    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window))
-
-    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e) }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    if (!new URLSearchParams(window.location.search).get('installer')) return
+    // Petit délai : la page (image du haut, polices) doit être en place avant de descendre
+    const timer = setTimeout(() => document.getElementById('installer')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400)
+    return () => clearTimeout(timer)
   }, [])
 
-  const handleInstall = async () => {
-    if (!deferredPrompt) return
-    const prompt = deferredPrompt as unknown as { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
-    await prompt.prompt()
-    await prompt.userChoice
-    setDeferredPrompt(null)
-  }
-
-  // Si déjà installée, pas de section
-  if (isStandalone) return null
+  // Déjà ouverte depuis l'application installée : rien à expliquer
+  if (ready && standalone) return null
 
   return (
-    <section className="relative overflow-hidden bg-neutral-950 py-16 sm:py-20">
-      {/* Glows décoratifs */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-32 top-0 h-80 w-80 rounded-full bg-purple-600/12 blur-3xl" />
-        <div className="absolute -right-32 bottom-0 h-80 w-80 rounded-full bg-pink-600/10 blur-3xl" />
-      </div>
+    <section id="installer" className="relative scroll-mt-6 overflow-hidden bg-background py-16 sm:py-20">
+      <div className="pointer-events-none absolute -left-32 top-0 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
+      <div className="relative mx-auto max-w-5xl px-6">
+        <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-xs font-medium text-accent-light">
+          <LsIcon name="phone" size={12} tone="inherit" /> L’application LS Bookers
+        </span>
+        <h2 className="mt-4 text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl">
+          LS Bookers sur votre <span className="text-accent-light">écran d’accueil.</span>
+        </h2>
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-white/55">
+          Ajoutez LS Bookers à votre téléphone en trois gestes, sans passer par l’App Store ni le Play Store :
+          vos messages, votre agenda et vos offres s’ouvrent d’un geste.
+        </p>
 
-      <div className="relative mx-auto max-w-7xl px-6">
-        <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+        <ul className="mt-5 flex flex-wrap gap-2">
+          {APP_BENEFITS.map(b => (
+            <li key={b.label} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${b.gold ? 'border-gold/40 text-gold-light' : 'border-white/10 text-white/70'}`}>
+              <LsIcon name={b.icon} size={13} tone={b.gold ? 'gold' : 'accent'} />
+              {b.label}
+            </li>
+          ))}
+        </ul>
 
-          {/* ── Mockup téléphone (ordre 2 sur mobile, 1 sur desktop) ── */}
-          <div className="order-2 lg:order-1 lg:w-1/2 flex justify-center">
-            <PhoneMockup />
-          </div>
-
-          {/* ── Texte + boutons (ordre 1 sur mobile) ── */}
-          <div className="order-1 lg:order-2 lg:w-1/2 flex flex-col gap-6 text-center lg:text-left">
-
-            {/* Pill badge */}
-            <div className="inline-flex justify-center lg:justify-start">
-              <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-xs text-purple-300 font-medium">
-                <LsIcon name="phone" size={12} tone="inherit" /> Application mobile disponible
-              </span>
-            </div>
-
-            <div>
-              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
-                LSBookers dans
-                <span className="block bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  votre poche.
-                </span>
-              </h2>
-              <p className="mt-4 text-white/55 text-base leading-relaxed max-w-md mx-auto lg:mx-0">
-                Installez l&apos;application en un clic — sans passer par l&apos;App Store.
-                Accédez à vos messages, votre agenda et vos offres où que vous soyez.
-              </p>
-            </div>
-
-            {/* Points forts */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {[
-                { icon: <LsIcon name="bolt" />, label: 'Ultra rapide', desc: 'Chargement instantané' },
-                { icon: <LsIcon name="bell" />, label: 'Notifications', desc: 'Ne ratez rien' },
-                { icon: <LsIcon name="offline" />, label: 'Hors ligne', desc: 'Fonctionne sans réseau' },
-              ].map(({ icon, label, desc }) => (
-                <div key={label} className="rounded-xl border border-white/8 bg-white/3 p-3 text-center flex flex-col items-center">
-                  {icon}
-                  <p className="text-sm font-semibold text-white mt-1">{label}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{desc}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Boutons d'installation */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-              {deferredPrompt && (
-                <button
-                  onClick={handleInstall}
-                  className="flex items-center justify-center gap-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 px-6 py-3.5 text-white font-semibold transition shadow-lg shadow-purple-900/40"
-                >
-                  <LsIcon name="phone" tone="inherit" />
-                  <div className="text-left">
-                    <p className="text-[10px] text-purple-200 leading-none mb-0.5">Installer sur</p>
-                    <p className="text-sm font-bold leading-none">Android</p>
-                  </div>
-                </button>
-              )}
-
-              <button
-                onClick={() => setShowIOSModal(true)}
-                className={`flex items-center justify-center gap-2.5 rounded-xl px-6 py-3.5 font-semibold transition ${
-                  isIOS
-                    ? 'bg-white text-neutral-900 hover:bg-white/90 shadow-lg'
-                    : 'border border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
-                }`}
-              >
-                <LsIcon name="phone" tone="inherit" className={isIOS ? 'text-neutral-700' : ''} />
-                <div className="text-left">
-                  <p className={`text-[10px] leading-none mb-0.5 ${isIOS ? 'text-neutral-500' : 'text-white/50'}`}>Installer sur</p>
-                  <p className="text-sm font-bold leading-none">iPhone / iPad</p>
-                </div>
-              </button>
-            </div>
-
-            <p className="text-xs text-white/25 text-center lg:text-left">
-              Gratuit · Aucun téléchargement requis · Fonctionne sur tous les appareils
-            </p>
-          </div>
+        <div className="mt-8">
+          <InstallGuide />
         </div>
       </div>
-
-      {/* ── Modal guide iOS ── */}
-      {showIOSModal && (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
-            onClick={() => setShowIOSModal(false)}
-          />
-          <div className="relative w-full max-w-sm rounded-3xl border border-white/15 bg-neutral-900/98 backdrop-blur-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-1">Installer sur iPhone / iPad</h3>
-            <p className="text-sm text-white/50 mb-5">Suivez ces 3 étapes depuis Safari</p>
-
-            <div className="space-y-4 mb-6">
-              {[
-                { step: 1, icon: <LsIcon name="share" size={16} />, text: 'Appuyez sur le bouton Partager en bas de Safari' },
-                { step: 2, icon: <LsIcon name="plus" size={16} />, text: 'Faites défiler et appuyez sur « Sur l\'écran d\'accueil »' },
-                { step: 3, icon: <LsIcon name="check" size={16} />, text: 'Confirmez en appuyant sur « Ajouter » en haut à droite' },
-              ].map(({ step, icon, text }) => (
-                <div key={step} className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                    {icon}
-                  </div>
-                  <p className="text-sm text-white/70 leading-relaxed pt-2">{text}</p>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowIOSModal(false)}
-              className="w-full py-3 rounded-xl bg-white/8 hover:bg-white/15 text-white/60 text-sm font-medium transition"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   )
 }
