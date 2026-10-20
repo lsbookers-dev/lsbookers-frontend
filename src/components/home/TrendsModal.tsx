@@ -70,7 +70,6 @@ export default function TrendsModal({ title, role, initialCity, onClose }: {
             loading={shown.loading}
             role={role}
             rows={10}
-            showScore={false}
             emptyText={specialty ? `Personne en tendance en « ${specialty} » pour l’instant` : undefined}
             onNavigate={onClose}
           />

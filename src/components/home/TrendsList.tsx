@@ -7,14 +7,12 @@ import type { TrendItem } from './types'
 import type { TrendRole } from './trends'
 import { TrendRowsSkeleton } from './FeedSkeleton'
 
-/** Lignes d'un classement (colonne de droite et fenêtre « Voir plus »). */
-export default function TrendsList({ items, loading, role, rows = 5, showScore = true, emptyText, onNavigate }: {
+/** Lignes d'un classement (colonne de droite et fenêtre « Voir plus ») : rang, photo, nom — les points ne sont pas affichés (choix d'Antho). */
+export default function TrendsList({ items, loading, role, rows = 5, emptyText, onNavigate }: {
   items: TrendItem[]
   loading: boolean
   role: TrendRole
   rows?: number
-  /** Points affichés à droite (colonne de l'accueil) ; masqués dans la fenêtre « Voir plus » */
-  showScore?: boolean
   /** Message quand la liste est vide (ex. spécialité sans personne en tendance) */
   emptyText?: string
   onNavigate?: () => void
@@ -48,12 +46,6 @@ export default function TrendsList({ items, loading, role, rows = 5, showScore =
               <span className="block truncate text-sm text-white">{it.name}</span>
               <span className="block truncate text-xs text-white/40">{[it.profession, it.location].filter(Boolean).join(' · ')}</span>
             </span>
-            {showScore && (
-              <span className="flex-shrink-0 text-right">
-                <span className="block text-xs font-semibold text-white/80">{it.score}</span>
-                <span className="block text-[9px] text-white/35">{it.score > 1 ? 'points' : 'point'}</span>
-              </span>
-            )}
           </Link>
         </li>
       ))}
