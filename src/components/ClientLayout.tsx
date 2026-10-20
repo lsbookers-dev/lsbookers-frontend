@@ -52,8 +52,9 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   ]
   const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/legal/') || pathname.startsWith('/b/')
   const isAdminPage = pathname.startsWith('/admin')
-  // Contact est public, mais un membre connecté y garde le menu du site pour pouvoir revenir
-  const showAppNav = (!isPublicPage || pathname === '/contact') && !isAdminPage && !!user
+  // Contact et pages légales sont publics, mais un membre connecté y garde le menu du site pour pouvoir revenir
+  const keepsNavWhenLoggedIn = pathname === '/contact' || pathname.startsWith('/legal/')
+  const showAppNav = (!isPublicPage || keepsNavWhenLoggedIn) && !isAdminPage && !!user
 
   if (!isPublicPage && (loading || !user)) {
     return (
