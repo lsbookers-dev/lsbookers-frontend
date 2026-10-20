@@ -475,9 +475,8 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
           </div>
 
           <aside className="hidden min-w-0 bg-[#09080c] p-5 lg:block lg:overflow-y-auto">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3">
               <p className="text-[11px] font-semibold text-white/75">Aperçu dans le fil</p>
-              <span className="text-[9px] text-white/30">Portfolio vivant</span>
             </div>
             <article className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-[#141019]">
               {selectedMedia ? (
