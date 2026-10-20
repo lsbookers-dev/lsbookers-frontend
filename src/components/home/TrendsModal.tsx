@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { ChevronDown, X } from 'lucide-react'
 import LsIcon from '@/components/ui/LsIcon'
+import { SPECIALTIES_BY_ROLE } from '@/constants/specialties'
 import { useTrends, type TrendRole } from './trends'
 import TrendsList from './TrendsList'
 
-/** Fenêtre « Voir plus » : classement complet, filtrable par spécialité. */
+/** Fenêtre « Voir plus » : classement complet, avec un menu déroulant de toutes les spécialités du rôle. */
 export default function TrendsModal({ title, role, initialCity, onClose }: {
   title: string
   role: TrendRole
@@ -15,11 +16,7 @@ export default function TrendsModal({ title, role, initialCity, onClose }: {
 }) {
   const [specialty, setSpecialty] = useState('')
   const shown = useTrends(role, { city: initialCity, specialty, limit: 30 })
-  // Puces : spécialités du classement complet (sans filtre), gardées pendant qu'on filtre
-  const [specialties, setSpecialties] = useState<string[]>([])
-  useEffect(() => {
-    if (!specialty && !shown.loading) setSpecialties(shown.specialties)
-  }, [specialty, shown.loading, shown.specialties])
+  const specialties = SPECIALTIES_BY_ROLE[role] ?? []
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -52,23 +49,31 @@ export default function TrendsModal({ title, role, initialCity, onClose }: {
           </button>
         </header>
 
-        {specialties.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto px-4 pb-1 pt-3 [scrollbar-width:none]">
-            {['', ...specialties].map(s => (
-              <button
-                key={s || 'all'}
-                type="button"
-                onClick={() => setSpecialty(s)}
-                className={`shrink-0 rounded-full border px-3 py-1 text-[11px] transition ${specialty === s ? 'border-accent/50 bg-accent/20 text-white' : 'border-white/10 text-white/50 hover:text-white/80'}`}
-              >
-                {s || 'Toutes'}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="px-4 pt-3">
+          <label className="relative block">
+            <span className="sr-only">Spécialité</span>
+            <select
+              value={specialty}
+              onChange={e => setSpecialty(e.target.value)}
+              className="w-full appearance-none rounded-xl border border-white/10 bg-white/[0.04] py-2.5 pl-3.5 pr-10 text-sm text-white outline-none transition [color-scheme:dark] focus:border-accent/45"
+            >
+              <option value="">Toutes les spécialités</option>
+              {specialties.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45" />
+          </label>
+        </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
-          <TrendsList items={shown.items} loading={shown.loading} role={role} rows={10} onNavigate={onClose} />
+          <TrendsList
+            items={shown.items}
+            loading={shown.loading}
+            role={role}
+            rows={10}
+            showScore={false}
+            emptyText={specialty ? `Personne en tendance en « ${specialty} » pour l’instant` : undefined}
+            onNavigate={onClose}
+          />
         </div>
       </div>
     </div>
