@@ -175,6 +175,18 @@ function SubscriptionsContent() {
     } finally { setBusy(null) }
   }
 
+  // Code Fondateur réservé au membre : activation en un clic, sans rien saisir
+  const activateFounder = async () => {
+    if (!plan?.founderCode) return
+    setBusy('founder')
+    try {
+      const r = await apiFetch(apiUrl('billing/founder'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: plan.founderCode }) })
+      if (!r.ok) { notify(await apiErrorMessage(r, 'Activation impossible.'), 'error'); return }
+      notify('Merci de faire partie des fondateurs : votre compte Pro vous est offert à vie !')
+      refresh()
+    } finally { setBusy(null) }
+  }
+
   const buyExtra = async (offer: ExtraOffer, option: ExtraOption) => {
     const key = `${offer.id}:${option.id}`
     setBusy(key)
@@ -220,6 +232,22 @@ function SubscriptionsContent() {
           <h1>Développez votre activité<em>.</em></h1>
         </div>
       </header>
+
+      {plan?.founderCode && !isPro && (
+        <section className="mb-6 flex flex-col gap-4 rounded-2xl border border-gold/35 bg-gradient-to-br from-gold/[0.12] to-transparent p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-gold/30 bg-gold/10"><LsIcon name="star" tone="gold" /></span>
+            <div>
+              <p className="text-sm font-semibold text-white">Un code Fondateur vous attend</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-white/60">Merci de faire partie de l’aventure : LS Bookers vous offre la version Pro à vie, sans carte bancaire.</p>
+            </div>
+          </div>
+          <button type="button" onClick={activateFounder} disabled={busy === 'founder'}
+            className="shrink-0 rounded-xl bg-gold px-5 py-2.5 text-sm font-semibold text-[#1a1408] transition hover:brightness-110 disabled:opacity-50">
+            Activer mon Pro offert
+          </button>
+        </section>
+      )}
 
       {plan?.signupPlan && !isPro && (
         <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-5 sm:flex-row sm:items-center sm:justify-between">

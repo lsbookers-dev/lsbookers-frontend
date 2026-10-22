@@ -41,6 +41,8 @@ export type PlanInfo = {
   commission: { freePct: number; proPct: number }
   limits: PlanLimits
   usage: Partial<Record<keyof PlanLimits, number>> | null
+  /** Code Fondateur réservé à ce membre, pas encore utilisé (activable en un clic) */
+  founderCode: string | null
   /** Formule choisie à l'inscription, pas encore finalisée */
   signupPlan: null | { plan: 'FREE' | 'PRO'; interval: 'MONTH' | 'YEAR'; promoCode: string | null }
 }
