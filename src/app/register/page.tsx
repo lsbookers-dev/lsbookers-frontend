@@ -178,8 +178,8 @@ const BRANDING: { icon: React.ReactNode; title: string; subtitle: string; items:
   {
     icon: <Gift className="h-7 w-7 text-violet-400" />,
     title: 'Ta formule.',
-    subtitle: 'Commence gratuitement, ou essaie la version Pro un mois offert.',
-    items: ['Compte gratuit sans carte bancaire', 'Version Pro : 1 mois offert, résiliable à tout moment', 'Code Fondateur ou code promo accepté'],
+    subtitle: 'Commence gratuitement, ou passe directement à la version Pro.',
+    items: ['Compte gratuit sans carte bancaire', 'Version Pro résiliable à tout moment', 'Code Fondateur ou code promo accepté'],
   },
 ]
 
@@ -321,7 +321,6 @@ export default function RegisterPage() {
   const rolePrices = role ? signupPrices?.prices?.[role] : null
   const signupLimits = signupPrices?.limits
   const signupCommission = signupPrices?.commission
-  const signupTrialMonths = Math.max(1, Math.round((signupPrices?.trialDays || 30) / 30))
 
   // ── Helpers ──
   const go = (n: number) => { setStep(n); setError(null) }
@@ -792,16 +791,11 @@ export default function RegisterPage() {
                       </ul>
                     </button>
 
-                    {/* Version Pro — en option, avec la période offerte */}
+                    {/* Version Pro — en option */}
                     <button type="button" onClick={() => setPlan('PRO')}
                       className={`relative w-full text-left rounded-2xl border p-4 transition
                         ${plan === 'PRO' ? 'border-accent bg-accent/15 shadow-lg shadow-black/20' : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
-                      <div className="absolute -top-2.5 left-4">
-                        <span className="rounded-full bg-accent-strong px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide shadow">
-                          {signupTrialMonths} mois offert{signupTrialMonths > 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between gap-3 mt-1">
+                      <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className={`font-semibold text-sm ${plan === 'PRO' ? 'text-white' : 'text-white/70'}`}>Version Pro</p>
                           <p className="text-xs text-white/40 mt-0.5">Tout illimité, résiliable à tout moment</p>
@@ -833,7 +827,7 @@ export default function RegisterPage() {
                       {(['MONTH', 'YEAR'] as const).map(i => (
                         <button key={i} type="button" onClick={() => setBillingInterval(i)}
                           className={`flex-1 rounded-lg px-3 py-2 font-medium transition ${billingInterval === i ? 'bg-accent-strong text-white' : 'text-white/55 hover:text-white'}`}>
-                          {i === 'YEAR' ? `Annuel · ${formatPrice(rolePrices.yearCents)}${Math.round((rolePrices.monthCents * 12 - rolePrices.yearCents) / rolePrices.monthCents) > 0 ? ` (${Math.round((rolePrices.monthCents * 12 - rolePrices.yearCents) / rolePrices.monthCents)} mois offerts)` : ''}` : `Mensuel · ${formatPrice(rolePrices.monthCents)}`}
+                          {i === 'YEAR' ? `Annuel · ${formatPrice(rolePrices.yearCents)}${Math.round(rolePrices.yearCents / rolePrices.monthCents) < 12 ? ` (${Math.round(rolePrices.yearCents / rolePrices.monthCents)} mois payés, 12 mois d’accès)` : ''}` : `Mensuel · ${formatPrice(rolePrices.monthCents)}`}
                         </button>
                       ))}
                     </div>
@@ -851,7 +845,7 @@ export default function RegisterPage() {
 
                   <p className="text-center text-xs text-white/30 leading-relaxed">
                     {plan === 'PRO'
-                      ? 'Après la confirmation de votre e-mail, vous finaliserez la version Pro : carte demandée, aucun prélèvement avant la fin de la période offerte.'
+                      ? 'Après la confirmation de votre e-mail, vous finaliserez la version Pro en enregistrant votre carte. Un code de lancement vous offre des mois gratuits.'
                       : 'Aucune carte bancaire demandée. Vous pourrez passer en Pro à tout moment.'}
                   </p>
                 </form>

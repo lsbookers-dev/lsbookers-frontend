@@ -200,11 +200,11 @@ function SubscriptionsContent() {
   }
 
   const sub = plan?.subscription
-  // Économie de l'annuel exprimée en mois offerts (ex. 11,99 € × 12 − 119,99 € ≈ 2 mois)
-  const monthsFree = prices && prices.monthCents > 0 ? Math.round((prices.monthCents * 12 - prices.yearCents) / prices.monthCents) : 0
-  const offered = promoInfo?.freeMonths
-    ? `${promoInfo.freeMonths} mois offerts`
-    : plan?.trialAvailable ? `${Math.max(1, Math.round((plan.trialDays || 30) / 30))} mois offert` : null
+  // Annuel : « 10 mois payés, 12 mois d'accès » (119,99 € ≈ 10 × 11,99 €)
+  const paidMonths = prices && prices.monthCents > 0 ? Math.round(prices.yearCents / prices.monthCents) : 12
+  // Mois offerts : uniquement avec un code de lancement (ou un essai si l'admin en remet un)
+  const freeMonths = promoInfo?.freeMonths || (plan?.trialAvailable && plan.trialDays > 0 ? Math.max(1, Math.round(plan.trialDays / 30)) : 0)
+  const firstCharge = (() => { const d = new Date(); d.setMonth(d.getMonth() + freeMonths); return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) })()
   const benefits = [
     'Tout illimité',
     ...(role === 'ARTIST' || role === 'PROVIDER' ? [`Commission ${pct(plan?.commission.proPct ?? 5)}`] : []),
@@ -227,7 +227,7 @@ function SubscriptionsContent() {
             <p className="text-sm font-semibold text-white">{plan.signupPlan.plan === 'PRO' ? 'Finalisez votre version Pro' : 'Votre code est prêt'}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-white/60">
               {plan.signupPlan.plan === 'PRO'
-                ? 'Vous avez choisi la version Pro à l’inscription. Il ne reste qu’à enregistrer votre carte : aucun prélèvement avant la fin de la période offerte.'
+                ? 'Vous avez choisi la version Pro à l’inscription. Il ne reste qu’à choisir mensuel ou annuel et à enregistrer votre carte.'
                 : 'Le code saisi à l’inscription est prêt ci-dessous : cliquez sur « Appliquer ».'}
             </p>
           </div>
@@ -246,10 +246,14 @@ function SubscriptionsContent() {
                 <button key={i} type="button" role="tab" aria-selected={billing === i} onClick={() => setBilling(i)}
                   className={`rounded-full px-4 py-1.5 font-medium transition ${billing === i ? 'bg-accent-strong text-white' : 'text-white/55 hover:text-white'}`}>
                   {i === 'MONTH' ? 'Mensuel' : 'Annuel'}
-                  {i === 'YEAR' && monthsFree > 0 && <span className={`ml-1.5 ${billing === i ? 'text-white/80' : 'text-gold'}`}>{monthsFree} mois offert{monthsFree > 1 ? 's' : ''}</span>}
                 </button>
               ))}
             </div>
+            {paidMonths < 12 && (
+              <p className="mt-2 text-xs font-medium text-gold">
+                {billing === 'YEAR' ? '' : 'En annuel : '}{paidMonths} mois payés, 12 mois d’accès
+              </p>
+            )}
             <p className="mt-3 text-[40px] font-semibold leading-none tracking-tight">
               {price(billing === 'YEAR' ? prices.yearCents : prices.monthCents)}
               <span className="ml-1.5 text-sm font-normal text-white/45">/ {billing === 'YEAR' ? 'an' : 'mois'} TTC</span>
@@ -292,12 +296,10 @@ function SubscriptionsContent() {
               <>
                 <button type="button" onClick={startCheckout} disabled={busy === 'checkout' || !plan?.paymentsAvailable}
                   className="w-full rounded-xl bg-accent-strong px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent disabled:opacity-50">
-                  {offered ? `Commencer : ${offered}` : 'Passer en Pro'}
+                  Passer en Pro
                 </button>
                 <p className="text-center text-[11px] leading-relaxed text-white/40">
-                  {!plan?.paymentsAvailable
-                    ? 'Le paiement en ligne ouvre très bientôt.'
-                    : offered ? 'Carte demandée maintenant, aucun prélèvement avant la fin de la période offerte.' : 'Paiement sécurisé par Stripe.'}
+                  {!plan?.paymentsAvailable ? 'Le paiement en ligne ouvre très bientôt.' : 'Paiement sécurisé par Stripe.'}
                 </p>
                 <div className="flex gap-2">
                   <input value={promo} onChange={e => { setPromo(e.target.value); setPromoInfo(null) }} onKeyDown={e => { if (e.key === 'Enter') applyCode() }}
@@ -305,7 +307,9 @@ function SubscriptionsContent() {
                     className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm uppercase text-white outline-none placeholder:normal-case placeholder:text-white/30 focus:border-accent/50" />
                   <button type="button" onClick={applyCode} disabled={!promo.trim() || busy === 'promo'} className="rounded-xl border border-white/12 px-4 text-xs font-medium text-white/80 transition hover:bg-white/[0.06] disabled:opacity-40">Appliquer</button>
                 </div>
-                {promoInfo && <p className="text-center text-xs text-emerald-300">{promoInfo.freeMonths} mois offerts avant le premier prélèvement.</p>}
+                {freeMonths > 0 && (
+                  <p className="text-center text-xs text-emerald-300">{freeMonths} mois offert{freeMonths > 1 ? 's' : ''}, premier prélèvement le {firstCharge}.</p>
+                )}
               </>
             )}
           </div>

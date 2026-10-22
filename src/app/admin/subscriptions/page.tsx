@@ -278,7 +278,7 @@ function CodesTab() {
         </section>
         <section className={CARD}>
           <p className="text-sm font-semibold">Code de lancement</p>
-          <p className="mt-1 text-xs text-white/50">Un code partagé : des mois offerts qui remplacent le mois d’essai. La carte est demandée, le prélèvement commence ensuite.</p>
+          <p className="mt-1 text-xs text-white/50">Un code partagé : des mois offerts avant le premier prélèvement. La carte est demandée tout de suite, le prélèvement commence ensuite.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <label className="col-span-2 text-xs text-white/50">Code<input value={launch.code} onChange={e => setLaunch(l => ({ ...l, code: e.target.value.toUpperCase() }))} className={`${INPUT} mt-1 uppercase`} /></label>
             <label className="text-xs text-white/50">Mois offerts<input type="number" min={1} max={24} value={launch.freeMonths} onChange={e => setLaunch(l => ({ ...l, freeMonths: e.target.value }))} className={`${INPUT} mt-1`} /></label>
@@ -476,7 +476,7 @@ function SettingsTab() {
             </div>
           ))}
         </div>
-        <div className="mt-3 max-w-xs"><NumberField label="Essai offert" value={s.trialDays} onChange={n => setS(p => (p ? { ...p, trialDays: n } : p))} suffix="jours" /></div>
+        <div className="mt-3 max-w-xs"><NumberField label="Essai offert à tous (0 = aucun)" value={s.trialDays} onChange={n => setS(p => (p ? { ...p, trialDays: n } : p))} suffix="jours" /></div>
         <p className="mt-2 text-[11px] text-white/40">Un nouveau prix s’applique aux nouveaux abonnements ; les abonnés en cours gardent le leur.</p>
       </section>
       <section className={CARD}>
