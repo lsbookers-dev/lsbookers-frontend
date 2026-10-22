@@ -51,6 +51,8 @@ export interface Message {
   type?: string | null
   bookingRequestId?: number | null
   bookingRequest?: BookingRequestData | null
+  /** Candidature à une offre (type OFFER_APPLICATION) */
+  offer?: { id: number; title: string; date: string; fee: number | null; status: 'ACTIVE' | 'CLOSED'; eventId: number | null; ownerUserId: number | null } | null
   attachmentUrl?: string | null
   attachmentType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null
   attachmentName?: string | null

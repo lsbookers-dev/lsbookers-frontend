@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, MessageCircle, Loader2,
-  CheckCheck, Check, Paperclip, Send, FileText, X, ExternalLink, CalendarPlus,
+  CheckCheck, Check, Paperclip, Send, FileText, X, ExternalLink, CalendarPlus, Briefcase,
   UserPlus, Search,
   MapPin, CalendarDays, Info,
 } from 'lucide-react'
@@ -74,6 +74,19 @@ export default function MessageThread({
   const [bookingMsg, setBookingMsg]     = useState('')
   const [bookingSending, setBookingSending] = useState(false)
   const [bookingError, setBookingError] = useState('')
+  // Booking proposé depuis une candidature à une offre : offre liée et clôture à l'acceptation
+  const [bookingOffer, setBookingOffer] = useState<{ id: number; title: string } | null>(null)
+  const [closeOfferOnAccept, setCloseOfferOnAccept] = useState(true)
+
+  const proposeFromOffer = (offer: NonNullable<Message['offer']>) => {
+    setBookingOffer({ id: offer.id, title: offer.title })
+    setCloseOfferOnAccept(true)
+    setBookingDate(offer.date ? new Date(offer.date).toISOString().slice(0, 10) : '')
+    setBookingFee(offer.fee != null ? String(offer.fee) : '')
+    setBookingMsg('')
+    setBookingError('')
+    setShowBookingForm(true)
+  }
 
   // ── Statut en ligne ────────────────────────────────────────
   const [onlineStatus, setOnlineStatus] = useState<{ online: boolean; lastActiveAt: string | null } | null>(null)
@@ -106,6 +119,7 @@ export default function MessageThread({
           date: bookingDate,
           fee: bookingFee ? parseFloat(bookingFee) : undefined,
           message: bookingMsg.trim() || undefined,
+          ...(bookingOffer ? { offerId: bookingOffer.id, closeOfferOnAccept } : {}),
         }),
       })
       if (!res.ok) {
@@ -117,6 +131,7 @@ export default function MessageThread({
       setBookingDate('')
       setBookingFee('')
       setBookingMsg('')
+      setBookingOffer(null)
       setShowBookingForm(false)
       // Rafraîchir les messages pour afficher la carte booking
       await fetchMessages(activeConvId)
@@ -299,7 +314,7 @@ export default function MessageThread({
       </div>
 
       {/* Formulaire de proposition de booking (slide-down) */}
-      {isOrganizer && showBookingForm && (
+      {(isOrganizer || bookingOffer) && showBookingForm && (
         <div className="border-b border-white/[0.05] bg-gradient-to-b from-[#0f0f1e] to-[#0d0d1a] px-4 py-4 shrink-0">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -308,7 +323,7 @@ export default function MessageThread({
               </div>
               <p className="text-sm font-semibold text-white/80">Proposer un booking</p>
             </div>
-            <button onClick={() => { setShowBookingForm(false); setBookingError('') }}
+            <button onClick={() => { setShowBookingForm(false); setBookingError(''); setBookingOffer(null) }}
               className="p-1 rounded-lg text-white/25 hover:text-white/60 hover:bg-white/5 transition">
               <X className="w-4 h-4" />
             </button>
@@ -348,6 +363,16 @@ export default function MessageThread({
               className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07] transition-all resize-none"
             />
           </div>
+
+          {bookingOffer && (
+            <label className="mb-3 flex items-start gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-xs text-white/70">
+              <input type="checkbox" checked={closeOfferOnAccept} onChange={e => setCloseOfferOnAccept(e.target.checked)} className="mt-0.5 accent-violet-500" />
+              <span>
+                Clôturer l&apos;offre « {bookingOffer.title} » quand ce booking est accepté
+                <span className="block text-[11px] text-white/35">Elle disparaîtra et les autres candidats seront prévenus.</span>
+              </span>
+            </label>
+          )}
 
           {bookingError && (
             <p className="text-xs text-red-400/80 mb-2">{bookingError}</p>
@@ -452,6 +477,45 @@ export default function MessageThread({
                       <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
                         <span className="text-[10px] text-white/25">{formatMessageTime(msg.createdAt)}</span>
                       </div>
+                    </div>
+                    {isMe && <div className="w-7 shrink-0" />}
+                  </div>
+                )
+                return
+              }
+
+              // Candidature à une offre : la bulle + un encadré lié à l'offre (bouton pour son auteur)
+              if (msg.type === 'OFFER_APPLICATION' && msg.offer) {
+                const offer = msg.offer
+                const isOfferOwner = offer.ownerUserId === Number(currentUserId)
+                items.push(
+                  <div id={`message-${msg.id}`} key={msg.id} className={`flex items-end gap-2 mt-3 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    {!isMe && <div className="w-7 h-7 shrink-0 mb-1"><Avatar src={msg.sender.image || ''} alt={msg.sender.name} size={28} /></div>}
+                    <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                      <div className="overflow-hidden rounded-2xl border border-violet-400/20 bg-[#1a1528]">
+                        <div className="flex items-center gap-2 border-b border-white/[0.06] bg-violet-500/10 px-4 py-2">
+                          <Briefcase className="h-3.5 w-3.5 text-violet-300" />
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-200/80">
+                            {isMe ? 'Votre candidature' : 'Candidature à votre offre'}
+                          </p>
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="text-sm font-semibold text-white">{offer.title}</p>
+                          <p className="mt-0.5 text-xs text-white/40">
+                            {new Date(offer.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {offer.fee != null ? ` · ${offer.fee.toLocaleString('fr-FR')} €` : ''}
+                          </p>
+                          {msg.content && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/80">{msg.content}</p>}
+                          {isOfferOwner && offer.status === 'ACTIVE' && (
+                            <button type="button" onClick={() => proposeFromOffer(offer)}
+                              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 px-4 py-2 text-sm font-semibold text-white transition hover:from-violet-400 hover:to-purple-600">
+                              <CalendarPlus className="h-4 w-4" /> Proposer un booking
+                            </button>
+                          )}
+                          {offer.status === 'CLOSED' && <p className="mt-2 text-[11px] text-white/35">Offre clôturée</p>}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-white/20 mt-1 px-1">{formatMessageTime(msg.createdAt)}</span>
                     </div>
                     {isMe && <div className="w-7 shrink-0" />}
                   </div>
