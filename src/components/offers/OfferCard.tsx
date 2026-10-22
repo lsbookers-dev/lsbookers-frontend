@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Layers, Send, Share2 } from 'lucide-react'
+import { CircleCheck, FileText, Layers, Send, Share2 } from 'lucide-react'
 import { publicProfileHref } from '@/components/profile/utils'
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -44,6 +44,8 @@ export default function OfferCard({
   applying,
   onApply,
   onShare,
+  onQuote,
+  onClose,
 }: {
   offer: Offer
   isLoggedIn: boolean
@@ -51,6 +53,10 @@ export default function OfferCard({
   applying: boolean
   onApply: (offer: Offer) => void
   onShare: (offer: Offer) => void
+  /** « Envoyer un devis » (PDF ou proposition en ligne), compte comme une candidature */
+  onQuote?: (offer: Offer) => void
+  /** Auteur de l'offre : clôturer une fois le booking trouvé */
+  onClose?: (offer: Offer) => void
 }) {
   const cfg = OFFER_TYPE_CONFIG[offer.type]
   const date = new Date(offer.date)
@@ -61,7 +67,17 @@ export default function OfferCard({
   const similarHref = `/offers?${offer.specialty ? `specialty=${encodeURIComponent(offer.specialty)}&` : ''}location=${encodeURIComponent(offer.location)}`
 
   return (
-    <article className={`lsb-offer-poster group ${offer.type.toLowerCase()}`}>
+    <article className={`lsb-offer-poster group relative ${offer.type.toLowerCase()}`}>
+      {/* Partager : petit picto en haut à droite de la carte */}
+      <button
+        type="button"
+        onClick={() => onShare(offer)}
+        aria-label="Partager l'offre"
+        title="Partager"
+        className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-black/35 text-white/75 backdrop-blur transition hover:bg-black/55 hover:text-white"
+      >
+        <Share2 className="h-3.5 w-3.5" />
+      </button>
       <div className="lsb-offer-art" aria-hidden="true">
         <div className="lsb-offer-beam lsb-offer-beam-one" />
         <div className="lsb-offer-beam lsb-offer-beam-two" />
@@ -112,14 +128,29 @@ export default function OfferCard({
             Similaires
           </Link>
 
-          {/* Partager */}
-          <button
-            onClick={() => onShare(offer)}
-            className="lsb-offer-secondary"
-          >
-            <Share2 className="w-3 h-3" />
-            Partager
-          </button>
+          {/* Envoyer un devis — à la place de Partager (choix d'Antho, 23/10/2026) */}
+          {isLoggedIn && !isOwner && onQuote && (
+            <button
+              type="button"
+              onClick={() => onQuote(offer)}
+              className="lsb-offer-secondary"
+            >
+              <FileText className="w-3 h-3" />
+              Envoyer un devis
+            </button>
+          )}
+
+          {/* Auteur de l'offre : la clôturer une fois le booking trouvé */}
+          {isOwner && onClose && (
+            <button
+              type="button"
+              onClick={() => onClose(offer)}
+              className="lsb-offer-secondary col-span-2 !text-white/80"
+            >
+              <CircleCheck className="w-3 h-3" />
+              Clôturer l&apos;offre
+            </button>
+          )}
 
           {/* Postuler — visible pour tout utilisateur connecté sauf le créateur */}
           {isLoggedIn && !isOwner && (

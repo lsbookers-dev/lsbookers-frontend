@@ -881,7 +881,8 @@ body {
 .lsb-offer-stats { display:grid; grid-template-columns:.7fr .65fr 1.4fr; margin:.7rem 0; border-top:1px solid var(--lsb-line); border-bottom:1px solid var(--lsb-line); }
 .lsb-offer-stats > span { min-width:0; padding:.52rem .38rem; border-right:1px solid var(--lsb-line); }.lsb-offer-stats > span:first-child { padding-left:0; }.lsb-offer-stats > span:last-child { padding-right:0; border-right:0; }
 .lsb-offer-stats strong,.lsb-offer-stats small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.lsb-offer-stats strong { font-size:.67rem; }.lsb-offer-stats small { margin-top:.2rem; color:var(--lsb-muted); font-size:.54rem; }
-.lsb-offer-actions { display:grid; grid-template-columns:1fr 1fr 1.05fr; gap:.35rem; margin-top:auto; }
+.lsb-offer-actions { display:grid; grid-template-columns:.85fr 1.3fr 1fr; gap:.35rem; margin-top:auto; }
+.lsb-offer-secondary,.lsb-offer-apply { white-space:nowrap; }
 .lsb-offer-secondary,.lsb-offer-apply { min-height:2.1rem; display:inline-flex; align-items:center; justify-content:center; gap:.3rem; padding:0 .4rem; border-radius:.6rem; font-size:.6rem; transition:.2s ease; }
 .lsb-offer-secondary { border:1px solid var(--lsb-line); color:var(--lsb-muted); background:transparent; }.lsb-offer-secondary:hover { color:white; border-color:rgba(255,255,255,.18); }
 .lsb-offer-apply { border:0; color:white; font-weight:650; }.lsb-offer-actions svg { width:.85rem; height:.85rem; }

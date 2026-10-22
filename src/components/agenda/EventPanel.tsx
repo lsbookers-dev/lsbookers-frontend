@@ -132,6 +132,7 @@ interface EventPanelProps {
   fetchEventDetail: (id: number) => void
   submitEventOffer: (form: EventOfferForm) => Promise<void>
   deleteEventOffer: (offerId: number) => Promise<void>
+  closeEventOffer: (offerId: number) => Promise<void>
 }
 
 export default function EventPanel(p: EventPanelProps) {
@@ -170,7 +171,7 @@ export default function EventPanel(p: EventPanelProps) {
     addPurchase, togglePurchaseDone, deletePurchase,
     saveEventDetails, addStaff, deleteStaff, searchStaff,
     addDocument, deleteDocument, fetchEventDetail,
-    submitEventOffer, deleteEventOffer,
+    submitEventOffer, deleteEventOffer, closeEventOffer,
   } = p
 
   void newPurchaseItem; void setNewPurchaseItem; void newPurchaseQty; void setNewPurchaseQty
@@ -624,6 +625,7 @@ export default function EventPanel(p: EventPanelProps) {
             eventOfferForm={eventOfferForm} setEventOfferForm={setEventOfferForm}
             submitEventOffer={submitEventOffer}
             deleteEventOffer={deleteEventOffer}
+            closeEventOffer={closeEventOffer}
           />
         )}
 

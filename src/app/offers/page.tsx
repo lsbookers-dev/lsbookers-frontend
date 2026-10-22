@@ -9,6 +9,8 @@ import { apiFetch } from '@/utils/auth'
 import CityAutocomplete from '@/components/CityAutocomplete'
 import OfferCard, { type Offer } from '@/components/offers/OfferCard'
 import PublishOfferModal from '@/components/offers/PublishOfferModal'
+import QuoteModal from '@/components/offers/QuoteModal'
+import { useFeedback } from '@/components/ui/Feedback'
 import LsIcon from '@/components/ui/LsIcon'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -19,6 +21,7 @@ function OffersInner() {
   const searchParams = useSearchParams()
   const { user } = useAuth() as { user: { id: number | string; role: string; name?: string; avatarUrl?: string | null } | null }
 
+  const { notify, confirm } = useFeedback()
   const [offers, setOffers]             = useState<Offer[]>([])
   const [loading, setLoading]           = useState(true)
   const [filters, setFilters]           = useState({
@@ -133,6 +136,23 @@ function OffersInner() {
     }, 300)
     return () => clearTimeout(t)
   }, [shareQuery, shareOffer])
+
+  // Envoyer un devis (PDF ou proposition en ligne) → fenêtre dédiée
+  const [quoteOffer, setQuoteOffer] = useState<Offer | null>(null)
+
+  // Clôturer une offre pourvue : elle disparaît et ne reçoit plus de candidatures
+  const closeOffer = async (offer: Offer) => {
+    const ok = await confirm({
+      title: 'Clôturer cette offre ?',
+      message: `« ${offer.title} » ne sera plus visible et ne recevra plus de candidatures. Les candidats en attente seront prévenus que l’offre est pourvue.`,
+      confirmLabel: 'Clôturer l’offre',
+    })
+    if (!ok) return
+    const res = await apiFetch(`${API_BASE}/api/offers/${offer.id}/close`, { method: 'POST' })
+    if (!res.ok) { notify('Impossible de clôturer l’offre pour le moment.', 'error'); return }
+    setOffers(list => list.filter(o => o.id !== offer.id))
+    notify('Offre clôturée.')
+  }
 
   // Postuler → appelle l'API et redirige vers la conversation
   const handleApply = async (offer: Offer) => {
@@ -347,12 +367,16 @@ function OffersInner() {
                   applying={applyingId === offer.id}
                   onApply={handleApply}
                   onShare={o => { setShareOffer(o); setShareQuery(''); setShareUsers([]); setShareSuccess(false) }}
+                  onQuote={o => setQuoteOffer(o)}
+                  onClose={closeOffer}
                 />
               ))}
             </div>
           </>
         )}
       </div>
+
+      {quoteOffer && <QuoteModal offer={quoteOffer} onClose={() => setQuoteOffer(null)} />}
 
       {/* ── Modal : Partager ── */}
       {shareOffer && (

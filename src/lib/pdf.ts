@@ -270,3 +270,79 @@ export async function downloadPaymentAttestation(att: PaymentAttestation) {
   footer(doc, 'LS Bookers · lsbookers.com')
   doc.save(`attestation-paiement-${att.reference}.pdf`)
 }
+
+/* ── Proposition tarifaire (offre) : détail de la prestation, pas un devis légal ── */
+
+export type ProposalDoc = {
+  offerTitle: string
+  offerDate?: string | null
+  offerLocation?: string | null
+  from: string
+  to: string
+  details: string
+  lines: { label: string; amount: number }[]
+  conditions?: string
+}
+
+export async function proposalPdfFile(p: ProposalDoc) {
+  const { doc, autoTable } = await newDoc()
+  doc.setFillColor(...ACCENT)
+  doc.rect(0, 0, 210, 6, 'F')
+  doc.setTextColor(...INK)
+  doc.setFontSize(20)
+  doc.text('Proposition tarifaire', 15, 26)
+  doc.setFontSize(10)
+  doc.setTextColor(...MUTED)
+  doc.text(`De ${p.from} pour ${p.to} · ${frDate(new Date())}`, 15, 33)
+  doc.setTextColor(...INK)
+  doc.setFontSize(11)
+  doc.text(`Offre : ${p.offerTitle}`, 15, 44)
+  doc.setFontSize(9.5)
+  doc.setTextColor(...MUTED)
+  const meta = [p.offerDate ? `Date : ${frDate(p.offerDate)}` : '', p.offerLocation ? `Lieu : ${p.offerLocation}` : ''].filter(Boolean).join('   ·   ')
+  if (meta) doc.text(meta, 15, 50)
+
+  let y = 60
+  if (p.details.trim()) {
+    doc.setTextColor(...INK)
+    doc.setFontSize(10.5)
+    doc.text('Détail de la prestation', 15, y)
+    doc.setFontSize(10)
+    doc.setTextColor(60, 56, 70)
+    const lines = doc.splitTextToSize(p.details.trim(), 180)
+    doc.text(lines, 15, y + 6)
+    y += 10 + lines.length * 4.6
+  }
+
+  const total = p.lines.reduce((s, l) => s + (Number(l.amount) || 0), 0)
+  autoTable(doc, {
+    startY: y + 2,
+    head: [['Prestation', 'Tarif']],
+    body: [...p.lines.map(l => [l.label, money(Number(l.amount) || 0)]), ['Total proposé', money(total)]],
+    theme: 'striped',
+    headStyles: { fillColor: ACCENT, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 10, cellPadding: 3, textColor: INK },
+    columnStyles: { 1: { halign: 'right', cellWidth: 40 } },
+    didParseCell: (data: { row: { index: number }; cell: { styles: { fontStyle: string } } }) => {
+      if (data.row.index === p.lines.length) data.cell.styles.fontStyle = 'bold'
+    },
+  })
+  type WithTable = JsPDF & { lastAutoTable?: { finalY: number } }
+  let after = ((doc as WithTable).lastAutoTable?.finalY ?? y + 30) + 8
+  if (p.conditions?.trim()) {
+    doc.setFontSize(10.5)
+    doc.setTextColor(...INK)
+    doc.text('Conditions', 15, after)
+    doc.setFontSize(10)
+    doc.setTextColor(60, 56, 70)
+    const c = doc.splitTextToSize(p.conditions.trim(), 180)
+    doc.text(c, 15, after + 6)
+    after += 10 + c.length * 4.6
+  }
+  doc.setFontSize(8.5)
+  doc.setTextColor(...MUTED)
+  doc.text(doc.splitTextToSize("Proposition indicative envoyée via LS Bookers. Ce document n'est pas un devis : un devis peut être demandé directement au prestataire.", 180), 15, after + 4)
+  footer(doc, 'LS Bookers · lsbookers.com')
+  const safe = p.offerTitle.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase().slice(0, 40) || 'offre'
+  return new File([doc.output('blob')], `proposition-${safe}.pdf`, { type: 'application/pdf' })
+}

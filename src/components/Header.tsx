@@ -49,8 +49,11 @@ function getPopupLink(notif: PopupNotif): string | null {
     return `/messages?c=${notif.conversationId}`
   if (BOOKING_TYPES.includes(notif.type))
     return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
-  if (notif.type === 'NEW_OFFER')
+  if (notif.type === 'NEW_OFFER' || notif.type === 'OFFER_CLOSED')
     return `/offers`
+  // Booking confirmé : l'offre encore en ligne, pour la clôturer
+  if (notif.type === 'OFFER_TO_CLOSE')
+    return notif.offerId ? `/offers?offer=${notif.offerId}` : '/offers'
   const reviewOrItem = reviewOrBookingItemLink(notif.type, notif.eventId)
   if (reviewOrItem) return reviewOrItem
   const billing = billingLink(notif.type)

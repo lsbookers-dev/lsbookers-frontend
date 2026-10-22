@@ -35,6 +35,8 @@ export const NOTIFICATION_TYPES: Record<string, NotificationType> = {
   // Offres
   NEW_OFFER:             { icon: 'offer',    tone: 'accent', label: 'Nouvelle offre' },
   NEW_APPLICATION:       { icon: 'offer',    tone: 'accent', label: 'Candidature' },
+  OFFER_TO_CLOSE:        { icon: 'check',    tone: 'gold',   label: 'Offre à clôturer' },
+  OFFER_CLOSED:          { icon: 'offer',    tone: 'muted',  label: 'Offre pourvue' },
   // Réseau
   NEW_FOLLOW:            { icon: 'follow',   tone: 'accent', label: 'Nouvel abonné' },
   NEW_COMMENT:           { icon: 'comment',  tone: 'accent', label: 'Commentaire' },

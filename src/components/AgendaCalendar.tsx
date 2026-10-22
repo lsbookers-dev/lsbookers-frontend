@@ -758,6 +758,14 @@ export default function AgendaCalendar({
     setEventOffers(prev => prev.filter(x => x.id !== offerId))
   }, [API])
 
+  /* ── closeEventOffer : offre pourvue, retirée de la liste publique ── */
+  const closeEventOffer = useCallback(async (offerId: number) => {
+    const res = await apiFetch(`${API}/api/offers/${offerId}/close`, { method: 'POST' })
+    if (!res.ok) { notify('Impossible de clôturer l’offre pour le moment.', 'error'); return }
+    setEventOffers(prev => prev.filter(x => x.id !== offerId))
+    notify('Offre clôturée.')
+  }, [API, notify])
+
   /* ── Reset form booking quand on change de jour ── */
   useEffect(() => {
     setShowBookingForm(false); setBookingMsg(''); setBookingFee(''); setBookingSent(false)
@@ -1125,6 +1133,7 @@ export default function AgendaCalendar({
           fetchEventDetail={fetchEventDetail}
           submitEventOffer={submitEventOffer}
           deleteEventOffer={deleteEventOffer}
+          closeEventOffer={closeEventOffer}
         />
       )}
 

@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { MapPin, Calendar, Send, Music, Camera, Briefcase, Users, Trash2, Sparkles } from 'lucide-react'
+import { MapPin, Calendar, Send, Music, Camera, Briefcase, Users, Trash2, Sparkles, CircleCheck } from 'lucide-react'
 import { EventOffer, EventOfferForm } from './types'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
@@ -18,6 +18,8 @@ interface Props {
   eventOfferForm: EventOfferForm; setEventOfferForm: (fn: (prev: EventOfferForm) => EventOfferForm) => void
   submitEventOffer: (form: EventOfferForm) => Promise<void>
   deleteEventOffer: (offerId: number) => Promise<void>
+  /** Offre pourvue : elle disparaît et ne reçoit plus de candidatures */
+  closeEventOffer: (offerId: number) => Promise<void>
 }
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
@@ -294,6 +296,16 @@ export default function EventTabOffers(p: Props) {
                   ) : (
                     <span className="text-[9px] text-white/20">0 postulant</span>
                   )}
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Clôturer cette offre ? Elle ne sera plus visible et ne recevra plus de candidatures ; les candidats en attente seront prévenus.')) return
+                      await p.closeEventOffer(o.id)
+                    }}
+                    className="flex h-6 items-center gap-1 rounded-lg px-1.5 text-[10px] text-white/45 hover:bg-emerald-500/10 hover:text-emerald-300 transition-colors"
+                    title="Clôturer l'offre (pourvue)"
+                  >
+                    <CircleCheck className="w-3 h-3" /> Clôturer
+                  </button>
                   <button
                     onClick={async () => {
                       if (!confirm('Supprimer cette offre ?')) return
