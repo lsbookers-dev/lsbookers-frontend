@@ -6,6 +6,7 @@ import { MapPin, Calendar, Send, Music, Camera, Briefcase, Users, Trash2, Sparkl
 import { EventOffer, EventOfferForm } from './types'
 import { getSpecialtiesForOfferType } from '@/constants/specialties'
 import CityAutocomplete from '@/components/CityAutocomplete'
+import SpecialtyPicker from '@/components/SpecialtyPicker'
 
 interface Props {
   eventStart: string
@@ -80,6 +81,7 @@ export default function EventTabOffers(p: Props) {
           className="flex-1 overflow-y-visible px-3 py-3 space-y-2.5 sm:overflow-y-auto"
           onSubmit={async e => {
             e.preventDefault()
+            if (!p.eventOfferForm.specialty) return
             await p.submitEventOffer(p.eventOfferForm)
           }}
         >
@@ -143,17 +145,14 @@ export default function EventTabOffers(p: Props) {
               <option value="PROVIDER">Prestataire</option>
               <option value="ALL">Tous</option>
             </select>
-            <select
-              required
+            {/* Liste avec recherche, au style du site (le menu natif de Safari était immense) */}
+            <SpecialtyPicker
               value={p.eventOfferForm.specialty}
-              onChange={e => p.setEventOfferForm(prev => ({ ...prev, specialty: e.target.value }))}
-              className="h-9 px-2.5 rounded-lg bg-[#11101a]/80 border border-white/10 text-xs text-white/65 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-400/40"
-            >
-              <option value="">Spécialité *</option>
-              {getSpecialtiesForOfferType(p.eventOfferForm.type).map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+              options={getSpecialtiesForOfferType(p.eventOfferForm.type)}
+              onChange={v => p.setEventOfferForm(prev => ({ ...prev, specialty: v }))}
+              placeholder="Spécialité *"
+              className="h-9 w-full px-2.5 rounded-lg bg-[#11101a]/80 border border-white/10 text-xs outline-none"
+            />
           </div>
 
           {/* Date + heure (modifiables) */}
