@@ -15,6 +15,7 @@
     "@fullcalendar/interaction": "^6.1.18",
     "@fullcalendar/react": "^6.1.18",
     "@fullcalendar/timegrid": "^6.1.18",
+    "@sentry/nextjs": "^11.8.0",
     "axios": "^1.10.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.0",

@@ -85,5 +85,18 @@ export function apiFetch(input: string, init: RequestInit = {}): Promise<Respons
   if (!isCookieSessionMode() && isJwt(token) && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`)
   }
-  return fetch(input, { ...init, headers, credentials: 'include' })
+  return fetch(input, { ...init, headers, credentials: 'include' }).then(res => {
+    // Limite du compte gratuit atteinte : la fenêtre « Passer en Pro » s'ouvre, où que soit l'action
+    if (res.status === 403) {
+      res.clone().json().then((body) => {
+        if (body?.error === 'PRO_LIMIT' || body?.error === 'PRO_REQUIRED') {
+          window.dispatchEvent(new CustomEvent(PRO_REQUIRED_EVENT, { detail: body }))
+        }
+      }).catch(() => { })
+    }
+    return res
+  })
 }
+
+/** Événement envoyé quand une action demande la version Pro (écouté par <UpgradePrompt />) */
+export const PRO_REQUIRED_EVENT = 'lsb:pro-required'

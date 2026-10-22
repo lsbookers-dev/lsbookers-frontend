@@ -14,6 +14,7 @@ import {
 import EventChecklist from './EventChecklist'
 import { apiFetch } from '@/utils/auth'
 import type { BookingContract, BookingDetail, BookingLogistic, DocumentItem } from './types'
+import BookingPaymentPanel from './BookingPaymentPanel'
 import { PAYMENT_LABEL, TabContrat, TabLogement, TabMedia, TabNotes } from './EventTabBookings'
 
 type StaffViewData = {
@@ -227,17 +228,24 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
             {/* ── Contrat & Paiement ── */}
             {tab === 'contract' && (
               <>
-                <div className="space-y-3 rounded-2xl border border-violet-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_42%),linear-gradient(135deg,rgba(139,92,246,0.14),rgba(255,255,255,0.035))] p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs text-white/55"><Euro className="h-3.5 w-3.5" aria-hidden="true" /> Cachet convenu</span>
-                    <span className="text-base font-semibold text-white">{fee != null ? `${Number(fee).toLocaleString('fr-FR')} €` : '—'}</span>
+                {detail ? (
+                  <>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-violet-100/60">Paiement</p>
+                    <BookingPaymentPanel bookingId={detail.id} bookingStatus={detail.status} otherName={organizerName} directStatus={detail.paymentStatus} />
+                  </>
+                ) : (
+                  <div className="space-y-3 rounded-2xl border border-violet-300/15 bg-white/[0.035] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs text-white/55"><Euro className="h-3.5 w-3.5" aria-hidden="true" /> Cachet convenu</span>
+                      <span className="text-base font-semibold text-white">{fee != null ? `${Number(fee).toLocaleString('fr-FR')} €` : '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-white/55">Statut du paiement</span>
+                      <span className={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${pay.cls}`}>{pay.label}</span>
+                    </div>
+                    <p className="text-[11px] text-white/40">Le statut du paiement est mis à jour par {organizerName}.</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/55">Statut du paiement</span>
-                    <span className={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${pay.cls}`}>{pay.label}</span>
-                  </div>
-                  <p className="text-[11px] text-white/40">Le statut du paiement est mis à jour par {organizerName}.</p>
-                </div>
+                )}
                 <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-violet-100/60">Contrat</p>
                 {detail ? (
                   <TabContrat

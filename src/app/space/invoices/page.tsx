@@ -15,6 +15,7 @@ import LsIcon from '@/components/ui/LsIcon'
 import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
 import InvoiceEditor, { type BookingSource, type Invoice, type InvoiceKind } from '@/components/space/InvoiceEditor'
 import { euro } from '@/components/space/ui'
+import { usePlan } from '@/lib/plan'
 
 const STATUS: Record<Invoice['status'], { label: string; className: string }> = {
   DRAFT: { label: 'Brouillon', className: 'bg-white/10 text-white/70' },
@@ -24,7 +25,7 @@ const STATUS: Record<Invoice['status'], { label: string; className: string }> = 
   CANCELLED: { label: 'Annulé', className: 'bg-red-400/10 text-red-300' },
 }
 
-export default function InvoicesPage() {
+function InvoicesContent() {
   const { user } = useAuth()
   const { notify, confirm } = useFeedback()
   const [kind, setKind] = useState<InvoiceKind>('QUOTE')
@@ -236,6 +237,25 @@ export default function InvoicesPage() {
           onSaved={inv => { replace(inv); setEditing(null); notify(editing === 'new' ? `${inv.number} créé` : 'Brouillon enregistré') }}
         />
       )}
+    </div>
+  )
+}
+
+/** Devis et factures : version Pro uniquement */
+export default function InvoicesPage() {
+  const { isPro, loading } = usePlan()
+  if (loading) return <div className="lsb-state-screen">Chargement…</div>
+  if (isPro) return <InvoicesContent />
+  return (
+    <div className="lsb-page min-h-screen text-white">
+      <Link href="/space" className="mb-6 inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white"><ArrowLeft size={14} />Mon espace</Link>
+      <div className="mx-auto max-w-md rounded-3xl border border-white/10 bg-surface p-8 text-center">
+        <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border border-gold/30 bg-gold/10"><LsIcon name="lock" tone="gold" size={20} /></span>
+        <p className="text-[10px] font-bold uppercase tracking-[.2em] text-gold">Finances</p>
+        <h1 className="mt-1 text-xl font-semibold">Devis et factures</h1>
+        <p className="mt-2 text-sm leading-relaxed text-white/55">Créez vos devis et factures en quelques clics, envoyez-les par la messagerie et suivez leur paiement. Disponible avec la version Pro.</p>
+        <Link href="/subscriptions" className="mt-6 inline-block rounded-xl bg-accent-strong px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent">Passer en Pro</Link>
+      </div>
     </div>
   )
 }

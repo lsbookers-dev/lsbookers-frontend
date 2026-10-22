@@ -9,6 +9,8 @@ import InstallPrompt from '@/components/InstallPrompt'
 import { MobileAnnouncement } from '@/components/HeaderAnnouncement'
 import PausedAccountBanner from '@/components/settings/PausedAccountBanner'
 import AppSidebar from '@/components/AppSidebar'
+import UpgradePrompt from '@/components/plan/UpgradePrompt'
+import SignupPlanRedirect from '@/components/plan/SignupPlanRedirect'
 import { getAuthToken, apiFetch } from '@/utils/auth'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -89,6 +91,8 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
       {/* Appli installée sur iPhone : la barre d'état (heure, encoche) est transparente */}
       <div className="lsb-status-shield md:hidden" aria-hidden="true" />
       <InstallPrompt />
+      {!!user && <UpgradePrompt />}
+      {!!user && user.role !== 'ADMIN' && <SignupPlanRedirect />}
     </div>
   )
 }

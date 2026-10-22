@@ -12,3 +12,27 @@ export function reviewOrBookingItemLink(type: string, eventId?: number | null): 
   if (type === 'CHECKLIST_REMINDER') return agendaEventLink(eventId, 'checklist')
   return null
 }
+
+/** Paiements, abonnements, formules et alertes admin → la page qui permet d'agir */
+export function billingLink(type: string): string | null {
+  switch (type) {
+    case 'SUBSCRIPTION_UPDATE':
+    case 'EXTRA_ORDER_UPDATE':
+      return '/subscriptions'
+    case 'PAYOUT_RELEASED':
+    case 'LATE_CANCEL_WARNING':
+      return '/settings/subscription'
+    case 'BOOKING_PAYMENT':
+    case 'BOOKING_PAYMENT_FAILED':
+      return '/agenda'
+    case 'ADMIN_CAROUSEL_REQUEST':
+    case 'ADMIN_EXTRA_ORDER':
+      return '/admin/subscriptions?tab=orders'
+    case 'ADMIN_LATE_CANCEL_ALERT':
+      return '/admin/subscriptions?tab=cancellations'
+    case 'ADMIN_PAYMENT_ISSUE':
+      return '/admin/subscriptions'
+    default:
+      return null
+  }
+}

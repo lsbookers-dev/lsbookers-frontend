@@ -1,6 +1,7 @@
 'use client'
 
-import { apiFetch } from '@/utils/auth'
+import { apiFetch, PRO_REQUIRED_EVENT } from '@/utils/auth'
+import { usePlan, refreshPlan, readVideoDuration } from '@/lib/plan'
 /**
  * Composeur partagé par l'accueil et les profils.
  * Les fonctions historiques (multi-upload, création et callback) sont conservées.
@@ -60,6 +61,7 @@ const toAbsoluteUrl = (url?: string | null) => {
 
 export default function AddPublicationModal({ profileId, token, onClose, onPublished }: Props) {
   const { user } = useAuth()
+  const { plan } = usePlan()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const filesRef = useRef<FilePreview[]>([])
   const uploadingRef = useRef(false)
@@ -252,11 +254,32 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
       return
     }
 
+    const orderedFiles = [files[coverIndex], ...files.filter((_, index) => index !== coverIndex)]
+    // Compte gratuit : nombre et durée des vidéos vérifiés avant l'envoi (le serveur revérifie)
+    const videoFiles = orderedFiles.filter(item => item.type === 'video')
+    const videoDurations = (await Promise.all(videoFiles.map(item => readVideoDuration(item.file))))
+      .filter((d): d is number => d != null)
+    if (plan && !plan.isPro && videoFiles.length > 0) {
+      const { videos: maxVideos, videoMaxSeconds } = plan.limits
+      const tooLong = videoDurations.some(d => d > videoMaxSeconds + 1)
+      const tooMany = (plan.usage?.videos ?? 0) + videoFiles.length > maxVideos
+      if (tooLong || tooMany) {
+        window.dispatchEvent(new CustomEvent(PRO_REQUIRED_EVENT, {
+          detail: {
+            error: 'PRO_LIMIT',
+            message: tooLong
+              ? `Avec le compte gratuit, une vidéo dure au maximum ${videoMaxSeconds} secondes. Passez en Pro pour publier des vidéos plus longues.`
+              : `Avec le compte gratuit, vous pouvez publier ${maxVideos} vidéos. Passez en Pro pour en publier sans limite.`,
+          },
+        }))
+        return
+      }
+    }
+
     setUploading(true)
     setUploadStep(0)
     setError('')
     try {
-      const orderedFiles = [files[coverIndex], ...files.filter((_, index) => index !== coverIndex)]
       const uploaded: Array<{ url: string; mediaType: 'image' | 'video' }> = []
 
       // Envoi séquentiel : évite de charger jusqu'à dix gros fichiers en mémoire en même temps.
@@ -275,12 +298,17 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
           mediaType: first.mediaType,
           caption: caption.trim() || null,
           profileId,
+          ...(videoDurations.length > 0 ? { videoDurations } : {}),
           ...(rest.length > 0 ? {
             additionalMedia: rest.map((media, index) => ({ ...media, order: index })),
           } : {}),
         }),
       })
 
+      if (response.status === 403) {
+        const body = await response.json().catch(() => null)
+        throw new Error(body?.message || 'La publication n’a pas pu être créée.')
+      }
       if (!response.ok) throw new Error('La publication n’a pas pu être créée.')
       const saved: PubCardData = await response.json()
 
@@ -296,6 +324,7 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
         }
       }
 
+      if (videoFiles.length > 0) refreshPlan()
       onPublished(saved)
       onClose()
     } catch (caught: unknown) {

@@ -13,6 +13,7 @@ import LsIcon, { type LsIconName } from '@/components/ui/LsIcon'
 import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import { useFeedback } from '@/components/ui/Feedback'
+import { usePlan } from '@/lib/plan'
 import { EmptyLine, SpacePanel, euro, type Person } from './ui'
 
 type Item = {
@@ -104,7 +105,7 @@ function BarChart({ bars, label }: { bars: { label: string; short: string; name:
   )
 }
 
-export default function FinanceZone({ organizer, ownerName }: { organizer: boolean; ownerName: string }) {
+function FinanceZoneContent({ organizer, ownerName }: { organizer: boolean; ownerName: string }) {
   const { notify } = useFeedback()
   const now = new Date()
   const [period, setPeriod] = useState<'month' | 'year'>('year')
@@ -263,6 +264,51 @@ export default function FinanceZone({ organizer, ownerName }: { organizer: boole
           <LsIcon name="payment" size={15} tone="inherit" />Devis et factures
         </Link>
         <span className="text-[11px] text-white/35">Montants indiqués dans vos bookings{organizer ? ' et votre agenda' : ''}, hors paiements en ligne.</span>
+      </div>
+    </SpacePanel>
+  )
+}
+
+/** Module Finances : version Pro uniquement. En compte gratuit, il reste visible mais grisé. */
+export default function FinanceZone({ organizer, ownerName }: { organizer: boolean; ownerName: string }) {
+  const { isPro, loading } = usePlan()
+  if (loading) return null
+  if (isPro) return <FinanceZoneContent organizer={organizer} ownerName={ownerName} />
+
+  const preview = [
+    { icon: (organizer ? 'venue' : 'booking') as LsIconName, label: organizer ? 'Événements' : 'Bookings', value: '12' },
+    { icon: 'payment' as LsIconName, label: organizer ? 'Dépenses de l’année' : 'Revenus de l’année', value: '8 450 €' },
+    { icon: 'check' as LsIconName, label: 'Déjà réalisé', value: '6 200 €' },
+    { icon: 'star' as LsIconName, label: organizer ? 'Coût moyen par événement' : 'Cachet moyen', value: '704 €' },
+  ]
+  return (
+    <SpacePanel kicker="Finances" title={organizer ? 'Mes dépenses' : 'Mes revenus'}>
+      <div className="relative">
+        <div aria-hidden="true" className="pointer-events-none select-none opacity-30 grayscale">
+          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+            {preview.map(k => (
+              <div key={k.label} className="grid gap-1 rounded-[14px] border border-line bg-surface-2 p-3.5">
+                <span className="flex items-center gap-1.5 text-[11px] text-muted"><LsIcon name={k.icon} size={15} />{k.label}</span>
+                <strong className="text-[22px] font-semibold tabular-nums text-white">{k.value}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex h-28 items-end gap-2 rounded-[14px] border border-line bg-surface-2 p-3.5">
+            {[30, 55, 40, 70, 45, 85, 60, 35, 75, 50, 65, 40].map((h, i) => (
+              <span key={i} className="flex-1 rounded-t bg-white/40" style={{ height: `${h}%` }} />
+            ))}
+          </div>
+        </div>
+        <div className="absolute inset-0 grid place-items-center p-4">
+          <div className="max-w-sm rounded-2xl border border-white/10 bg-surface/95 p-5 text-center shadow-2xl backdrop-blur">
+            <span className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full border border-gold/30 bg-gold/10"><LsIcon name="lock" tone="gold" size={18} /></span>
+            <p className="text-sm font-semibold text-white">Disponible avec la version Pro</p>
+            <p className="mt-1 text-xs leading-relaxed text-white/55">
+              Suivez vos {organizer ? 'dépenses' : 'revenus'} mois par mois, exportez-les en PDF et créez vos devis et factures.
+            </p>
+            <Link href="/subscriptions" className="mt-4 inline-block rounded-xl bg-accent-strong px-4 py-2 text-xs font-semibold text-white transition hover:bg-accent">Passer en Pro</Link>
+          </div>
+        </div>
       </div>
     </SpacePanel>
   )

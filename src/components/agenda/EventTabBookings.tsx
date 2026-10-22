@@ -8,6 +8,7 @@ import {
   Plus, Download, Eye, Trash2, Bed, Plane, Loader2, Paperclip,
   CheckCircle2, CalendarDays,
 } from 'lucide-react'
+import BookingPaymentPanel from './BookingPaymentPanel'
 import { BookingItem2, BookingDetail, BookingLogistic, BookingMedia, BookingContract, DocumentItem, LinkedBooking } from './types'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -44,43 +45,11 @@ function avatarUrl(b: BookingItem2): string | null {
 
 /* ─── sous-composants ─────────────────────────────────────────────────────── */
 
-// Paiement
-function TabPayment({ booking, isOrganizer }: { booking: BookingDetail; isOrganizer: boolean }) {
-  const pay = PAYMENT_LABEL[booking.paymentStatus || 'UNPAID']
-  const fee = booking.fee ? Number(booking.fee) : 0
-  const paid = booking.paymentStatus === 'PAID' ? fee
-    : booking.paymentStatus === 'DEPOSIT' ? fee / 2 : 0
-  const remaining = fee - paid
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-2xl border border-emerald-300/15 bg-gradient-to-br from-emerald-500/15 to-cyan-500/5 p-3.5">
-          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-100/55">Payé</p>
-          <p className="text-lg font-semibold text-emerald-200">{paid.toLocaleString('fr-FR')} €</p>
-          {booking.paymentStatus === 'DEPOSIT' && <p className="mt-0.5 text-[11px] text-white/40">Acompte 50 %</p>}
-        </div>
-        <div className="rounded-2xl border border-amber-300/15 bg-gradient-to-br from-amber-500/12 to-violet-500/5 p-3.5">
-          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-100/55">Restant</p>
-          <p className={`text-lg font-semibold ${remaining > 0 ? 'text-amber-200' : 'text-white/40'}`}>
-            {remaining.toLocaleString('fr-FR')} €
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${pay.cls}`}>{pay.label}</span>
-      </div>
-      {isOrganizer && (
-        <button className="flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 text-sm font-medium text-white shadow-[0_10px_28px_rgba(124,58,237,0.25)] transition hover:from-violet-500 hover:to-fuchsia-500">
-          <CreditCard className="h-4 w-4" aria-hidden="true" />
-          Réaliser le paiement
-        </button>
-      )}
-      {!isOrganizer && (
-        <p className="text-[11px] text-white/40">Le paiement est géré par l&apos;organisateur.</p>
-      )}
-    </div>
-  )
+// Paiement : en direct (statut suivi à la main) ou en ligne via LS Bookers
+function TabPayment({ booking }: { booking: BookingDetail }) {
+  const u = booking.target?.user
+  const otherName = u?.pseudo || [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'la personne bookée'
+  return <BookingPaymentPanel bookingId={booking.id} bookingStatus={booking.status} otherName={otherName} directStatus={booking.paymentStatus} />
 }
 
 // Contrat — PDF propres à ce booking, déposés par l'organisateur ou la personne bookée
@@ -698,7 +667,7 @@ export default function EventTabBookings(p: Props) {
               ) : detail ? (
                 <>
                   {activeTab === 'pay' && (
-                    <TabPayment booking={detail} isOrganizer={isOrganizer} />
+                    <TabPayment booking={detail} />
                   )}
                   {activeTab === 'ct' && (
                     <TabContrat

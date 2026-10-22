@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { href: '/admin/messages',      label: 'Messages',      icon: Mail },
   { href: '/admin/publications',  label: 'Publications',  icon: FileImage },
   { href: '/admin/featured',      label: 'Carrousel',     icon: Star },
-  { href: '/admin/subscriptions', label: 'Abonnements',   icon: CreditCard },
+  { href: '/admin/subscriptions', label: 'Offres',        icon: CreditCard },
   { href: '/admin/stats',         label: 'Statistiques',  icon: BarChart2 },
   { href: '/admin/settings',      label: 'Paramètres',    icon: Settings },
 ]
@@ -53,6 +53,8 @@ function NavLink({ href, label, icon: Icon, badge }: {
 export default function AdminHeader() {
   const { logout } = useAuth()
   const [unread, setUnread] = useState(0)
+  // Formules payées à valider : carrousel (onglet Carrousel) et autres (Offres)
+  const [pending, setPending] = useState({ carousel: 0, other: 0 })
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -67,8 +69,16 @@ export default function AdminHeader() {
       } catch { /* ignore */ }
     }
 
+    const fetchPending = async () => {
+      try {
+        const res = await apiFetch(`${API}/api/admin/billing/orders/pending-count`, { cache: 'no-store' })
+        if (res.ok) setPending(await res.json())
+      } catch { /* ignore */ }
+    }
+
     fetchUnread()
-    const interval = setInterval(fetchUnread, 60_000)
+    fetchPending()
+    const interval = setInterval(() => { fetchUnread(); fetchPending() }, 60_000)
     const onRead = () => setUnread(u => Math.max(0, u - 1))
     window.addEventListener('contact-read', onRead)
     return () => {
@@ -104,7 +114,10 @@ export default function AdminHeader() {
                 href={item.href}
                 label={item.label}
                 icon={item.icon}
-                badge={item.href === '/admin/messages' ? unread : undefined}
+                badge={item.href === '/admin/messages' ? unread
+                  : item.href === '/admin/featured' ? pending.carousel
+                  : item.href === '/admin/subscriptions' ? pending.carousel + pending.other
+                  : undefined}
               />
             ))}
           </nav>

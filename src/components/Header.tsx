@@ -13,7 +13,7 @@ import { getAuthToken, apiFetch } from '@/utils/auth'
 import { getSocket } from '@/lib/socket'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
-import { reviewOrBookingItemLink } from '@/utils/notificationLinks'
+import { reviewOrBookingItemLink, billingLink } from '@/utils/notificationLinks'
 import LsIcon from '@/components/ui/LsIcon'
 import HeaderAnnouncement, { announcementFromSettings, type Announcement } from './HeaderAnnouncement'
 import { NotificationIcon } from '@/lib/notificationTypes'
@@ -53,6 +53,8 @@ function getPopupLink(notif: PopupNotif): string | null {
     return `/offers`
   const reviewOrItem = reviewOrBookingItemLink(notif.type, notif.eventId)
   if (reviewOrItem) return reviewOrItem
+  const billing = billingLink(notif.type)
+  if (billing) return billing
   // NEW_COMMENT / NEW_LIKE / NEW_COMMENT_REPLY / NEW_COMMENT_LIKE avec publicationId → modal inline, pas de navigation
   if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE'].includes(notif.type) && notif.publicationId)
     return null

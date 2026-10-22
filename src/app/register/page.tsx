@@ -17,7 +17,9 @@ import PublicBrand from '@/components/PublicBrand'
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
 type LegalType = 'INDIVIDUAL' | 'INTERMITTENT' | 'PROFESSIONAL'
-type Plan = 'MONTHLY' | 'YEARLY'
+type Plan = 'FREE' | 'PRO'
+type SignupPrices = { prices: Record<string, { monthCents: number; yearCents: number }>; trialDays: number; limits: { applicationsPerMonth: number; bookingRequestsPerMonth: number }; commission: { freePct: number; proPct: number } }
+const formatPrice = (cents: number) => (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: cents % 100 ? 2 : 0 })
 type PseudoStatus = 'idle' | 'checking' | 'available' | 'taken'
 type SiretStatus  = 'idle' | 'checking' | 'valid' | 'invalid'
 
@@ -175,9 +177,9 @@ const BRANDING: { icon: React.ReactNode; title: string; subtitle: string; items:
   },
   {
     icon: <Gift className="h-7 w-7 text-violet-400" />,
-    title: '3 mois gratuits.',
-    subtitle: 'Choisis ta formule et profite de 3 mois d\'essai complet — sans engagement.',
-    items: ['Aucun prélèvement pendant l\'essai', '2 mois offerts sur la formule annuelle', '-20% sur les prestations avec le plan annuel'],
+    title: 'Ta formule.',
+    subtitle: 'Commence gratuitement, ou essaie la version Pro un mois offert.',
+    items: ['Compte gratuit sans carte bancaire', 'Version Pro : 1 mois offert, résiliable à tout moment', 'Code Fondateur ou code promo accepté'],
   },
 ]
 
@@ -309,15 +311,21 @@ export default function RegisterPage() {
   const [siretName, setSiretName]   = useState('')
 
   // ── Étape 5 : Offre ──
-  const [plan, setPlan]             = useState<Plan>('YEARLY')
+  const [plan, setPlan]             = useState<Plan>('FREE')
+  const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('YEAR')
   const [promoCode, setPromoCode]   = useState('')
+  const [signupPrices, setSignupPrices] = useState<SignupPrices | null>(null)
+  useEffect(() => {
+    fetch(apiUrl('billing/prices')).then(r => (r.ok ? r.json() : null)).then(setSignupPrices).catch(() => {})
+  }, [])
+  const rolePrices = role ? signupPrices?.prices?.[role] : null
+  const signupLimits = signupPrices?.limits
+  const signupCommission = signupPrices?.commission
+  const signupTrialMonths = Math.max(1, Math.round((signupPrices?.trialDays || 30) / 30))
 
   // ── Helpers ──
   const go = (n: number) => { setStep(n); setError(null) }
 
-  const trialEnd = new Date()
-  trialEnd.setMonth(trialEnd.getMonth() + 3)
-  const trialEndStr = trialEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
   // Vérification pseudo
   const checkPseudo = useCallback(async (value: string) => {
@@ -363,6 +371,9 @@ export default function RegisterPage() {
           siret: legalType === 'PROFESSIONAL' ? siret.replace(/\s/g, '') : undefined,
           city: city,
           specialties: specialties.length > 0 ? specialties : undefined,
+          plan,
+          billingInterval,
+          promoCode: promoCode.trim() || undefined,
         },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       )
@@ -753,93 +764,84 @@ export default function RegisterPage() {
                 </form>
               )}
 
-              {/* ── ÉTAPE 5 : Offre / Abonnement ─────────────────────────────── */}
+              {/* ── ÉTAPE 5 : Formule (gratuit par défaut, Pro en option) ─────── */}
               {step === 5 && (
                 <form onSubmit={handleSubmit} className="space-y-4">
-
-                  {/* Message essai gratuit */}
-                  <div className="flex items-center gap-3 rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-3">
-                    <Gift className="h-5 w-5 text-violet-400 flex-shrink-0" />
-                    <p className="text-xs text-violet-200 leading-relaxed">
-                      <strong>3 mois d&apos;essai gratuit</strong> — aucun prélèvement avant le <strong>{trialEndStr}</strong>.
-                    </p>
-                  </div>
-
-                  {/* Cartes plans */}
                   <div className="space-y-3">
-                    {/* Plan annuel — recommandé */}
-                    <button type="button" onClick={() => setPlan('YEARLY')}
+                    {/* Compte gratuit — choisi par défaut */}
+                    <button type="button" onClick={() => setPlan('FREE')}
+                      className={`w-full text-left rounded-2xl border p-4 transition
+                        ${plan === 'FREE' ? 'border-accent bg-accent/15 shadow-lg shadow-black/20' : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className={`font-semibold text-sm ${plan === 'FREE' ? 'text-white' : 'text-white/70'}`}>Compte gratuit</p>
+                          <p className="text-xs text-white/40 mt-0.5">Pour démarrer, sans carte bancaire</p>
+                        </div>
+                        <p className={`font-black text-lg ${plan === 'FREE' ? 'text-white' : 'text-white/60'}`}>0 €</p>
+                      </div>
+                      <ul className="mt-3 space-y-1.5">
+                        {[
+                          'Profil, publications et messagerie',
+                          'Bookings reçus et acceptés sans limite',
+                          signupLimits ? `${role === 'ORGANIZER' ? `${signupLimits.bookingRequestsPerMonth} demandes de booking` : `${signupLimits.applicationsPerMonth} candidatures`} par mois` : 'Quelques limites mensuelles',
+                        ].map(f => (
+                          <li key={f} className="flex items-center gap-2 text-xs text-white/60">
+                            <Check className={`h-3 w-3 flex-shrink-0 ${plan === 'FREE' ? 'text-accent-light' : 'text-white/30'}`} />{f}
+                          </li>
+                        ))}
+                      </ul>
+                    </button>
+
+                    {/* Version Pro — en option, avec la période offerte */}
+                    <button type="button" onClick={() => setPlan('PRO')}
                       className={`relative w-full text-left rounded-2xl border p-4 transition
-                        ${plan === 'YEARLY'
-                          ? 'border-violet-500 bg-violet-500/15 shadow-lg shadow-violet-900/20'
-                          : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
+                        ${plan === 'PRO' ? 'border-accent bg-accent/15 shadow-lg shadow-black/20' : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
                       <div className="absolute -top-2.5 left-4">
-                        <span className="rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide shadow">
-                          Recommandé
+                        <span className="rounded-full bg-accent-strong px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide shadow">
+                          {signupTrialMonths} mois offert{signupTrialMonths > 1 ? 's' : ''}
                         </span>
                       </div>
                       <div className="flex items-start justify-between gap-3 mt-1">
                         <div>
-                          <p className={`font-semibold text-sm ${plan === 'YEARLY' ? 'text-white' : 'text-white/70'}`}>Formule annuelle</p>
-                          <p className="text-xs text-white/40 mt-0.5">8,33 € / mois facturé annuellement</p>
+                          <p className={`font-semibold text-sm ${plan === 'PRO' ? 'text-white' : 'text-white/70'}`}>Version Pro</p>
+                          <p className="text-xs text-white/40 mt-0.5">Tout illimité, résiliable à tout moment</p>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className={`font-black text-lg ${plan === 'YEARLY' ? 'text-white' : 'text-white/60'}`}>99,90 €</p>
-                          <p className="text-[10px] text-white/35">par an</p>
-                        </div>
+                        {rolePrices && (
+                          <div className="text-right flex-shrink-0">
+                            <p className={`font-black text-lg ${plan === 'PRO' ? 'text-white' : 'text-white/60'}`}>{formatPrice(billingInterval === 'YEAR' ? rolePrices.yearCents : rolePrices.monthCents)}</p>
+                            <p className="text-[10px] text-white/35">{billingInterval === 'YEAR' ? 'par an' : 'par mois'}</p>
+                          </div>
+                        )}
                       </div>
                       <ul className="mt-3 space-y-1.5">
                         {[
-                          'Accès complet à toute la plateforme',
-                          'Messagerie & bookings illimités',
-                          'Agenda professionnel & offres',
-                          '2 mois offerts (économisez 23,98 €)',
-                          '-20 % sur les prestations réservées via LSBookers',
+                          'Candidatures, demandes et événements illimités',
+                          'Module Finances, devis et factures',
+                          role === 'ORGANIZER' ? 'Budget, équipe et documents d’événement' : `Commission réduite${signupCommission ? ` à ${String(signupCommission.proPct).replace('.', ',')} %` : ''} sur les bookings payés en ligne`,
+                          'Badge Pro et meilleure place dans la recherche',
                         ].map(f => (
                           <li key={f} className="flex items-center gap-2 text-xs text-white/60">
-                            <Check className={`h-3 w-3 flex-shrink-0 ${plan === 'YEARLY' ? 'text-violet-400' : 'text-white/30'}`} />
-                            <span className={f.includes('2 mois') || f.includes('-20') ? 'text-violet-200 font-medium' : ''}>{f}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </button>
-
-                    {/* Plan mensuel */}
-                    <button type="button" onClick={() => setPlan('MONTHLY')}
-                      className={`w-full text-left rounded-2xl border p-4 transition
-                        ${plan === 'MONTHLY'
-                          ? 'border-violet-500 bg-violet-500/15 shadow-lg shadow-violet-900/20'
-                          : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className={`font-semibold text-sm ${plan === 'MONTHLY' ? 'text-white' : 'text-white/70'}`}>Formule mensuelle</p>
-                          <p className="text-xs text-white/40 mt-0.5">Sans engagement — résiliable à tout moment</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className={`font-black text-lg ${plan === 'MONTHLY' ? 'text-white' : 'text-white/60'}`}>9,99 €</p>
-                          <p className="text-[10px] text-white/35">par mois</p>
-                        </div>
-                      </div>
-                      <ul className="mt-3 space-y-1.5">
-                        {[
-                          'Accès complet à toute la plateforme',
-                          'Messagerie & bookings illimités',
-                          'Agenda professionnel & offres',
-                          'Support prioritaire',
-                        ].map(f => (
-                          <li key={f} className="flex items-center gap-2 text-xs text-white/60">
-                            <Check className={`h-3 w-3 flex-shrink-0 ${plan === 'MONTHLY' ? 'text-violet-400' : 'text-white/30'}`} />
-                            {f}
+                            <Check className={`h-3 w-3 flex-shrink-0 ${plan === 'PRO' ? 'text-accent-light' : 'text-white/30'}`} />{f}
                           </li>
                         ))}
                       </ul>
                     </button>
                   </div>
 
-                  {/* Code promo */}
-                  <Field label="Code promo" hint="Optionnel — sera appliqué à ton premier prélèvement.">
+                  {plan === 'PRO' && rolePrices && (
+                    <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1 text-xs">
+                      {(['YEAR', 'MONTH'] as const).map(i => (
+                        <button key={i} type="button" onClick={() => setBillingInterval(i)}
+                          className={`flex-1 rounded-lg px-3 py-2 font-medium transition ${billingInterval === i ? 'bg-accent-strong text-white' : 'text-white/55 hover:text-white'}`}>
+                          {i === 'YEAR' ? `Annuel · ${formatPrice(rolePrices.yearCents)}` : `Mensuel · ${formatPrice(rolePrices.monthCents)}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <Field label="Code promo ou code Fondateur" hint="Optionnel — appliqué à votre première connexion.">
                     <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value.toUpperCase())}
-                      placeholder="Ex. LSBOOKERS2026" className={inputCls('tracking-widest font-mono')} />
+                      placeholder="Ex. FONDATEUR-XXXXXXXX" className={inputCls('tracking-widest font-mono')} />
                   </Field>
 
                   <div className="flex gap-3">
@@ -848,7 +850,9 @@ export default function RegisterPage() {
                   </div>
 
                   <p className="text-center text-xs text-white/30 leading-relaxed">
-                    Aucune CB requise pour l&apos;essai. Après les 3 mois, tu seras invité à choisir ton moyen de paiement.
+                    {plan === 'PRO'
+                      ? 'Après la confirmation de votre e-mail, vous finaliserez la version Pro : carte demandée, aucun prélèvement avant la fin de la période offerte.'
+                      : 'Aucune carte bancaire demandée. Vous pourrez passer en Pro à tout moment.'}
                   </p>
                 </form>
               )}

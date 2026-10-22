@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  CalendarDays, Compass, Home, LayoutDashboard, Mail,
+  CalendarDays, Compass, Crown, Home, LayoutDashboard, Mail,
   Settings, Sparkles, TicketCheck,
 } from 'lucide-react'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
@@ -19,6 +19,7 @@ const primary = [
 const secondary = [
   { href: '/space', label: 'Mon espace', icon: LayoutDashboard },
   { href: '/studio-profile', label: 'Studio profil', icon: Sparkles, match: ['/studio-profile', '/profile/artist', '/profile/organizer', '/profile/provider'] },
+  { href: '/subscriptions', label: 'Offres et abonnements', icon: Crown },
   { href: '/settings', label: 'Réglages', icon: Settings },
 ]
 

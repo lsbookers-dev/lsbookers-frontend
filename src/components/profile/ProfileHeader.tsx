@@ -2,6 +2,7 @@
 
 /** En-tête d'un profil : bannière, photo, nom, activité, statistiques, spécialités. */
 
+import { ProBadge } from '@/components/plan/UpgradePrompt'
 import { Camera, Pencil } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import { radiusLabel } from '@/utils/radius'
@@ -62,7 +63,10 @@ export default function ProfileHeader({ profile, mode, followersCount, publicati
                 )}
               </button>
               <div className="min-w-0">
-                <h1 className="truncate text-2xl font-semibold md:text-3xl">{name}</h1>
+                <h1 className="flex items-center gap-2 text-2xl font-semibold md:text-3xl">
+                  <span className="truncate">{name}</span>
+                  {profile.user?.isPro && <ProBadge className="shrink-0" />}
+                </h1>
                 {details.length > 0 && <p className="mt-1 text-xs text-white/45">{details.join(' · ')}</p>}
               </div>
             </div>

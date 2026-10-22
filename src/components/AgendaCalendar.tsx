@@ -13,6 +13,7 @@ import EventPanel       from './agenda/EventPanel'
 import CalendarGrid     from './agenda/CalendarGrid'
 import BookedEventView  from './agenda/BookedEventView'
 import { apiFetch } from '@/utils/auth'
+import { useFeedback } from '@/components/ui/Feedback'
 
 /* ─────────────────────────────────────────────────────────
    PROPS
@@ -41,6 +42,7 @@ export default function AgendaCalendar({
 }: Props) {
   void ownerRole
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
+  const { notify, confirm } = useFeedback()
 
   const now = new Date()
   const [focusDate, setFocusDate] = useState(() => new Date(now.getFullYear(), now.getMonth(), now.getDate()))
@@ -253,6 +255,20 @@ export default function AgendaCalendar({
 
   /* ── requestCancellation ── */
   const requestCancellation = useCallback(async (id: number) => {
+    // Booking payé en ligne : annulation immédiate, avec les règles de remboursement rappelées avant
+    const summary = await apiFetch(`${API}/api/booking-payments/${id}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+    if (summary?.mode === 'ONLINE') {
+      const days = summary.rules?.lateCancelDays ?? 7
+      const ok = await confirm({
+        title: 'Annuler ce booking payé en ligne ?',
+        message: summary.role === 'PAYER'
+          ? `L’annulation est immédiate. À plus de ${days} jours de la date, vous êtes remboursé (frais bancaires retenus). À moins de ${days} jours, vous perdez ${summary.rules?.depositPct ?? 30} % du montant, versés à la personne bookée, et la commission LS Bookers.`
+          : `L’annulation est immédiate et l’organisateur est remboursé. Une annulation à moins de ${days} jours de la date est comptée : il pourra laisser un avis, et des annulations répétées peuvent entraîner la suspension du compte.`,
+        confirmLabel: 'Annuler le booking',
+        danger: true,
+      })
+      if (!ok) return
+    }
     setCancelRequestingId(id)
     try {
       const res = await apiFetch(`${API}/api/events/booking-request/${id}/cancel-request`, {
@@ -266,7 +282,7 @@ export default function AgendaCalendar({
       }
     } catch {}
     finally { setCancelRequestingId(null) }
-  }, [API, cancelNoteText, refreshPanel])
+  }, [API, cancelNoteText, refreshPanel, confirm])
 
   /* ── fetchAllEvents ── */
   const fetchAllEvents = useCallback(async () => {
@@ -353,15 +369,18 @@ export default function AgendaCalendar({
   useEffect(() => {
     if (!isOwner || loading || deepLinkHandled.current) return
     const params = new URLSearchParams(window.location.search)
+    // Retour de la page de paiement Stripe d'un booking
+    if (params.get('paiement') === 'ok') notify('Merci ! Le paiement en ligne est enregistré.')
+    if (params.get('paiement') === 'annule') notify('Paiement non finalisé : vous pourrez le reprendre depuis le booking.', 'error')
     const id = Number(params.get('event'))
-    if (!id) return
+    if (!id) { if (params.get('paiement')) window.history.replaceState(null, '', window.location.pathname); return }
     deepLinkHandled.current = true
     openEventFromCalendar(id)
     const iAmBooked = events.some(e => e.id === id && e.staffStatus === 'BOOKED')
     const tab = params.get('tab')
     if ((tab === 'bookings' || tab === 'checklist') && !iAmBooked) setDetailTab(tab)
     window.history.replaceState(null, '', window.location.pathname)
-  }, [isOwner, loading, events, openEventFromCalendar])
+  }, [isOwner, loading, events, openEventFromCalendar, notify])
 
   /* ── openCreateFromDate : ouvre le formulaire créer événement pré-rempli ── */
   const openCreateFromDate = useCallback((date: Date) => {

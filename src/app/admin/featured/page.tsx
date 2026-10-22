@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowDown, ArrowUp, Loader2, Plus, Search, Trash2 } from 'lucide-react'
 import { apiFetch } from '@/utils/auth'
+import Link from 'next/link'
 import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
@@ -15,6 +16,10 @@ type Featured = {
   note: string | null
   createdAt: string
   active: boolean
+  startsAt: string | null
+  scope: 'ADMIN' | 'REGIONAL' | 'NATIONAL'
+  regionName: string | null
+  orderId: number | null
   user: { id: number; name: string; email: string; role: string; avatar: string | null }
 }
 
@@ -48,6 +53,13 @@ export default function AdminFeaturedPage() {
   const [endsAt, setEndsAt]     = useState('')
   const [note, setNote]         = useState('')
   const [busy, setBusy]         = useState(false)
+  const [pendingOrders, setPendingOrders] = useState(0)
+
+  // Mises en avant payées en attente de validation (notification de la partie Carrousel)
+  useEffect(() => {
+    apiFetch(`${API_BASE}/api/admin/billing/orders/pending-count`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null)).then(d => setPendingOrders(d?.carousel || 0)).catch(() => {})
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -138,9 +150,20 @@ export default function AdminFeaturedPage() {
     <div className="mx-auto max-w-3xl px-4 py-8 text-white">
       <h2 className="mb-2 text-2xl font-bold">Carrousel de l&apos;accueil</h2>
       <p className="mb-8 text-sm text-white/50">
-        Les profils ajoutés ici défilent en haut de l&apos;accueil, dans cet ordre, avec la mention « À la une ».
-        À la date de fin, ils disparaissent tout seuls. Tant que la liste est vide, l&apos;accueil montre les profils les plus suivis.
+        Les profils offerts ajoutés ici défilent en haut de l&apos;accueil pour tous les membres, en plus des places payantes
+        (12 par région, 10 au national). Les mises en avant payées apparaissent aussi dans cette liste une fois validées.
+        À la date de fin, elles disparaissent toutes seules. Tant que la liste est vide, l&apos;accueil montre les profils les plus suivis.
       </p>
+
+      {pendingOrders > 0 && (
+        <Link href="/admin/subscriptions?tab=orders" className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-gold/10 px-5 py-4 transition hover:bg-gold/15">
+          <span>
+            <span className="block text-sm font-semibold text-white">{pendingOrders} mise{pendingOrders > 1 ? 's' : ''} en avant payée{pendingOrders > 1 ? 's' : ''} à valider</span>
+            <span className="block text-xs text-white/55">Vérifiez le profil, ajustez la durée et validez : il apparaît alors dans le carrousel de sa région ou partout en France.</span>
+          </span>
+          <span className="shrink-0 text-xs font-semibold text-gold">Valider →</span>
+        </Link>
+      )}
 
       {/* ── Ajouter un profil ─────────────────────────────── */}
       <section className="mb-8 space-y-4 rounded-2xl border border-white/10 bg-white/3 p-6">
@@ -171,7 +194,7 @@ export default function AdminFeaturedPage() {
         {results.length > 0 && (
           <ul className="divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10">
             {results.map(u => {
-              const already = items.some(i => i.user.id === u.id)
+              const already = items.some(i => i.user.id === u.id && i.scope === 'ADMIN')
               return (
                 <li key={u.id} className="flex items-center gap-3 px-3 py-2.5">
                   {u.profile?.avatar
@@ -216,9 +239,16 @@ export default function AdminFeaturedPage() {
                 ? <img src={item.user.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
                 : <span className="grid h-10 w-10 place-items-center rounded-full bg-surface-2 text-xs text-white/40">{item.user.name[0]?.toUpperCase()}</span>}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{item.user.name} <span className="font-normal text-white/40">· {ROLE_LABEL[item.user.role] ?? item.user.role}</span></p>
+                <p className="truncate text-sm font-medium">
+                  {item.user.name} <span className="font-normal text-white/40">· {ROLE_LABEL[item.user.role] ?? item.user.role}</span>
+                  <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${item.scope === 'ADMIN' ? 'bg-white/10 text-white/60' : 'bg-gold/15 text-gold'}`}>
+                    {item.scope === 'ADMIN' ? 'Offert · partout' : item.scope === 'NATIONAL' ? 'Payé · national' : `Payé · ${item.regionName || 'régional'}`}
+                  </span>
+                </p>
                 <p className="truncate text-xs text-white/40">
-                  {item.active ? (item.endsAt ? `Jusqu'au ${new Date(item.endsAt).toLocaleDateString('fr-FR')}` : 'Sans date de fin') : 'Mise en avant terminée'}
+                  {item.startsAt && new Date(item.startsAt) > new Date()
+                    ? `À partir du ${new Date(item.startsAt).toLocaleDateString('fr-FR')}${item.endsAt ? ` jusqu'au ${new Date(item.endsAt).toLocaleDateString('fr-FR')}` : ''}`
+                    : item.active ? (item.endsAt ? `Jusqu'au ${new Date(item.endsAt).toLocaleDateString('fr-FR')}` : 'Sans date de fin') : 'Mise en avant terminée'}
                   {item.note ? ` · ${item.note}` : ''}
                 </p>
               </div>

@@ -20,6 +20,18 @@ export const NOTIFICATION_TYPES: Record<string, NotificationType> = {
   CANCELLATION_DECLINED: { icon: 'close',    tone: 'bad',    label: 'Annulation refusée' },
   BOOKING_ITEM_ADDED:    { icon: 'attach',   tone: 'accent', label: 'Booking mis à jour' },
   PAYMENT_RECEIVED:      { icon: 'payment',  tone: 'gold',   label: 'Paiement reçu' },
+  BOOKING_PAYMENT:       { icon: 'payment',  tone: 'accent', label: 'Paiement en ligne' },
+  BOOKING_PAYMENT_FAILED:{ icon: 'warning',  tone: 'bad',    label: 'Paiement refusé' },
+  PAYOUT_RELEASED:       { icon: 'payment',  tone: 'gold',   label: 'Versement' },
+  LATE_CANCEL_WARNING:   { icon: 'warning',  tone: 'gold',   label: 'Annulations tardives' },
+  // Offres et abonnements
+  SUBSCRIPTION_UPDATE:   { icon: 'star',     tone: 'gold',   label: 'Abonnement' },
+  EXTRA_ORDER_UPDATE:    { icon: 'star',     tone: 'gold',   label: 'Formule' },
+  // Admin
+  ADMIN_CAROUSEL_REQUEST:{ icon: 'star',     tone: 'gold',   label: 'Carrousel à valider' },
+  ADMIN_EXTRA_ORDER:     { icon: 'bolt',     tone: 'gold',   label: 'Formule à réaliser' },
+  ADMIN_LATE_CANCEL_ALERT:{ icon: 'warning', tone: 'bad',    label: 'Annulations répétées' },
+  ADMIN_PAYMENT_ISSUE:   { icon: 'warning',  tone: 'bad',    label: 'Paiement à vérifier' },
   // Offres
   NEW_OFFER:             { icon: 'offer',    tone: 'accent', label: 'Nouvelle offre' },
   NEW_APPLICATION:       { icon: 'offer',    tone: 'accent', label: 'Candidature' },

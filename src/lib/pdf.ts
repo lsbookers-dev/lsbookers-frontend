@@ -211,3 +211,62 @@ export async function invoicePdfFile(inv: InvoiceDoc) {
   const blob = doc.output('blob')
   return new File([blob], `${inv.kind === 'QUOTE' ? 'Devis' : 'Facture'} ${inv.number}.pdf`, { type: 'application/pdf' })
 }
+
+/* ── Attestation de paiement d'un booking (pas une facture) ─────────────── */
+
+export type PaymentAttestation = {
+  reference: string
+  bookingId: number
+  date: string
+  paidAt: string
+  payer: string
+  payee: string
+  amountCents: number
+  commissionCents?: number
+  commissionPct?: number
+  transferredCents?: number
+  refundedCents: number
+  status: string
+}
+
+export async function downloadPaymentAttestation(att: PaymentAttestation) {
+  const { doc, autoTable } = await newDoc()
+  doc.setFillColor(...ACCENT)
+  doc.rect(0, 0, 210, 6, 'F')
+  doc.setTextColor(...INK)
+  doc.setFontSize(20)
+  doc.text('Attestation de paiement', 15, 26)
+  doc.setFontSize(10)
+  doc.setTextColor(...MUTED)
+  doc.text(`Référence ${att.reference} · émise le ${frDate(new Date())}`, 15, 33)
+
+  doc.setTextColor(...INK)
+  doc.setFontSize(10.5)
+  const lines = doc.splitTextToSize(
+    `LS Bookers atteste que ${att.payer} a réglé en ligne, le ${frDate(att.paidAt)}, le booking de ${att.payee} prévu le ${frDate(att.date)}, pour un montant de ${money(att.amountCents / 100)}.`,
+    180,
+  )
+  doc.text(lines, 15, 46)
+
+  const rows: string[][] = [['Montant payé par l\'organisateur', money(att.amountCents / 100)]]
+  if (att.commissionCents != null) rows.push([`Commission LS Bookers (${String(att.commissionPct).replace('.', ',')} %)`, `- ${money(att.commissionCents / 100)}`])
+  if (att.transferredCents != null && att.transferredCents > 0) rows.push(['Versé à la personne bookée', money(att.transferredCents / 100)])
+  if (att.refundedCents > 0) rows.push(['Remboursé à l\'organisateur', money(att.refundedCents / 100)])
+  autoTable(doc, {
+    startY: 46 + lines.length * 5 + 6,
+    body: rows,
+    theme: 'plain',
+    styles: { fontSize: 10, cellPadding: 3, textColor: INK },
+    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+  })
+
+  const y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12
+  doc.setFontSize(8.5)
+  doc.setTextColor(...MUTED)
+  doc.text(doc.splitTextToSize(
+    "Ce document n'est pas une facture. LS Bookers met en relation les deux parties et n'est pas partie au contrat de prestation : la facture de la prestation est établie directement par la personne bookée à l'organisateur. La commission LS Bookers fait l'objet d'une facture séparée.",
+    180,
+  ), 15, y)
+  footer(doc, 'LS Bookers · lsbookers.com')
+  doc.save(`attestation-paiement-${att.reference}.pdf`)
+}

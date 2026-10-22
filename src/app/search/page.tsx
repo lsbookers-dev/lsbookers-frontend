@@ -1,5 +1,6 @@
 'use client'
 
+import { ProBadge } from '@/components/plan/UpgradePrompt'
 import { apiFetch } from '@/utils/auth'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
@@ -15,6 +16,7 @@ interface User {
   lastName?: string | null
   role: 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
   createdAt?: string
+  isPro?: boolean
   profile: {
     location?: string
     country?: string
@@ -167,7 +169,7 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
       </div>
       <div className="lsb-discover-info">
         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest" style={{ color: cfg.textColor }}><Icon className="w-3 h-3" />{cfg.label.replace(/s$/, '')}</div>
-        <h2>{displayName}</h2>
+        <h2 className="flex items-center gap-1.5"><span className="truncate">{displayName}</span>{user.isPro && <ProBadge className="shrink-0" />}</h2>
         <p>{subtitle}</p>
           {(user.profile?.location || user.profile?.country) && (
             <div className="flex items-center gap-1 mt-1.5">

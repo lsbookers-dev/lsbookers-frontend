@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
 import { apiFetch } from '@/utils/auth'
-import { reviewOrBookingItemLink } from '@/utils/notificationLinks'
+import { reviewOrBookingItemLink, billingLink } from '@/utils/notificationLinks'
 import LsIcon from '@/components/ui/LsIcon'
 import { NotificationIcon, notificationType } from '@/lib/notificationTypes'
 
@@ -44,6 +44,8 @@ function getLink(notif: Notif): string | null {
   // Avis (reçu / à laisser) et ajouts dans un booking
   const reviewOrItem = reviewOrBookingItemLink(notif.type, notif.eventId)
   if (reviewOrItem) return reviewOrItem
+  const billing = billingLink(notif.type)
+  if (billing) return billing
   // Réseau social → profil de l'acteur
   if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE', 'REVIEW_REPLY'].includes(notif.type) && notif.actor?.id) {
     const role = notif.actor.role?.toLowerCase()

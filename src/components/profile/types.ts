@@ -6,6 +6,7 @@ export type ProfileUser = {
   firstName?: string | null
   lastName?: string | null
   role?: string | null
+  isPro?: boolean
   // Privé (renvoyé seulement par /profile/me)
   dateOfBirth?: string | null
   phone?: string | null
