@@ -10,6 +10,8 @@ export function reviewOrBookingItemLink(type: string, eventId?: number | null): 
   if (type === 'REVIEW_AVAILABLE') return '/space#avis'
   if (type === 'BOOKING_ITEM_ADDED') return agendaEventLink(eventId, 'bookings')
   if (type === 'CHECKLIST_REMINDER') return agendaEventLink(eventId, 'checklist')
+  // Offre clôturée par un booking confirmé : on ouvre ce booking dans l'agenda
+  if (type === 'OFFER_FILLED') return agendaEventLink(eventId, 'bookings')
   return null
 }
 
