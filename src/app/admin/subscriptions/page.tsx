@@ -228,25 +228,42 @@ function SubscribersTab() {
 
 /* ── Codes promo ───────────────────────────────────────── */
 
-type Code = { id: number; code: string; kind: 'FOUNDER' | 'LAUNCH'; freeMonths: number | null; maxUses: number | null; usedCount: number; active: boolean; expiresAt: string | null; note: string | null; createdAt: string; usedBy: { id: number; name: string; at: string }[] }
+type Code = { id: number; code: string; kind: 'FOUNDER' | 'LAUNCH'; freeMonths: number | null; maxUses: number | null; usedCount: number; active: boolean; expiresAt: string | null; note: string | null; createdAt: string; usedBy: { id: number; name: string; at: string }[]; reservedFor: { id: number; name: string; email: string; role: string } | null }
+type Member = { id: number; pseudo: string | null; firstName: string | null; lastName: string | null; email: string; role: string; profile?: { avatar: string | null } | null }
+const memberName = (u: Member) => u.pseudo || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email
 
 function CodesTab() {
   const { notify } = useFeedback()
   const [codes, setCodes] = useState<Code[] | null>(null)
-  const [names, setNames] = useState('')
+  // Membres choisis pour recevoir un code Fondateur (recherche avec suggestions)
+  const [picked, setPicked] = useState<Member[]>([])
+  const [q, setQ] = useState('')
+  const [suggestions, setSuggestions] = useState<Member[]>([])
+  useEffect(() => {
+    const term = q.trim()
+    if (term.length < 2) { setSuggestions([]); return }
+    const t = setTimeout(async () => {
+      const d = await getJson<{ users: Member[] }>(`admin/users?q=${encodeURIComponent(term)}&limit=8`)
+      setSuggestions((d?.users || []).filter(u => u.role !== 'ADMIN'))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [q])
+  const pick = (u: Member) => { setPicked(list => (list.some(x => x.id === u.id) ? list : [...list, u])); setQ(''); setSuggestions([]) }
   const [launch, setLaunch] = useState({ code: 'LANCEMENT', freeMonths: '2', maxUses: '', expiresAt: '' })
   const [busy, setBusy] = useState(false)
   const load = useCallback(async () => { const d = await getJson<{ codes: Code[] }>('admin/billing/promo-codes'); setCodes(d?.codes || []) }, [])
   useEffect(() => { load() }, [load])
 
   const createFounders = async () => {
-    const notes = names.split('\n').map(n => n.trim()).filter(Boolean)
-    if (!notes.length) return
+    if (!picked.length) return
     setBusy(true)
     try {
-      const res = await send('admin/billing/promo-codes', 'POST', { kind: 'FOUNDER', notes })
+      const res = await send('admin/billing/promo-codes', 'POST', { kind: 'FOUNDER', userIds: picked.map(u => u.id) })
       if (!res.ok) { notify(await apiErrorMessage(res, 'Création impossible.'), 'error'); return }
-      notify(`${notes.length} code${notes.length > 1 ? 's' : ''} Fondateur créé${notes.length > 1 ? 's' : ''}.`); setNames(''); load()
+      const d = await res.json()
+      const n = d.codes?.length || 0
+      notify(`${n} code${n > 1 ? 's' : ''} Fondateur créé${n > 1 ? 's' : ''} : chaque membre l’a reçu dans ses notifications.${d.skipped?.length ? ` Déjà un code en attente : ${d.skipped.join(', ')}.` : ''}`)
+      setPicked([]); load()
     } finally { setBusy(false) }
   }
   const createLaunch = async () => {
@@ -272,9 +289,46 @@ function CodesTab() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className={CARD}>
           <p className="text-sm font-semibold">Codes Fondateur</p>
-          <p className="mt-1 text-xs text-white/50">Pro offert à vie, sans carte. Un code par personne, utilisable une seule fois. Écrivez une personne par ligne : un code est créé pour chacune.</p>
-          <textarea value={names} onChange={e => setNames(e.target.value)} rows={4} placeholder={'Marie Dupont\nDJ Nova'} className={`${INPUT} mt-3`} />
-          <button type="button" onClick={createFounders} disabled={busy || !names.trim()} className={`${BTN} mt-3`}>Créer les codes</button>
+          <p className="mt-1 text-xs text-white/50">Pro offert à vie, sans carte. Un code par membre, réservé à lui et utilisable une seule fois. Il le reçoit dans ses notifications.</p>
+          <div className="relative mt-3">
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Pseudo, nom ou e-mail du membre…" className={INPUT} />
+            {suggestions.length > 0 && (
+              <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#14121c] shadow-2xl">
+                {suggestions.map(u => {
+                  const already = picked.some(x => x.id === u.id)
+                  return (
+                    <li key={u.id}>
+                      <button type="button" disabled={already} onClick={() => pick(u)} className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-white/[0.05] disabled:opacity-40">
+                        {u.profile?.avatar
+                          ? <img src={u.profile.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
+                          : <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-xs">{memberName(u)[0]?.toUpperCase()}</span>}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{memberName(u)}</span>
+                          <span className="block truncate text-xs text-white/40">{ROLE_LABEL[u.role] || u.role} · {u.email}</span>
+                        </span>
+                        <span className="text-xs text-accent-light">{already ? 'Ajouté' : 'Ajouter'}</span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+          {picked.length > 0 ? (
+            <ul className="mt-3 divide-y divide-white/5 rounded-xl border border-white/10">
+              {picked.map(u => (
+                <li key={u.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate">{memberName(u)} <span className="text-xs text-white/40">· {ROLE_LABEL[u.role] || u.role}</span></span>
+                  <button type="button" onClick={() => setPicked(list => list.filter(x => x.id !== u.id))} className="text-xs text-red-300 hover:text-red-200">Retirer</button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-xs text-white/35">Aucun membre choisi pour l’instant.</p>
+          )}
+          <button type="button" onClick={createFounders} disabled={busy || !picked.length} className={`${BTN} mt-3`}>
+            {picked.length ? `Créer ${picked.length} code${picked.length > 1 ? 's' : ''}` : 'Créer les codes'}
+          </button>
         </section>
         <section className={CARD}>
           <p className="text-sm font-semibold">Code de lancement</p>
@@ -295,11 +349,11 @@ function CodesTab() {
               <button type="button" onClick={() => copy(c.code)} title="Copier" className="font-mono text-sm text-white hover:text-accent-light">{c.code}</button>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.kind === 'FOUNDER' ? 'bg-gold/15 text-gold' : 'bg-accent/15 text-accent-light'}`}>{c.kind === 'FOUNDER' ? 'Fondateur' : `${c.freeMonths} mois offerts`}</span>
               <span className="min-w-0 flex-1 truncate text-xs text-white/50">
-                {c.note ? `${c.note} · ` : ''}{c.usedCount}{c.maxUses ? ` / ${c.maxUses}` : ''} utilisation{c.usedCount > 1 ? 's' : ''}
+                {c.reservedFor ? `Réservé à ${c.reservedFor.name} · ` : c.note ? `${c.note} · ` : ''}{c.kind === 'FOUNDER' ? (c.usedCount ? 'utilisé' : 'pas encore utilisé') : `${c.usedCount}${c.maxUses ? ` / ${c.maxUses}` : ''} utilisation${c.usedCount > 1 ? 's' : ''}`}
                 {c.usedBy.length > 0 ? ` (${c.usedBy.map(u => u.name).join(', ')})` : ''}
                 {c.expiresAt ? ` · jusqu’au ${fmt(c.expiresAt)}` : ''}
               </span>
-              <button type="button" onClick={() => toggle(c)} className="text-xs text-white/50 hover:text-white">{c.active ? 'Désactiver' : 'Réactiver'}</button>
+              <button type="button" onClick={() => toggle(c)} className={`text-xs ${c.active ? 'text-red-300 hover:text-red-200' : 'text-white/50 hover:text-white'}`}>{c.active ? 'Annuler le code' : 'Réactiver'}</button>
             </li>
           ))}
         </ul>
