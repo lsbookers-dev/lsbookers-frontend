@@ -312,7 +312,7 @@ export default function RegisterPage() {
 
   // ── Étape 5 : Offre ──
   const [plan, setPlan]             = useState<Plan>('FREE')
-  const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('YEAR')
+  const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('MONTH')
   const [promoCode, setPromoCode]   = useState('')
   const [signupPrices, setSignupPrices] = useState<SignupPrices | null>(null)
   useEffect(() => {
@@ -830,10 +830,10 @@ export default function RegisterPage() {
 
                   {plan === 'PRO' && rolePrices && (
                     <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1 text-xs">
-                      {(['YEAR', 'MONTH'] as const).map(i => (
+                      {(['MONTH', 'YEAR'] as const).map(i => (
                         <button key={i} type="button" onClick={() => setBillingInterval(i)}
                           className={`flex-1 rounded-lg px-3 py-2 font-medium transition ${billingInterval === i ? 'bg-accent-strong text-white' : 'text-white/55 hover:text-white'}`}>
-                          {i === 'YEAR' ? `Annuel · ${formatPrice(rolePrices.yearCents)}` : `Mensuel · ${formatPrice(rolePrices.monthCents)}`}
+                          {i === 'YEAR' ? `Annuel · ${formatPrice(rolePrices.yearCents)}${Math.round((rolePrices.monthCents * 12 - rolePrices.yearCents) / rolePrices.monthCents) > 0 ? ` (${Math.round((rolePrices.monthCents * 12 - rolePrices.yearCents) / rolePrices.monthCents)} mois offerts)` : ''}` : `Mensuel · ${formatPrice(rolePrices.monthCents)}`}
                         </button>
                       ))}
                     </div>
