@@ -13,6 +13,7 @@ import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import { usePlan, price } from '@/lib/plan'
 import { useAuth } from '@/context/AuthContext'
+import MoneyCounter from '@/components/settings/MoneyCounter'
 
 type PayoutStatus = {
   available: boolean
@@ -74,6 +75,8 @@ function SubscriptionSettingsContent() {
   return (
     <>
       <SettingsTitle title="Abonnement et paiements" description="Votre formule LS Bookers et la façon dont vous êtes payé pour vos bookings." />
+
+      {(user?.role === 'ARTIST' || user?.role === 'PROVIDER') && <MoneyCounter onOpenDashboard={() => openStripe('dashboard')} />}
 
       <SettingsCard>
         <SettingRow
