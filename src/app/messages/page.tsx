@@ -44,6 +44,15 @@ function MessagesContent() {
   const [lightbox, setLightbox] = useState<{ url: string; name?: string | null } | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [convLoaded, setConvLoaded] = useState(false)
+  // Liste par paquets de 30 : totaux venus du serveur et position du paquet suivant
+  const [convTotal, setConvTotal] = useState(0)
+  const [unreadConvTotal, setUnreadConvTotal] = useState(0)
+  const [convNextCursor, setConvNextCursor] = useState<number | null>(null)
+  const [loadingMoreConv, setLoadingMoreConv] = useState(false)
+  const activeConvIdRef = useRef<number | null>(activeConvId)
+  activeConvIdRef.current = activeConvId
+  const conversationsRef = useRef<Conversation[]>([])
+  conversationsRef.current = conversations
 
   const [hasMoreMessages, setHasMoreMessages] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -60,6 +69,7 @@ function MessagesContent() {
   // Debounce fetchConversations (évite double-fetch new_message + conversation_updated simultanés)
   const fetchConvTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fetchConversationsRef = useRef<() => void>(() => {})
+  const conversationsLoadedRef = useRef(false)
   // Ref vers le dernier message non-temp pour la récupération après reconnexion
   const lastMsgIdRef = useRef<string | null>(null)
 
@@ -78,22 +88,54 @@ function MessagesContent() {
   }, [file])
 
   /* ── Fetch conversations ── */
+  // Recharge le 1er paquet (les plus récentes) et garde les paquets plus anciens déjà affichés.
+  // La conversation ouverte est demandée en plus (?with=) même si elle est plus loin dans la liste.
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
-      const res = await apiFetch(`${API_BASE}/api/messages/conversations?t=${Date.now()}`, {
+      const params = new URLSearchParams({ t: String(Date.now()) })
+      if (activeConvIdRef.current) params.set('with', String(activeConvIdRef.current))
+      const res = await apiFetch(`${API_BASE}/api/messages/conversations?${params.toString()}`, {
         cache: 'no-store',
       })
       if (!res.ok) return
       const data = await res.json()
-      const list: Conversation[] = Array.isArray(data?.conversations) ? data.conversations : []
-      list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      setConversations(list)
+      const firstPage: Conversation[] = Array.isArray(data?.conversations) ? data.conversations : []
+      const firstIds = new Set(firstPage.map(c => c.id))
+      setConversations(prev => sortConversations([...firstPage, ...prev.filter(c => !firstIds.has(c.id))]))
+      setConvTotal(Number(data?.total ?? firstPage.length))
+      setUnreadConvTotal(Number(data?.unreadTotal ?? 0))
+      // Au 1er chargement seulement : ensuite la position des paquets plus anciens est conservée
+      if (!conversationsLoadedRef.current) setConvNextCursor(data?.nextCursor ?? null)
+      conversationsLoadedRef.current = true
       setConvLoaded(true)
     } catch (err) {
       console.error('fetchConversations:', err)
     }
   }, [token])
+
+  /* ── Paquet suivant (défilement de la liste) ── */
+  const loadMoreConversations = useCallback(async () => {
+    if (!token || convNextCursor === null || loadingMoreConv) return
+    setLoadingMoreConv(true)
+    try {
+      const res = await apiFetch(`${API_BASE}/api/messages/conversations?cursor=${convNextCursor}`, {
+        cache: 'no-store',
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      const more: Conversation[] = Array.isArray(data?.conversations) ? data.conversations : []
+      setConversations(prev => {
+        const known = new Set(prev.map(c => c.id))
+        return sortConversations([...prev, ...more.filter(c => !known.has(c.id))])
+      })
+      setConvNextCursor(data?.nextCursor ?? null)
+    } catch (err) {
+      console.error('loadMoreConversations:', err)
+    } finally {
+      setLoadingMoreConv(false)
+    }
+  }, [token, convNextCursor, loadingMoreConv])
 
   // Garder les refs à jour à chaque rendu
   fetchConversationsRef.current = fetchConversations
@@ -151,6 +193,14 @@ function MessagesContent() {
     }
   }, [token, activeConvId, messages, loadingMore])
 
+  /* ── Compteur « Non lus » de la liste : une conversation non lue vient d'être lue ── */
+  const countConversationRead = useCallback((convId: number) => {
+    const conv = conversationsRef.current.find(c => c.id === convId)
+    if (conv?.lastMessageMeta && conv.lastMessageMeta.senderId !== currentUserId && !conv.lastMessageMeta.seen) {
+      setUnreadConvTotal(n => Math.max(0, n - 1))
+    }
+  }, [currentUserId])
+
   /* ── Mark seen ── */
   const markSeen = useCallback(async (convId: number) => {
     if (!token || !convId) return
@@ -159,11 +209,12 @@ function MessagesContent() {
     }).catch(() => {})
     // Pastille de l'enveloppe (header + barre mobile) mise à jour tout de suite
     window.dispatchEvent(new Event('lsb:unread-changed'))
+    countConversationRead(convId)
     setConversations(prev => prev.map(c => {
       if (c.id !== convId || !c.lastMessageMeta) return c
       return { ...c, lastMessageMeta: { ...c.lastMessageMeta, seen: true } }
     }))
-  }, [token])
+  }, [token, countConversationRead])
 
   /* ── Chargement initial conversations ── */
   /* Retry agressif (2s) jusqu'au premier chargement, puis le socket prend le relais */
@@ -395,11 +446,12 @@ function MessagesContent() {
   const selectConv = useCallback((convId: number) => {
     router.push(`/messages?c=${convId}`)
     setMobileView('chat')
+    countConversationRead(convId)
     setConversations(prev => prev.map(c => {
       if (c.id !== convId || !c.lastMessageMeta) return c
       return { ...c, lastMessageMeta: { ...c.lastMessageMeta, seen: true } }
     }))
-  }, [router])
+  }, [router, countConversationRead])
 
   /* ── Auto-ouvrir conversation via ?to= ── */
   const autoStartedRef = useRef(false)
@@ -519,6 +571,7 @@ function MessagesContent() {
         method: 'DELETE',
         })
       setConversations((prev) => prev.filter((c) => c.id !== convId))
+      setConvTotal(n => Math.max(0, n - 1))
       if (activeConvId === convId) router.push('/messages')
     } catch (err) { console.error('deleteConversation:', err) }
     finally { setDeletingId(null) }
@@ -564,6 +617,11 @@ function MessagesContent() {
       <ConversationList
         conversations={conversations}
         convLoaded={convLoaded}
+        convTotal={convTotal}
+        unreadConvTotal={unreadConvTotal}
+        hasMoreConversations={convNextCursor !== null}
+        loadingMoreConversations={loadingMoreConv}
+        loadMoreConversations={loadMoreConversations}
         currentUserId={currentUserId}
         search={search}
         setSearch={setSearch}
@@ -624,6 +682,11 @@ function sendErrorText(code?: string) {
   if (code === 'FORMAT_NOT_ALLOWED') return 'Ce type de fichier n\u2019est pas accepté.'
   if (code === 'FILE_TOO_LARGE') return 'Fichier trop volumineux (25 Mo maximum).'
   return 'Le message n\u2019a pas pu être envoyé. Réessayez.'
+}
+
+// La plus récente d'abord
+function sortConversations(list: Conversation[]) {
+  return [...list].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
 }
 
 export default function MessagesPage() {

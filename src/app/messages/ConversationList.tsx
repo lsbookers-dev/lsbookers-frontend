@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Search, MessageCircle, Loader2, Trash2, SquarePen } from 'lucide-react'
 import { Avatar } from './MessageUI'
 import { ROLE_ICON, ROLE_COLOR, ROLE_LABEL, formatTime } from './_helpers'
@@ -10,6 +10,11 @@ import { stripLeadingEmoji } from '@/components/ui/LsIcon'
 interface ConversationListProps {
   conversations: Conversation[]
   convLoaded: boolean
+  convTotal: number
+  unreadConvTotal: number
+  hasMoreConversations: boolean
+  loadingMoreConversations: boolean
+  loadMoreConversations: () => void
   currentUserId: number | null
   search: string
   setSearch: (v: string) => void
@@ -30,13 +35,26 @@ function getDisplayName(u: SearchUser) {
 
 
 export default function ConversationList({
-  conversations, convLoaded, currentUserId, search, setSearch, contacts,
+  conversations, convLoaded, convTotal, unreadConvTotal, hasMoreConversations, loadingMoreConversations,
+  loadMoreConversations, currentUserId, search, setSearch, contacts,
   searchResults, searchLoading, activeConvId, mobileView,
   deletingId, selectConv, startConversation, deleteConversation,
 }: ConversationListProps) {
   const [filter, setFilter] = useState<'all' | 'unread' | 'bookings'>('all')
 
   const isSearching = search.trim().length > 0
+
+  // Paquet suivant chargé quand on arrive en bas de la liste
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !hasMoreConversations || isSearching) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) loadMoreConversations()
+    }, { rootMargin: '300px 0px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMoreConversations, isSearching, loadMoreConversations])
 
   // Quand on cherche : fusionner contacts (en tête) + searchResults (les autres)
   const contactIds = new Set(contacts.map(c => c.id))
@@ -163,8 +181,8 @@ export default function ConversationList({
 
         {!isSearching && (
           <div className="lsb-message-filters" aria-label="Filtrer les conversations">
-            <button type="button" className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')}>Tous · {conversations.length}</button>
-            <button type="button" className={filter === 'unread' ? 'is-active' : ''} onClick={() => setFilter('unread')}>Non lus · {unreadCount}</button>
+            <button type="button" className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')}>Tous · {Math.max(convTotal, conversations.length)}</button>
+            <button type="button" className={filter === 'unread' ? 'is-active' : ''} onClick={() => setFilter('unread')}>Non lus · {Math.max(unreadConvTotal, unreadCount)}</button>
             <button type="button" className={filter === 'bookings' ? 'is-active' : ''} onClick={() => setFilter('bookings')}>Bookings · {bookingCount}</button>
           </div>
         )}
@@ -263,6 +281,13 @@ export default function ConversationList({
               <div className="lsb-conversation-group-title"><span>{filter === 'unread' ? 'NON LUS' : 'BOOKINGS'}</span><strong>{filteredConvs.length} résultat{filteredConvs.length > 1 ? 's' : ''}</strong></div>
               {filteredConvs.map(renderConversation)}
             </section>
+          )}
+          {hasMoreConversations && (
+            <div ref={sentinelRef} className="flex justify-center py-4">
+              {loadingMoreConversations
+                ? <Loader2 className="w-5 h-5 text-violet-400/40 animate-spin" />
+                : <button type="button" onClick={loadMoreConversations} className="text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/50 hover:text-white/80 transition">Conversations plus anciennes</button>}
+            </div>
           )}
         </div>
       )}
