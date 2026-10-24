@@ -11,27 +11,13 @@ import PausedAccountBanner from '@/components/settings/PausedAccountBanner'
 import AppSidebar from '@/components/AppSidebar'
 import UpgradePrompt from '@/components/plan/UpgradePrompt'
 import SignupPlanRedirect from '@/components/plan/SignupPlanRedirect'
-import { getAuthToken, apiFetch } from '@/utils/auth'
-
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   const pathname = usePathname()
 
-  useEffect(() => {
-    if (!user) return
-    const ping = () => {
-      const token = getAuthToken()
-      if (!token) return
-      apiFetch(`${API_BASE}/api/auth/heartbeat`, {
-        method: 'POST',
-        }).catch(() => {})
-    }
-    ping()
-    const interval = setInterval(ping, 60_000)
-    return () => clearInterval(interval)
-  }, [user])
+  // Statut « en ligne » : plus d'appel toutes les minutes, le serveur le déduit de la
+  // connexion temps réel ouverte par les pastilles (useUnreadCounts).
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return

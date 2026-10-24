@@ -8,8 +8,7 @@ import {
   TicketCheck, Sparkles, Crown, Settings, LogOut, X,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { getAuthToken, apiFetch } from '@/utils/auth'
-import { getSocket } from '@/lib/socket'
+import { useUnreadCounts } from '@/hooks/useUnreadCounts'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
@@ -25,42 +24,8 @@ export default function BottomNav() {
   const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
   const [moreOpen, setMoreOpen] = useState(false)
 
-  const [unreadMsg, setUnreadMsg]     = useState(0)
-  const [unreadNotif, setUnreadNotif] = useState(0)
-
-  const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-  useEffect(() => {
-    if (!user?.id) return
-    const fetchCounts = async () => {
-      const token = getAuthToken()
-      if (!token) return
-      try {
-        const [msgRes, notifRes] = await Promise.all([
-          apiFetch(`${API}/api/messages/unread-count`,       { }),
-          apiFetch(`${API}/api/notifications/unread-count`,  { }),
-        ])
-        if (msgRes.ok)   { const d = await msgRes.json();   setUnreadMsg(d.count   || 0) }
-        if (notifRes.ok) { const d = await notifRes.json(); setUnreadNotif(d.count || 0) }
-      } catch { /* silencieux */ }
-    }
-    fetchCounts()
-    const interval = setInterval(fetchCounts, 30_000)
-    // Mise à jour immédiate : message lu dans cet onglet, ou événement temps réel du serveur
-    window.addEventListener('lsb:unread-changed', fetchCounts)
-    const token = getAuthToken()
-    const socket = token ? getSocket(token) : null
-    socket?.on('new_message', fetchCounts)
-    socket?.on('conversation_updated', fetchCounts)
-    socket?.on('unread_changed', fetchCounts)
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('lsb:unread-changed', fetchCounts)
-      socket?.off('new_message', fetchCounts)
-      socket?.off('conversation_updated', fetchCounts)
-      socket?.off('unread_changed', fetchCounts)
-    }
-  }, [user?.id, API])
+  // Pastilles enveloppe et cloche (compteur partagé du site)
+  const { messages: unreadMsg, notifications: unreadNotif } = useUnreadCounts()
 
   // Le panneau « Plus » se referme à chaque changement de page
   useEffect(() => { setMoreOpen(false) }, [pathname])

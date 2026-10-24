@@ -9,8 +9,8 @@ import {
   Bell, LogOut,
   Settings, UserRound, ChevronDown,
 } from 'lucide-react'
-import { getAuthToken, apiFetch } from '@/utils/auth'
-import { getSocket } from '@/lib/socket'
+import { apiFetch } from '@/utils/auth'
+import { useUnreadCounts, clearUnreadNotifications, refreshUnreadCounts } from '@/hooks/useUnreadCounts'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
 import { reviewOrBookingItemLink, billingLink } from '@/utils/notificationLinks'
@@ -97,17 +97,19 @@ export default function Header() {
   const [menuOpen, setMenuOpen]           = useState(false)
   const [headerLogoUrl, setHeaderLogoUrl] = useState<string | null>(null)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
-  const [unreadNotif, setUnreadNotif]     = useState(0)
   const menuRef  = useRef<HTMLDivElement>(null)
 
   // ── Popup notifications ─────────────────────────────
   const notifRef    = useRef<HTMLDivElement>(null)
-  const notifOpenRef = useRef(false)           // ← ref pour le polling
   const [notifOpen, setNotifOpen]       = useState(false)
   const [notifList, setNotifList]       = useState<PopupNotif[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
   const [pubModal, setPubModal]         = useState<PubCardData | null>(null)
   const [respondingStaff, setRespondingStaff] = useState<Record<number, boolean>>({})
+
+  // Pastille de la cloche (compteur partagé du site) ; à zéro tant que la liste est ouverte
+  const unreadCounts = useUnreadCounts()
+  const unreadNotif = notifOpen ? 0 : unreadCounts.notifications
 
   const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -139,7 +141,6 @@ export default function Header() {
   }, [API])
 
   // Garder le ref en sync avec l'état
-  useEffect(() => { notifOpenRef.current = notifOpen }, [notifOpen])
 
   // ── Logo admin ───────────────────────────────────
   useEffect(() => {
@@ -188,7 +189,7 @@ export default function Header() {
     if (!opening) return
 
     // Réinitialiser le compteur immédiatement (avant même la réponse réseau)
-    setUnreadNotif(0)
+    clearUnreadNotifications()
     setNotifLoading(true)
 
     // Fetch liste + mark-all-read en parallèle
@@ -201,6 +202,7 @@ export default function Header() {
         const data = await listRes.json()
         setNotifList(data.notifications || [])
       }
+      refreshUnreadCounts()
     } catch { /* silencieux */ }
     setNotifLoading(false)
   }, [notifOpen, API_BASE])
@@ -208,56 +210,6 @@ export default function Header() {
   /* ── Fermer le menu au changement de page ──────────── */
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
-  /* ── Compteurs non lus ─────────────────────────────── */
-  const fetchCounts = useCallback(async () => {
-    if (!user?.id || !API_BASE) return
-    const token = getAuthToken()
-    if (!token) return
-    const headers = { 'Cache-Control': 'no-store' }
-
-    try {
-      // Les messages non lus sont comptés sur « Messages » dans le bandeau gauche (useUnreadMessages)
-      const notifRes = await apiFetch(`${API_BASE}/api/notifications/unread-count?t=${Date.now()}`, { headers })
-      // Ne pas écraser le compteur si le popup est ouvert (évite la race condition)
-      if (notifRes.ok && !notifOpenRef.current)
-        setUnreadNotif(Number((await notifRes.json()).count ?? 0))
-    } catch { /* silencieux */ }
-  }, [API_BASE, user?.id])
-
-  useEffect(() => {
-    fetchCounts()
-    // Fallback polling 30s (le socket couvre les updates en temps réel)
-    const id = setInterval(fetchCounts, 30000)
-    const onVisible = () => { if (document.visibilityState === 'visible') fetchCounts() }
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', fetchCounts)
-    window.addEventListener('lsb:unread-changed', fetchCounts)
-    return () => {
-      clearInterval(id)
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', fetchCounts)
-      window.removeEventListener('lsb:unread-changed', fetchCounts)
-    }
-  }, [fetchCounts])
-
-  /* ── Socket — badge messages en temps réel ─────────── */
-  useEffect(() => {
-    if (!user?.id) return
-    const token = getAuthToken()
-    if (!token) return
-    const socket = getSocket(token)
-
-    const refresh = () => fetchCounts()
-    socket.on('conversation_updated', refresh)
-    socket.on('new_message', refresh)
-    socket.on('unread_changed', refresh)
-
-    return () => {
-      socket.off('conversation_updated', refresh)
-      socket.off('new_message', refresh)
-      socket.off('unread_changed', refresh)
-    }
-  }, [user?.id, fetchCounts])
 
 
   return (

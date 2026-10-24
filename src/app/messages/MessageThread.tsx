@@ -156,7 +156,8 @@ export default function MessageThread({
       } catch {}
     }
     fetchStatus()
-    const iv = setInterval(fetchStatus, 30000)
+    // Statut « en ligne » de l'autre personne : toutes les minutes, seulement si l'onglet est affiché
+    const iv = setInterval(() => { if (document.visibilityState === 'visible') fetchStatus() }, 60000)
     return () => clearInterval(iv)
   }, [otherId, token])
 

@@ -11,7 +11,7 @@ import ConversationList from './ConversationList'
 import MessageThread from './MessageThread'
 import ConversationDetails from './ConversationDetails'
 import { API_BASE, getHeaders } from './_helpers'
-import { getSocket } from '@/lib/socket'
+import { getSocket, getExistingSocket } from '@/lib/socket'
 import type { Conversation, Message, SearchUser } from './types'
 
 /* ══════════════════════════════════════════════════════════
@@ -217,13 +217,18 @@ function MessagesContent() {
   }, [token, countConversationRead])
 
   /* ── Chargement initial conversations ── */
-  /* Retry agressif (2s) jusqu'au premier chargement, puis le socket prend le relais */
+  /* Nouvel essai jusqu'au premier chargement (2 s, 4 s, 8 s… jusqu'à 30 s), puis le socket prend le relais */
   useEffect(() => {
     if (!token) return
     fetchConversations()
     if (convLoaded) return // socket gère les updates une fois chargé
-    const iv = setInterval(() => { fetchConversations() }, 2000)
-    return () => clearInterval(iv)
+    let delay = 2000
+    let timer: ReturnType<typeof setTimeout>
+    const retry = () => {
+      timer = setTimeout(() => { fetchConversations(); delay = Math.min(delay * 2, 30000); retry() }, delay)
+    }
+    retry()
+    return () => clearTimeout(timer)
   }, [token, fetchConversations, convLoaded])
 
   /* ── WebSocket — connexion + events temps réel ── */
@@ -325,7 +330,10 @@ function MessagesContent() {
     socket.io.on('reconnect', handleReconnect)
 
     // Fallback polling 30s (si le socket perd des events en offline court)
-    const fallbackConv = setInterval(() => { fetchConversationsRef.current() }, 30000)
+    // Seulement si le temps réel est coupé et que l'onglet est affiché
+    const fallbackConv = setInterval(() => {
+      if (!socket.connected && document.visibilityState === 'visible') fetchConversationsRef.current()
+    }, 30000)
 
     return () => {
       socket.off('new_message', handleNewMessage)
@@ -356,6 +364,8 @@ function MessagesContent() {
   useEffect(() => {
     if (!activeConvId || !token) return
     const iv = setInterval(async () => {
+      // Temps réel connecté (il rattrape lui-même après une coupure) ou onglet caché : rien à faire
+      if (getExistingSocket()?.connected || document.visibilityState !== 'visible') return
       const lastId = lastMsgIdRef.current
       // Si chargement initial raté → recharger complètement plutôt qu'abandonner
       if (!lastId) { fetchMessages(activeConvId, true); return }
