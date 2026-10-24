@@ -27,6 +27,17 @@ interface User {
   }
 }
 
+type RoleCounts = Record<User['role'], number>
+
+// Réponse de /api/search : une page de 24 profils + le total de la recherche
+interface SearchPage {
+  users: User[]
+  total: number
+  counts: RoleCounts
+  hasMore: boolean
+  nextCursor: number | null
+}
+
 const SPECIALTIES = [
   'Acrobate', 'Accordéoniste', 'Animateur', 'Artiste de cirque',
   'Bassiste', 'Batteur', 'Chanteur(se)', 'Chorale', 'Clown', 'Comédien',
@@ -200,76 +211,100 @@ export default function SearchPage() {
   const [country, setCountry]         = useState('')
   const [radiusKm, setRadiusKm]       = useState('')
   const [users, setUsers]             = useState<User[]>([])
+  const [total, setTotal]             = useState(0)
+  const [counts, setCounts]           = useState<RoleCounts>({ ARTIST: 0, ORGANIZER: 0, PROVIDER: 0 })
+  const [nextCursor, setNextCursor]   = useState<number | null>(null)
   const [loading, setLoading]         = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
   const didInitRef = useRef(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  // Recherche courante : filtres envoyés au serveur, pour charger la page suivante
+  const queryRef = useRef('')
+  const requestIdRef = useRef(0)
 
   const handleSearch = useCallback((queryOverride?: string, roleOverride?: string) => {
     if (!token || !API_BASE) return
     setLoading(true)
     setHasSearched(true)
 
+    // Spécialités, styles et tri sont appliqués par le serveur (résultats par pages de 24)
     const params = new URLSearchParams()
     const effectiveSearch = typeof queryOverride === 'string' ? queryOverride : searchTerm
     const effectiveRole = roleOverride !== undefined ? roleOverride : typeFilter
     if (effectiveSearch.trim()) params.append('name', effectiveSearch.trim())
     if (effectiveRole)     params.append('role', effectiveRole)
-    if (zone.trim()) {
-      params.append('zone', zone.trim())
-      params.append('location', zone.trim())
-    }
+    if (zone.trim())       params.append('zone', zone.trim())
     if (country.trim())    params.append('country', country.trim())
     if (radiusKm.trim())   params.append('radius', radiusKm.trim())
     if (filterByDate && dateFilter.trim()) params.append('date', dateFilter.trim())
+    if (typeFilters.length)  params.append('specialties', typeFilters.join(','))
+    if (styleFilters.length) params.append('styles', styleFilters.join(','))
+    if (sortOrder === 'alpha') params.append('sort', 'alpha')
 
-    apiFetch(`${API_BASE}/api/search?${params.toString()}`, {
+    const query = params.toString()
+    queryRef.current = query
+    const requestId = ++requestIdRef.current
+
+    apiFetch(`${API_BASE}/api/search?${query}`, {
       cache: 'no-store',
     })
       .then(async res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
-      .then(data => {
-        let list: User[] = Array.isArray(data?.users) ? data.users : []
-
-        if (typeFilters.length > 0) {
-          const selected = new Set(typeFilters.map(s => s.toLowerCase().trim()))
-          list = list.filter(u => {
-            if (u.role === 'ARTIST' || u.role === 'PROVIDER') {
-              return (u.profile?.specialties || []).some(s => selected.has(String(s).toLowerCase().trim()))
-            }
-            if (u.role === 'ORGANIZER') {
-              return selected.has((u.profile?.typeEtablissement || '').toLowerCase().trim())
-            }
-            return false
-          })
-        }
-
-        // Filtre styles musicaux (artistes uniquement)
-        if (styleFilters.length > 0) {
-          const selectedStyles = new Set(styleFilters.map(s => s.toLowerCase().trim()))
-          list = list.filter(u => {
-            if (u.role !== 'ARTIST') return true
-            return (u.profile?.styles || []).some(s => selectedStyles.has(String(s).toLowerCase().trim()))
-          })
-        }
-
-        // Tri
-        if (sortOrder === 'alpha') {
-          list = [...list].sort((a, b) => {
-            const na = (a.pseudo || [a.firstName, a.lastName].filter(Boolean).join(' ') || '').toLowerCase()
-            const nb = (b.pseudo || [b.firstName, b.lastName].filter(Boolean).join(' ') || '').toLowerCase()
-            return na.localeCompare(nb, 'fr')
-          })
-        }
-
-        setUsers(list)
+      .then((data: SearchPage) => {
+        if (requestId !== requestIdRef.current) return
+        setUsers(Array.isArray(data?.users) ? data.users : [])
+        setTotal(Number(data?.total ?? 0))
+        setCounts(data?.counts ?? { ARTIST: 0, ORGANIZER: 0, PROVIDER: 0 })
+        setNextCursor(data?.nextCursor ?? null)
       })
-      .catch(err => { console.error('Erreur recherche :', err); setUsers([]) })
-      .finally(() => setLoading(false))
+      .catch(err => {
+        if (requestId !== requestIdRef.current) return
+        console.error('Erreur recherche :', err)
+        setUsers([]); setTotal(0); setCounts({ ARTIST: 0, ORGANIZER: 0, PROVIDER: 0 }); setNextCursor(null)
+      })
+      .finally(() => { if (requestId === requestIdRef.current) setLoading(false) })
   }, [token, searchTerm, typeFilter, typeFilters, styleFilters, filterByDate, dateFilter, sortOrder, zone, country, radiusKm])
+
+  // Page suivante (au défilement), avec les mêmes filtres que la recherche affichée
+  const loadMore = useCallback(() => {
+    if (!API_BASE || nextCursor === null || loadingMore || loading) return
+    setLoadingMore(true)
+    const requestId = requestIdRef.current
+    const params = new URLSearchParams(queryRef.current)
+    params.set('cursor', String(nextCursor))
+    apiFetch(`${API_BASE}/api/search?${params.toString()}`, { cache: 'no-store' })
+      .then(async res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
+      .then((data: SearchPage) => {
+        if (requestId !== requestIdRef.current) return
+        const more = Array.isArray(data?.users) ? data.users : []
+        setUsers(prev => {
+          const seen = new Set(prev.map(u => u.id))
+          return [...prev, ...more.filter(u => !seen.has(u.id))]
+        })
+        setNextCursor(data?.nextCursor ?? null)
+      })
+      .catch(err => console.error('Erreur recherche (suite) :', err))
+      .finally(() => setLoadingMore(false))
+  }, [nextCursor, loadingMore, loading])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || nextCursor === null) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) loadMore()
+    }, { rootMargin: '600px 0px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [nextCursor, loadMore])
 
   // Chargement initial — didInitRef évite la double exécution si handleSearch change
   useEffect(() => {
@@ -302,10 +337,6 @@ export default function SearchPage() {
     typeFilter === 'ORGANIZER' ? ESTABLISHMENT_TYPES : []
 
   const hasActiveFilters = !!(typeFilter || typeFilters.length || styleFilters.length || filterByDate || sortOrder !== 'recent' || zone || country || radiusKm)
-
-  /* Répartition par rôle pour les stats */
-  const counts = { ARTIST: 0, ORGANIZER: 0, PROVIDER: 0 }
-  users.forEach(u => { if (u.role in counts) counts[u.role]++ })
 
   return (
     <main className="min-h-screen text-white lsb-discover-page">
@@ -538,7 +569,7 @@ export default function SearchPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="lsb-discover-results-title">
           <div><span>SÉLECTION LSBOOKERS</span><h2>Profils à découvrir</h2></div>
-          <p>{users.length} profil{users.length > 1 ? 's' : ''}</p>
+          <p>{total} profil{total > 1 ? 's' : ''}</p>
         </div>
 
         {/* Loading */}
@@ -555,6 +586,15 @@ export default function SearchPage() {
             {users.map(user => (
               <UserCard key={user.id} user={user} onClick={() => goToProfile(user)} />
             ))}
+          </div>
+        )}
+
+        {/* Suite des résultats : chargée quand on arrive en bas de la liste */}
+        {!loading && nextCursor !== null && (
+          <div ref={sentinelRef} className="flex justify-center py-8">
+            {loadingMore
+              ? <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-violet-500 animate-spin" />
+              : <button onClick={loadMore} className="text-xs px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white/80 hover:bg-white/8 transition">Voir plus de profils</button>}
           </div>
         )}
 
