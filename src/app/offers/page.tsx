@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Briefcase, MapPin, Search, SlidersHorizontal, Sparkles, Plus, X, Send } from 'lucide-react'
@@ -24,6 +24,13 @@ function OffersInner() {
   const { notify, confirm } = useFeedback()
   const [offers, setOffers]             = useState<Offer[]>([])
   const [loading, setLoading]           = useState(true)
+  // Liste par paquets de 20 : total et position du paquet suivant
+  const [total, setTotal]               = useState(0)
+  const [nextCursor, setNextCursor]     = useState<number | null>(null)
+  const [loadingMore, setLoadingMore]   = useState(false)
+  const queryRef = useRef('')
+  const requestIdRef = useRef(0)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const [filters, setFilters]           = useState({
     type: '', specialty: '', location: '', country: '',
   })
@@ -78,43 +85,81 @@ function OffersInner() {
       .catch(() => {})
   }, [user?.id])
 
-  // Filtrage "Pour moi"
-  const visibleOffers = forMe && user
-    ? offers.filter(o => {
-        const roleMatch = o.type === user.role || o.type === 'ALL'
-        if (!roleMatch) return false
-        if (o.specialty) {
-          const sp = o.specialty.toLowerCase().trim()
-          return userSpecialties.some(s => s.toLowerCase().trim() === sp)
-        }
-        return true
-      })
-    : offers
+  // « Pour moi » est appliqué par le serveur (offres de mon rôle, sans spécialité ou de ma spécialité)
+  const visibleOffers = offers
 
   // Lien direct vers une offre (depuis un profil) : /offers?offer=12
   const focusedOfferId = Number(searchParams.get('offer')) || null
 
   const loadOffers = useCallback(async () => {
     setLoading(true)
+    const requestId = ++requestIdRef.current
     try {
       if (focusedOfferId) {
         const res = await apiFetch(`${API_BASE}/api/offers/${focusedOfferId}`)
-        setOffers(res.ok ? [await res.json()] : [])
+        const one = res.ok ? [await res.json()] : []
+        if (requestId !== requestIdRef.current) return
+        setOffers(one); setTotal(one.length); setNextCursor(null)
         return
       }
-      const params = new URLSearchParams()
+      const params = new URLSearchParams({ paged: '1' })
       if (filters.type)      params.set('type',      filters.type)
       if (filters.specialty) params.set('specialty', filters.specialty)
       if (filters.location)  params.set('location',  filters.location)
       if (filters.country)   params.set('country',   filters.country)
-      const res = await apiFetch(`${API_BASE}/api/offers?${params}`)
-      if (res.ok) setOffers(await res.json())
+      if (forMe && user?.role) {
+        params.set('forRole', user.role)
+        if (userSpecialties.length) params.set('forSpecialties', userSpecialties.join(','))
+      }
+      queryRef.current = params.toString()
+      const res = await apiFetch(`${API_BASE}/api/offers?${queryRef.current}`)
+      if (!res.ok || requestId !== requestIdRef.current) return
+      const data = await res.json()
+      // Ancien format (tableau complet) le temps que le serveur soit à jour
+      if (Array.isArray(data)) { setOffers(data); setTotal(data.length); setNextCursor(null); return }
+      setOffers(Array.isArray(data?.offers) ? data.offers : [])
+      setTotal(Number(data?.total ?? 0))
+      setNextCursor(data?.nextCursor ?? null)
     } catch (err) {
       console.error('Erreur chargement offres:', err)
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
-  }, [filters, focusedOfferId])
+  }, [filters, focusedOfferId, forMe, user?.role, userSpecialties])
+
+  // Paquet suivant (au défilement), avec les mêmes filtres
+  const loadMore = useCallback(async () => {
+    if (nextCursor === null || loadingMore || loading) return
+    setLoadingMore(true)
+    const requestId = requestIdRef.current
+    try {
+      const params = new URLSearchParams(queryRef.current)
+      params.set('cursor', String(nextCursor))
+      const res = await apiFetch(`${API_BASE}/api/offers?${params}`)
+      if (!res.ok || requestId !== requestIdRef.current) return
+      const data = await res.json()
+      const more: Offer[] = Array.isArray(data?.offers) ? data.offers : []
+      setOffers(prev => {
+        const known = new Set(prev.map(o => o.id))
+        return [...prev, ...more.filter(o => !known.has(o.id))]
+      })
+      setNextCursor(data?.nextCursor ?? null)
+    } catch (err) {
+      console.error('Erreur chargement offres (suite):', err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [nextCursor, loadingMore, loading])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || nextCursor === null) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) loadMore()
+    }, { rootMargin: '600px 0px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [nextCursor, loadMore])
 
   useEffect(() => {
     const t = setTimeout(loadOffers, 400)
@@ -151,6 +196,7 @@ function OffersInner() {
     const res = await apiFetch(`${API_BASE}/api/offers/${offer.id}/close`, { method: 'POST' })
     if (!res.ok) { notify('Impossible de clôturer l’offre pour le moment.', 'error'); return }
     setOffers(list => list.filter(o => o.id !== offer.id))
+    setTotal(n => Math.max(0, n - 1))
     notify('Offre clôturée.')
   }
 
@@ -355,7 +401,7 @@ function OffersInner() {
             {focusedOfferId ? (
               <button type="button" onClick={() => router.push('/offers')} className="mb-4 text-xs text-violet-300 hover:text-white">← Voir toutes les offres</button>
             ) : (
-              <p className="text-xs text-white/30 mb-4">{visibleOffers.length} offre{visibleOffers.length > 1 ? 's' : ''}</p>
+              <p className="text-xs text-white/30 mb-4">{total} offre{total > 1 ? 's' : ''}</p>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {visibleOffers.map(offer => (
@@ -372,6 +418,14 @@ function OffersInner() {
                 />
               ))}
             </div>
+            {/* Suite des offres : chargée quand on arrive en bas de la liste */}
+            {nextCursor !== null && (
+              <div ref={sentinelRef} className="flex justify-center py-8">
+                {loadingMore
+                  ? <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  : <button type="button" onClick={loadMore} className="text-xs px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white/80 transition">Voir plus d&apos;offres</button>}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -438,7 +492,7 @@ function OffersInner() {
           defaultLocation={userLocation}
           defaultCountry={userCountry}
           onClose={() => setShowPublish(false)}
-          onPublished={saved => { setOffers(prev => [saved, ...prev]); setShowPublish(false) }}
+          onPublished={saved => { setOffers(prev => [saved, ...prev]); setTotal(n => n + 1); setShowPublish(false) }}
         />
       )}
     </main>

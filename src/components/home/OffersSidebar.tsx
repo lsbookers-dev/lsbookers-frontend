@@ -24,7 +24,7 @@ export default function OffersSidebar({ apiBase, onSelectOffer }: {
 
   useEffect(() => {
     setLoading(true)
-    apiFetch(`${apiBase}/api/offers`)
+    apiFetch(`${apiBase}/api/offers?limit=6`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setOffers(Array.isArray(d) ? d.slice(0, 6) : []))
       .catch(() => {})
