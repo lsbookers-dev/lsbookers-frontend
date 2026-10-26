@@ -1,7 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/utils/auth'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -9,7 +9,8 @@ import axios, { isAxiosError } from 'axios'
 import { apiUrl } from '@/utils/api'
 import { usePublicSettings } from '@/context/PublicSettingsContext'
 import { PUBLIC_IMAGE_BLUR } from '@/lib/publicSettings.shared'
-import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Gift, Mail, Lock, Camera, CalendarDays, Building2 } from 'lucide-react'
+import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Gift, Mail, Lock, CalendarDays, Building2, ChefHat, Users, Search } from 'lucide-react'
+import { SPECIALTIES_BY_ROLE } from '@/constants/specialties'
 import LsIcon, { LsBullet } from '@/components/ui/LsIcon'
 import CityAutocomplete from '@/components/CityAutocomplete'
 import PublicBrand from '@/components/PublicBrand'
@@ -23,43 +24,51 @@ const formatPrice = (cents: number) => (cents / 100).toLocaleString('fr-FR', { s
 type PseudoStatus = 'idle' | 'checking' | 'available' | 'taken'
 type SiretStatus  = 'idle' | 'checking' | 'valid' | 'invalid'
 
-// ─── Spécialités ─────────────────────────────────────────────────────────────
-const SPECIALTIES: Record<Role, string[]> = {
-  ARTIST: [
-    'Acrobate','Accordéoniste','Animateur','Artiste de cirque','Bassiste','Batteur',
-    'Chanteur(se)','Chorale','Clown','Comédien','Cracheur de feu','Danseur LED',
-    'Danseur(se)','DJ','Échassier','Fanfare','Graffeur','Groupe','Groupe de danse',
-    'Guitariste','Humoriste','Hypnotiseur','Imitateur','Influenceur / Créateur de contenu',
-    'Jongleur','Magicien','Maître de cérémonie','Mentaliste','Mime','Orchestre',
-    'Peintre Live','Percussionniste','Performer','Pianiste','Présentateur','Saxophoniste',
-    'Sculpteur Live','Speed Painter','Stand-upper','Streamer','Trompettiste',
-    'Violoncelliste','Violoniste',
-  ],
-  ORGANIZER: [
-    'Agence événementielle','Anniversaire','Arena','Association','Baptême','Bar',
-    'Beach Club','Camping','Casino','Centre commercial','Centre culturel','Château',
-    'Collectivité','Comité des fêtes','Congrès','Discothèque / Club','Domaine',
-    'Entreprise / CE','Événement sportif','Festival','Gala','Hôtel',
-    'Lancement de produit','Mairie','Mariage','Organisateur de soirées',
-    'Palais des congrès',"Parc d'attractions",'Plage privée','Pub','Restaurant',
-    'Rooftop','Salle de réception','Salle de spectacle','Salle des fêtes',
-    'Salon professionnel','Séminaire','Soirée étudiante','Soirée privée','Théâtre',
-    'Village vacances','Wedding Planner','Zénith',
-  ],
-  PROVIDER: [
-    'Arche de cérémonie','Baby-sitter événementielle','Ballons','Barman','Borne 360°',
-    'Cake Designer','Chauffeur privé','Chef à domicile','Coiffeur',"Contrôle d'accès",
-    'Costumier','Décorateur','Designer événementiel','DJ Tech','Drone','Éclairagiste',
-    'Effets spéciaux','Fleuriste','Food Truck','Glacier',"Hôtesse d'accueil",
-    'Location de matériel','Location de sonorisation','Location limousine',
-    'Location lumière','Location mobilier','Location scène','Location vaisselle',
-    'Location véhicules','Maquilleur','Monteur vidéo','Nettoyage','Pâtissier',
-    'Photographe','Photobooth','Pyrotechnicien','Régisseur','Régisseur général',
-    'Régisseur plateau','Retouche photo','Scène','Sécurité','Serveur','Serveuse',
-    'Signalétique','Sommelier','Sonorisateur','Structure','Styliste',
-    'Technicien audiovisuel','Technicien lumière','Technicien son','Traiteur',
-    'Transport de matériel','Vidéaste','Vidéoprojection','Voiturier',
-  ],
+// ─── Étape 2 : « Que fais-tu ? » ─────────────────────────────────────────────
+// Recherche par métier (le rôle est déduit tout seul) ou une des 4 phrases.
+const SPECIALTIES = SPECIALTIES_BY_ROLE as Record<Role, string[]>
+const AGENCY_SPECIALTY = 'Agence artistique / booking'
+const VENUES_SPECIALTY = 'Groupe de lieux'
+const ROLE_LABEL: Record<Role, string> = { ARTIST: 'Artiste', PROVIDER: 'Prestataire', ORGANIZER: 'Organisateur' }
+
+type Path = 'PERFORM' | 'SERVICE' | 'HOST' | 'MULTI'
+type Multi = 'ARTISTS' | 'VENUES'
+const PATHS: { value: Path; role: Role; label: string; desc: string; icon: React.ReactNode }[] = [
+  { value: 'PERFORM', role: 'ARTIST',    label: 'Je me produis',                         desc: 'Musicien, DJ, danseur, magicien…',      icon: <Mic2 className="h-5 w-5 text-violet-400" /> },
+  { value: 'SERVICE', role: 'PROVIDER',  label: 'Je propose un service',                 desc: 'Traiteur, photo, son, déco, sécurité…', icon: <ChefHat className="h-5 w-5 text-violet-400" /> },
+  { value: 'HOST',    role: 'ORGANIZER', label: 'J’accueille ou j’organise des événements', desc: 'Salle, club, festival, mariage, mairie…', icon: <CalendarDays className="h-5 w-5 text-violet-400" /> },
+  { value: 'MULTI',   role: 'ORGANIZER', label: 'Je gère plusieurs profils',             desc: 'Agent d’artistes, plusieurs salles',    icon: <Users className="h-5 w-5 text-violet-400" /> },
+]
+const MULTI_CHOICES: { value: Multi; label: string; desc: string; specialty: string; icon: React.ReactNode }[] = [
+  { value: 'ARTISTS', label: 'Des artistes',                  desc: 'Agent, manager, tourneur, booker',              specialty: AGENCY_SPECIALTY, icon: <Mic2 className="h-5 w-5 text-violet-400" /> },
+  { value: 'VENUES',  label: 'Plusieurs lieux ou événements', desc: 'Groupe de salles, festival à plusieurs scènes', specialty: VENUES_SPECIALTY, icon: <Building2 className="h-5 w-5 text-violet-400" /> },
+]
+
+// Mots que les gens tapent mais qui ne sont pas le nom exact du métier
+const JOB_SYNONYMS: Record<string, string> = {
+  [AGENCY_SPECIALTY]: 'agent manager tourneur booker representant production',
+  [VENUES_SPECIALTY]: 'plusieurs salles gerant proprietaire lieux',
+  'Discothèque / Club': 'boite de nuit night club',
+  'Salle de spectacle': 'salle de concert',
+  'Traiteur': 'cuisine repas buffet',
+  'Photographe': 'photo',
+  'Vidéaste': 'video film',
+  'Sonorisateur': 'sono son',
+  'Chanteur(se)': 'chant chanteuse chanteur',
+  'Groupe': 'groupe de musique band',
+}
+const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const ALL_JOBS = (['ARTIST', 'PROVIDER', 'ORGANIZER'] as Role[]).flatMap(role =>
+  SPECIALTIES[role].map(label => ({ label, role, haystack: normalize(`${label} ${JOB_SYNONYMS[label] || ''}`) })))
+
+function searchJobs(query: string) {
+  const words = normalize(query).split(/\s+/).filter(Boolean)
+  if (!words.length) return []
+  const first = normalize(query.trim())
+  return ALL_JOBS
+    .filter(job => words.every(w => job.haystack.includes(w)))
+    .sort((a, b) => Number(normalize(b.label).startsWith(first)) - Number(normalize(a.label).startsWith(first)) || a.label.localeCompare(b.label, 'fr'))
+    .slice(0, 6)
 }
 
 // ─── Helpers UI ───────────────────────────────────────────────────────────────
@@ -160,8 +169,8 @@ const BRANDING: { icon: React.ReactNode; title: string; subtitle: string; items:
   {
     icon: <Mic2 className="h-7 w-7 text-violet-400" />,
     title: 'Ton activité.',
-    subtitle: 'Choisis ton rôle et sélectionne tes spécialités pour que les organisateurs te trouvent.',
-    items: ['Artiste (ou agent), organisateur ou prestataire', 'Spécialités visibles sur ton profil', 'Modifier à tout moment dans les réglages'],
+    subtitle: 'Dis-nous ce que tu fais pour que les bonnes personnes te trouvent.',
+    items: ['Tape ton métier, on s’occupe du reste', 'Agents et gérants de plusieurs lieux bienvenus', 'Modifiable à tout moment dans les réglages'],
   },
   {
     icon: <User className="h-7 w-7 text-violet-400" />,
@@ -280,6 +289,31 @@ export default function RegisterPage() {
   // ── Étape 2 : Profil ──
   const [role, setRole]               = useState<Role | null>(null)
   const [specialties, setSpecialties] = useState<string[]>([])
+  const [path, setPath]               = useState<Path | null>(null)
+  const [multi, setMulti]             = useState<Multi | null>(null)
+  const [jobQuery, setJobQuery]       = useState('')
+  const [pinnedJob, setPinnedJob]     = useState<string | null>(null) // métier choisi : affiché en tête des spécialités
+  const jobResults = useMemo(() => searchJobs(jobQuery), [jobQuery])
+
+  const choosePath = (value: Path) => {
+    const next = PATHS.find(p => p.value === value)!.role
+    if (next !== role) setSpecialties([])
+    setPath(value); setRole(next); setMulti(null); setError(null)
+  }
+  const chooseMulti = (value: Multi) => {
+    const spec = MULTI_CHOICES.find(m => m.value === value)!.specialty
+    const others = MULTI_CHOICES.map(m => m.specialty)
+    setMulti(value); setPinnedJob(spec); setError(null)
+    setSpecialties(prev => [spec, ...prev.filter(s => !others.includes(s))])
+  }
+  // Un métier trouvé par la recherche : rôle, phrase et spécialité choisis d'un coup
+  const chooseJob = (label: string, jobRole: Role) => {
+    const multiChoice = MULTI_CHOICES.find(m => m.specialty === label)
+    setPath(multiChoice ? 'MULTI' : jobRole === 'ARTIST' ? 'PERFORM' : jobRole === 'PROVIDER' ? 'SERVICE' : 'HOST')
+    setMulti(multiChoice ? multiChoice.value : null)
+    setSpecialties(prev => [label, ...(jobRole === role ? prev.filter(s => s !== label) : [])].slice(0, MAX_SPECIALTIES))
+    setRole(jobRole); setPinnedJob(label); setJobQuery(''); setError(null)
+  }
 
   // ── Étape 3 : Identité ──
   const [pseudo, setPseudo]                     = useState('')
@@ -403,7 +437,8 @@ export default function RegisterPage() {
 
   const handleStep2 = (e: React.FormEvent) => {
     e.preventDefault(); setError(null)
-    if (!role) { setError('Choisis un type de profil pour continuer.'); return }
+    if (!role) { setError('Tape ton métier ou choisis une des phrases pour continuer.'); return }
+    if (path === 'MULTI' && !multi) { setError('Précise ce que tu gères : des artistes ou plusieurs lieux.'); return }
     go(3)
   }
 
@@ -534,42 +569,80 @@ export default function RegisterPage() {
 
               {/* ── ÉTAPE 2 : Profil (rôle + spécialités) ───────────────────── */}
               {step === 2 && (
-                <form onSubmit={handleStep2} className="space-y-5">
-                  <p className="text-sm text-white/50 -mt-1">Sélectionne ton type d&apos;activité, puis tes spécialités.</p>
+                <form onSubmit={handleStep2} className="space-y-4">
+                  <div>
+                    <p className="text-base font-semibold text-white">Que fais-tu ?</p>
+                    <div className="relative mt-2">
+                      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+                      <input type="search" value={jobQuery} onChange={e => setJobQuery(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (jobResults[0]) chooseJob(jobResults[0].label, jobResults[0].role) } }}
+                        placeholder="Tape ton métier : traiteur, DJ, salle…" aria-label="Rechercher ton métier"
+                        className={inputCls('pl-10')} />
+                    </div>
+                    {jobQuery.trim() && (
+                      <div className="mt-1.5 rounded-xl border border-white/10 bg-[#1a1824] p-1">
+                        {jobResults.length === 0 ? (
+                          <p className="px-3 py-2 text-xs text-white/45">Aucun métier trouvé. Choisis plutôt une des phrases ci-dessous.</p>
+                        ) : jobResults.map(job => (
+                          <button key={`${job.role}-${job.label}`} type="button" onClick={() => chooseJob(job.label, job.role)}
+                            className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-white/85 transition hover:bg-violet-500/15">
+                            <span>{job.label}</span>
+                            <span className="flex-shrink-0 rounded-md bg-violet-500/15 px-2 py-0.5 text-[10px] font-medium text-violet-200">{ROLE_LABEL[job.role]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Cartes rôle */}
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {([
-                      { value: 'ARTIST' as Role,    label: 'Artiste',      icon: <Mic2 className="h-6 w-6 text-violet-400" />, desc: 'Crée le profil de ton artiste ou le tien', tag: 'Agent / représentant' },
-                      { value: 'ORGANIZER' as Role,  label: 'Organisateur', icon: <CalendarDays className="h-6 w-6 text-violet-400" />, desc: 'Club, festival, soirée…' },
-                      { value: 'PROVIDER' as Role,   label: 'Prestataire',  icon: <Camera className="h-6 w-6 text-violet-400" />, desc: 'Photo, son, déco…' },
-                    ]).map(opt => (
-                      <button key={opt.value} type="button"
-                        onClick={() => { setRole(opt.value); setSpecialties([]) }}
-                        className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition
-                          ${role === opt.value
+                  <p className="text-center text-xs text-white/35">ou choisis</p>
+
+                  <div className="grid gap-2">
+                    {PATHS.map(opt => (
+                      <button key={opt.value} type="button" onClick={() => choosePath(opt.value)} aria-pressed={path === opt.value}
+                        className={`flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition
+                          ${path === opt.value
                             ? 'border-violet-500 bg-violet-500/15 shadow-lg shadow-violet-900/20'
                             : 'border-white/10 bg-white/4 hover:border-white/20 hover:bg-white/[0.06]'}`}>
-                        <div className="h-10 w-10 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">{opt.icon}</div>
-                        <span className={`font-semibold text-xs ${role === opt.value ? 'text-white' : 'text-white/70'}`}>{opt.label}</span>
-                        {'tag' in opt && opt.tag && (
-                          <span className="rounded-full border border-violet-400/30 bg-violet-500/10 px-2 py-0.5 text-[9px] font-medium leading-tight text-violet-200">{opt.tag}</span>
-                        )}
-                        <span className="text-[10px] text-white/35 leading-tight">{opt.desc}</span>
-                        {role === opt.value && (
-                          <span className="mt-1 rounded-full bg-violet-500 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wide">Sélectionné</span>
-                        )}
+                        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-violet-500/30 bg-violet-600/20">{opt.icon}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className={`block text-sm font-semibold ${path === opt.value ? 'text-white' : 'text-white/80'}`}>{opt.label}</span>
+                          <span className="block text-xs text-white/40">{opt.desc}</span>
+                        </span>
+                        {path === opt.value && <Check className="h-4 w-4 flex-shrink-0 text-violet-300" />}
                       </button>
                     ))}
                   </div>
 
-                  {/* Spécialités — apparaissent après sélection du rôle */}
-                  {role && (
+                  {/* « Je gère plusieurs profils » : des artistes ou plusieurs lieux */}
+                  {path === 'MULTI' && (
+                    <div className="space-y-2 rounded-2xl border border-white/8 bg-white/[0.03] p-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <p className="text-sm font-semibold text-white/80">Tu gères…</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {MULTI_CHOICES.map(opt => (
+                          <button key={opt.value} type="button" onClick={() => chooseMulti(opt.value)} aria-pressed={multi === opt.value}
+                            className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition
+                              ${multi === opt.value ? 'border-violet-500 bg-violet-500/15' : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
+                            {opt.icon}
+                            <span>
+                              <span className="block text-sm font-semibold text-white/85">{opt.label}</span>
+                              <span className="block text-xs text-white/40">{opt.desc}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      {multi && (
+                        <p className="text-xs leading-relaxed text-gold-light/80">
+                          On crée d&apos;abord le profil de ta structure. Ensuite, la formule Agence te permettra d&apos;ajouter {multi === 'ARTISTS' ? 'tes artistes' : 'tes lieux'}.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Spécialités — apparaissent une fois le choix fait */}
+                  {role && (path !== 'MULTI' || multi) && (
                     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-white/80">Tes spécialités <span className="text-white/30 font-normal">(optionnel)</span></p>
-                        </div>
+                        <p className="text-sm font-semibold text-white/80">Tes spécialités <span className="text-white/30 font-normal">(optionnel)</span></p>
                         {specialties.length > 0 && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/20 border border-violet-400/30 px-2 py-0.5 text-[10px] text-violet-200 font-medium flex-shrink-0">
                             {specialties.length} <LsIcon name="check" size={13} tone="inherit" />
@@ -577,10 +650,12 @@ export default function RegisterPage() {
                         )}
                       </div>
                       <div className="max-h-28 overflow-y-auto pr-1 scrollbar-thin">
-                        <TagSelector options={SPECIALTIES[role]} selected={specialties} onChange={setSpecialties} />
+                        <TagSelector options={pinnedJob && SPECIALTIES[role].includes(pinnedJob) ? [pinnedJob, ...SPECIALTIES[role].filter(t => t !== pinnedJob)] : SPECIALTIES[role]} selected={specialties} onChange={setSpecialties} />
                       </div>
                     </div>
                   )}
+
+                  <p className="text-center text-xs text-white/40">Quel que soit ton choix, tu pourras aussi créer des événements et booker d&apos;autres membres.</p>
 
                   <div className="flex gap-3">
                     <BackBtn onClick={() => go(1)} />
@@ -766,6 +841,12 @@ export default function RegisterPage() {
               {/* ── ÉTAPE 5 : Formule (gratuit par défaut, Pro en option) ─────── */}
               {step === 5 && (
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {path === 'MULTI' && (
+                    <div className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3">
+                      <p className="text-sm font-semibold text-gold-light">Formule Agence : bientôt disponible</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-white/60">Elle te permettra de gérer plusieurs profils depuis ton compte. En attendant, crée ton profil gratuitement : tu pourras passer à la formule Agence dès son ouverture, depuis « Offres et abonnements ».</p>
+                    </div>
+                  )}
                   <div className="space-y-3">
                     {/* Compte gratuit — choisi par défaut */}
                     <button type="button" onClick={() => setPlan('FREE')}

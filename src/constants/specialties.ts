@@ -12,11 +12,11 @@ export const SPECIALTIES_BY_ROLE: Record<string, string[]> = {
     'Stand-upper', 'Streamer', 'Trompettiste', 'Violoncelliste', 'Violoniste',
   ],
   ORGANIZER: [
-    'Agence événementielle', 'Anniversaire', 'Arena', 'Association',
+    'Agence artistique / booking', 'Agence événementielle', 'Anniversaire', 'Arena', 'Association',
     'Baptême', 'Bar', 'Beach Club', 'Camping', 'Casino',
     'Centre commercial', 'Centre culturel', 'Château', 'Collectivité',
     'Comité des fêtes', 'Congrès', 'Discothèque / Club', 'Domaine',
-    'Entreprise / CE', 'Événement sportif', 'Festival', 'Gala', 'Hôtel',
+    'Entreprise / CE', 'Événement sportif', 'Festival', 'Gala', 'Groupe de lieux', 'Hôtel',
     'Lancement de produit', 'Mairie', 'Mariage', 'Organisateur de soirées',
     'Palais des congrès', "Parc d'attractions", 'Plage privée', 'Pub',
     'Restaurant', 'Rooftop', 'Salle de réception', 'Salle de spectacle',
