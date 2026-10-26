@@ -18,8 +18,8 @@ import PublicBrand from '@/components/PublicBrand'
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
 type LegalType = 'INDIVIDUAL' | 'INTERMITTENT' | 'PROFESSIONAL'
-type Plan = 'FREE' | 'PRO'
-type SignupPrices = { prices: Record<string, { monthCents: number; yearCents: number }>; trialDays: number; limits: { applicationsPerMonth: number; bookingRequestsPerMonth: number }; commission: { freePct: number; proPct: number } }
+type Plan = 'FREE' | 'PRO' | 'AGENCY'
+type SignupPrices = { prices: Record<string, { monthCents: number; yearCents: number }>; agency?: { monthCents: number; yearCents: number; includedProfiles: number; extraMonthCents: number; extraYearCents: number }; trialDays: number; limits: { applicationsPerMonth: number; bookingRequestsPerMonth: number }; commission: { freePct: number; proPct: number } }
 const formatPrice = (cents: number) => (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: cents % 100 ? 2 : 0 })
 type PseudoStatus = 'idle' | 'checking' | 'available' | 'taken'
 type SiretStatus  = 'idle' | 'checking' | 'valid' | 'invalid'
@@ -299,11 +299,13 @@ export default function RegisterPage() {
     const next = PATHS.find(p => p.value === value)!.role
     if (next !== role) setSpecialties([])
     setPath(value); setRole(next); setMulti(null); setError(null)
+    if (value !== 'MULTI') setPlan(p => (p === 'AGENCY' ? 'FREE' : p))
   }
   const chooseMulti = (value: Multi) => {
     const spec = MULTI_CHOICES.find(m => m.value === value)!.specialty
     const others = MULTI_CHOICES.map(m => m.specialty)
     setMulti(value); setPinnedJob(spec); setError(null)
+    setPlan('AGENCY') // formule proposée en premier à l'étape Offre
     setSpecialties(prev => [spec, ...prev.filter(s => !others.includes(s))])
   }
   // Un métier trouvé par la recherche : rôle, phrase et spécialité choisis d'un coup
@@ -844,13 +846,36 @@ export default function RegisterPage() {
               {/* ── ÉTAPE 5 : Formule (gratuit par défaut, Pro en option) ─────── */}
               {step === 5 && (
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {path === 'MULTI' && (
-                    <div className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3">
-                      <p className="text-sm font-semibold text-gold-light">Formule Agence : bientôt disponible</p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-white/60">Elle te permettra de gérer plusieurs profils depuis ton compte. En attendant, crée ton profil gratuitement : tu pourras passer à la formule Agence dès son ouverture, depuis « Offres et abonnements ».</p>
-                    </div>
-                  )}
                   <div className="space-y-3">
+                    {/* Formule Agence : proposée en premier à ceux qui gèrent plusieurs profils */}
+                    {path === 'MULTI' && signupPrices?.agency && (
+                      <button type="button" onClick={() => setPlan('AGENCY')}
+                        className={`relative w-full text-left rounded-2xl border p-4 transition
+                          ${plan === 'AGENCY' ? 'border-accent bg-accent/15 shadow-lg shadow-black/20' : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
+                        <span className="absolute -top-2.5 right-4 rounded-md bg-gold px-2 py-0.5 text-[10px] font-semibold text-[#1a1408]">Pour vous</span>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className={`font-semibold text-sm ${plan === 'AGENCY' ? 'text-white' : 'text-white/70'}`}>Formule Agence</p>
+                            <p className="text-xs text-white/40 mt-0.5">Gérer plusieurs profils depuis ton compte</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className={`font-black text-lg ${plan === 'AGENCY' ? 'text-white' : 'text-white/60'}`}>{formatPrice(billingInterval === 'YEAR' ? signupPrices.agency.yearCents : signupPrices.agency.monthCents)}</p>
+                            <p className="text-[10px] text-white/35">{billingInterval === 'YEAR' ? 'par an' : 'par mois'}</p>
+                          </div>
+                        </div>
+                        <ul className="mt-3 space-y-1.5">
+                          {[
+                            `${signupPrices.agency.includedProfiles} profils gérés inclus, tous en Pro`,
+                            'Ton propre profil passe en Pro aussi',
+                            `${formatPrice(billingInterval === 'YEAR' ? signupPrices.agency.extraYearCents : signupPrices.agency.extraMonthCents)} ${billingInterval === 'YEAR' ? 'par an' : 'par mois'} par profil en plus`,
+                          ].map(f => (
+                            <li key={f} className="flex items-center gap-2 text-xs text-white/60">
+                              <Check className={`h-3 w-3 flex-shrink-0 ${plan === 'AGENCY' ? 'text-accent-light' : 'text-white/30'}`} />{f}
+                            </li>
+                          ))}
+                        </ul>
+                      </button>
+                    )}
                     {/* Compte gratuit — choisi par défaut */}
                     <button type="button" onClick={() => setPlan('FREE')}
                       className={`w-full text-left rounded-2xl border p-4 transition
@@ -906,14 +931,17 @@ export default function RegisterPage() {
                     </button>
                   </div>
 
-                  {plan === 'PRO' && rolePrices && (
+                  {((plan === 'PRO' && rolePrices) || (plan === 'AGENCY' && signupPrices?.agency)) && (
                     <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1 text-xs">
-                      {(['MONTH', 'YEAR'] as const).map(i => (
+                      {(['MONTH', 'YEAR'] as const).map(i => {
+                        const p = plan === 'AGENCY' ? signupPrices!.agency! : rolePrices!
+                        return (
                         <button key={i} type="button" onClick={() => setBillingInterval(i)}
                           className={`flex-1 rounded-lg px-3 py-2 font-medium transition ${billingInterval === i ? 'bg-accent-strong text-white' : 'text-white/55 hover:text-white'}`}>
-                          {i === 'YEAR' ? `Annuel · ${formatPrice(rolePrices.yearCents)}${Math.round(rolePrices.yearCents / rolePrices.monthCents) < 12 ? ` (${Math.round(rolePrices.yearCents / rolePrices.monthCents)} mois payés, 12 mois d’accès)` : ''}` : `Mensuel · ${formatPrice(rolePrices.monthCents)}`}
+                          {i === 'YEAR' ? `Annuel · ${formatPrice(p.yearCents)}${Math.round(p.yearCents / p.monthCents) < 12 ? ` (${Math.round(p.yearCents / p.monthCents)} mois payés, 12 mois d’accès)` : ''}` : `Mensuel · ${formatPrice(p.monthCents)}`}
                         </button>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
 
@@ -928,7 +956,9 @@ export default function RegisterPage() {
                   </div>
 
                   <p className="text-center text-xs text-white/30 leading-relaxed">
-                    {plan === 'PRO'
+                    {plan === 'AGENCY'
+                      ? 'Après la confirmation de votre e-mail, vous finaliserez la formule Agence en enregistrant votre carte, puis vous ajouterez vos profils.'
+                      : plan === 'PRO'
                       ? 'Après la confirmation de votre e-mail, vous finaliserez la version Pro en enregistrant votre carte. Un code de lancement vous offre des mois gratuits.'
                       : 'Aucune carte bancaire demandée. Vous pourrez passer en Pro à tout moment.'}
                   </p>

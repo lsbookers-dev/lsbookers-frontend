@@ -14,6 +14,32 @@ import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 
 const ROLE_LABEL: Record<string, string> = { ARTIST: 'Artiste', ORGANIZER: 'Organisateur', PROVIDER: 'Prestataire' }
+const euros = (cents: number) => (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
+
+/**
+ * Envoie l'invitation ; si toutes les places de la formule sont prises, demande l'accord
+ * pour un profil en plus (facturé au prorata), puis renvoie avec acceptExtra.
+ */
+async function postWithExtraProfile(
+  path: string,
+  body: Record<string, unknown>,
+  confirm: (o: { title: string; message?: string; confirmLabel?: string }) => Promise<boolean>,
+): Promise<Response | null> {
+  const send = (extra: boolean) => apiFetch(apiUrl(path), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, ...(extra ? { acceptExtra: true } : {}) }),
+  })
+  const res = await send(false)
+  if (res.status !== 402) return res
+  const info = await res.json().catch(() => ({}))
+  const ok = await confirm({
+    title: 'Ajouter un profil en plus ?',
+    message: `Les ${info.included ?? ''} profils de votre formule Agence sont pris. Ce profil en plus coûte ${euros(info.extraPriceCents ?? 0)} ${info.interval === 'YEAR' ? 'par an' : 'par mois'}, calculé au prorata. Il est retiré de votre facture dès qu’une place se libère.`,
+    confirmLabel: 'Ajouter ce profil',
+  })
+  return ok ? send(true) : null
+}
 
 
 type Candidate = { id: number; name: string; avatar: string | null; role: string | null; location: string | null; alreadyManaged: boolean }
@@ -28,7 +54,7 @@ export default function AddProfileModal({ onClose, onDone, welcome = false }: { 
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Ajouter un profil" onClick={onClose}>
+    <div className="fixed inset-0 z-[250] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Ajouter un profil" onClick={onClose}>
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-white/10 bg-surface-2 p-5 sm:rounded-2xl" onClick={e => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
@@ -61,7 +87,7 @@ export default function AddProfileModal({ onClose, onDone, welcome = false }: { 
 const inputCls = 'w-full rounded-xl bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-violet-500/60'
 
 function InviteForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const { notify } = useFeedback()
+  const { notify, confirm } = useFeedback()
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Candidate[] | null>(null)
   const [sendingId, setSendingId] = useState<number | null>(null)
@@ -80,7 +106,8 @@ function InviteForm({ onBack, onDone }: { onBack: () => void; onDone: () => void
   const invite = async (c: Candidate) => {
     setSendingId(c.id)
     try {
-      const res = await apiFetch(apiUrl('managers/invite'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profileId: c.id }) })
+      const res = await postWithExtraProfile('managers/invite', { profileId: c.id }, confirm)
+      if (!res) return
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Invitation impossible pour le moment.'))
       notify(`Invitation envoyée à ${c.name}`)
       onDone()
@@ -120,7 +147,7 @@ function InviteForm({ onBack, onDone }: { onBack: () => void; onDone: () => void
 }
 
 function CreateForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const { notify } = useFeedback()
+  const { notify, confirm } = useFeedback()
   const [form, setForm] = useState({ pseudo: '', email: '', role: 'ARTIST', city: '' })
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
@@ -132,11 +159,8 @@ function CreateForm({ onBack, onDone }: { onBack: () => void; onDone: () => void
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) { setError('Indiquez l’adresse e-mail de la personne (ou du lieu).'); return }
     setSending(true)
     try {
-      const res = await apiFetch(apiUrl('managers/create'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pseudo: form.pseudo.trim(), email: form.email.trim(), role: form.role, city: form.city.trim() || undefined }),
-      })
+      const res = await postWithExtraProfile('managers/create', { pseudo: form.pseudo.trim(), email: form.email.trim(), role: form.role, city: form.city.trim() || undefined }, confirm)
+      if (!res) return
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Création impossible pour le moment.'))
       const data = await res.json().catch(() => ({}))
       notify(data.message || 'Invitation envoyée')

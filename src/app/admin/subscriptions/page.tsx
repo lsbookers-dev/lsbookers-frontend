@@ -441,6 +441,7 @@ type Settings = {
   bookingPayment: { depositPct: number; chargeDaysBefore: number; releaseHoursAfter: number; lateCancelDays: number }
   limits: { applicationsPerMonth: number; bookingRequestsPerMonth: number; activeEvents: number; activeOffers: number; albums: number; videos: number; videoMaxSeconds: number }
   prices: Record<'ARTIST' | 'PROVIDER' | 'ORGANIZER', { monthCents: number; yearCents: number }>
+  agency: { monthCents: number; yearCents: number; includedProfiles: number; extraMonthCents: number; extraYearCents: number }
   trialDays: number
   carousel: { regionalSlots: number; nationalSlots: number }
   lateCancellations: { warnAt: number; alertAt: number; windowDays: number }
@@ -532,6 +533,17 @@ function SettingsTab() {
         </div>
         <div className="mt-3 max-w-xs"><NumberField label="Essai offert à tous (0 = aucun)" value={s.trialDays} onChange={n => setS(p => (p ? { ...p, trialDays: n } : p))} suffix="jours" /></div>
         <p className="mt-2 text-[11px] text-white/40">Un nouveau prix s’applique aux nouveaux abonnements ; les abonnés en cours gardent le leur.</p>
+      </section>
+      <section className={CARD}>
+        <p className="mb-3 text-sm font-semibold">Formule Agence (TTC)</p>
+        <div className="grid gap-3 sm:grid-cols-5">
+          <NumberField label="Par mois" value={s.agency.monthCents / 100} onChange={n => up('agency', { monthCents: Math.round(n * 100) })} suffix="€" step={0.01} />
+          <NumberField label="Par an" value={s.agency.yearCents / 100} onChange={n => up('agency', { yearCents: Math.round(n * 100) })} suffix="€" step={0.01} />
+          <NumberField label="Profils gérés inclus" value={s.agency.includedProfiles} onChange={n => up('agency', { includedProfiles: n })} />
+          <NumberField label="Profil en plus, par mois" value={s.agency.extraMonthCents / 100} onChange={n => up('agency', { extraMonthCents: Math.round(n * 100) })} suffix="€" step={0.01} />
+          <NumberField label="Profil en plus, par an" value={s.agency.extraYearCents / 100} onChange={n => up('agency', { extraYearCents: Math.round(n * 100) })} suffix="€" step={0.01} />
+        </div>
+        <p className="mt-2 text-[11px] text-white/40">L’Agence comprend le Pro pour l’agence et pour chaque profil géré. Un profil en plus est facturé au prorata et retiré dès qu’une place se libère.</p>
       </section>
       <section className={CARD}>
         <p className="mb-3 text-sm font-semibold">Carrousel et annulations</p>

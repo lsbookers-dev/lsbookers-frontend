@@ -44,7 +44,24 @@ export type PlanInfo = {
   /** Code Fondateur réservé à ce membre, pas encore utilisé (activable en un clic) */
   founderCode: string | null
   /** Formule choisie à l'inscription, pas encore finalisée */
-  signupPlan: null | { plan: 'FREE' | 'PRO'; interval: 'MONTH' | 'YEAR'; promoCode: string | null }
+  signupPlan: null | { plan: 'FREE' | 'PRO' | 'AGENCY'; interval: 'MONTH' | 'YEAR'; promoCode: string | null }
+  /** Formule Agence du compte (payée, ou offerte par l'admin) */
+  agency: null | {
+    active: boolean
+    offered: boolean
+    status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED' | null
+    interval: 'MONTH' | 'YEAR' | null
+    priceCents: number | null
+    currentPeriodEnd: string | null
+    cancelAtPeriodEnd: boolean
+    extraProfiles: number
+    trialEndsAt: string | null
+  }
+  agencyPrices: { monthCents: number; yearCents: number; includedProfiles: number; extraMonthCents: number; extraYearCents: number }
+  /** Profil Pro grâce à l'agence qui le gère */
+  managedPro: boolean
+  /** Prélèvements de son propre Pro suspendus pendant la gestion */
+  proPausedByAgency: boolean
 }
 
 let cache: PlanInfo | null = null

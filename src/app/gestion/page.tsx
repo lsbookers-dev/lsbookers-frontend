@@ -31,6 +31,7 @@ export default function ManagedProfilesPage() {
   const { user, acting } = useAuth()
   const { notify, confirm } = useFeedback()
   const [list, setList] = useState<ManagedProfile[] | null>(null)
+  const [slots, setSlots] = useState<{ used: number; included: number; extra: number; unlimited: boolean } | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
   const [adding, setAdding] = useState(false)
   const enabled = !!user?.canManageProfiles || !!acting
@@ -38,7 +39,7 @@ export default function ManagedProfilesPage() {
   const load = useCallback(() => {
     apiFetch(apiUrl('managers/profiles'), { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : { profiles: [] }))
-      .then(data => setList(data.profiles || []))
+      .then(data => { setList(data.profiles || []); setSlots(data.slots || null) })
       .catch(() => setList([]))
   }, [])
   useEffect(() => { if (enabled) load() }, [enabled, load])
@@ -88,6 +89,11 @@ export default function ManagedProfilesPage() {
           <span className="text-[10px] font-bold uppercase tracking-[.2em] text-accent">Gestion</span>
           <h1 className="mt-1 text-[clamp(1.6rem,3.5vw,2.2rem)] font-semibold leading-tight">{onlyArtists ? 'Mes artistes' : 'Mes profils'}<em className="not-italic text-accent">.</em></h1>
           <p className="mt-1 text-sm text-muted">Choisissez un profil pour agir en son nom : agenda, messages, publications et bookings.</p>
+          {slots && !slots.unlimited && (
+            <p className="mt-1 text-xs text-gold-light">
+              {slots.used} profil{slots.used > 1 ? 's' : ''} sur {slots.included + slots.extra} · formule Agence ({slots.included} inclus{slots.extra ? ` + ${slots.extra} en plus` : ''}). Une invitation en attente occupe une place.
+            </p>
+          )}
         </div>
         <button type="button" onClick={() => setAdding(true)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-3.5 text-xs font-semibold text-white transition hover:bg-accent-strong">
           <Plus className="h-4 w-4" aria-hidden="true" />Ajouter un profil

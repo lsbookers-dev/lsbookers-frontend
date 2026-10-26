@@ -16,6 +16,7 @@ type ListedUser = {
   role: string
   emailVerified: boolean
   createdAt: string
+  canManageProfiles?: boolean
   profile?: { id: number; avatar?: string | null } | null
 }
 
@@ -187,18 +188,20 @@ export default function AdminUsersPage() {
   }
 
   const [togglingManage, setTogglingManage] = useState(false)
-  const toggleManageProfiles = async () => {
-    if (!detailUser) return
-    const enabled = !detailUser.canManageProfiles
+  const toggleManageProfiles = async (id?: number, wanted?: boolean) => {
+    const userId = id ?? detailUser?.id
+    if (!userId) return
+    const enabled = wanted ?? !detailUser?.canManageProfiles
     setTogglingManage(true)
     try {
-      const res = await apiFetch(`${API}/api/admin/users/${detailUser.id}/manage-profiles`, {
+      const res = await apiFetch(`${API}/api/admin/users/${userId}/manage-profiles`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled }),
       })
       if (!res.ok) throw new Error()
-      setDetailUser(d => (d ? { ...d, canManageProfiles: enabled } : d))
+      setDetailUser(d => (d && d.id === userId ? { ...d, canManageProfiles: enabled } : d))
+      setUsers(prev => prev.map(x => (x.id === userId ? { ...x, canManageProfiles: enabled } : x)))
     } catch {
       alert('Échec de la modification.')
     } finally {
@@ -309,6 +312,16 @@ export default function AdminUsersPage() {
               title="Voir la fiche complète"
             >
               <Eye size={16} />
+            </button>
+
+            {/* Formule Agence offerte (gérer plusieurs profils sans payer) */}
+            <button
+              onClick={() => toggleManageProfiles(u.id, !u.canManageProfiles)}
+              disabled={togglingManage}
+              className={`text-xs rounded-lg px-2 py-1.5 flex-shrink-0 transition disabled:opacity-40 ${u.canManageProfiles ? 'bg-accent-strong text-white' : 'border border-white/10 bg-white/5 text-white/55 hover:text-white'}`}
+              title={u.canManageProfiles ? 'Formule Agence offerte : cliquer pour la retirer' : 'Offrir la formule Agence (gérer plusieurs profils)'}
+            >
+              {u.canManageProfiles ? 'Agence offerte' : 'Offrir Agence'}
             </button>
 
             {/* Changer le rôle */}
@@ -431,8 +444,8 @@ export default function AdminUsersPage() {
                   )}
                   {/* Profils gérés : activé à la main en attendant la formule Agence */}
                   <div className="flex items-center justify-between gap-3 py-1.5">
-                    <span className="text-xs text-white/50">Gérer plusieurs profils (agence)</span>
-                    <button type="button" onClick={toggleManageProfiles} disabled={togglingManage}
+                    <span className="text-xs text-white/50">Formule Agence offerte (gérer plusieurs profils)</span>
+                    <button type="button" onClick={() => toggleManageProfiles()} disabled={togglingManage}
                       className={`rounded-lg px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${detailUser.canManageProfiles ? 'bg-accent-strong text-white' : 'border border-white/15 text-white/60 hover:text-white'}`}>
                       {detailUser.canManageProfiles ? 'Activé' : 'Désactivé'}
                     </button>

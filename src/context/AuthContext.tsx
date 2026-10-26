@@ -69,6 +69,7 @@ type RawUser = {
   avatarUrl?: string | null
   profile?: Profile & { avatar?: string | null }
   canManageProfiles?: boolean
+  hasAgency?: boolean
 }
 
 const normalizeUser = (raw: RawUser): User => ({
@@ -78,7 +79,8 @@ const normalizeUser = (raw: RawUser): User => ({
   name: raw.pseudo || raw.name || raw.firstName || undefined,
   avatarUrl: raw.avatar || raw.avatarUrl || raw.profile?.avatar || null,
   profile: raw.profile || undefined,
-  canManageProfiles: !!raw.canManageProfiles,
+  // Formule Agence (payée ou offerte par l'admin) : gérer plusieurs profils
+  canManageProfiles: !!(raw.hasAgency ?? raw.canManageProfiles),
 })
 
 /* ===================== Routes publiques ===================== */
