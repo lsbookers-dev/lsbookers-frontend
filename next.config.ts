@@ -8,7 +8,8 @@ const API_WS = API_ORIGIN.replace(/^http/, 'ws')
 const isDev = process.env.NODE_ENV !== 'production'
 
 // En local, http://localhost:9000 = faux stockage R2 pour les essais d'envoi
-const MEDIA_HOSTS = `https://*.r2.dev https://*.public.blob.vercel-storage.com${isDev ? ' http://localhost:9000' : ''}`
+// media.lsbookers.com = adresse à nous du stockage R2 (#324) ; *.r2.dev = ancienne adresse, gardée pour les anciens médias
+const MEDIA_HOSTS = `https://media.lsbookers.com https://*.r2.dev https://*.public.blob.vercel-storage.com${isDev ? ' http://localhost:9000' : ''}`
 // Envoi direct des fichiers du navigateur vers le stockage R2 (adresses signées, #275)
 const UPLOAD_HOSTS = `https://*.r2.cloudflarestorage.com${isDev ? ' http://localhost:9000' : ''}`
 
@@ -49,7 +50,13 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 86400,
     remotePatterns: [
-      // ✅ Cloudflare R2 (tous les médias — avatars, bannières, publications, messages, logos)
+      // ✅ Cloudflare R2, adresse à nous (#324)
+      {
+        protocol: 'https',
+        hostname: 'media.lsbookers.com',
+        pathname: '/**',
+      },
+      // ✅ Cloudflare R2, ancienne adresse (médias enregistrés avant media.lsbookers.com)
       {
         protocol: 'https',
         hostname: '*.r2.dev',
