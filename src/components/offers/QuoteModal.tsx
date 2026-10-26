@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2, X } from 'lucide-react'
 import Link from 'next/link'
 import { apiFetch } from '@/utils/auth'
+import { fileRequest } from '@/utils/directUpload'
 import { apiUrl } from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
 import { useFeedback, apiErrorMessage } from '@/components/ui/Feedback'
@@ -57,11 +58,8 @@ export default function QuoteModal({ offer, onClose }: { offer: Offer; onClose: 
         return
       }
       const { conversationId } = await apply.json()
-      const form = new FormData()
-      form.append('conversationId', String(conversationId))
-      form.append('file', doc)
-      if (message.trim()) form.append('content', message.trim())
-      const sent = await apiFetch(apiUrl('messages/send-file'), { method: 'POST', body: form })
+      const init = await fileRequest(doc, 'message', { conversationId, content: message.trim() || undefined })
+      const sent = init instanceof Response ? init : await apiFetch(apiUrl('messages/send-file'), init)
       if (!sent.ok) { notify(await apiErrorMessage(sent, 'Le document n’a pas pu être envoyé.'), 'error'); return }
       notify('Votre devis est envoyé à l’organisateur.')
       onClose()

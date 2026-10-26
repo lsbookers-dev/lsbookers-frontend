@@ -1,6 +1,7 @@
 'use client'
 
 import { apiFetch, PRO_REQUIRED_EVENT } from '@/utils/auth'
+import { uploadToStorage } from '@/utils/directUpload'
 import { usePlan, refreshPlan, readVideoDuration } from '@/lib/plan'
 /**
  * Composeur partagé par l'accueil et les profils.
@@ -72,6 +73,7 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
   const [coverIndex, setCoverIndex] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [uploadStep, setUploadStep] = useState(0)
+  const [uploadPercent, setUploadPercent] = useState(0) // progression du média en cours d'envoi
   const [error, setError] = useState('')
   const [dragging, setDragging] = useState(false)
   const [showTagSearch, setShowTagSearch] = useState(false)
@@ -231,14 +233,9 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
   }
 
   const uploadFile = async (item: FilePreview) => {
-    const form = new FormData()
-    form.append('file', item.file)
-    form.append('folder', 'media')
-    form.append('type', item.type)
-    const response = await apiFetch(`${API_BASE}/api/upload`, {
-      method: 'POST',
-      body: form,
-    })
+    setUploadPercent(0)
+    // Envoi direct vers le stockage (progression en %), ou par le serveur en secours
+    const response = await uploadToStorage(item.file, { folder: 'media', onProgress: setUploadPercent })
     if (!response.ok) {
       const payload = await response.json().catch(() => null)
       throw new Error(payload?.error === 'FILE_TOO_LARGE' ? 'Un média est trop volumineux.' : 'L’envoi d’un média a échoué.')
@@ -540,13 +537,13 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
         <footer className="flex min-h-16 items-center gap-3 border-t border-white/[0.08] bg-[#0d0c11] px-4 py-3 sm:px-5">
           <div className={`hidden min-w-0 flex-1 items-center gap-2 text-[10px] sm:flex ${ready ? 'text-emerald-300/70' : 'text-white/35'}`}>
             <span className={`h-2 w-2 shrink-0 rounded-full ${ready ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.45)]' : 'bg-white/20'}`} />
-            <span>{uploading ? `Envoi du média ${Math.min(uploadStep + 1, files.length)} sur ${files.length}…` : ready ? 'Votre publication est prête' : 'Ajoutez un média et un titre'}</span>
+            <span>{uploading ? `Envoi du média ${Math.min(uploadStep + 1, files.length)} sur ${files.length}… ${uploadPercent} %` : ready ? 'Votre publication est prête' : 'Ajoutez un média et un titre'}</span>
           </div>
           {error && <p role="alert" className="min-w-0 flex-1 text-[10px] text-red-300 sm:text-right">{error}</p>}
           <button type="button" onClick={closeModal} disabled={uploading} className="hidden rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-[11px] text-white/55 transition hover:text-white sm:block">Annuler</button>
           <button type="button" onClick={handlePublish} disabled={!ready || uploading} className="ml-auto inline-flex min-w-32 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-500 px-5 py-2.5 text-[11px] font-semibold text-white shadow-[0_12px_30px_rgba(168,85,247,.22)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35">
             {uploading ? <Loader2 size={14} className="animate-spin" /> : ready ? <Send size={14} /> : <Check size={14} />}
-            {uploading ? 'Publication…' : 'Publier'}
+            {uploading ? `Publication… ${uploadPercent} %` : 'Publier'}
           </button>
         </footer>
       </section>

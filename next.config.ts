@@ -7,7 +7,10 @@ const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backen
 const API_WS = API_ORIGIN.replace(/^http/, 'ws')
 const isDev = process.env.NODE_ENV !== 'production'
 
-const MEDIA_HOSTS = 'https://*.r2.dev https://*.public.blob.vercel-storage.com'
+// En local, http://localhost:9000 = faux stockage R2 pour les essais d'envoi
+const MEDIA_HOSTS = `https://*.r2.dev https://*.public.blob.vercel-storage.com${isDev ? ' http://localhost:9000' : ''}`
+// Envoi direct des fichiers du navigateur vers le stockage R2 (adresses signées, #275)
+const UPLOAD_HOSTS = `https://*.r2.cloudflarestorage.com${isDev ? ' http://localhost:9000' : ''}`
 
 const csp = [
   "default-src 'self'",
@@ -17,7 +20,7 @@ const csp = [
   `img-src 'self' data: blob: ${MEDIA_HOSTS} ${API_ORIGIN} https://*.tile.openstreetmap.org`,
   `media-src 'self' blob: ${MEDIA_HOSTS} ${API_ORIGIN}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${API_ORIGIN} ${API_WS} https://api.lsbookers.com wss://api.lsbookers.com https://geo.api.gouv.fr ${MEDIA_HOSTS} https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io`,
+  `connect-src 'self' ${API_ORIGIN} ${API_WS} https://api.lsbookers.com wss://api.lsbookers.com https://geo.api.gouv.fr ${MEDIA_HOSTS} ${UPLOAD_HOSTS} https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io`,
   'frame-src https://www.youtube.com https://www.youtube-nocookie.com https://w.soundcloud.com https://www.openstreetmap.org',
   "worker-src 'self' blob:",
   "manifest-src 'self'",

@@ -12,6 +12,7 @@ import MessageThread from './MessageThread'
 import ConversationDetails from './ConversationDetails'
 import { API_BASE, getHeaders } from './_helpers'
 import { getSocket, getExistingSocket } from '@/lib/socket'
+import { fileRequest } from '@/utils/directUpload'
 import type { Conversation, Message, SearchUser } from './types'
 
 /* ══════════════════════════════════════════════════════════
@@ -34,6 +35,7 @@ function MessagesContent() {
   const [file, setFile] = useState<File | null>(null)
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  const [uploadPercent, setUploadPercent] = useState<number | null>(null) // envoi d'un fichier en cours
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
   const [search, setSearch] = useState('')
@@ -535,14 +537,18 @@ function MessagesContent() {
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
     try {
-      const fd = new FormData()
-      fd.append('conversationId', String(activeConvId))
-      if (optimisticText) fd.append('content', optimisticText)
-      if (file) fd.append('file', file)
-      const res = await apiFetch(`${API_BASE}/api/messages/send-file`, {
-        method: 'POST',
-        body: fd,
-      })
+      // Fichier : envoi direct vers le stockage (progression en %), ou par le serveur en secours
+      let init: RequestInit | Response
+      if (file) {
+        setUploadPercent(0)
+        init = await fileRequest(file, 'message', { conversationId: activeConvId, content: optimisticText || undefined }, setUploadPercent)
+      } else {
+        const fd = new FormData()
+        fd.append('conversationId', String(activeConvId))
+        fd.append('content', optimisticText)
+        init = { method: 'POST', body: fd }
+      }
+      const res = init instanceof Response ? init : await apiFetch(`${API_BASE}/api/messages/send-file`, init)
       if (!res.ok) {
         // Rollback si erreur
         if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
@@ -568,7 +574,7 @@ function MessagesContent() {
       console.error('handleSend:', err)
       if (tempId) setMessages(prev => prev.filter(m => m.id !== tempId))
     }
-    finally { setSending(false) }
+    finally { setSending(false); setUploadPercent(null) }
   }, [activeConvId, token, content, file, sending, currentUserId, user])
 
   /* ── Supprimer une conversation ── */
@@ -659,6 +665,7 @@ function MessagesContent() {
         file={file}
         filePreviewUrl={filePreviewUrl}
         sending={sending}
+        uploadPercent={uploadPercent}
         lightbox={lightbox}
         setLightbox={setLightbox}
         setMobileView={setMobileView}

@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import CropModal from '@/components/CropModal'
 import AnnouncementSettings from '@/components/admin/AnnouncementSettings'
 import { getAuthToken, apiFetch } from '@/utils/auth'
+import { uploadToStorage } from '@/utils/directUpload'
 
 type AdminSettings = {
   welcomeText: string
@@ -106,15 +107,8 @@ export default function AdminSettingsPage() {
         headerLogoUrl: 'logos',
         landingLogoUrl: 'logos',
       }
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('folder', folderMap[field] ?? 'media')
-      fd.append('type', 'image')
       try {
-        const res = await apiFetch(`${API_BASE}/api/upload`, {
-          method: 'POST',
-          body: fd,
-        })
+        const res = await uploadToStorage(file, { folder: folderMap[field] ?? 'media' })
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({})) as { error?: string; details?: string }
           throw new Error(`UPLOAD ${res.status} — ${errBody.error ?? ''} ${errBody.details ?? ''}`)

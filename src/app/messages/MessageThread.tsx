@@ -33,6 +33,7 @@ interface MessageThreadProps {
   file: File | null
   filePreviewUrl: string | null
   sending: boolean
+  uploadPercent?: number | null
   lightbox: { url: string; name?: string | null } | null
   setLightbox: (v: { url: string; name?: string | null } | null) => void
   setMobileView: (v: 'list' | 'chat') => void
@@ -56,7 +57,7 @@ interface MessageThreadProps {
 
 export default function MessageThread({
   activeConv, activeConvId, messages, currentUserId, isOrganizer, loadingMsgs,
-  token, mobileView, content, file, filePreviewUrl, sending,
+  token, mobileView, content, file, filePreviewUrl, sending, uploadPercent,
   setLightbox, setMobileView, setFile, setMessages,
   handleSend, handleMessagesScroll, handleTextareaChange,
   messagesContainerRef, messagesEndRef, fileInputRef, textareaRef,
@@ -803,7 +804,9 @@ export default function MessageThread({
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
-        <p className="hidden md:block text-[10px] text-white/10 mt-1.5 text-center tracking-wide">Entrée pour envoyer · Shift+Entrée pour nouvelle ligne</p>
+        {uploadPercent != null
+          ? <p className="text-[10px] text-white/50 mt-1.5 text-center tracking-wide" role="status">Envoi du fichier… {uploadPercent} %</p>
+          : <p className="hidden md:block text-[10px] text-white/10 mt-1.5 text-center tracking-wide">Entrée pour envoyer · Shift+Entrée pour nouvelle ligne</p>}
       </div>
 
       {/* Modal offre partagée */}

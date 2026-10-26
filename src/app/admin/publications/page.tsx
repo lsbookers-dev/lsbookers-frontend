@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/utils/auth'
+import { uploadToStorage } from '@/utils/directUpload'
 import { Loader2, Trash2, ToggleLeft, ToggleRight, Plus, X, Pin, PinOff } from 'lucide-react'
 
 type AdminPost = {
@@ -101,13 +102,7 @@ export default function AdminPublicationsPage() {
 
       if (mediaFile) {
         setUploading(true)
-        const form = new FormData()
-        form.append('file', mediaFile)
-        form.append('folder', 'media')
-        const upRes = await apiFetch(`${API_BASE}/api/upload`, {
-          method: 'POST',
-          body: form,
-        })
+        const upRes = await uploadToStorage(mediaFile, { folder: 'media' })
         if (!upRes.ok) throw new Error('Erreur upload média')
         const upData = await upRes.json()
         mediaUrl = upData.url || upData.secure_url || null

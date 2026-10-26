@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
+import { fileRequest } from '@/utils/directUpload'
 import { apiUrl } from '@/utils/api'
 import LsIcon from '@/components/ui/LsIcon'
 import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
@@ -94,11 +95,11 @@ function InvoicesContent() {
       if (!start.ok) throw new Error(await apiErrorMessage(start, 'Impossible d’ouvrir la conversation.'))
       const { conversationId } = await start.json()
       const { invoicePdfFile } = await import('@/lib/pdf')
-      const form = new FormData()
-      form.append('conversationId', String(conversationId))
-      form.append('content', `${inv.kind === 'QUOTE' ? 'Voici mon devis' : 'Voici ma facture'} ${inv.number}${inv.title ? ` — ${inv.title}` : ''}.`)
-      form.append('file', await invoicePdfFile(inv))
-      const sent = await apiFetch(apiUrl('messages/send-file'), { method: 'POST', body: form })
+      const init = await fileRequest(await invoicePdfFile(inv), 'message', {
+        conversationId,
+        content: `${inv.kind === 'QUOTE' ? 'Voici mon devis' : 'Voici ma facture'} ${inv.number}${inv.title ? ` — ${inv.title}` : ''}.`,
+      })
+      const sent = init instanceof Response ? init : await apiFetch(apiUrl('messages/send-file'), init)
       if (!sent.ok) throw new Error(await apiErrorMessage(sent, 'L’envoi du PDF a échoué.'))
     } catch (err) {
       setBusyId(null)

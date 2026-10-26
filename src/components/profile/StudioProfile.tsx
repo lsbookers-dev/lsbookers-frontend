@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { Eye, Sparkles } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch, getAuthToken } from '@/utils/auth'
+import { uploadToStorage } from '@/utils/directUpload'
 import { apiUrl } from '@/utils/api'
 import { useProfilePublications } from '@/hooks/useProfilePublications'
 import CropModal from '@/components/CropModal'
@@ -80,10 +81,9 @@ export default function StudioProfile() {
     if (!profile) return
     setUploading(type)
     try {
-      const form = new FormData()
-      form.append('file', new File([blob], `${type}.jpg`, { type: 'image/jpeg' }))
-      form.append('folder', type === 'avatar' ? 'avatars' : 'banners')
-      const upload = await apiFetch(apiUrl('upload'), { method: 'POST', body: form })
+      const upload = await uploadToStorage(new File([blob], `${type}.jpg`, { type: 'image/jpeg' }), {
+        folder: type === 'avatar' ? 'avatars' : 'banners',
+      })
       if (!upload.ok) throw new Error(await apiErrorMessage(upload, 'L’envoi de l’image a échoué.'))
       const { url } = await upload.json()
       const res = await apiFetch(apiUrl(`profile/${profile.id}`), {

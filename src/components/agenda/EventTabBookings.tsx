@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { apiFetch } from '@/utils/auth'
+import { fileRequest } from '@/utils/directUpload'
 import {
   CreditCard, FileText, MapPin, Image as ImageIcon, StickyNote,
   Plus, Download, Eye, Trash2, Bed, Plane, Loader2, Paperclip,
@@ -68,9 +69,8 @@ export function TabContrat({ contracts, bookingId, myProfileId, onAdd, onDelete,
   const handleUpload = async (file: File) => {
     setUploading(true); setError('')
     try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await apiFetch(`${API_BASE}/api/bookings/${bookingId}/contracts`, { method: 'POST', body: form })
+      const init = await fileRequest(file, 'booking-contract', {})
+      const res = init instanceof Response ? init : await apiFetch(`${API_BASE}/api/bookings/${bookingId}/contracts`, init)
       const d = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(d.error === 'FORMAT_NOT_ALLOWED' ? 'Seuls les fichiers PDF sont acceptés.'
@@ -153,15 +153,14 @@ export function TabLogement({ logistics, isOrganizer, myProfileId, bookingId, on
     setError('')
     setSaving(true)
     try {
-      const form = new FormData()
-      form.append('type', type)
-      form.append('title', title.trim())
-      if (file) form.append('file', file)
-
-      const res = await apiFetch(`${API_BASE}/api/bookings/${bookingId}/logistics`, {
-        method: 'POST',
-        body: form,
-      })
+      // Fichier facultatif : envoi direct vers le stockage, ou par le serveur en secours
+      let init: RequestInit | Response
+      if (file) {
+        init = await fileRequest(file, 'booking-logistics', { type, title: title.trim() })
+      } else {
+        init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, title: title.trim() }) }
+      }
+      const res = init instanceof Response ? init : await apiFetch(`${API_BASE}/api/bookings/${bookingId}/logistics`, init)
       const d = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(d.error === 'FORMAT_NOT_ALLOWED' ? 'Formats acceptés : PDF, JPG, PNG, WEBP.'
@@ -288,12 +287,8 @@ export function TabMedia({ media, isOrganizer, bookingId, onAdd, onDelete }: {
   const handleUpload = async (file: File) => {
     setUploading(true)
     try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await apiFetch(`${API_BASE}/api/bookings/${bookingId}/media`, {
-        method: 'POST',
-        body: form,
-      })
+      const init = await fileRequest(file, 'booking-media', {})
+      const res = init instanceof Response ? init : await apiFetch(`${API_BASE}/api/bookings/${bookingId}/media`, init)
       if (!res.ok) throw new Error()
       const d = await res.json()
       onAdd(d.media)
