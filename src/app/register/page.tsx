@@ -463,19 +463,22 @@ export default function RegisterPage() {
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white" style={{ background: '#0c0a14' }}>
-      <Image
-        src={bgUrl}
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        quality={82}
-        placeholder="blur"
-        blurDataURL={PUBLIC_IMAGE_BLUR}
-        className="z-0 object-cover"
-      />
-      <div className="absolute inset-0 z-10 bg-black/60" />
-      <div className="pointer-events-none absolute inset-0 z-10">
+      {/* Fond calé sur l'écran (pas sur la page) : il ne bouge pas quand le formulaire s'allonge */}
+      <div className="fixed inset-0 z-0">
+        <Image
+          src={bgUrl}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          quality={82}
+          placeholder="blur"
+          blurDataURL={PUBLIC_IMAGE_BLUR}
+          className="object-cover"
+        />
+      </div>
+      <div className="fixed inset-0 z-10 bg-black/60" />
+      <div className="pointer-events-none fixed inset-0 z-10">
         <div className="absolute -top-32 -left-28 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-pink-500/15 blur-3xl" />
       </div>
