@@ -9,6 +9,7 @@ import InstallPrompt from '@/components/InstallPrompt'
 import { MobileAnnouncement } from '@/components/HeaderAnnouncement'
 import PausedAccountBanner from '@/components/settings/PausedAccountBanner'
 import AppSidebar from '@/components/AppSidebar'
+import { ActingBanner } from '@/components/managed/ProfileSwitcher'
 import UpgradePrompt from '@/components/plan/UpgradePrompt'
 import SignupPlanRedirect from '@/components/plan/SignupPlanRedirect'
 
@@ -37,6 +38,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   const publicPaths = [
     '/', '/login', '/register', '/forgot-password', '/reset-password',
     '/verify-email', '/device-verified', '/contact', '/confirm-email-change',
+    '/gestion/invitation',
   ]
   const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/legal/') || pathname.startsWith('/b/')
   const isAdminPage = pathname.startsWith('/admin')
@@ -69,6 +71,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         }}
       >
         <style>{`@media (min-width: 768px) { main { padding-bottom: 0 !important; } }`}</style>
+        {showAppNav && <ActingBanner />}
         {showAppNav && <PausedAccountBanner />}
         {showAppNav && <MobileAnnouncement />}
         {children}

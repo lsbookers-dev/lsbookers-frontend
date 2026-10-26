@@ -6,6 +6,7 @@ import { apiFetch } from '@/utils/auth'
 import { useState } from 'react'
 import { Ban, Banknote, CalendarDays, Check, RefreshCw, X } from 'lucide-react'
 import { API_BASE } from './_helpers'
+import { useAuth } from '@/context/AuthContext'
 import type { Message, BookingRequestData } from './types'
 
 /* ── Status badge ────────────────────────────────────────── */
@@ -39,12 +40,16 @@ export function BookingRequestCard({
   const [counterFee, setCounterFee] = useState('')
   const [counterMsg, setCounterMsg] = useState('')
   const [sendingCounter, setSendingCounter] = useState(false)
+  const [localAwaiting, setLocalAwaiting] = useState<boolean | null>(null)
+  const { acting } = useAuth()
 
   const br = msg.bookingRequest
   if (!br) return null
 
   const status = localStatus ?? br.status
   const isSender = msg.sender.id === currentUserId
+  // Profil géré avec « accord de l'artiste » : l'agence a accepté, l'artiste confirme
+  const awaitingArtist = status === 'PENDING' && (localAwaiting ?? !!br.awaitingArtist)
 
   const dateLabel = br.startDate
     ? new Date(br.startDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -60,6 +65,9 @@ export function BookingRequestCard({
         body: JSON.stringify({ status: newStatus }),
       })
       if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (data?.awaitingArtist) { setLocalAwaiting(true); return }
+        setLocalAwaiting(false)
         setLocalStatus(newStatus)
         onStatusUpdate(msg.id, newStatus)
       }
@@ -113,7 +121,31 @@ export function BookingRequestCard({
           <div className="lsb-booking-note"><span>MESSAGE</span><p>&ldquo;{br.message}&rdquo;</p></div>
         )}
       </div>
-      {status === 'PENDING' && (
+      {awaitingArtist && (
+        <div className="lsb-booking-card-footer">
+          {isSender ? (
+            <div className="lsb-booking-waiting">
+              <span>Accepté par l’agence, en attente de la confirmation de l’artiste</span>
+              <button onClick={() => updateStatus('CANCELLED')} disabled={updating} className="is-danger">Annuler</button>
+            </div>
+          ) : acting ? (
+            <div className="lsb-booking-waiting"><span>En attente de la confirmation de l’artiste</span></div>
+          ) : (
+            <>
+              <p className="mb-2 text-xs text-white/60">Votre agence propose d’accepter ce booking. Le confirmez-vous ?</p>
+              <div className="lsb-booking-actions">
+                <button onClick={() => updateStatus('ACCEPTED')} disabled={updating} className="is-primary">
+                  <Check className="w-4 h-4" />Confirmer
+                </button>
+                <button onClick={() => updateStatus('DECLINED')} disabled={updating} className="is-danger">
+                  <X className="w-4 h-4" />Refuser
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {status === 'PENDING' && !awaitingArtist && (
         <div className="lsb-booking-card-footer">
           {!isSender ? (
             showCounter ? (

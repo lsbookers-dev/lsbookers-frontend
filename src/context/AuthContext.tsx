@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { getAuthToken, apiFetch, isCookieSessionMode, storeSession, COOKIE_SESSION_MARKER } from '@/utils/auth'
+import { getAuthToken, apiFetch, isCookieSessionMode, storeSession, COOKIE_SESSION_MARKER, setActingProfileId } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
 import { disconnectSocket } from '@/lib/socket'
@@ -29,10 +29,19 @@ type User = {
   name?: string
   profile?: Profile
   avatarUrl?: string | null
+  canManageProfiles?: boolean
+}
+
+/** Profil géré en cours (« Vous agissez en tant que ») : le site s'affiche comme ce profil */
+export type Acting = {
+  profileId: number
+  requireApproval: boolean
+  manager: { id: number; name: string; avatar: string | null; profileId: number | null }
 }
 
 type AuthContextType = {
   user: User | null
+  acting: Acting | null
   token: string | null
   loading: boolean
   setUser: React.Dispatch<React.SetStateAction<User | null>>
@@ -59,6 +68,7 @@ type RawUser = {
   avatar?: string | null
   avatarUrl?: string | null
   profile?: Profile & { avatar?: string | null }
+  canManageProfiles?: boolean
 }
 
 const normalizeUser = (raw: RawUser): User => ({
@@ -68,6 +78,7 @@ const normalizeUser = (raw: RawUser): User => ({
   name: raw.pseudo || raw.name || raw.firstName || undefined,
   avatarUrl: raw.avatar || raw.avatarUrl || raw.profile?.avatar || null,
   profile: raw.profile || undefined,
+  canManageProfiles: !!raw.canManageProfiles,
 })
 
 /* ===================== Routes publiques ===================== */
@@ -81,6 +92,7 @@ const PUBLIC_PATHS = [
   '/device-verified',
   '/contact',
   '/confirm-email-change',
+  '/gestion/invitation', // lien reçu par e-mail pour valider un profil géré
 ]
 
 const isPublicPath = (pathname: string) => {
@@ -91,6 +103,7 @@ const isPublicPath = (pathname: string) => {
 }
 
 function clearLocalSession() {
+  setActingProfileId(null)
   try { localStorage.removeItem('user') } catch { }
   try { localStorage.removeItem('token') } catch { }
 }
@@ -105,6 +118,7 @@ async function clearApplicationCaches() {
 /* ===================== Provider ===================== */
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
+  const [acting, setActing] = useState<Acting | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -151,6 +165,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const data = await res.json()
         const normalized = normalizeUser(data.user)
+        if (!cancelled) setActing(data.acting || null)
 
         // Mode cookie : la session est portée par le cookie httpOnly, on ne garde qu'un marqueur.
         if (cookieMode) {
@@ -235,6 +250,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const data = await res.json()
     const normalized = normalizeUser(data.user)
+    setActingProfileId(null)
+    setActing(null)
 
     // Cookie httpOnly posé par le backend. Le jeton n'est gardé dans le navigateur qu'en
     // mode transition (API sur un autre site) ; en mode cookie, seul un marqueur est stocké.
@@ -264,11 +281,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await clearApplicationCaches().catch(() => {})
     setToken(null)
     setUser(null)
+    setActing(null)
     router.replace('/login')
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, setUser, login, logout }}>
+    <AuthContext.Provider value={{ user, acting, token, loading, setUser, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

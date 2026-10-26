@@ -971,6 +971,7 @@ body {
   .lsb-side-link svg { width: 1.2rem; height: 1.2rem; }
   .lsb-side-link.is-active::before { height: 1.6rem; }
   .lsb-sidebar-legal { display: none; }
+  .lsb-switcher-label, .lsb-switcher-text { display: none; }
   .lsb-app-main { margin-left: 5.6rem; }
   .lsb-dashboard-grid { grid-template-columns: 1fr 1fr; }
   .lsb-home-grid { grid-template-columns:minmax(0,1fr) 15rem; }

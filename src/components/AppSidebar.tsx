@@ -7,6 +7,7 @@ import {
   Settings, Sparkles, TicketCheck,
 } from 'lucide-react'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
+import ProfileSwitcher from '@/components/managed/ProfileSwitcher'
 
 const primary = [
   { href: '/home', label: 'Accueil', icon: Home },
@@ -47,7 +48,10 @@ export default function AppSidebar() {
 
   return (
     <aside className="lsb-sidebar" aria-label="Navigation principale">
-      <nav>{group(primary)}</nav>
+      <div>
+        <ProfileSwitcher />
+        <nav>{group(primary)}</nav>
+      </div>
       <div className="flex flex-col gap-3">
         <nav>{group(secondary)}</nav>
         <div className="lsb-sidebar-legal">

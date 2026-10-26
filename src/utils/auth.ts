@@ -57,6 +57,32 @@ function isJwt(value: string | null): value is string {
   return !!value && value.split('.').length === 3
 }
 
+/**
+ * « Vous agissez en tant que » : profil géré choisi dans le sélecteur (agent, plusieurs salles).
+ * Envoyé au serveur dans l'en-tête X-Act-As-Profile ; absent = son propre profil.
+ */
+const ACT_AS_KEY = 'lsb_act_as'
+const ACT_AS_HEADER = 'X-Act-As-Profile'
+export const ACTING_CHANGED_EVENT = 'lsb:acting-changed'
+
+export function getActingProfileId(): number | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const id = Number(localStorage.getItem(ACT_AS_KEY))
+    return Number.isInteger(id) && id > 0 ? id : null
+  } catch {
+    return null
+  }
+}
+
+export function setActingProfileId(profileId: number | null) {
+  try {
+    if (profileId) localStorage.setItem(ACT_AS_KEY, String(profileId))
+    else localStorage.removeItem(ACT_AS_KEY)
+  } catch { }
+  window.dispatchEvent(new CustomEvent(ACTING_CHANGED_EVENT))
+}
+
 /** Identifiant de l'utilisateur connecté (lu depuis le profil mis en cache) */
 export function getUserId(): number | null {
   if (typeof window === 'undefined') return null
@@ -85,7 +111,20 @@ export function apiFetch(input: string, init: RequestInit = {}): Promise<Respons
   if (!isCookieSessionMode() && isJwt(token) && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`)
   }
-  return fetch(input, { ...init, headers, credentials: 'include' }).then(res => {
+  const actingId = getActingProfileId()
+  if (actingId && !headers.has(ACT_AS_HEADER)) headers.set(ACT_AS_HEADER, String(actingId))
+  return fetch(input, { ...init, headers, credentials: 'include' }).then(async res => {
+    // Gestion retirée entre-temps (l'artiste a repris la main) : on revient à son propre profil
+    if (res.status === 403 && actingId) {
+      const body = await res.clone().json().catch(() => null)
+      if (body?.error === 'MANAGEMENT_ENDED') {
+        setActingProfileId(null)
+        headers.delete(ACT_AS_HEADER)
+        return fetch(input, { ...init, headers, credentials: 'include' })
+      }
+    }
+    return res
+  }).then(res => {
     // Limite du compte gratuit atteinte : la fenêtre « Passer en Pro » s'ouvre, où que soit l'action
     if (res.status === 403) {
       res.clone().json().then((body) => {

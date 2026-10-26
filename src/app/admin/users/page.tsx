@@ -36,6 +36,7 @@ type DetailUser = {
   isPaymentEnabled: boolean
   registrationStep: number
   stripeAccountId?: string | null
+  canManageProfiles?: boolean
   profile?: {
     id: number
     bio?: string | null
@@ -182,6 +183,26 @@ export default function AdminUsersPage() {
       alert('Échec du changement de rôle.')
     } finally {
       setChangingRole(null)
+    }
+  }
+
+  const [togglingManage, setTogglingManage] = useState(false)
+  const toggleManageProfiles = async () => {
+    if (!detailUser) return
+    const enabled = !detailUser.canManageProfiles
+    setTogglingManage(true)
+    try {
+      const res = await apiFetch(`${API}/api/admin/users/${detailUser.id}/manage-profiles`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
+      if (!res.ok) throw new Error()
+      setDetailUser(d => (d ? { ...d, canManageProfiles: enabled } : d))
+    } catch {
+      alert('Échec de la modification.')
+    } finally {
+      setTogglingManage(false)
     }
   }
 
@@ -408,6 +429,14 @@ export default function AdminUsersPage() {
                   {detailUser.stripeAccountId && (
                     <InfoRow label="Compte Stripe" value={detailUser.stripeAccountId} />
                   )}
+                  {/* Profils gérés : activé à la main en attendant la formule Agence */}
+                  <div className="flex items-center justify-between gap-3 py-1.5">
+                    <span className="text-xs text-white/50">Gérer plusieurs profils (agence)</span>
+                    <button type="button" onClick={toggleManageProfiles} disabled={togglingManage}
+                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${detailUser.canManageProfiles ? 'bg-accent-strong text-white' : 'border border-white/15 text-white/60 hover:text-white'}`}>
+                      {detailUser.canManageProfiles ? 'Activé' : 'Désactivé'}
+                    </button>
+                  </div>
                 </Section>
 
                 {/* Informations légales */}

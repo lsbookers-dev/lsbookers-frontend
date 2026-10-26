@@ -43,6 +43,8 @@ export interface BookingRequestData {
   cancellationRequesterUserId?: number | null
   requesterUserId?: number | null
   targetUserId?: number | null
+  /** Profil géré : l'agence a accepté, l'artiste doit confirmer */
+  awaitingArtist?: boolean
 }
 
 export interface Message {

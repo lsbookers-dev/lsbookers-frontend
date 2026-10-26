@@ -27,6 +27,15 @@ export function billingLink(type: string): string | null {
     case 'BOOKING_PAYMENT':
     case 'BOOKING_PAYMENT_FAILED':
       return '/agenda'
+    // Profils gérés : le titulaire répond dans ses Réglages, l'agence retrouve ses profils
+    case 'MANAGEMENT_INVITE':
+    case 'MANAGEMENT_ENDED':
+      return '/settings/management'
+    case 'MANAGEMENT_ACCEPTED':
+    case 'MANAGEMENT_DECLINED':
+      return '/gestion'
+    case 'ADMIN_MANAGED_PROFILE_CHECK':
+      return '/admin/users'
     case 'ADMIN_CAROUSEL_REQUEST':
     case 'ADMIN_EXTRA_ORDER':
       return '/admin/subscriptions?tab=orders'
