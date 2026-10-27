@@ -131,14 +131,14 @@ export default function AgencySpace({ agencyName }: { agencyName: string }) {
 
   return (
     <div className="grid gap-4">
-      <SpacePanel kicker="Espace agence" title="À traiter"
+      <SpacePanel kicker="Mes profils gérés" title="À traiter"
         action={<button type="button" onClick={() => setAdding(true)} className="rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-white hover:bg-accent-strong">Ajouter un profil</button>}>
         {data.todo.length === 0
           ? <EmptyLine>Rien n’attend pour le moment, tous profils confondus.</EmptyLine>
           : <div className="grid">{data.todo.map(todoLine)}</div>}
       </SpacePanel>
 
-      <SpacePanel kicker="Agence" title={title} action={<PanelLink href="/gestion">Gérer</PanelLink>}>
+      <SpacePanel kicker="Formule Business" title={title} action={<PanelLink href="/gestion">Gérer</PanelLink>}>
         {data.profiles.length === 0 ? (
           <EmptyLine>Vous ne gérez encore aucun profil. Ajoutez-en un pour commencer.</EmptyLine>
         ) : (
@@ -167,7 +167,7 @@ export default function AgencySpace({ agencyName }: { agencyName: string }) {
       </SpacePanel>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SpacePanel kicker="Agenda" title="Prochaines dates" action={<PanelLink href="/gestion/agenda">Agenda de l’agence</PanelLink>}>
+        <SpacePanel kicker="Agenda" title="Prochaines dates" action={<PanelLink href="/gestion/agenda">Agenda de mes profils</PanelLink>}>
           {data.upcoming.length === 0 ? <EmptyLine>Aucune date dans les 14 prochains jours.</EmptyLine> : (
             <div className="grid">
               {data.upcoming.map((u, i) => (
@@ -217,7 +217,7 @@ export default function AgencySpace({ agencyName }: { agencyName: string }) {
                   </div>
                 )
               })}
-              <p className="mt-1 text-[11px] text-muted">Indicatif : chaque artiste règle lui-même son agence. Le taux n’est visible que par vous.</p>
+              <p className="mt-1 text-[11px] text-muted">Indicatif : chaque profil vous règle lui-même. Le taux n’est visible que par vous.</p>
             </div>
           )}
         </SpacePanel>

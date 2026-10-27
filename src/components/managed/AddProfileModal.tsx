@@ -35,7 +35,7 @@ async function postWithExtraProfile(
   const info = await res.json().catch(() => ({}))
   const ok = await confirm({
     title: 'Ajouter un profil en plus ?',
-    message: `Les ${info.included ?? ''} profils de votre formule Agence sont pris. Ce profil en plus coûte ${euros(info.extraPriceCents ?? 0)} ${info.interval === 'YEAR' ? 'par an' : 'par mois'}, calculé au prorata. Il est retiré de votre facture dès qu’une place se libère.`,
+    message: `Les ${info.included ?? ''} profils de votre formule Business sont pris. Ce profil en plus coûte ${euros(info.extraPriceCents ?? 0)} ${info.interval === 'YEAR' ? 'par an' : 'par mois'}, calculé au prorata. Il est retiré de votre facture dès qu’une place se libère.`,
     confirmLabel: 'Ajouter ce profil',
   })
   return ok ? send(true) : null
@@ -58,7 +58,7 @@ export default function AddProfileModal({ onClose, onDone, welcome = false }: { 
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-white/10 bg-surface-2 p-5 sm:rounded-2xl" onClick={e => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            {welcome && <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-gold">Formule Agence activée</p>}
+            {welcome && <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-gold">Formule Business activée</p>}
             <h2 className="text-lg font-semibold text-white">{mode === 'invite' ? 'Inviter un membre' : mode === 'create' ? 'Créer un profil' : 'Ajoutez vos profils'}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="rounded-lg p-1 text-white/50 hover:text-white"><X className="h-5 w-5" /></button>

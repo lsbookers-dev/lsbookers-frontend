@@ -82,7 +82,7 @@ function SubscriptionsContent() {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [startDates, setStartDates] = useState<Record<string, string>>({})
-  const [welcome, setWelcome] = useState(false) // fenêtre « Ajoutez vos profils » après l'achat de l'Agence
+  const [welcome, setWelcome] = useState(false) // fenêtre « Ajoutez vos profils » après l'achat de la formule Business
 
   useEffect(() => { if (!user) router.replace('/login') }, [user, router])
 
@@ -123,10 +123,10 @@ function SubscriptionsContent() {
   useEffect(() => {
     const sub = params.get('abonnement')
     const extra = params.get('formule')
-    const agence = params.get('agence')
-    if (!sub && !extra && !agence) return
+    const business = params.get('business')
+    if (!sub && !extra && !business) return
     if (sub === 'ok') notify('Bienvenue dans la version Pro ! Votre abonnement est en cours d’activation.')
-    if (agence === 'ok') { notify('Bienvenue dans la formule Agence ! Elle est en cours d’activation.'); setWelcome(true) }
+    if (business === 'ok') { notify('Bienvenue dans la formule Business ! Elle est en cours d’activation.'); setWelcome(true) }
     if (extra === 'ok') notify('Merci ! Votre service est payé : il sera validé très vite par l’équipe LS Bookers.')
     const t = setTimeout(() => { refresh(); loadExtras() }, 2500)
     router.replace('/subscriptions')
@@ -263,10 +263,10 @@ function SubscriptionsContent() {
       {plan?.signupPlan && !isPro && (
         <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-white">{plan.signupPlan.plan === 'AGENCY' ? 'Finalisez votre formule Agence' : plan.signupPlan.plan === 'PRO' ? 'Finalisez votre version Pro' : 'Votre code est prêt'}</p>
+            <p className="text-sm font-semibold text-white">{plan.signupPlan.plan === 'AGENCY' ? 'Finalisez votre formule Business' : plan.signupPlan.plan === 'PRO' ? 'Finalisez votre version Pro' : 'Votre code est prêt'}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-white/60">
               {plan.signupPlan.plan === 'AGENCY'
-                ? 'Vous avez choisi la formule Agence à l’inscription. Choisissez mensuel ou annuel, puis « Choisir Agence » pour enregistrer votre carte.'
+                ? 'Vous avez choisi la formule Business à l’inscription. Choisissez mensuel ou annuel, puis « Choisir Business » pour enregistrer votre carte.'
                 : plan.signupPlan.plan === 'PRO'
                 ? 'Vous avez choisi la version Pro à l’inscription. Il ne reste qu’à choisir mensuel ou annuel et à enregistrer votre carte.'
                 : 'Le code saisi à l’inscription est prêt ci-dessous : cliquez sur « Appliquer ».'}
@@ -310,10 +310,10 @@ function SubscriptionsContent() {
               sub={billing === 'YEAR' ? `Soit ${price(Math.round(prices.yearCents / 12))} par mois. Résiliable à tout moment.` : 'Résiliable à tout moment.'}
               items={benefits}>
               {plan?.managedPro ? (
-                <StatusBox title="Vous êtes Pro grâce à votre agence"
-                  text={plan.proPausedByAgency ? 'Les prélèvements de votre abonnement Pro sont suspendus tant que vous travaillez ensemble. Ils reprendront automatiquement à la fin de la collaboration.' : 'Votre profil reste Pro tant qu’il est géré par une agence qui a la formule Agence.'} />
+                <StatusBox title="Vous êtes Pro grâce à votre gestionnaire"
+                  text={plan.proPausedByAgency ? 'Les prélèvements de votre abonnement Pro sont suspendus tant que vous travaillez ensemble. Ils reprendront automatiquement à la fin de la collaboration.' : 'Votre profil reste Pro tant qu’il est géré par un compte qui a la formule Business.'} />
               ) : agencyActive ? (
-                <StatusBox title="Inclus dans votre formule Agence" text="Votre profil et tous les profils que vous gérez sont Pro." />
+                <StatusBox title="Inclus dans votre formule Business" text="Votre profil et tous les profils que vous gérez sont Pro." />
               ) : isPro && sub ? (
                 <>
                   <StatusBox title="Vous êtes Pro" text={[
@@ -340,8 +340,8 @@ function SubscriptionsContent() {
 
             {/* Agence */}
             {agencyPrices && (
-              <PlanCard title="Agence" priceLabel={price(billing === 'YEAR' ? agencyPrices.yearCents : agencyPrices.monthCents)} per={billing === 'YEAR' ? 'an' : 'mois'}
-                sub="Agents d’artistes, plusieurs salles ou scènes"
+              <PlanCard title="Business" priceLabel={price(billing === 'YEAR' ? agencyPrices.yearCents : agencyPrices.monthCents)} per={billing === 'YEAR' ? 'an' : 'mois'}
+                sub="Gérez plusieurs profils depuis un seul compte"
                 items={[
                   `${agencyPrices.includedProfiles} profils gérés inclus, tous Pro`,
                   'Passez d’un profil à l’autre en un clic',
@@ -350,7 +350,7 @@ function SubscriptionsContent() {
                 ]}>
                 {agencyActive ? (
                   <>
-                    <StatusBox title="Vous avez la formule Agence" text={agency?.offered ? 'Offerte par LS Bookers.' : [
+                    <StatusBox title="Vous avez la formule Business" text={agency?.offered ? 'Offerte par LS Bookers.' : [
                       agency?.status === 'TRIAL' && agency.trialEndsAt ? `Période offerte jusqu’au ${fmtDate(agency.trialEndsAt)}.` : '',
                       agency?.status === 'ACTIVE' && !agency.cancelAtPeriodEnd && agency.priceCents != null ? `${price(agency.priceCents)} ${agency.interval === 'YEAR' ? 'par an' : 'par mois'}${agency.extraProfiles ? ` + ${agency.extraProfiles} profil${agency.extraProfiles > 1 ? 's' : ''} en plus` : ''}, prochain prélèvement le ${fmtDate(agency.currentPeriodEnd)}.` : '',
                       agency?.cancelAtPeriodEnd ? `Résiliée : elle reste active jusqu’au ${fmtDate(agency.currentPeriodEnd)}.` : '',
@@ -367,13 +367,13 @@ function SubscriptionsContent() {
                   <>
                     <button type="button" onClick={() => startCheckout('AGENCY')} disabled={busy === 'checkout-agency' || !plan?.paymentsAvailable}
                       className="w-full rounded-xl border border-accent/60 px-4 py-3 text-sm font-semibold text-accent-light transition hover:bg-accent/15 disabled:opacity-50">
-                      Choisir Agence
+                      Choisir Business
                     </button>
                     {sub?.source === 'STRIPE' && isPro && sub.status !== 'CANCELLED' && (
                       <p className="text-center text-[11px] leading-relaxed text-white/45">Votre abonnement Pro s’arrêtera : la partie non utilisée sera déduite de votre prochaine facture.</p>
                     )}
                     {(sub?.source === 'FOUNDER' || sub?.source === 'ADMIN') && isPro && (
-                      <p className="text-center text-[11px] leading-relaxed text-white/45">Votre Pro offert est conservé : vous le retrouvez si vous arrêtez l’Agence.</p>
+                      <p className="text-center text-[11px] leading-relaxed text-white/45">Votre Pro offert est conservé : vous le retrouvez si vous arrêtez la formule Business.</p>
                     )}
                   </>
                 )}
@@ -400,7 +400,7 @@ function SubscriptionsContent() {
       {plan && rows.length > 0 && (
         <div className="mt-6 overflow-hidden rounded-[18px] border border-white/8 bg-surface">
           <div className="grid grid-cols-[1fr_4.2rem_4.2rem_4.2rem] gap-x-2 bg-white/[0.02] px-4 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-white/35 sm:grid-cols-[1fr_7rem_7rem_7rem] sm:px-5">
-            <span>Comparatif</span><span className="text-center">Gratuit</span><span className="text-center text-accent-light">Pro</span><span className="text-center">Agence</span>
+            <span>Comparatif</span><span className="text-center">Gratuit</span><span className="text-center text-accent-light">Pro</span><span className="text-center">Business</span>
           </div>
           {[...rows, ...(agencyPrices ? [{ label: 'Profils gérés depuis votre compte', free: '—', pro: '—', agency: `${agencyPrices.includedProfiles} inclus`, highlight: true }] : [])].map(row => (
             <div key={row.label} className="grid grid-cols-[1fr_4.2rem_4.2rem_4.2rem] items-center gap-x-2 border-t border-white/[0.05] px-4 py-3 text-[13px] sm:grid-cols-[1fr_7rem_7rem_7rem] sm:px-5">

@@ -319,9 +319,9 @@ export default function AdminUsersPage() {
               onClick={() => toggleManageProfiles(u.id, !u.canManageProfiles)}
               disabled={togglingManage}
               className={`text-xs rounded-lg px-2 py-1.5 flex-shrink-0 transition disabled:opacity-40 ${u.canManageProfiles ? 'bg-accent-strong text-white' : 'border border-white/10 bg-white/5 text-white/55 hover:text-white'}`}
-              title={u.canManageProfiles ? 'Formule Agence offerte : cliquer pour la retirer' : 'Offrir la formule Agence (gérer plusieurs profils)'}
+              title={u.canManageProfiles ? 'Formule Business offerte : cliquer pour la retirer' : 'Offrir la formule Business (gérer plusieurs profils)'}
             >
-              {u.canManageProfiles ? 'Agence offerte' : 'Offrir Agence'}
+              {u.canManageProfiles ? 'Business offerte' : 'Offrir Business'}
             </button>
 
             {/* Changer le rôle */}
@@ -444,7 +444,7 @@ export default function AdminUsersPage() {
                   )}
                   {/* Profils gérés : activé à la main en attendant la formule Agence */}
                   <div className="flex items-center justify-between gap-3 py-1.5">
-                    <span className="text-xs text-white/50">Formule Agence offerte (gérer plusieurs profils)</span>
+                    <span className="text-xs text-white/50">Formule Business offerte (gérer plusieurs profils)</span>
                     <button type="button" onClick={() => toggleManageProfiles()} disabled={togglingManage}
                       className={`rounded-lg px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${detailUser.canManageProfiles ? 'bg-accent-strong text-white' : 'border border-white/15 text-white/60 hover:text-white'}`}>
                       {detailUser.canManageProfiles ? 'Activé' : 'Désactivé'}

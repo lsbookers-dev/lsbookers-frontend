@@ -126,14 +126,14 @@ export function BookingRequestCard({
         <div className="lsb-booking-card-footer">
           {isSender ? (
             <div className="lsb-booking-waiting">
-              <span>Accepté par l’agence, en attente de la confirmation de l’artiste</span>
+              <span>Accepté par son gestionnaire, en attente de la confirmation de l’artiste</span>
               <button onClick={() => updateStatus('CANCELLED')} disabled={updating} className="is-danger">Annuler</button>
             </div>
           ) : acting ? (
             <div className="lsb-booking-waiting"><span>En attente de la confirmation de l’artiste</span></div>
           ) : (
             <>
-              <p className="mb-2 text-xs text-white/60">Votre agence propose d’accepter ce booking. Le confirmez-vous ?</p>
+              <p className="mb-2 text-xs text-white/60">{br.targetManagedBy || 'Votre gestionnaire'} propose d’accepter ce booking. Le confirmez-vous ?</p>
               <div className="lsb-booking-actions">
                 <button onClick={() => updateStatus('ACCEPTED')} disabled={updating} className="is-primary">
                   <Check className="w-4 h-4" />Confirmer

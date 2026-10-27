@@ -78,7 +78,7 @@ function InvitationContent() {
       <div className="text-center">
         <LsIcon name="warning" size={28} tone="gold" />
         <h1 className="mt-3 text-xl font-semibold">Ce lien n’est plus valable</h1>
-        <p className="mt-2 text-sm text-white/55">Il a peut-être expiré (14 jours) ou déjà été utilisé. Demandez à l’agence de vous renvoyer une invitation.</p>
+        <p className="mt-2 text-sm text-white/55">Il a peut-être expiré (14 jours) ou déjà été utilisé. Demandez à la personne qui vous a invité de vous renvoyer une invitation.</p>
         <Link href="/login" className="mt-5 inline-block text-sm text-violet-300 hover:underline">Se connecter</Link>
       </div>
     )
@@ -113,7 +113,7 @@ function InvitationContent() {
         </div>
       </div>
       <p className="text-sm leading-relaxed text-white/60">
-        L’agence pourra gérer votre agenda, vos messages, vos publications et vos bookings. L’argent de vos bookings reste toujours versé sur votre compte. Vous pouvez retirer l’accès d’un clic, et vous gardez tout : profil, avis, historique.
+        {invite.manager.name} pourra gérer votre agenda, vos messages, vos publications et vos bookings. L’argent de vos bookings reste toujours versé sur votre compte. Vous pouvez retirer l’accès d’un clic, et vous gardez tout : profil, avis, historique.
       </p>
 
       {needsLogin ? (
@@ -148,7 +148,7 @@ function InvitationContent() {
           <button type="submit" disabled={sending} className="rounded-xl bg-violet-600 px-4 py-3 font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50">
             {sending ? 'Validation…' : invite.origin === 'CREATED' ? 'Valider mon profil' : 'Accepter'}
           </button>
-          <p className="text-center text-xs text-white/40">Vous ne connaissez pas cette agence ? Fermez simplement cette page : rien ne sera publié.</p>
+          <p className="text-center text-xs text-white/40">Vous ne connaissez pas {invite.manager.name} ? Fermez simplement cette page : rien ne sera publié.</p>
         </>
       )}
     </form>

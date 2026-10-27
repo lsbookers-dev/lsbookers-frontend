@@ -31,7 +31,7 @@ export default function AppSidebar() {
   const { user, acting } = useAuth()
   // Formule Agence, sur son propre profil : l'agenda de tous les profils gérés (B1)
   const primaryItems = user?.canManageProfiles && !acting
-    ? [...primary.slice(0, 3), { href: '/gestion/agenda', label: 'Agenda de l’agence', icon: CalendarRange }, ...primary.slice(3)]
+    ? [...primary.slice(0, 3), { href: '/gestion/agenda', label: 'Agenda de mes profils', icon: CalendarRange }, ...primary.slice(3)]
     : primary
   const active = (href: string, matches?: string[]) =>
     (matches || [href]).some(path => pathname === path || pathname.startsWith(`${path}/`))

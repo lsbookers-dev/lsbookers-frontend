@@ -43,7 +43,7 @@ export default function BottomNav() {
 
   const moreItems = [
     { href: '/space',            icon: LayoutDashboard, label: 'Mon espace',    badge: 0 },
-    ...(user?.canManageProfiles && !acting ? [{ href: '/gestion/agenda', icon: CalendarRange, label: 'Agenda agence', badge: 0 }] : []),
+    ...(user?.canManageProfiles && !acting ? [{ href: '/gestion/agenda', icon: CalendarRange, label: 'Agenda profils', badge: 0 }] : []),
     { href: '/notifications',    icon: Bell,            label: 'Notifications', badge: unreadNotif },
     { href: '/offers',           icon: TicketCheck,     label: 'Opportunités',  badge: 0 },
     { href: '/studio-profile',   icon: Sparkles,        label: 'Studio profil', badge: 0 },

@@ -65,7 +65,7 @@ export default function ManagementSettingsPage() {
   const revoke = async (m: Management) => {
     const ok = await confirm({
       title: `Retirer l’accès de ${m.manager.name} ?`,
-      message: 'L’agence ne pourra plus agir pour votre profil, dès maintenant. Vous gardez tout : profil, avis, agenda, conversations et bookings en cours.',
+      message: 'Cette personne ne pourra plus agir pour votre profil, dès maintenant. Vous gardez tout : profil, avis, agenda, conversations et bookings en cours.',
       confirmLabel: 'Retirer l’accès',
       danger: true,
     })
@@ -79,7 +79,7 @@ export default function ManagementSettingsPage() {
     <>
       <SettingsTitle
         title="Gestion de mon profil"
-        description="Une agence (ou la personne qui gère vos lieux) peut gérer votre profil à votre place. Vous gardez la main : l’argent de vos bookings reste versé sur votre compte et vous pouvez retirer l’accès à tout moment."
+        description="Un agent, ou la personne qui gère vos lieux, peut gérer votre profil à votre place. Vous gardez la main : l’argent de vos bookings reste versé sur votre compte et vous pouvez retirer l’accès à tout moment."
       />
 
       {list === null && <SettingsCard><p className="text-sm text-white/45">Chargement…</p></SettingsCard>}
@@ -87,7 +87,7 @@ export default function ManagementSettingsPage() {
       {list !== null && !active.length && !pending.length && (
         <SettingsCard>
           <p className="text-sm text-white/60">Personne ne gère votre profil.</p>
-          <p className="mt-1 text-xs text-white/40">Si une agence vous invite, l’invitation apparaîtra ici et dans vos notifications.</p>
+          <p className="mt-1 text-xs text-white/40">Si quelqu’un vous invite à gérer votre profil, l’invitation apparaîtra ici et dans vos notifications.</p>
         </SettingsCard>
       )}
 
@@ -130,9 +130,9 @@ export default function ManagementSettingsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <SettingRow label="Me demander mon accord avant d’accepter un booking" description="Quand l’agence accepte un booking, vous le confirmez ou le refusez.">
+            <SettingRow label="Me demander mon accord avant d’accepter un booking" description="Quand votre gestionnaire accepte un booking, vous le confirmez ou le refusez.">
               <Toggle checked={m.requireApproval} disabled={busyId === m.id} label="Accord avant booking"
-                onChange={next => act(m.id, '', 'PATCH', { requireApproval: next }, next ? 'Vous confirmerez chaque booking' : 'L’agence peut accepter les bookings seule')} />
+                onChange={next => act(m.id, '', 'PATCH', { requireApproval: next }, next ? 'Vous confirmerez chaque booking' : 'Votre gestionnaire peut accepter les bookings seul')} />
             </SettingRow>
           </div>
           <div className="mt-4 flex justify-end">
@@ -142,11 +142,11 @@ export default function ManagementSettingsPage() {
       ))}
 
       {entries.length > 0 && (
-        <SettingsCard title="Ce que l’agence a fait pour vous" description="Les dernières actions faites pour votre profil (les messages n’y figurent pas).">
+        <SettingsCard title="Ce que votre gestionnaire a fait pour vous" description="Les dernières actions faites pour votre profil (les messages n’y figurent pas).">
           <ul className="grid gap-2">
             {entries.slice(0, 20).map(e => (
               <li key={e.id} className="flex items-start justify-between gap-3 text-sm">
-                <span className="text-white/75"><b className="font-semibold text-white">{e.managerName || 'L’agence'}</b> {journalText(e)}</span>
+                <span className="text-white/75"><b className="font-semibold text-white">{e.managerName || 'Votre gestionnaire'}</b> {journalText(e)}</span>
                 <span className="shrink-0 text-xs text-white/40">{journalDate(e.createdAt)}</span>
               </li>
             ))}

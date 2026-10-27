@@ -63,7 +63,7 @@ export default function AgencyAgendaPage() {
   }, [data, hidden])
 
   if (!enabled) {
-    return <div className="lsb-page text-white"><p className="text-white/60">L’agenda de l’agence est disponible avec la formule Agence.</p></div>
+    return <div className="lsb-page text-white"><p className="text-white/60">L’agenda de vos profils est disponible avec la formule Business.</p></div>
   }
 
   const today = dayKey(new Date())
@@ -74,8 +74,8 @@ export default function AgencyAgendaPage() {
     <div className="lsb-page grid gap-4 text-white">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-[.2em] text-accent">Agence</span>
-          <h1 className="mt-1 text-[clamp(1.6rem,3.5vw,2.2rem)] font-semibold leading-tight">Agenda de l’agence<em className="not-italic text-accent">.</em></h1>
+          <span className="text-[10px] font-bold uppercase tracking-[.2em] text-accent">Business</span>
+          <h1 className="mt-1 text-[clamp(1.6rem,3.5vw,2.2rem)] font-semibold leading-tight">Agenda de mes profils<em className="not-italic text-accent">.</em></h1>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setCursor(c => new Date(c.getFullYear(), c.getMonth() - 1, 1))} aria-label="Mois précédent" className="grid h-9 w-9 place-items-center rounded-xl border border-line hover:bg-white/[0.05]"><ChevronLeft className="h-4 w-4" /></button>

@@ -535,7 +535,7 @@ function SettingsTab() {
         <p className="mt-2 text-[11px] text-white/40">Un nouveau prix s’applique aux nouveaux abonnements ; les abonnés en cours gardent le leur.</p>
       </section>
       <section className={CARD}>
-        <p className="mb-3 text-sm font-semibold">Formule Agence (TTC)</p>
+        <p className="mb-3 text-sm font-semibold">Formule Business (TTC)</p>
         <div className="grid gap-3 sm:grid-cols-5">
           <NumberField label="Par mois" value={s.agency.monthCents / 100} onChange={n => up('agency', { monthCents: Math.round(n * 100) })} suffix="€" step={0.01} />
           <NumberField label="Par an" value={s.agency.yearCents / 100} onChange={n => up('agency', { yearCents: Math.round(n * 100) })} suffix="€" step={0.01} />
@@ -543,7 +543,7 @@ function SettingsTab() {
           <NumberField label="Profil en plus, par mois" value={s.agency.extraMonthCents / 100} onChange={n => up('agency', { extraMonthCents: Math.round(n * 100) })} suffix="€" step={0.01} />
           <NumberField label="Profil en plus, par an" value={s.agency.extraYearCents / 100} onChange={n => up('agency', { extraYearCents: Math.round(n * 100) })} suffix="€" step={0.01} />
         </div>
-        <p className="mt-2 text-[11px] text-white/40">L’Agence comprend le Pro pour l’agence et pour chaque profil géré. Un profil en plus est facturé au prorata et retiré dès qu’une place se libère.</p>
+        <p className="mt-2 text-[11px] text-white/40">La formule Business comprend le Pro pour le compte qui l’achète et pour chaque profil géré. Un profil en plus est facturé au prorata et retiré dès qu’une place se libère.</p>
       </section>
       <section className={CARD}>
         <p className="mb-3 text-sm font-semibold">Carrousel et annulations</p>

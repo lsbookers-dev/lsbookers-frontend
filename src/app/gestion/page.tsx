@@ -72,7 +72,7 @@ export default function ManagedProfilesPage() {
         <div className="max-w-md">
           <LsIcon name="follow" size={30} tone="accent" />
           <h1 className="mt-3 text-xl font-semibold">Gérer plusieurs profils</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted">Agents d’artistes, gérants de plusieurs salles : la formule Agence vous permettra de gérer plusieurs profils depuis votre compte. Elle arrive bientôt sur « Offres et abonnements ».</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">Agents d’artistes, gérants de plusieurs salles : la formule Business vous permettra de gérer plusieurs profils depuis votre compte. Elle arrive bientôt sur « Offres et abonnements ».</p>
         </div>
       </div>
     )
@@ -91,7 +91,7 @@ export default function ManagedProfilesPage() {
           <p className="mt-1 text-sm text-muted">Choisissez un profil pour agir en son nom : agenda, messages, publications et bookings.</p>
           {slots && !slots.unlimited && (
             <p className="mt-1 text-xs text-gold-light">
-              {slots.used} profil{slots.used > 1 ? 's' : ''} sur {slots.included + slots.extra} · formule Agence ({slots.included} inclus{slots.extra ? ` + ${slots.extra} en plus` : ''}). Une invitation en attente occupe une place.
+              {slots.used} profil{slots.used > 1 ? 's' : ''} sur {slots.included + slots.extra} · formule Business ({slots.included} inclus{slots.extra ? ` + ${slots.extra} en plus` : ''}). Une invitation en attente occupe une place.
             </p>
           )}
         </div>

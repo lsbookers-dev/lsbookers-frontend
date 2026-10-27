@@ -101,7 +101,7 @@ export async function exportAgencyStatementPdf({ agencyName, periodLabel, rows }
 
   autoTable(doc, {
     startY: 34,
-    head: [['Profil', 'Bookings', 'Cachets', 'Taux convenu', 'Part agence']],
+    head: [['Profil', 'Bookings', 'Cachets', 'Taux convenu', 'Votre part']],
     body: rows.map(r => [r.name, String(r.bookings), money(r.totalFee), r.commissionPct != null ? `${String(r.commissionPct).replace('.', ',')} %` : '—', r.owed != null ? money(r.owed) : '—']),
     foot: [['Total', '', money(total), '', money(owed)]],
     theme: 'striped',
@@ -110,7 +110,7 @@ export async function exportAgencyStatementPdf({ agencyName, periodLabel, rows }
     footStyles: { fillColor: [245, 243, 250], textColor: INK, fontStyle: 'bold' },
     columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'center' }, 4: { halign: 'right' } },
   })
-  footer(doc, 'Cachets acceptés dans LS Bookers — document indicatif : chaque artiste règle lui-même son agence.')
+  footer(doc, 'Cachets acceptés dans LS Bookers — document indicatif : chaque profil règle lui-même sa part.')
   doc.save(`ls-bookers-releve-cachets-${periodLabel.toLowerCase().replace(/\s+/g, '-')}.pdf`)
 }
 

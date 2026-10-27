@@ -637,7 +637,7 @@ export default function RegisterPage() {
                       </div>
                       {multi && (
                         <p className="text-xs leading-relaxed text-gold-light/80">
-                          On crée d&apos;abord le profil de ta structure. Ensuite, la formule Agence te permettra d&apos;ajouter {multi === 'ARTISTS' ? 'tes artistes' : 'tes lieux'}.
+                          On crée d&apos;abord le profil de ta structure. Ensuite, la formule Business te permettra d&apos;ajouter {multi === 'ARTISTS' ? 'tes artistes' : 'tes lieux'}.
                         </p>
                       )}
                     </div>
@@ -855,7 +855,7 @@ export default function RegisterPage() {
                         <span className="absolute -top-2.5 right-4 rounded-md bg-gold px-2 py-0.5 text-[10px] font-semibold text-[#1a1408]">Pour vous</span>
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className={`font-semibold text-sm ${plan === 'AGENCY' ? 'text-white' : 'text-white/70'}`}>Formule Agence</p>
+                            <p className={`font-semibold text-sm ${plan === 'AGENCY' ? 'text-white' : 'text-white/70'}`}>Formule Business</p>
                             <p className="text-xs text-white/40 mt-0.5">Gérer plusieurs profils depuis ton compte</p>
                           </div>
                           <div className="text-right flex-shrink-0">
@@ -957,7 +957,7 @@ export default function RegisterPage() {
 
                   <p className="text-center text-xs text-white/30 leading-relaxed">
                     {plan === 'AGENCY'
-                      ? 'Après la confirmation de votre e-mail, vous finaliserez la formule Agence en enregistrant votre carte, puis vous ajouterez vos profils.'
+                      ? 'Après la confirmation de votre e-mail, vous finaliserez la formule Business en enregistrant votre carte, puis vous ajouterez vos profils.'
                       : plan === 'PRO'
                       ? 'Après la confirmation de votre e-mail, vous finaliserez la version Pro en enregistrant votre carte. Un code de lancement vous offre des mois gratuits.'
                       : 'Aucune carte bancaire demandée. Vous pourrez passer en Pro à tout moment.'}
