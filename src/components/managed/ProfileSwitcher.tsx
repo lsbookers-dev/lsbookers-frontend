@@ -24,14 +24,17 @@ export type ManagedProfile = {
   expiresAt: string | null
   acceptedAt: string | null
   profile: { id: number; name: string; avatar: string | null; role: string | null; location: string | null; specialties: string[] } | null
+  /** Couleur du profil (agenda de l'agence) et messages en attente (la messagerie reste séparée) */
+  color?: string | null
+  unread?: number
 }
 
 const ROLE_LABEL: Record<string, string> = { ARTIST: 'Artiste', ORGANIZER: 'Organisateur', PROVIDER: 'Prestataire' }
 
-/** Bascule vers un profil géré (ou vers soi avec null) et recharge le site comme ce profil */
-export function switchToProfile(profileId: number | null) {
+/** Bascule vers un profil géré (ou vers soi avec null) et recharge le site comme ce profil, sur la page voulue */
+export function switchToProfile(profileId: number | null, path = '/space') {
   setActingProfileId(profileId)
-  window.location.assign('/space')
+  window.location.assign(path)
 }
 
 export function useManagedProfiles(enabled: boolean) {
@@ -71,6 +74,7 @@ export default function ProfileSwitcher() {
     : { name: user.name || 'Mon profil', avatar: user.avatarUrl || null }
   const current = acting ? { name: user.name || 'Profil', avatar: user.avatarUrl || null, sub: 'Profil géré' } : { ...self, sub: 'Votre profil' }
   const active = (profiles || []).filter(p => p.status === 'ACTIVE' && p.profile)
+  const waiting = active.filter(p => p.profile!.id !== acting?.profileId).reduce((n, p) => n + (p.unread || 0), 0)
 
   return (
     <div ref={box} className="lsb-switcher relative mb-3">
@@ -82,6 +86,9 @@ export default function ProfileSwitcher() {
           <span className="block truncate text-xs font-semibold text-white">{current.name}</span>
           <span className="block truncate text-[10px] text-muted">{current.sub}</span>
         </span>
+        {waiting > 0 && (
+          <span className="min-w-[18px] rounded-full bg-accent px-1.5 text-center text-[10px] font-bold leading-[18px] text-white" aria-label={`${waiting} message${waiting > 1 ? 's' : ''} en attente sur vos autres profils`}>{waiting > 99 ? '99+' : waiting}</span>
+        )}
         <ChevronDown className="lsb-switcher-text h-4 w-4 flex-shrink-0 text-muted" aria-hidden="true" />
       </button>
 
@@ -99,11 +106,17 @@ export default function ProfileSwitcher() {
             return (
               <button key={m.id} type="button" role="option" aria-selected={selected} onClick={() => (selected ? setOpen(false) : switchToProfile(m.profile!.id))}
                 className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-white/90 hover:bg-accent/15 ${selected ? 'bg-accent/15' : ''}`}>
-                <SafeImage type="avatar" src={m.profile!.avatar} name={m.profile!.name} size={24} />
+                <span className="relative">
+                  <SafeImage type="avatar" src={m.profile!.avatar} name={m.profile!.name} size={24} />
+                  {m.color && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#1a1824]" style={{ background: m.color }} aria-hidden="true" />}
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{m.profile!.name}</span>
                   {m.profile!.role && <span className="block text-[10px] text-muted">{ROLE_LABEL[m.profile!.role] || ''}</span>}
                 </span>
+                {!!m.unread && !selected && (
+                  <span className="min-w-[18px] rounded-full bg-accent px-1.5 text-center text-[10px] font-bold leading-[18px] text-white" aria-label={`${m.unread} message${m.unread > 1 ? 's' : ''} en attente`}>{m.unread > 99 ? '99+' : m.unread}</span>
+                )}
                 {selected && <Check className="h-3.5 w-3.5 text-accent-light" aria-hidden="true" />}
               </button>
             )

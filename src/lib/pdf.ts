@@ -81,6 +81,39 @@ export async function exportFinancePdf({ ownerName, kind, periodLabel, rows }: {
   doc.save(`ls-bookers-${kind}-${periodLabel.toLowerCase().replace(/\s+/g, '-')}.pdf`)
 }
 
+/* ── Relevé des cachets (espace agence) ────────────────────────────────── */
+
+export type StatementRow = { name: string; bookings: number; totalFee: number; commissionPct: number | null; owed: number | null }
+
+export async function exportAgencyStatementPdf({ agencyName, periodLabel, rows }: { agencyName: string; periodLabel: string; rows: StatementRow[] }) {
+  const { doc, autoTable } = await newDoc()
+  const total = rows.reduce((s, r) => s + r.totalFee, 0)
+  const owed = rows.reduce((s, r) => s + (r.owed || 0), 0)
+
+  doc.setFillColor(...ACCENT)
+  doc.rect(0, 0, 210, 4, 'F')
+  doc.setTextColor(...INK)
+  doc.setFontSize(18)
+  doc.text(`Relevé des cachets — ${periodLabel}`, 15, 20)
+  doc.setFontSize(10)
+  doc.setTextColor(...MUTED)
+  doc.text(`${agencyName} · édité le ${frDate(new Date())}`, 15, 27)
+
+  autoTable(doc, {
+    startY: 34,
+    head: [['Profil', 'Bookings', 'Cachets', 'Taux convenu', 'Part agence']],
+    body: rows.map(r => [r.name, String(r.bookings), money(r.totalFee), r.commissionPct != null ? `${String(r.commissionPct).replace('.', ',')} %` : '—', r.owed != null ? money(r.owed) : '—']),
+    foot: [['Total', '', money(total), '', money(owed)]],
+    theme: 'striped',
+    styles: { font: 'helvetica', fontSize: 9, textColor: INK },
+    headStyles: { fillColor: ACCENT, textColor: 255 },
+    footStyles: { fillColor: [245, 243, 250], textColor: INK, fontStyle: 'bold' },
+    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'center' }, 4: { halign: 'right' } },
+  })
+  footer(doc, 'Cachets acceptés dans LS Bookers — document indicatif : chaque artiste règle lui-même son agence.')
+  doc.save(`ls-bookers-releve-cachets-${periodLabel.toLowerCase().replace(/\s+/g, '-')}.pdf`)
+}
+
 /* ── Devis et factures ──────────────────────────────────────────────────── */
 
 export type InvoiceLine = { label: string; quantity: number; unitPrice: number }

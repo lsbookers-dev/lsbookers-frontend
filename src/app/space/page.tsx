@@ -15,6 +15,7 @@ import LsIcon, { type LsIconName } from '@/components/ui/LsIcon'
 import type { PendingReview } from '@/components/ReviewModal'
 import { publicProfileHref } from '@/components/profile/utils'
 import ActivityPanel, { type Kpis } from '@/components/space/ActivityPanel'
+import AgencySpace from '@/components/space/AgencySpace'
 import UpcomingPanel, { type UpcomingBooking } from '@/components/space/UpcomingPanel'
 import OpportunitiesPanel, { type SpaceOffer } from '@/components/space/OpportunitiesPanel'
 import NextDatePanel, { type NextEvent } from '@/components/space/NextDatePanel'
@@ -100,7 +101,7 @@ function profileProgress(profile: Profile, role: string) {
 
 
 export default function SpacePage() {
-  const { user } = useAuth()
+  const { user, acting } = useAuth()
   const [data, setData] = useState<SpaceData | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
@@ -211,6 +212,9 @@ export default function SpacePage() {
         </div>
       </header>
 
+      {/* Formule Agence, sur son propre profil : l'espace agence passe en premier (E1) */}
+      {user?.canManageProfiles && !acting && <AgencySpace agencyName={name} />}
+      {user?.canManageProfiles && !acting && <h2 className="mt-2 text-sm font-semibold uppercase tracking-[.16em] text-white/45">Votre propre profil</h2>}
       <ActivityPanel
         organizer={organizer}
         kpis={dashboard.kpis}
