@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useUnreadCounts } from '@/hooks/useUnreadCounts'
+import ProfileSwitcher from '@/components/managed/ProfileSwitcher'
 
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER' | 'ADMIN'
 
@@ -77,6 +78,8 @@ export default function BottomNav() {
               <X className="h-4 w-4" />
             </button>
           </div>
+          {/* Formule Agence : changer de profil géré aussi sur téléphone et dans l'application installée */}
+          <ProfileSwitcher />
           <div className="grid grid-cols-3 gap-2">
             {moreItems.map(({ href, icon: Icon, label, badge }) => {
               const isActive = pathname === href || pathname.startsWith(href + '/')
