@@ -67,6 +67,8 @@ body {
   padding: 1.4rem .8rem calc(1.4rem + env(safe-area-inset-bottom));
   border-right: 1px solid var(--lsb-line); background: rgba(8,7,11,.94);
   backdrop-filter: blur(22px); display: flex; flex-direction: column; justify-content: space-between;
+  /* Écran peu haut (portable) : la barre défile au lieu de couper le bas du menu */
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
 }
 .lsb-sidebar nav { display: grid; gap: .35rem; }
 .lsb-sidebar-legal { display: flex; flex-direction: column; gap: .3rem; padding: .75rem .8rem .25rem; border-top: 1px solid var(--lsb-line); }

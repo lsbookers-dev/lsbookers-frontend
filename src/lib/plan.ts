@@ -6,7 +6,7 @@
  * Les limites sont vérifiées par le serveur ; le site s'en sert pour griser et expliquer.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch } from '@/utils/auth'
+import { apiFetch, getActingProfileId, getUserId } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 
 export type PlanLimits = {
@@ -66,9 +66,15 @@ export type PlanInfo = {
 
 let cache: PlanInfo | null = null
 let inflight: Promise<PlanInfo | null> | null = null
+// Compte (et profil géré) pour lequel la formule a été chargée : un autre compte ne réutilise jamais
+// la formule du précédent (sinon « disponible en version Pro » s'affichait un instant à tort)
+let cacheOwner: string | null = null
+const currentOwner = () => `${getUserId() ?? ''}:${getActingProfileId() ?? ''}`
 const listeners = new Set<(p: PlanInfo | null) => void>()
 
 async function load(force = false): Promise<PlanInfo | null> {
+  const owner = currentOwner()
+  if (owner !== cacheOwner) { cache = null; inflight = null }
   if (cache && !force) return cache
   if (inflight && !force) return inflight
   inflight = apiFetch(apiUrl('billing/me'), { cache: 'no-store' })
@@ -76,6 +82,7 @@ async function load(force = false): Promise<PlanInfo | null> {
     .catch(() => null)
     .then((data: PlanInfo | null) => {
       cache = data
+      cacheOwner = owner
       inflight = null
       listeners.forEach(fn => fn(data))
       return data
@@ -87,8 +94,9 @@ async function load(force = false): Promise<PlanInfo | null> {
 export const refreshPlan = () => load(true)
 
 export function usePlan() {
-  const [plan, setPlan] = useState<PlanInfo | null>(cache)
-  const [loading, setLoading] = useState(!cache)
+  const fresh = cacheOwner === currentOwner() ? cache : null
+  const [plan, setPlan] = useState<PlanInfo | null>(fresh)
+  const [loading, setLoading] = useState(!fresh)
 
   useEffect(() => {
     const onChange = (p: PlanInfo | null) => { setPlan(p); setLoading(false) }

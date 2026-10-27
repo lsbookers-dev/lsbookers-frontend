@@ -1,5 +1,6 @@
 'use client'
 
+import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch } from '@/utils/auth'
@@ -132,7 +133,8 @@ export default function AccountSettingsPage() {
 
             {role !== 'ORGANIZER' ? (
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem_minmax(0,0.8fr)]">
-                <Field label="Adresse postale" hint="Utilisée sur vos devis et factures, jamais affichée."><input value={form.address} onChange={e => set('address', e.target.value)} maxLength={200} placeholder="12 rue de la République" className={SETTINGS_INPUT} /></Field>
+                <Field label="Adresse postale" hint="Utilisée sur vos devis et factures, jamais affichée."><AddressAutocomplete value={form.address} onChange={v => set('address', v)} placeholder="Tapez l’adresse : 12 rue de la République…" className={SETTINGS_INPUT} ariaLabel="Adresse postale"
+                  onSelect={a => setForm(f => ({ ...f, address: a.address, postalCode: a.postalCode || f.postalCode, city: a.city || f.city }))} /></Field>
                 <Field label="Code postal"><input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} maxLength={10} inputMode="numeric" className={SETTINGS_INPUT} /></Field>
                 <Field label="Ville"><input value={form.city} onChange={e => set('city', e.target.value)} maxLength={100} className={SETTINGS_INPUT} /></Field>
               </div>

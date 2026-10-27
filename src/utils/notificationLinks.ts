@@ -30,6 +30,7 @@ export function billingLink(type: string): string | null {
     // Profils gérés : le titulaire répond dans ses Réglages, l'agence retrouve ses profils
     case 'MANAGEMENT_INVITE':
     case 'MANAGEMENT_ENDED':
+    case 'PRO_PAUSED_BY_MANAGER':
       return '/settings/management'
     case 'MANAGEMENT_ACCEPTED':
     case 'MANAGEMENT_DECLINED':

@@ -9,6 +9,9 @@ import { publicProfileHref } from '@/components/profile/utils'
 import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
 import { SettingRow, SettingsButton, SettingsCard, SettingsTitle, Toggle } from '@/components/settings/ui'
 import { journalDate, journalText, type JournalEntry } from '@/components/managed/journal'
+import { useManagedProfiles } from '@/components/managed/ProfileSwitcher'
+import { useAuth } from '@/context/AuthContext'
+import { usePlan } from '@/lib/plan'
 
 type Management = {
   id: number
@@ -21,9 +24,18 @@ type Management = {
 
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '')
 
-/** Réglages › Gestion de mon profil : qui gère mon profil, invitations reçues, retirer l'accès */
+/**
+ * Réglages › Profils gérés :
+ * - compte Business : les profils que je gère (raccourcis vers Mes profils et l'agenda) ;
+ * - tout compte : qui gère mon profil, invitations reçues, accord avant booking, retirer l'accès,
+ *   et l'explication quand mon propre abonnement Pro est en pause pendant la gestion.
+ */
 export default function ManagementSettingsPage() {
   const { notify, confirm } = useFeedback()
+  const { user } = useAuth()
+  const { plan } = usePlan()
+  const isManager = !!user?.canManageProfiles
+  const myManaged = useManagedProfiles(isManager)
   const [list, setList] = useState<Management[] | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
   // Choix « accord avant booking » pour chaque invitation en attente (coché par défaut)
@@ -78,13 +90,45 @@ export default function ManagementSettingsPage() {
   return (
     <>
       <SettingsTitle
-        title="Gestion de mon profil"
-        description="Un agent, ou la personne qui gère vos lieux, peut gérer votre profil à votre place. Vous gardez la main : l’argent de vos bookings reste versé sur votre compte et vous pouvez retirer l’accès à tout moment."
+        title="Profils gérés"
+        description={isManager ? "Les profils que vous gérez avec la formule Business, et la personne qui gère votre propre profil s’il y en a une." : "Un agent, ou la personne qui gère vos lieux, peut gérer votre profil à votre place. Vous gardez la main : l’argent de vos bookings reste versé sur votre compte et vous pouvez retirer l’accès à tout moment."}
       />
+
+      {isManager && (
+        <SettingsCard title="Les profils que vous gérez" description="Avec la formule Business, vous gérez ces profils depuis votre compte.">
+          {myManaged === null ? <p className="text-sm text-white/45">Chargement…</p> : myManaged.filter(m => m.status === 'ACTIVE').length === 0 ? (
+            <p className="text-sm text-white/60">Vous ne gérez encore aucun profil.</p>
+          ) : (
+            <ul className="grid gap-2">
+              {myManaged.filter(m => m.status === 'ACTIVE' && m.profile).map(m => (
+                <li key={m.id} className="flex items-center gap-3">
+                  <SafeImage type="avatar" src={m.profile!.avatar} name={m.profile!.name} size={32} />
+                  <span className="min-w-0 flex-1 truncate text-sm text-white">{m.profile!.name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/gestion" className="rounded-xl bg-accent-strong px-4 py-2 text-xs font-medium text-white hover:bg-accent">Gérer mes profils</Link>
+            <Link href="/gestion/agenda" className="rounded-xl border border-white/12 px-4 py-2 text-xs font-medium text-white/80 hover:bg-white/[0.06]">Agenda de mes profils</Link>
+          </div>
+        </SettingsCard>
+      )}
+
+      {plan?.proPausedByAgency && (
+        <SettingsCard title="Votre abonnement Pro est en pause">
+          <p className="text-sm leading-relaxed text-white/70">
+            Votre profil est géré par un compte qui a la formule Business : il est donc <b className="text-white">Pro sans que vous payiez</b>. Les prélèvements de votre propre abonnement Pro sont <b className="text-white">suspendus</b> tant que dure la collaboration : rien ne vous est prélevé.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-white/70">
+            Si la collaboration s’arrête (vous retirez l’accès ci-dessous, ou la personne arrête de gérer votre profil), votre abonnement Pro <b className="text-white">reprend automatiquement</b>, au même prix, sans rien à refaire.
+          </p>
+        </SettingsCard>
+      )}
 
       {list === null && <SettingsCard><p className="text-sm text-white/45">Chargement…</p></SettingsCard>}
 
-      {list !== null && !active.length && !pending.length && (
+      {list !== null && !active.length && !pending.length && !isManager && (
         <SettingsCard>
           <p className="text-sm text-white/60">Personne ne gère votre profil.</p>
           <p className="mt-1 text-xs text-white/40">Si quelqu’un vous invite à gérer votre profil, l’invitation apparaîtra ici et dans vos notifications.</p>

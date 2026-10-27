@@ -27,6 +27,7 @@ export const NOTIFICATION_TYPES: Record<string, NotificationType> = {
   // Profils gérés (agence)
   BOOKING_APPROVAL_NEEDED:{ icon: 'booking', tone: 'gold',   label: 'Booking à confirmer' },
   MANAGEMENT_INVITE:     { icon: 'follow',   tone: 'accent', label: 'Invitation de gestion' },
+  PRO_PAUSED_BY_MANAGER: { icon: 'star',     tone: 'gold',   label: 'Abonnement Pro' },
   MANAGEMENT_ACCEPTED:   { icon: 'check',    tone: 'ok',     label: 'Gestion acceptée' },
   MANAGEMENT_DECLINED:   { icon: 'close',    tone: 'bad',    label: 'Gestion refusée' },
   MANAGEMENT_ENDED:      { icon: 'cancel',   tone: 'muted',  label: 'Fin de gestion' },

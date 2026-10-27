@@ -8,6 +8,7 @@
 import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import CityAutocomplete from '@/components/CityAutocomplete'
+import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
@@ -108,7 +109,8 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
   const addressFields = (label: string, hint: string) => (
     <div className="space-y-3 rounded-xl border border-white/[0.08] p-4">
       <p className="text-sm text-white/70">{label} <span className="text-white/35">{hint}</span></p>
-      <input value={form.address} onChange={e => set('address', e.target.value)} maxLength={200} placeholder="12 rue de la République" aria-label="Adresse" className={INPUT} />
+      <AddressAutocomplete value={form.address} onChange={v => set('address', v)} placeholder="Tapez l’adresse : 12 rue de la République…" className={INPUT}
+        onSelect={a => setForm(f => ({ ...f, address: a.address, postalCode: a.postalCode || f.postalCode, city: a.city || f.city }))} />
       <div className="grid grid-cols-[8rem_1fr] gap-3">
         <input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} maxLength={10} placeholder="69001" aria-label="Code postal" className={INPUT} />
         <input value={form.city} onChange={e => set('city', e.target.value)} maxLength={100} placeholder="Lyon" aria-label="Ville" className={INPUT} />

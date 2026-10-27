@@ -187,7 +187,6 @@ export default function SpacePage() {
   const alerts: { icon: LsIconName; text: React.ReactNode; href: string }[] = [
     ...(data.unreadMessages ? [{ icon: 'message' as const, text: <><b className="text-white">{data.unreadMessages}</b> message{data.unreadMessages > 1 ? 's' : ''} non lu{data.unreadMessages > 1 ? 's' : ''}</>, href: '/messages' }] : []),
     ...(dashboard.kpis.upcomingPending ? [{ icon: organizer ? 'hourglass' as const : 'booking' as const, text: <><b className="text-white">{dashboard.kpis.upcomingPending}</b> {organizer ? `booking${dashboard.kpis.upcomingPending > 1 ? 's' : ''} sans réponse` : `demande${dashboard.kpis.upcomingPending > 1 ? 's' : ''} de booking à examiner`}</>, href: '/agenda' }] : []),
-    ...(progress.value < 100 ? [{ icon: 'user' as const, text: <>Profil complété à <b className="text-white">{progress.value} %</b> · {progress.missing}</>, href: progress.href }] : []),
   ]
   const publicHref = user?.id ? publicProfileHref(role, user.id) : null
   const intro = INTRO[dashboard.role]

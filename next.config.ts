@@ -21,7 +21,7 @@ const csp = [
   `img-src 'self' data: blob: ${MEDIA_HOSTS} ${API_ORIGIN} https://*.tile.openstreetmap.org`,
   `media-src 'self' blob: ${MEDIA_HOSTS} ${API_ORIGIN}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${API_ORIGIN} ${API_WS} https://api.lsbookers.com wss://api.lsbookers.com https://geo.api.gouv.fr ${MEDIA_HOSTS} ${UPLOAD_HOSTS} https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io`,
+  `connect-src 'self' ${API_ORIGIN} ${API_WS} https://api.lsbookers.com wss://api.lsbookers.com https://geo.api.gouv.fr https://data.geopf.fr ${MEDIA_HOSTS} ${UPLOAD_HOSTS} https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io`,
   'frame-src https://www.youtube.com https://www.youtube-nocookie.com https://w.soundcloud.com https://www.openstreetmap.org',
   "worker-src 'self' blob:",
   "manifest-src 'self'",
