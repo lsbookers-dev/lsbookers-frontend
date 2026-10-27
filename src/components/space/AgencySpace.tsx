@@ -15,6 +15,7 @@ import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
 import { switchToProfile } from '@/components/managed/ProfileSwitcher'
 import AddProfileModal from '@/components/managed/AddProfileModal'
 import { exportAgencyStatementPdf } from '@/lib/pdf'
+import { journalDate, journalText, type JournalEntry } from '@/components/managed/journal'
 import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import { EmptyLine, PanelLink, SpacePanel, euro } from './ui'
@@ -60,6 +61,7 @@ export default function AgencySpace({ agencyName }: { agencyName: string }) {
   const [adding, setAdding] = useState(false)
   const [editingRate, setEditingRate] = useState<number | null>(null)
   const [rate, setRate] = useState('')
+  const [entries, setEntries] = useState<JournalEntry[] | null>(null)
 
   const load = useCallback((m?: string | null) => {
     apiFetch(`${apiUrl('managers/dashboard')}${m ? `?month=${m}` : ''}`, { cache: 'no-store' })
@@ -68,6 +70,12 @@ export default function AgencySpace({ agencyName }: { agencyName: string }) {
       .catch(() => {})
   }, [])
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    apiFetch(apiUrl('managers/journal'), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : { entries: [] }))
+      .then(d => setEntries(d.entries || []))
+      .catch(() => setEntries([]))
+  }, [])
 
   if (!data) return <div className="h-48 animate-pulse rounded-[18px] bg-white/[0.04]" />
 
@@ -237,6 +245,22 @@ export default function AgencySpace({ agencyName }: { agencyName: string }) {
           </div>
         </SpacePanel>
       )}
+
+      <SpacePanel kicker="Journal" title="Ce que vous avez fait pour vos profils">
+        {!entries || entries.length === 0 ? (
+          <EmptyLine>Les actions faites pour vos profils (bookings, candidatures, publications…) apparaîtront ici. Vos artistes les voient aussi.</EmptyLine>
+        ) : (
+          <div className="grid">
+            {entries.slice(0, 12).map(e => (
+              <div key={e.id} className="flex items-center gap-2.5 border-t border-line py-2 text-[13px] first:border-t-0">
+                <Dot color={byId[e.profileId]?.color || '#888'} />
+                <span className="min-w-0 flex-1 truncate text-white/80"><b className="font-semibold text-white">{e.profileName || 'Profil'}</b> · vous {journalText(e)}</span>
+                <span className="shrink-0 text-[11px] text-muted">{journalDate(e.createdAt)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SpacePanel>
 
       {adding && <AddProfileModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); load(month) }} />}
     </div>

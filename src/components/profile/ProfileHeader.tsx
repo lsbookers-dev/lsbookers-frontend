@@ -2,12 +2,13 @@
 
 /** En-tête d'un profil : bannière, photo, nom, activité, statistiques, spécialités. */
 
+import Link from 'next/link'
 import { ProBadge } from '@/components/plan/UpgradePrompt'
 import { Camera, Pencil } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import { radiusLabel } from '@/utils/radius'
 import type { ProfileData, ProfileMode } from './types'
-import { profileActivity, profileName } from './utils'
+import { profileActivity, profileName, publicProfileHref } from './utils'
 
 type Props = {
   profile: ProfileData
@@ -68,6 +69,11 @@ export default function ProfileHeader({ profile, mode, followersCount, publicati
                   {profile.user?.isPro && <ProBadge className="shrink-0" />}
                 </h1>
                 {details.length > 0 && <p className="mt-1 text-xs text-white/45">{details.join(' · ')}</p>}
+                {profile.managedBy && publicProfileHref(profile.managedBy.role, profile.managedBy.userId) && (
+                  <p className="mt-1 text-xs text-white/55">
+                    Géré par <Link href={publicProfileHref(profile.managedBy.role, profile.managedBy.userId)!} className="font-semibold text-accent-light hover:underline">{profile.managedBy.name}</Link>
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:ml-auto">{actions}</div>

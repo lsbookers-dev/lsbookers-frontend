@@ -57,7 +57,12 @@ export type ProfileData = {
   establishmentName?: string | null
   siret?: string | null
   user?: ProfileUser
+  // Formule Agence (profil public) : agence qui gère ce profil, et profils gérés par cette agence
+  managedBy?: { userId: number; role: string; name: string; avatar: string | null } | null
+  represents?: { title: string; profiles: RepresentedProfile[] } | null
 }
+
+export type RepresentedProfile = { profileId: number; userId: number; role: string; name: string; avatar: string | null; specialty: string | null; location: string | null }
 
 export type ProfilePublication = {
   id: number

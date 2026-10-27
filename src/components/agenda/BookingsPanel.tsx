@@ -146,7 +146,7 @@ export default function BookingsPanel({
                           {b.fee ? ` · ${Number(b.fee).toLocaleString('fr-FR')} €` : ''}
                         </p>
                       </div>
-                      <BkStatusBadge status={b.status} />
+                      <BkStatusBadge status={b.status} awaitingArtist={!!b.awaitingArtistSince} />
                     </div>
 
                     {b.status === 'ACCEPTED' && (

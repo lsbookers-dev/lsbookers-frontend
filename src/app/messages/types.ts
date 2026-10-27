@@ -45,6 +45,8 @@ export interface BookingRequestData {
   targetUserId?: number | null
   /** Profil géré : l'agence a accepté, l'artiste doit confirmer */
   awaitingArtist?: boolean
+  /** Profil bookée géré par une agence : son nom */
+  targetManagedBy?: string | null
 }
 
 export interface Message {
@@ -60,6 +62,8 @@ export interface Message {
   attachmentName?: string | null
   createdAt: string
   seen: boolean
+  /** Profil géré : message écrit par l'agence à la place du titulaire */
+  sentBy?: { name: string } | null
   sender: { id: number; name: string; image?: string | null }
   sharedProfile?: {
     userId: number

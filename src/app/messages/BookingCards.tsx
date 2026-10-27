@@ -112,6 +112,7 @@ export function BookingRequestCard({
         </div>
         <StatusBadge status={status} />
       </div>
+      {br.targetManagedBy && <p className="px-4 pt-2 text-[11px] text-white/45">Profil géré par <b className="font-semibold text-white/70">{br.targetManagedBy}</b></p>}
       <div className="lsb-booking-card-body">
         <div className="lsb-booking-facts">
           <div><span><CalendarDays className="w-4 h-4" /></span><p><small>Date proposée</small><strong className="capitalize">{dateLabel}</strong></p></div>

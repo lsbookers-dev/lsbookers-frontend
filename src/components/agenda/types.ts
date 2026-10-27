@@ -28,6 +28,8 @@ export type BookingItem = {
   message?: string | null
   conversationId?: number | null
   cancellationRequestedBy?: number | null
+  /** Profil géré : l'agence a accepté, l'artiste doit confirmer */
+  awaitingArtistSince?: string | null
   requester?: { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
   target?:    { id: number; avatar?: string | null; user?: { pseudo?: string | null; firstName?: string | null; lastName?: string | null } | null } | null
 }

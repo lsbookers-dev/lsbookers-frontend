@@ -638,6 +638,8 @@ export default function MessageThread({
                       {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.bookingRequestId ? stripLeadingEmoji(msg.content) : msg.content}</p>}
                       <AttachmentBubble msg={msg} onImageClick={(url, name) => setLightbox({ url, name })} />
                     </div>
+                    {/* Profil géré : message écrit par l'agence */}
+                    {msg.sentBy && <span className="mt-0.5 text-[10px] text-white/40">envoyé par {msg.sentBy.name}</span>}
                     {/* Heure + lu — seulement sur le dernier du groupe */}
                     {isLast && (
                       <div className={`flex items-center gap-1 mt-1 ${isMe ? 'flex-row-reverse' : ''}`}>

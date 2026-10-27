@@ -9,6 +9,7 @@ import AgendaCalendar from '@/components/AgendaCalendar'
 import ReviewsPanel from '@/components/ReviewsPanel'
 import type { Offer } from '@/components/offers/OfferCard'
 import ProfileContentTabs from './ProfileContentTabs'
+import RepresentedSection from './RepresentedSection'
 import {
   CvIcon, FeesIcon, MapSection, OffersSection, SocialSection, SoundcloudSection, StylesSection, TextSection, VideoSection,
 } from './ProfileSections'
@@ -47,6 +48,7 @@ export default function ProfileBody({
       <div className="mt-6 grid grid-cols-1 gap-6 pb-16 lg:grid-cols-[1fr_340px]">
         <div className="min-w-0 space-y-6">
           <TextSection title={text.about} value={profile.bio} emptyText="Présente-toi en quelques lignes." section="presentation" mode={mode} onEdit={onEdit} />
+          {profile.represents && <RepresentedSection title={profile.represents.title} profiles={profile.represents.profiles} />}
           <ProfileContentTabs
             profileId={profile.id}
             ownerUserId={profile.userId}

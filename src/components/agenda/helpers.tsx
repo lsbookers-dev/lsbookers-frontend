@@ -111,7 +111,11 @@ export function availDotColor(status?: string): string {
 
 /* ── Badges de statut ── */
 
-export function BkStatusBadge({ status }: { status: string }) {
+export function BkStatusBadge({ status, awaitingArtist = false }: { status: string; awaitingArtist?: boolean }) {
+  // Profil géré : l'agence a accepté, l'artiste doit encore confirmer
+  if (status === 'PENDING' && awaitingArtist) {
+    return <span className="inline-flex min-h-6 items-center rounded-full border border-gold/30 bg-gold/10 px-2.5 text-[11px] font-medium text-gold-light shrink-0">Attente de l’artiste</span>
+  }
   const map: Record<string, { label: string; cls: string }> = {
     PENDING:   { label: 'En attente', cls: 'border border-amber-400/20 bg-amber-400/10 text-amber-200' },
     ACCEPTED:  { label: 'Accepté',    cls: 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-200' },

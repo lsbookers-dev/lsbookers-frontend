@@ -8,6 +8,7 @@ import SafeImage from '@/components/SafeImage'
 import { publicProfileHref } from '@/components/profile/utils'
 import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
 import { SettingRow, SettingsButton, SettingsCard, SettingsTitle, Toggle } from '@/components/settings/ui'
+import { journalDate, journalText, type JournalEntry } from '@/components/managed/journal'
 
 type Management = {
   id: number
@@ -27,6 +28,7 @@ export default function ManagementSettingsPage() {
   const [busyId, setBusyId] = useState<number | null>(null)
   // Choix « accord avant booking » pour chaque invitation en attente (coché par défaut)
   const [approval, setApproval] = useState<Record<number, boolean>>({})
+  const [entries, setEntries] = useState<JournalEntry[]>([])
 
   const load = useCallback(() => {
     apiFetch(apiUrl('managers/mine'), { cache: 'no-store' })
@@ -35,6 +37,12 @@ export default function ManagementSettingsPage() {
       .catch(() => setList([]))
   }, [])
   useEffect(load, [load])
+  useEffect(() => {
+    apiFetch(apiUrl('managers/mine/journal'), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : { entries: [] }))
+      .then(d => setEntries(d.entries || []))
+      .catch(() => {})
+  }, [])
 
   const act = async (id: number, path: string, method: string, body?: object, success?: string) => {
     setBusyId(id)
@@ -132,6 +140,19 @@ export default function ManagementSettingsPage() {
           </div>
         </SettingsCard>
       ))}
+
+      {entries.length > 0 && (
+        <SettingsCard title="Ce que l’agence a fait pour vous" description="Les dernières actions faites pour votre profil (les messages n’y figurent pas).">
+          <ul className="grid gap-2">
+            {entries.slice(0, 20).map(e => (
+              <li key={e.id} className="flex items-start justify-between gap-3 text-sm">
+                <span className="text-white/75"><b className="font-semibold text-white">{e.managerName || 'L’agence'}</b> {journalText(e)}</span>
+                <span className="shrink-0 text-xs text-white/40">{journalDate(e.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </SettingsCard>
+      )}
     </>
   )
 }
