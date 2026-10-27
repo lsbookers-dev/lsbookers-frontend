@@ -13,6 +13,9 @@ import EventPanel       from './agenda/EventPanel'
 import CalendarGrid     from './agenda/CalendarGrid'
 import BookedEventView  from './agenda/BookedEventView'
 import { apiFetch } from '@/utils/auth'
+import { apiUrl } from '@/utils/api'
+import { useAuth } from '@/context/AuthContext'
+import type { ManagedAgendaItem, ManagedAgendaProfile } from './agenda/types'
 import { uploadToStorage } from '@/utils/directUpload'
 import { useFeedback } from '@/components/ui/Feedback'
 
@@ -56,6 +59,29 @@ export default function AgendaCalendar({
   // Multi-sélection
   const [multiSelectMode, setMultiSelectMode] = useState(false)
   const [bulkDates, setBulkDates] = useState<Set<string>>(new Set())
+
+  // Formule Business : les dates des profils gérés s'affichent dans ce même agenda (un seul agenda)
+  const { user, acting } = useAuth()
+  const showManaged = isOwner && !!user?.canManageProfiles && !acting
+  const [managed, setManaged] = useState<{ profiles: ManagedAgendaProfile[]; items: ManagedAgendaItem[] }>({ profiles: [], items: [] })
+  const [hiddenProfiles, setHiddenProfiles] = useState<Set<number>>(new Set())
+  useEffect(() => {
+    if (!showManaged) return
+    let cancelled = false
+    const from = viewMode === 'month'
+      ? new Date(focusDate.getFullYear(), focusDate.getMonth(), 1)
+      : new Date(focusDate.getFullYear(), focusDate.getMonth(), focusDate.getDate() - ((focusDate.getDay() + 6) % 7))
+    const to = viewMode === 'month'
+      ? new Date(focusDate.getFullYear(), focusDate.getMonth() + 1, 1)
+      : new Date(from.getFullYear(), from.getMonth(), from.getDate() + 7)
+    apiFetch(`${apiUrl('managers/agenda')}?from=${from.toISOString()}&to=${to.toISOString()}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d) setManaged({ profiles: d.profiles || [], items: d.items || [] }) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [showManaged, focusDate, viewMode])
+  const visibleManaged = managed.items.filter(i => !hiddenProfiles.has(i.profileId))
+  const toggleManagedProfile = (id: number) => setHiddenProfiles(h => { const n = new Set(h); if (n.has(id)) n.delete(id); else n.add(id); return n })
 
   // UI states
   const [savingAvail, setSavingAvail] = useState(false)
@@ -1135,7 +1161,21 @@ export default function AgendaCalendar({
 
       {/* Grille calendrier + panneau jour (masqués quand un panneau est ouvert) */}
       {!showPanel && !showEventPanel && !showStaffEventPanel && (
+        <>
+        {showManaged && managed.profiles.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2" aria-label="Profils gérés affichés">
+            <span className="text-[11px] text-white/45">Vos profils :</span>
+            {managed.profiles.map(p => (
+              <button key={p.profileId} type="button" onClick={() => toggleManagedProfile(p.profileId)} aria-pressed={!hiddenProfiles.has(p.profileId)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${hiddenProfiles.has(p.profileId) ? 'border-white/10 text-white/35' : 'border-white/15 text-white/85'}`}>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color, opacity: hiddenProfiles.has(p.profileId) ? 0.3 : 1 }} />{p.name}
+              </button>
+            ))}
+          </div>
+        )}
         <CalendarGrid
+          managedItems={showManaged ? visibleManaged : []}
+          managedProfiles={managed.profiles}
           focusDate={focusDate}
           viewMode={viewMode}
           events={events}
@@ -1168,6 +1208,7 @@ export default function AgendaCalendar({
           sendBookingRequest={sendBookingRequest}
           openEventFromCalendar={openEventFromCalendar}
         />
+        </>
       )}
 
     </div>

@@ -1,9 +1,14 @@
 import React from 'react'
 import { CalendarCheck, Clock, MapPin, Send, X, Plus } from 'lucide-react'
-import { CalEvent, AvailDay } from './types'
+import { CalEvent, AvailDay, type ManagedAgendaItem, type ManagedAgendaProfile } from './types'
+import { switchToProfile } from '@/components/managed/ProfileSwitcher'
+import { agendaEventLink } from '@/utils/notificationLinks'
 import { AVAIL_OPTIONS, isSameDay, formatHour, availCellStyle, availDotColor, isWeekend, getFrenchHolidays } from './helpers'
 
 interface CalendarGridProps {
+  /** Formule Business : dates des profils gérés, dans le même agenda */
+  managedItems?: ManagedAgendaItem[]
+  managedProfiles?: ManagedAgendaProfile[]
   focusDate: Date
   viewMode: 'week' | 'month'
   events: CalEvent[]
@@ -65,6 +70,9 @@ function dateKey(d: Date): string {
 }
 
 export default function CalendarGrid(props: CalendarGridProps) {
+  const managedItems = props.managedItems || []
+  const profileOf = Object.fromEntries((props.managedProfiles || []).map(p => [p.profileId, p]))
+  const managedOn = (date: Date) => managedItems.filter(i => isSameDay(new Date(i.date), date))
   const {
     focusDate, viewMode, events, availability, selected, loading, now, isOwner, showAvailability,
     savingAvail, selectedEvents, selectedAvail, canBook, bookingSent, showBookingForm,
@@ -178,6 +186,16 @@ export default function CalendarGrid(props: CalendarGridProps) {
                           </span>
                         )}
                         {avail && <span className={`lsb-week-availability ${avail.status.toLowerCase()}`}>{statusLabel(avail.status)}</span>}
+                        {managedOn(date).length > 0 && (
+                          <span className="pointer-events-none absolute inset-x-1 bottom-1 z-[2] flex flex-col gap-0.5">
+                            {managedOn(date).slice(0, 3).map(item => (
+                              <span key={item.id} className="truncate rounded px-1 text-[10px] leading-4 text-[#0b0a10]"
+                                style={{ background: profileOf[item.profileId]?.color || '#888', opacity: item.status === 'OPTION' ? 0.6 : 1 }}>
+                                {profileOf[item.profileId]?.name} · {item.title}
+                              </span>
+                            ))}
+                          </span>
+                        )}
                         {dayEvents.map((event) => {
                           const start = positionFor(event.start)
                           const end = event.end ? positionFor(event.end) : Math.min(100, start + 9)
@@ -254,7 +272,15 @@ export default function CalendarGrid(props: CalendarGridProps) {
                             <time>{formatHour(event.start)}</time><strong>{event.title}</strong>
                           </button>
                         ))}
-                        {dayEvents.length > 3 && <button type="button" className="lsb-month-more" onClick={() => { if (!multiSelectMode) setSelected(date) }}>+ {dayEvents.length - 3} autre{dayEvents.length - 3 > 1 ? 's' : ''}</button>}
+                        {/* Dates des profils gérés : couleur du profil, le détail s'ouvre dans le panneau du jour */}
+                        {managedOn(date).slice(0, Math.max(0, 3 - dayEvents.length)).map(item => (
+                          <button type="button" key={item.id} className="lsb-month-event"
+                            style={{ boxShadow: `inset 3px 0 0 ${profileOf[item.profileId]?.color || '#888'}`, opacity: item.status === 'OPTION' ? 0.65 : 1 }}
+                            onClick={() => { if (!multiSelectMode) setSelected(date) }}>
+                            <strong>{profileOf[item.profileId]?.name} · {item.title}</strong>
+                          </button>
+                        ))}
+                        {dayEvents.length + managedOn(date).length > 3 && <button type="button" className="lsb-month-more" onClick={() => { if (!multiSelectMode) setSelected(date) }}>+ {dayEvents.length + managedOn(date).length - 3} autre{dayEvents.length + managedOn(date).length - 3 > 1 ? 's' : ''}</button>}
                       </div>
                     </div>
                   )
@@ -384,6 +410,31 @@ export default function CalendarGrid(props: CalendarGridProps) {
               </div>
             )}
             {bookingSent && <div className="lsb-booking-success"><CalendarCheck size={16} />Demande envoyée</div>}
+
+            {selected && managedOn(selected).length > 0 && (
+              <div className="lsb-day-events">
+                <span>VOS PROFILS</span>
+                {managedOn(selected).map(item => {
+                  const p = profileOf[item.profileId]
+                  return (
+                    <div key={item.id} className="flex items-start gap-2.5 rounded-xl border border-white/[0.06] p-2.5">
+                      <i className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: p?.color || '#888' }} />
+                      <div className="min-w-0 flex-1">
+                        <strong className="block truncate text-sm text-white">{p?.name} · {item.title}</strong>
+                        <p className="text-xs text-white/50">
+                          {item.awaitingArtist ? 'En attente de l’accord de l’artiste' : item.status === 'OPTION' ? 'Option (demande en attente)' : 'Confirmé'}
+                          {item.place ? ` · ${item.place}` : ''}
+                        </p>
+                        <button type="button" onClick={() => switchToProfile(item.profileId, item.eventId ? agendaEventLink(item.eventId) : '/agenda')}
+                          className="mt-1.5 rounded-lg border border-accent/50 px-2.5 py-1 text-xs font-semibold text-accent-light hover:bg-accent/15">
+                          Voir le détail dans l’agenda de {p?.name}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
 
             <div className="lsb-day-events">
               <span>PROGRAMME</span>

@@ -110,7 +110,7 @@ export default function ManagementSettingsPage() {
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/gestion" className="rounded-xl bg-accent-strong px-4 py-2 text-xs font-medium text-white hover:bg-accent">Gérer mes profils</Link>
-            <Link href="/gestion/agenda" className="rounded-xl border border-white/12 px-4 py-2 text-xs font-medium text-white/80 hover:bg-white/[0.06]">Agenda de mes profils</Link>
+            <Link href="/agenda" className="rounded-xl border border-white/12 px-4 py-2 text-xs font-medium text-white/80 hover:bg-white/[0.06]">Mon agenda (avec leurs dates)</Link>
           </div>
         </SettingsCard>
       )}

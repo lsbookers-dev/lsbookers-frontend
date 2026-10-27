@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   Home, Compass, CalendarDays, MessageCircle, LayoutDashboard, Menu, Bell,
-  TicketCheck, Sparkles, Crown, Settings, LogOut, X, CalendarRange,
+  TicketCheck, Sparkles, Crown, Settings, LogOut, X,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useUnreadCounts } from '@/hooks/useUnreadCounts'
@@ -18,12 +18,11 @@ type AuthUser = {
   role: Role
   avatar?: string | null
   avatarUrl?: string | null
-  canManageProfiles?: boolean
 }
 
 export default function BottomNav() {
   const pathname = usePathname()
-  const { user, logout, acting } = useAuth() as { user: AuthUser | null; logout: () => void; acting: unknown }
+  const { user, logout } = useAuth() as { user: AuthUser | null; logout: () => void }
   const [moreOpen, setMoreOpen] = useState(false)
 
   // Pastilles enveloppe et cloche (compteur partagé du site)
@@ -43,7 +42,6 @@ export default function BottomNav() {
 
   const moreItems = [
     { href: '/space',            icon: LayoutDashboard, label: 'Mon espace',    badge: 0 },
-    ...(user?.canManageProfiles && !acting ? [{ href: '/gestion/agenda', icon: CalendarRange, label: 'Agenda profils', badge: 0 }] : []),
     { href: '/notifications',    icon: Bell,            label: 'Notifications', badge: unreadNotif },
     { href: '/offers',           icon: TicketCheck,     label: 'Opportunités',  badge: 0 },
     { href: '/studio-profile',   icon: Sparkles,        label: 'Studio profil', badge: 0 },

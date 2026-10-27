@@ -3,10 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  CalendarDays, CalendarRange, Compass, Crown, Home, LayoutDashboard, Mail,
+  CalendarDays, Compass, Crown, Home, LayoutDashboard, Mail,
   Settings, Sparkles, TicketCheck,
 } from 'lucide-react'
-import { useAuth } from '@/context/AuthContext'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 import ProfileSwitcher from '@/components/managed/ProfileSwitcher'
 
@@ -28,11 +27,6 @@ const secondary = [
 export default function AppSidebar() {
   const pathname = usePathname()
   const unreadMessages = useUnreadMessages()
-  const { user, acting } = useAuth()
-  // Formule Agence, sur son propre profil : l'agenda de tous les profils gérés (B1)
-  const primaryItems = user?.canManageProfiles && !acting
-    ? [...primary.slice(0, 3), { href: '/gestion/agenda', label: 'Agenda de mes profils', icon: CalendarRange }, ...primary.slice(3)]
-    : primary
   const active = (href: string, matches?: string[]) =>
     (matches || [href]).some(path => pathname === path || pathname.startsWith(`${path}/`))
 
@@ -56,7 +50,7 @@ export default function AppSidebar() {
     <aside className="lsb-sidebar" aria-label="Navigation principale">
       <div>
         <ProfileSwitcher />
-        <nav>{group(primaryItems)}</nav>
+        <nav>{group(primary)}</nav>
       </div>
       <div className="flex flex-col gap-3">
         <nav>{group(secondary)}</nav>

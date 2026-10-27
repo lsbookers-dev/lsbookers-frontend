@@ -188,3 +188,16 @@ export type EventOfferForm = {
 }
 
 export type EventMode = 'list' | 'create' | 'detail'
+
+/** Formule Business : date d'un profil géré, affichée dans l'agenda de la personne qui le gère */
+export type ManagedAgendaItem = {
+  id: string
+  profileId: number
+  date: string
+  eventId: number | null
+  title: string
+  place: string | null
+  status: 'CONFIRMED' | 'OPTION'
+  awaitingArtist: boolean
+}
+export type ManagedAgendaProfile = { profileId: number; name: string; color: string; avatar: string | null; role: string }

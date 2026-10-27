@@ -167,7 +167,7 @@ export default function AgencySpace({ agencyName }: { agencyName: string }) {
       </SpacePanel>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SpacePanel kicker="Agenda" title="Prochaines dates" action={<PanelLink href="/gestion/agenda">Agenda de mes profils</PanelLink>}>
+        <SpacePanel kicker="Agenda" title="Prochaines dates" action={<PanelLink href="/agenda">Mon agenda</PanelLink>}>
           {data.upcoming.length === 0 ? <EmptyLine>Aucune date dans les 14 prochains jours.</EmptyLine> : (
             <div className="grid">
               {data.upcoming.map((u, i) => (
