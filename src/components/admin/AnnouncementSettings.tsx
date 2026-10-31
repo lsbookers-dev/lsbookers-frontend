@@ -62,15 +62,15 @@ export default function AnnouncementSettings() {
   }
 
   return (
-    <section className="mb-8 rounded-2xl border border-white/10 bg-black/30 p-4">
+    <section className="mb-8 rounded-2xl border border-line bg-surface p-4">
       <h2 className="mb-1 text-lg font-semibold">Annonce de l&apos;en-tête</h2>
-      <p className="mb-4 text-sm text-white/50">
+      <p className="mb-4 text-sm text-muted">
         Une ligne d&apos;information au centre de l&apos;en-tête, pour tous les membres (sur téléphone : en bandeau en haut des pages).
         Chacun peut la fermer ; si vous changez le texte ou le lien, elle réapparaît.
       </p>
 
       <label className="block">
-        <span className="mb-1.5 flex justify-between text-xs uppercase tracking-wider text-white/50">
+        <span className="mb-1.5 flex justify-between text-xs uppercase tracking-wider text-muted">
           Texte <span className="normal-case tracking-normal">{text.length}/{MAX}</span>
         </span>
         <input
@@ -78,30 +78,30 @@ export default function AnnouncementSettings() {
           maxLength={MAX}
           onChange={e => setText(e.target.value)}
           placeholder="Nouveau : les devis et factures sont dans Mon espace"
-          className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-accent/40 focus:outline-none"
+          className="w-full rounded-xl border border-line bg-black/40 px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-accent/40 focus:outline-none"
         />
       </label>
 
       <label className="mt-3 block">
-        <span className="mb-1.5 block text-xs uppercase tracking-wider text-white/50">Lien du bouton « Voir » (facultatif)</span>
+        <span className="mb-1.5 block text-xs uppercase tracking-wider text-muted">Lien du bouton « Voir » (facultatif)</span>
         <input
           value={url}
           onChange={e => setUrl(e.target.value)}
           placeholder="/space ou https://…"
-          className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-accent/40 focus:outline-none"
+          className="w-full rounded-xl border border-line bg-black/40 px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-accent/40 focus:outline-none"
         />
         {urlError && <span className="mt-1 block text-xs text-red-300">{urlError}</span>}
       </label>
 
       <label className="mt-3 block">
-        <span className="mb-1.5 block text-xs uppercase tracking-wider text-white/50">Date de fin (facultatif)</span>
+        <span className="mb-1.5 block text-xs uppercase tracking-wider text-muted">Date de fin (facultatif)</span>
         <input
           type="date"
           value={endsAt}
           onChange={e => setEndsAt(e.target.value)}
-          className="w-48 rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white [color-scheme:dark] focus:border-accent/40 focus:outline-none"
+          className="w-48 rounded-xl border border-line bg-black/40 px-4 py-2.5 text-sm text-white [color-scheme:dark] focus:border-accent/40 focus:outline-none"
         />
-        <span className={`mt-1 block text-xs ${expired ? 'text-red-300' : 'text-white/40'}`}>
+        <span className={`mt-1 block text-xs ${expired ? 'text-red-300' : 'text-muted'}`}>
           {!endsAt
             ? 'Sans date de fin : l’annonce reste affichée tant que la case est cochée.'
             : expired
@@ -117,8 +117,8 @@ export default function AnnouncementSettings() {
 
       {text.trim() && (
         <div className="mt-4">
-          <span className="mb-1.5 block text-xs uppercase tracking-wider text-white/50">Aperçu</span>
-          <div className="flex rounded-xl border border-white/8 bg-[#0b0a10] px-3 py-3">
+          <span className="mb-1.5 block text-xs uppercase tracking-wider text-muted">Aperçu</span>
+          <div className="flex rounded-xl border border-line bg-[#0b0a10] px-3 py-3">
             <HeaderAnnouncement key={`${text}|${url}`} announcement={{ text: text.trim(), url: url.trim() }} preview />
           </div>
         </div>

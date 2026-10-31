@@ -1,323 +1,169 @@
-// src/app/admin/settings/page.tsx
 'use client'
 
+// Admin › Réglages (choix D1 d'Antho, 31/10/2026) : trois sous-onglets courts, chacun avec son bouton
+// « Enregistrer » — Apparence du site (annonce, fonds, logos), Tarifs et règles, Services payants.
+// Le « texte d'accueil » de la landing, affiché nulle part, a été retiré.
+
 /* eslint-disable @next/next/no-img-element */
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import CropModal from '@/components/CropModal'
 import AnnouncementSettings from '@/components/admin/AnnouncementSettings'
-import { getAuthToken, apiFetch } from '@/utils/auth'
+import { ExtrasTab, RulesTab } from '@/components/admin/billingTabs'
+import { API, BTN, CARD, PageHeader, Spinner, SubTabs } from '@/components/admin/ui'
+import { useFeedback } from '@/components/ui/Feedback'
+import { apiFetch } from '@/utils/auth'
 import { uploadToStorage } from '@/utils/directUpload'
 
-type AdminSettings = {
-  welcomeText: string
-  landingBgUrl: string
-  loginBgUrl: string
-  registerBgUrl: string
-  headerLogoUrl: string
-  landingLogoUrl: string
+type ImageField = 'landingBgUrl' | 'loginBgUrl' | 'registerBgUrl' | 'headerLogoUrl' | 'landingLogoUrl'
+type Images = Record<ImageField, string>
+type Tab = 'look' | 'rules' | 'services'
+
+const FOLDER: Record<ImageField, string> = {
+  landingBgUrl: 'banners', loginBgUrl: 'banners', registerBgUrl: 'banners', headerLogoUrl: 'logos', landingLogoUrl: 'logos',
 }
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-const EMPTY: AdminSettings = {
-  welcomeText: '',
-  landingBgUrl: '',
-  loginBgUrl: '',
-  registerBgUrl: '',
-  headerLogoUrl: '',
-  landingLogoUrl: '',
-}
-
-export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState<AdminSettings>(EMPTY)
-  const [loading, setLoading] = useState(true)
-  const [notice, setNotice] = useState('')
-
-  const token =
-    getAuthToken()
-
-  const show = (msg: string) => {
-    setNotice(msg)
-    setTimeout(() => setNotice(''), 2000)
-  }
-
-  const load = useCallback(async () => {
-    if (!API_BASE || !token) {
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    try {
-      const res = await apiFetch(`${API_BASE}/api/admin/settings`, {
-        cache: 'no-store',
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as Partial<AdminSettings>
-      setSettings({
-        welcomeText: data.welcomeText ?? '',
-        landingBgUrl: data.landingBgUrl ?? '',
-        loginBgUrl: data.loginBgUrl ?? '',
-        registerBgUrl: data.registerBgUrl ?? '',
-        headerLogoUrl: data.headerLogoUrl ?? '',
-        landingLogoUrl: data.landingLogoUrl ?? '',
-      })
-    } catch (e) {
-      console.error(e)
-      show('Erreur de chargement.')
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
+function LookTab() {
+  const { notify } = useFeedback()
+  const [images, setImages] = useState<Images | null>(null)
 
   useEffect(() => {
-    void load()
-  }, [load])
+    apiFetch(`${API}/api/admin/settings`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setImages({
+        landingBgUrl: d?.landingBgUrl || '', loginBgUrl: d?.loginBgUrl || '', registerBgUrl: d?.registerBgUrl || '',
+        headerLogoUrl: d?.headerLogoUrl || '', landingLogoUrl: d?.landingLogoUrl || '',
+      }))
+      .catch(() => setImages({ landingBgUrl: '', loginBgUrl: '', registerBgUrl: '', headerLogoUrl: '', landingLogoUrl: '' }))
+  }, [])
 
-  const saveAll = useCallback(
-    async (next?: Partial<AdminSettings>) => {
-      if (!API_BASE || !token) return
-      const body: AdminSettings = { ...settings, ...(next ?? {}) }
-      setSettings(body) // UI optimiste
-      try {
-        const res = await apiFetch(`${API_BASE}/api/admin/settings`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        show('Enregistré')
-      } catch (e) {
-        console.error(e)
-        show('Erreur de sauvegarde.')
-      }
-    },
-    [settings, token]
-  )
+  // Envoi de l'image puis enregistrement de ce seul champ (le serveur ne touche pas aux autres)
+  const upload = useCallback(async (field: ImageField, file: File) => {
+    try {
+      const res = await uploadToStorage(file, { folder: FOLDER[field] })
+      if (!res.ok) throw new Error()
+      const url = ((await res.json()) as { url?: string }).url || ''
+      const save = await apiFetch(`${API}/api/admin/settings`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [field]: url }),
+      })
+      if (!save.ok) throw new Error()
+      if (field === 'headerLogoUrl') sessionStorage.removeItem('site_logo')
+      setImages(prev => (prev ? { ...prev, [field]: url } : prev))
+      notify('Image enregistrée (visible sur le site sous une minute).')
+    } catch {
+      notify("L'image n'a pas pu être enregistrée.", 'error')
+    }
+  }, [notify])
 
-  const uploadAndSet = useCallback(
-    async (field: keyof AdminSettings, file: File) => {
-      if (!API_BASE || !token) return
-      // Choisir le bon dossier R2 selon le champ
-      const folderMap: Record<string, string> = {
-        landingBgUrl:  'banners',
-        loginBgUrl:    'banners',
-        registerBgUrl: 'banners',
-        headerLogoUrl: 'logos',
-        landingLogoUrl: 'logos',
-      }
-      try {
-        const res = await uploadToStorage(file, { folder: folderMap[field] ?? 'media' })
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({})) as { error?: string; details?: string }
-          throw new Error(`UPLOAD ${res.status} — ${errBody.error ?? ''} ${errBody.details ?? ''}`)
-        }
-        const data = (await res.json()) as { url?: string }
-        const url = data.url || ''
-        if (field === 'headerLogoUrl') sessionStorage.removeItem('site_logo')
-        await saveAll({ [field]: url } as Partial<AdminSettings>)
-      } catch (e) {
-        console.error(e)
-        show("Échec de l'upload.")
-      }
-    },
-    [token, saveAll]
-  )
-
-  if (!token) {
-    return (
-      <div className="p-6 text-white">
-        <p>Connectez-vous pour accéder aux paramètres.</p>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="p-6 text-white">
-        <p className="text-white/70">Chargement…</p>
-      </div>
-    )
-  }
-
+  if (!images) return <Spinner />
   return (
-    <div className="max-w-3xl mx-auto p-6 text-white">
-      <h1 className="text-2xl font-bold mb-6">Paramètres du site</h1>
-
+    <div className="space-y-6">
       <AnnouncementSettings />
-
-      {/* Welcome text */}
-      <section className="mb-8 rounded-2xl border border-white/10 p-4 bg-black/30">
-        <h2 className="text-lg font-semibold mb-2">Texte d’accueil (landing)</h2>
-        <textarea
-          rows={4}
-          className="w-full bg-black/40 border border-white/10 rounded p-3"
-          value={settings.welcomeText}
-          onChange={(e) =>
-            setSettings((s) => ({ ...s, welcomeText: e.target.value }))
-          }
-        />
-        <div className="mt-3">
-          <button
-            onClick={() => void saveAll()}
-            className="px-4 py-2 rounded bg-white/10 hover:bg-white/20"
-          >
-            Enregistrer
-          </button>
+      <section>
+        <h2 className="mb-3 text-sm font-semibold">Fonds des pages publiques</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <ImagePicker label="Page d'accueil" url={images.landingBgUrl} onPick={f => upload('landingBgUrl', f)} />
+          <ImagePicker label="Connexion" url={images.loginBgUrl} onPick={f => upload('loginBgUrl', f)} />
+          <ImagePicker label="Inscription" url={images.registerBgUrl} onPick={f => upload('registerBgUrl', f)} />
         </div>
       </section>
-
-      {/* Images */}
-      <div className="space-y-6">
-        <ImagePicker
-          label="Fond — Landing"
-          url={settings.landingBgUrl}
-          onPick={(f) => void uploadAndSet('landingBgUrl', f)}
-        />
-        <ImagePicker
-          label="Fond — Login"
-          url={settings.loginBgUrl}
-          onPick={(f) => void uploadAndSet('loginBgUrl', f)}
-        />
-        <ImagePicker
-          label="Fond — Register"
-          url={settings.registerBgUrl}
-          onPick={(f) => void uploadAndSet('registerBgUrl', f)}
-        />
-        <LogoPicker
-          label="Logo — Header"
-          url={settings.headerLogoUrl}
-          onUpload={(f) => void uploadAndSet('headerLogoUrl', f)}
-        />
-        <LogoPicker
-          label="Logo — Landing / Login / Register"
-          url={settings.landingLogoUrl}
-          onUpload={(f) => void uploadAndSet('landingLogoUrl', f)}
-          aspectRatio={1}
-        />
-      </div>
-
-      {notice && <p className="mt-6 text-sm text-white/70">{notice}</p>}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold">Logos</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <LogoPicker label="Logo de l'en-tête du site" url={images.headerLogoUrl} onUpload={f => upload('headerLogoUrl', f)} />
+          <LogoPicker label="Logo des pages d'accueil, connexion et inscription" url={images.landingLogoUrl} onUpload={f => upload('landingLogoUrl', f)} aspectRatio={1} />
+        </div>
+      </section>
     </div>
   )
 }
 
-function LogoPicker({
-  label,
-  url,
-  onUpload,
-  aspectRatio = 3,
-}: {
-  label: string
-  url: string
-  onUpload: (file: File) => void
-  aspectRatio?: number
+function LogoPicker({ label, url, onUpload, aspectRatio = 3 }: {
+  label: string; url: string; onUpload: (file: File) => Promise<void>; aspectRatio?: number
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const handleFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const f = e.target.files?.[0]
+    e.currentTarget.value = ''
     if (!f) return
     const reader = new FileReader()
     reader.onload = (ev) => setCropSrc(ev.target?.result as string)
     reader.readAsDataURL(f)
-    e.currentTarget.value = ''
   }
 
   const handleConfirm = async (blob: Blob) => {
     setCropSrc(null)
     setBusy(true)
-    try {
-      await onUpload(new File([blob], 'logo.jpg', { type: 'image/jpeg' }))
-    } finally {
-      setBusy(false)
-    }
+    try { await onUpload(new File([blob], 'logo.jpg', { type: 'image/jpeg' })) } finally { setBusy(false) }
   }
 
   return (
     <>
       {cropSrc && (
-        <CropModal
-          src={cropSrc}
-          aspectRatio={aspectRatio}
-          displayWidth={480}
-          shape="rect"
-          maxZoom={6}
-          onConfirm={handleConfirm}
-          onCancel={() => setCropSrc(null)}
-        />
+        <CropModal src={cropSrc} aspectRatio={aspectRatio} displayWidth={480} shape="rect" maxZoom={6}
+          onConfirm={handleConfirm} onCancel={() => setCropSrc(null)} />
       )}
-      <section className="rounded-2xl border border-purple-500/30 p-4 bg-black/30">
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h4 className="font-semibold text-purple-300">{label}</h4>
-            <p className="text-xs text-white/50 mt-0.5">{aspectRatio === 1 ? 'Recadrage carré (1:1)' : 'Recadrage horizontal (3:1)'}</p>
-            {url && <p className="text-[10px] text-white/30 break-all mt-1">{url}</p>}
-          </div>
-          <label className={`px-4 py-2 rounded-xl cursor-pointer font-medium text-sm transition ${busy ? 'bg-white/10 opacity-60' : 'bg-purple-600 hover:bg-purple-500 text-white'}`}>
-            {busy ? 'Envoi…' : 'Choisir un logo'}
-            <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={busy} />
-          </label>
+      <div className={CARD}>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="mt-0.5 text-xs text-muted">{aspectRatio === 1 ? 'Recadrage carré' : 'Recadrage en largeur (3 pour 1)'}</p>
+        <div className="mt-4 flex h-20 items-center justify-center rounded-xl border border-line bg-black">
+          {url ? <img src={url} alt="" className="max-h-16 max-w-[80%] object-contain" /> : <span className="text-xs text-muted">Aucun logo</span>}
         </div>
-        {url && (
-          <div className="mt-4 flex items-center gap-4">
-            <img src={url} alt="Logo actuel" className="h-14 w-48 rounded-xl border border-white/10 object-contain bg-black" />
-            <div className="text-xs text-white/40">
-              <p>Logo actuel</p>
-              <p className="mt-1 text-white/25">Choisir un nouveau fichier pour remplacer</p>
-            </div>
-          </div>
-        )}
-      </section>
+        <label className={`${BTN} mt-4 inline-block cursor-pointer ${busy ? 'opacity-50' : ''}`}>
+          {busy ? 'Envoi…' : 'Remplacer'}
+          <input type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={busy} />
+        </label>
+      </div>
     </>
   )
 }
 
-function ImagePicker({
-  label,
-  url,
-  onPick,
-}: {
-  label: string
-  url: string
-  onPick: (file: File) => void
-}) {
+function ImagePicker({ label, url, onPick }: { label: string; url: string; onPick: (file: File) => Promise<void> }) {
   const [busy, setBusy] = useState(false)
-
   const handle: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
-    const f = e.target.files?.[0]
+    const input = e.currentTarget
+    const f = input.files?.[0]
     if (!f) return
-    try {
-      setBusy(true)
-      await onPick(f)
-    } finally {
-      setBusy(false)
-      e.currentTarget.value = ''
-    }
+    setBusy(true)
+    try { await onPick(f) } finally { setBusy(false); input.value = '' }
   }
-
   return (
-    <section className="rounded-2xl border border-white/10 p-4 bg-black/30">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <h4 className="font-medium">{label}</h4>
-          <p className="text-xs text-white/50 break-all">{url || '—'}</p>
-        </div>
-        <label className="px-3 py-2 rounded bg-white/10 hover:bg-white/20 cursor-pointer">
-          {busy ? 'Envoi…' : 'Choisir un fichier'}
-          <input type="file" accept="image/*" className="hidden" onChange={handle} />
-        </label>
+    <div className={CARD}>
+      <p className="text-sm font-medium">{label}</p>
+      <div className="mt-3 aspect-video overflow-hidden rounded-xl border border-line bg-black">
+        {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-xs text-muted">Aucune image</span>}
       </div>
-      {url && (
-        <img
-          src={url}
-          alt={label}
-          className="mt-3 max-h-40 rounded border border-white/10 object-cover"
-        />
-      )}
-    </section>
+      <label className={`${BTN} mt-4 inline-block cursor-pointer ${busy ? 'opacity-50' : ''}`}>
+        {busy ? 'Envoi…' : 'Remplacer'}
+        <input type="file" accept="image/*" className="hidden" onChange={handle} disabled={busy} />
+      </label>
+    </div>
   )
+}
+
+function SettingsContent() {
+  const params = useSearchParams()
+  const router = useRouter()
+  const initial = params.get('tab') as Tab
+  const [tab, setTab] = useState<Tab>(['look', 'rules', 'services'].includes(initial) ? initial : 'look')
+  const select = (t: Tab) => { setTab(t); router.replace(`/admin/settings?tab=${t}`) }
+  return (
+    <div>
+      <PageHeader title="Réglages" subtitle="Apparence du site, tarifs et règles, services payants." />
+      <SubTabs<Tab> value={tab} onChange={select} tabs={[
+        { key: 'look', label: 'Apparence du site' },
+        { key: 'rules', label: 'Tarifs et règles' },
+        { key: 'services', label: 'Services payants' },
+      ]} />
+      {tab === 'look' && <LookTab />}
+      {tab === 'rules' && <RulesTab />}
+      {tab === 'services' && <ExtrasTab />}
+    </div>
+  )
+}
+
+export default function AdminSettingsPage() {
+  return <Suspense fallback={null}><SettingsContent /></Suspense>
 }

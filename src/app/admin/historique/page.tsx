@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { History, Search, RefreshCw } from 'lucide-react'
 import { apiFetch } from '@/utils/auth'
+import { ADMIN_LOG_LABELS as LABELS } from '@/components/admin/logLabels'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -18,38 +19,6 @@ type Log = {
   createdAt: string
 }
 
-const LABELS: Record<string, string> = {
-  ADMIN_LOGIN: 'Connexion à l’admin',
-  ADMIN_CODE_SENT: 'Code de connexion envoyé',
-  ADMIN_CODE_FAILED: 'Code de connexion erroné',
-  ADMIN_PASSWORD_FAILED: 'Mauvais mot de passe admin',
-  USER_ROLE: 'Type de compte modifié',
-  USER_DELETE: 'Compte supprimé',
-  USER_BAN: 'Compte suspendu',
-  USER_UNBAN: 'Suspension levée',
-  GIFT_PRO: 'Pro offert',
-  GIFT_PRO_REMOVE: 'Pro offert retiré',
-  GIFT_BUSINESS: 'Business offert ou retiré',
-  PLAN_SETTINGS: 'Prix et formules modifiés',
-  PROMO_CREATE: 'Code promo créé',
-  PROMO_UPDATE: 'Code promo modifié',
-  EXTRA_CREATE: 'Service payant créé',
-  EXTRA_UPDATE: 'Service payant modifié',
-  ORDER_VALIDATE: 'Commande validée',
-  ORDER_REFUSE: 'Commande refusée',
-  SITE_SETTINGS: 'Réglages du site modifiés',
-  POST_CREATE: 'Publication LS Bookers créée',
-  POST_DELETE: 'Publication LS Bookers supprimée',
-  POST_TOGGLE: 'Publication masquée ou affichée',
-  POST_PIN: 'Publication épinglée ou désépinglée',
-  FEATURED_ADD: 'Ajout au carrousel',
-  FEATURED_ORDER: 'Ordre du carrousel modifié',
-  FEATURED_UPDATE: 'Carrousel modifié',
-  FEATURED_DELETE: 'Retrait du carrousel',
-  CONTACT_ARCHIVE: 'Message de contact archivé',
-  CONTACT_DELETE: 'Message de contact supprimé',
-  ADMIN_ACTION: 'Autre action',
-}
 
 const GROUPS: { key: string; label: string; actions: string[] }[] = [
   { key: 'all', label: 'Tout', actions: [] },

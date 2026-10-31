@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Trash2, Archive, ArchiveRestore, Mail, MailOpen, RefreshCw, Inbox } from 'lucide-react'
 import { apiFetch } from '@/utils/auth'
+import { useFeedback } from '@/components/ui/Feedback'
+import { ADMIN_BADGES_EVENT } from '@/components/admin/AdminSidebar'
 
 const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -18,6 +20,7 @@ type ContactMsg = {
 }
 
 export default function AdminMessagesPage() {
+  const { confirm: confirmBox } = useFeedback()
   const [messages, setMessages] = useState<ContactMsg[]>([])
   const [total, setTotal] = useState(0)
   const [unread, setUnread] = useState(0)
@@ -54,8 +57,8 @@ export default function AdminMessagesPage() {
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isRead: true } : m))
       setSelected(prev => prev?.id === msg.id ? { ...prev, isRead: true } : prev)
       setUnread(u => Math.max(0, u - 1))
-      // Notifie le AdminHeader de mettre à jour son badge immédiatement
-      window.dispatchEvent(new CustomEvent('contact-read'))
+      // La pastille du menu se met à jour tout de suite
+      window.dispatchEvent(new CustomEvent(ADMIN_BADGES_EVENT))
     } catch { /* ignore */ }
   }
 
@@ -76,11 +79,12 @@ export default function AdminMessagesPage() {
       if (selected?.id === msg.id) setSelected(null)
       setTotal(t => t - 1)
       if (!msg.isRead && next) setUnread(u => Math.max(0, u - 1))
+      window.dispatchEvent(new CustomEvent(ADMIN_BADGES_EVENT))
     } catch { /* ignore */ }
   }
 
   const remove = async (msg: ContactMsg) => {
-    if (!confirm(`Supprimer ce message de ${msg.name} ?`)) return
+    if (!(await confirmBox({ title: `Supprimer ce message de ${msg.name} ?`, confirmLabel: 'Supprimer', danger: true }))) return
     try {
       await apiFetch(`${API}/api/contact/admin/${msg.id}`, {
         method: 'DELETE', })
@@ -92,7 +96,7 @@ export default function AdminMessagesPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div>
 
       {/* En-tête */}
       <div className="flex items-center justify-between mb-6">
@@ -100,12 +104,12 @@ export default function AdminMessagesPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             Messages de contact
             {unread > 0 && (
-              <span className="text-sm px-2 py-0.5 rounded-full bg-emerald-600 text-white font-semibold">
+              <span className="text-sm px-2 py-0.5 rounded-full bg-accent-strong text-white font-semibold">
                 {unread} non lu{unread > 1 ? 's' : ''}
               </span>
             )}
           </h1>
-          <p className="text-sm text-white/40 mt-0.5">{total} message{total !== 1 ? 's' : ''} {showArchived ? 'archivés' : 'reçus'}</p>
+          <p className="text-sm text-muted mt-0.5">{total} message{total !== 1 ? 's' : ''} {showArchived ? 'archivés' : 'reçus'}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -113,7 +117,7 @@ export default function AdminMessagesPage() {
             className={`px-3 py-2 rounded-xl text-sm border transition ${
               showArchived
                 ? 'bg-white/10 border-white/20'
-                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                : 'bg-white/5 border-line hover:bg-white/10'
             }`}
           >
             {showArchived ? '← Boîte de réception' : 'Archives'}
@@ -128,7 +132,7 @@ export default function AdminMessagesPage() {
         </div>
       </div>
 
-      {loading && <p className="text-white/40 text-sm mb-4">Chargement…</p>}
+      {loading && <p className="text-muted text-sm mb-4">Chargement…</p>}
 
       {!loading && messages.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-center gap-3 text-white/30">
@@ -147,15 +151,15 @@ export default function AdminMessagesPage() {
               onClick={() => openMessage(msg)}
               className={`w-full text-left rounded-xl border px-4 py-3 transition ${
                 selected?.id === msg.id
-                  ? 'bg-emerald-600/10 border-emerald-500/30'
-                  : 'bg-white/5 border-white/10 hover:bg-white/8'
+                  ? 'bg-accent-strong/10 border-accent/30'
+                  : 'bg-white/5 border-line hover:bg-white/8'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   {msg.isRead
                     ? <MailOpen size={14} className="text-white/30 flex-shrink-0" />
-                    : <Mail size={14} className="text-emerald-400 flex-shrink-0" />
+                    : <Mail size={14} className="text-accent-light flex-shrink-0" />
                   }
                   <p className={`text-sm truncate ${msg.isRead ? 'text-white/60' : 'font-semibold text-white'}`}>
                     {msg.name}
@@ -166,7 +170,7 @@ export default function AdminMessagesPage() {
                 </span>
               </div>
               {msg.subject && (
-                <p className="text-xs text-white/40 truncate mt-0.5 ml-5">{msg.subject}</p>
+                <p className="text-xs text-muted truncate mt-0.5 ml-5">{msg.subject}</p>
               )}
               <p className="text-xs text-white/30 truncate mt-0.5 ml-5 line-clamp-1">{msg.message}</p>
             </button>
@@ -175,13 +179,13 @@ export default function AdminMessagesPage() {
 
         {/* Détail */}
         {selected ? (
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+          <div className="bg-white/5 border border-line rounded-2xl p-6">
 
             {/* Actions */}
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="font-semibold text-lg">{selected.subject || 'Sans sujet'}</h2>
-                <p className="text-xs text-white/40 mt-0.5">
+                <p className="text-xs text-muted mt-0.5">
                   {new Date(selected.createdAt).toLocaleDateString('fr-FR', {
                     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     hour: '2-digit', minute: '2-digit',
@@ -191,7 +195,7 @@ export default function AdminMessagesPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => archive(selected)}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-white/50 hover:text-white transition"
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-muted hover:text-white transition"
                   title={selected.isArchived ? 'Désarchiver' : 'Archiver'}
                 >
                   {selected.isArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
@@ -208,14 +212,14 @@ export default function AdminMessagesPage() {
 
             {/* Expéditeur */}
             <div className="bg-white/5 rounded-xl p-4 mb-5 flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 text-emerald-400 font-semibold text-sm">
+              <div className="w-10 h-10 rounded-full bg-accent-strong/20 border border-accent/30 flex items-center justify-center flex-shrink-0 text-accent-light font-semibold text-sm">
                 {selected.name.charAt(0).toUpperCase()}
               </div>
               <div>
                 <p className="font-medium text-sm">{selected.name}</p>
                 <a
                   href={`mailto:${selected.email}`}
-                  className="text-xs text-emerald-400 hover:underline"
+                  className="text-xs text-accent-light hover:underline"
                 >
                   {selected.email}
                 </a>
@@ -226,7 +230,7 @@ export default function AdminMessagesPage() {
             </div>
 
             {/* Corps du message */}
-            <div className="bg-black/30 rounded-xl p-5">
+            <div className="bg-surface rounded-xl p-5">
               <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
                 {selected.message}
               </p>
@@ -235,7 +239,7 @@ export default function AdminMessagesPage() {
             {/* Bouton répondre par email */}
             <a
               href={`mailto:${selected.email}?subject=Re: ${encodeURIComponent(selected.subject || 'Votre message sur LSBookers')}`}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-medium transition"
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-strong hover:bg-accent text-sm font-medium transition"
             >
               <Mail size={14} />
               Répondre par email

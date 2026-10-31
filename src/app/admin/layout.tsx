@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import AdminHeader from '@/components/AdminHeader'
+import AdminSidebar from '@/components/admin/AdminSidebar'
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout'
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -38,8 +38,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen text-white lsb-admin-shell">
-      <AdminHeader />
-      <main className="pt-16 p-6 max-w-7xl mx-auto">{children}</main>
+      <AdminSidebar />
+      {/* Même largeur pour toutes les pages de l'admin */}
+      <main className="px-4 pb-12 pt-20 sm:px-6 lg:ml-60 lg:px-10 lg:pt-10">
+        <div className="mx-auto max-w-6xl">{children}</div>
+      </main>
     </div>
   )
 }

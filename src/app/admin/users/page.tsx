@@ -1,504 +1,523 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import Image from 'next/image'
-import { Trash2, Search, RefreshCw, Eye, X, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+// Admin › Membres (choix C1 d'Antho, 31/10/2026) : liste avec filtres, fiche qui s'ouvre à droite
+// avec toutes les informations du compte (bouton « œil ») et toutes les actions au même endroit.
+// Les membres « à surveiller » (annulations tardives répétées) et les suspendus sont ici aussi.
+
+/* eslint-disable @next/next/no-img-element */
+import { Suspense, useCallback, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { Eye, Search, X, ExternalLink, RefreshCw } from 'lucide-react'
 import { apiFetch } from '@/utils/auth'
+import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
+import { ADMIN_BADGES_EVENT } from '@/components/admin/AdminSidebar'
+import { ADMIN_LOG_LABELS } from '@/components/admin/logLabels'
+import {
+  API, BTN, BTN2, BTN_DANGER, CARD, INPUT, ROLE_LABEL, Empty, ErrorBox, PageHeader, PlanTag, Spinner,
+  fmtDate, fmtDateTime, money,
+} from '@/components/admin/ui'
 
-const API = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
+type Plan = 'FREE' | 'PRO' | 'BUSINESS'
 type ListedUser = {
-  id: number
-  pseudo?: string | null
-  firstName?: string | null
-  lastName?: string | null
-  email: string
-  role: string
-  emailVerified: boolean
-  createdAt: string
-  canManageProfiles?: boolean
-  profile?: { id: number; avatar?: string | null } | null
+  id: number; pseudo: string | null; firstName: string | null; lastName: string | null; email: string; role: string
+  emailVerified: boolean; canManageProfiles: boolean; bannedAt: string | null; pausedAt: string | null
+  createdAt: string; lastActiveAt: string | null; plan: Plan; planSource: string | null
+  profile: { id: number; avatar: string | null; city: string | null; location: string | null } | null
 }
-
-type DetailUser = {
-  id: number
-  email: string
-  role: string
-  isAdmin: boolean
-  createdAt: string
-  pseudo?: string | null
-  firstName?: string | null
-  lastName?: string | null
-  dateOfBirth?: string | null
-  phone?: string | null
-  countryOfResidence?: string | null
-  emailVerified: boolean
-  isIdentityVerified: boolean
-  isPaymentEnabled: boolean
-  registrationStep: number
-  stripeAccountId?: string | null
-  canManageProfiles?: boolean
-  profile?: {
-    id: number
-    bio?: string | null
-    profession?: string | null
-    location?: string | null
-    country?: string | null
-    radiusKm?: number | null
-    specialties?: string[]
-    styles?: string[]
-    typeEtablissement?: string | null
-    avatar?: string | null
-    showRealName?: boolean
-    legalStatus?: string | null
-    siret?: string | null
-    organizerType?: string | null
-    establishmentName?: string | null
-    address?: string | null
-    postalCode?: string | null
-    city?: string | null
-  } | null
-}
-
-const ROLE_COLORS: Record<string, string> = {
-  ARTIST:    'bg-pink-600/20 text-pink-400 border-pink-600/30',
-  ORGANIZER: 'bg-blue-600/20 text-blue-400 border-blue-600/30',
-  PROVIDER:  'bg-violet-600/20 text-violet-400 border-violet-600/30',
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  ARTIST: 'Artiste', ORGANIZER: 'Organisateur', PROVIDER: 'Prestataire',
-}
-
-const LEGAL_LABELS: Record<string, string> = {
-  INDIVIDUAL: 'Particulier',
-  AUTO_ENTREPRENEUR: 'Auto-entrepreneur',
-  COMPANY: 'Société',
-  INTERMITTENT: 'Intermittent du spectacle',
-}
-
-const displayName = (u: ListedUser | DetailUser) =>
-  u.pseudo || [u.firstName, u.lastName].filter(Boolean).join(' ') || '—'
-
-const LIMIT = 20
-
-function InfoRow({ label, value }: { label: string; value?: string | null | boolean | number }) {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'boolean') {
-    return (
-      <div className="flex items-center justify-between py-2 border-b border-white/5">
-        <span className="text-xs text-white/40">{label}</span>
-        {value
-          ? <CheckCircle size={15} className="text-emerald-400" />
-          : <XCircle size={15} className="text-red-400" />}
-      </div>
-    )
+type Json = Record<string, unknown>
+type Detail = {
+  user: Json & {
+    id: number; email: string; role: string; plan: Plan; canManageProfiles: boolean; bannedAt: string | null; banReason: string | null
+    profile: (Json & { id: number; avatar: string | null; _count: Record<string, number>; managers: { status: string; manager: Json }[] }) | null
+    subscription: (Json & { status: string; source: string; interval: string; priceCents: number; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean; endDate: string | null }) | null
+    agencySubscription: (Json & { status: string; interval: string; priceCents: number; currentPeriodEnd: string | null; extraProfiles: number }) | null
+    managedProfiles: { id: number; status: string; profile: { id: number; user: Json } }[]
+    sessions: { name: string; createdAt: string; lastUsedAt: string; revokedAt: string | null }[]
+    extraOrders: { id: number; label: string; status: string; amountCents: number; paidAt: string | null; createdAt: string }[]
+    promoRedemptions: { createdAt: string; code: { code: string; kind: string } }[]
+    _count: Record<string, number>
   }
+  lateCancellations: { count: number; cancellations: { id: number; startDate: string; cancelledAt: string }[]; warnedAt: string | null } | null
+  adminLogs: { id: number; action: string; createdAt: string; details: Json | null }[]
+}
+type WatchReport = {
+  alerts: { userId: number; name: string; email: string; role: string; count: number; cancellations: { id: number; startDate: string; cancelledAt: string }[]; warnedAt: string | null; bannedAt: string | null; needsDecision: boolean }[]
+  rules: { warnAt: number; alertAt: number; windowDays: number }
+}
+
+const LIMIT = 30
+const displayName = (u: { pseudo?: unknown; firstName?: unknown; lastName?: unknown; email?: unknown }) =>
+  String(u.pseudo || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || '—')
+
+const FILTERS: { group: string; items: { key: string; label: string; param: Record<string, string> }[] }[] = [
+  { group: 'Type', items: [
+    { key: 'all', label: 'Tous', param: {} },
+    { key: 'ARTIST', label: 'Artistes', param: { role: 'ARTIST' } },
+    { key: 'ORGANIZER', label: 'Organisateurs', param: { role: 'ORGANIZER' } },
+    { key: 'PROVIDER', label: 'Prestataires', param: { role: 'PROVIDER' } },
+  ] },
+  { group: 'Formule', items: [
+    { key: 'free', label: 'Gratuit', param: { plan: 'free' } },
+    { key: 'pro', label: 'Pro', param: { plan: 'pro' } },
+    { key: 'business', label: 'Business', param: { plan: 'business' } },
+  ] },
+  { group: 'État', items: [
+    { key: 'watch', label: 'À surveiller', param: { status: 'watch' } },
+    { key: 'banned', label: 'Suspendus', param: { status: 'banned' } },
+    { key: 'unverified', label: 'E-mail non confirmé', param: { status: 'unverified' } },
+  ] },
+]
+const ALL_FILTERS = FILTERS.flatMap(g => g.items)
+
+/* ── Libellés de la fiche ─────────────────────────────── */
+
+const LABELS: Record<string, string> = {
+  id: 'Numéro du compte', email: 'E-mail', pseudo: 'Pseudo', firstName: 'Prénom', lastName: 'Nom', dateOfBirth: 'Date de naissance',
+  phone: 'Téléphone', countryOfResidence: 'Pays de résidence', createdAt: 'Inscrit le', lastActiveAt: 'Dernière activité',
+  emailVerified: 'E-mail confirmé', requiresPasswordReset: 'Doit changer son mot de passe', isIdentityVerified: 'Identité vérifiée',
+  isPaymentEnabled: 'Paiements activés', stripeAccountId: 'Compte Stripe (versements)', stripeCustomerId: 'Client Stripe (abonnements)',
+  signupPlan: 'Formule choisie à l’inscription', payoutMode: 'Mode de versement', registrationStep: 'Étape d’inscription',
+  pausedAt: 'Compte en pause depuis', bannedAt: 'Suspendu le', banReason: 'Motif de suspension', lateCancelWarnedAt: 'Averti (annulations) le',
+  newsletterOptIn: 'Accepte la newsletter', newsletterOptInAt: 'Newsletter acceptée le', loginAlerts: 'Alertes de connexion',
+  passwordChangedAt: 'Mot de passe changé le', pendingEmail: 'Nouvel e-mail en attente', pendingEmailExpiresAt: 'Nouvel e-mail valable jusqu’au',
+  canManageProfiles: 'Business offert par l’admin', isAdmin: 'Ancien drapeau admin', role: 'Type de compte', notifPrefs: 'Préférences de notification',
+  bio: 'Bio', profession: 'Métier', location: 'Localisation', country: 'Pays', latitude: 'Latitude', longitude: 'Longitude', radiusKm: 'Rayon de déplacement (km)',
+  specialties: 'Spécialités', styles: 'Styles', typeEtablissement: 'Type d’établissement', avatar: 'Photo', banner: 'Bannière',
+  soundcloudUrl: 'SoundCloud', youtubeUrl: 'YouTube', instagramUrl: 'Instagram', facebookUrl: 'Facebook', tiktokUrl: 'TikTok', twitterUrl: 'X (Twitter)',
+  linkedinUrl: 'LinkedIn', websiteUrl: 'Site web', showRealName: 'Affiche son vrai nom', legalStatus: 'Statut juridique', siret: 'SIRET',
+  organizerType: 'Type d’organisateur', establishmentName: 'Établissement', address: 'Adresse', postalCode: 'Code postal', city: 'Ville',
+  hiddenFromSearch: 'Caché de la recherche', userId: 'Numéro du compte', updatedAt: 'Modifié le', lastWeeklyRecapAt: 'Dernier récap hebdo',
+}
+const LEGAL: Record<string, string> = { INDIVIDUAL: 'Particulier', AUTO_ENTREPRENEUR: 'Auto-entrepreneur', COMPANY: 'Société', INTERMITTENT: 'Intermittent du spectacle' }
+const SUB_STATUS: Record<string, string> = { TRIAL: 'Essai', ACTIVE: 'Actif', PAST_DUE: 'Paiement en retard', CANCELLED: 'Résilié', EXPIRED: 'Terminé' }
+const SOURCE: Record<string, string> = { STRIPE: 'payant', FOUNDER: 'Fondateur', ADMIN: 'offert' }
+const COUNT_LABELS: Record<string, string> = {
+  publications: 'Publications', events: 'Événements', offers: 'Offres', albums: 'Albums', bookingRequestsSent: 'Bookings envoyés',
+  bookingRequestsReceived: 'Bookings reçus', reviewsGiven: 'Avis donnés', reviewsReceived: 'Avis reçus', applicationsSubmitted: 'Candidatures',
+  followers: 'Abonnés', following: 'Abonnements', messages: 'Messages envoyés', loginEvents: 'Connexions',
+}
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}T/
+
+function showValue(key: string, value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'boolean') return value ? 'Oui' : 'Non'
+  if (Array.isArray(value)) return value.length ? value.join(', ') : null
+  if (key === 'legalStatus') return LEGAL[String(value)] || String(value)
+  if (key === 'role') return ROLE_LABEL[String(value)] || String(value)
+  if (typeof value === 'string' && ISO_DATE.test(value)) return key === 'dateOfBirth' ? fmtDate(value) : fmtDateTime(value)
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function Row({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null
   return (
-    <div className="flex items-start justify-between py-2 border-b border-white/5 gap-4">
-      <span className="text-xs text-white/40 flex-shrink-0">{label}</span>
-      <span className="text-xs text-white text-right break-all">{String(value)}</span>
+    <div className="flex items-start justify-between gap-4 border-b border-line py-2 text-xs last:border-0">
+      <span className="shrink-0 text-muted">{label}</span>
+      <span className="break-all text-right text-white/90">{value}</span>
     </div>
   )
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mb-5">
-      <h3 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-1">{title}</h3>
-      <div>{children}</div>
+    <section className="mb-5">
+      <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-muted">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+/** Champs listés un à un, dans l'ordre donné */
+function Fields({ obj, keys }: { obj: Json | null | undefined; keys: string[] }) {
+  if (!obj) return null
+  return <>{keys.map(k => <Row key={k} label={LABELS[k] || k} value={showValue(k, obj[k])} />)}</>
+}
+
+const USER_SHOWN = ['id', 'email', 'pseudo', 'firstName', 'lastName', 'dateOfBirth', 'phone', 'countryOfResidence', 'role', 'createdAt', 'lastActiveAt',
+  'emailVerified', 'registrationStep', 'pausedAt', 'bannedAt', 'banReason', 'isIdentityVerified', 'isPaymentEnabled', 'payoutMode', 'stripeAccountId',
+  'stripeCustomerId', 'signupPlan', 'canManageProfiles']
+const PROFILE_SHOWN = ['legalStatus', 'siret', 'organizerType', 'establishmentName', 'address', 'postalCode', 'city', 'profession', 'location', 'country',
+  'radiusKm', 'specialties', 'styles', 'typeEtablissement', 'bio', 'instagramUrl', 'facebookUrl', 'tiktokUrl', 'soundcloudUrl', 'youtubeUrl',
+  'twitterUrl', 'linkedinUrl', 'websiteUrl', 'showRealName', 'hiddenFromSearch']
+const NESTED = new Set(['profile', 'subscription', 'agencySubscription', 'managedProfiles', 'sessions', 'extraOrders', 'promoRedemptions', '_count', 'plan', 'managers'])
+
+/* ── Fiche du membre ──────────────────────────────────── */
+
+function MemberPanel({ id, onClose, onChanged }: { id: number; onClose: () => void; onChanged: () => void }) {
+  const { notify, confirm } = useFeedback()
+  const [data, setData] = useState<Detail | null>(null)
+  const [error, setError] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [banReason, setBanReason] = useState('')
+  const [showBan, setShowBan] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await apiFetch(`${API}/api/admin/users/${id}`, { cache: 'no-store' })
+      if (!res.ok) throw new Error()
+      setData(await res.json())
+    } catch { setError(true) }
+  }, [id])
+  useEffect(() => { setData(null); setError(false); setShowBan(false); setShowAll(false); load() }, [load])
+
+  const act = async (url: string, method: string, body: unknown, done: string) => {
+    setBusy(true)
+    try {
+      const res = await apiFetch(`${API}${url}`, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+      if (!res.ok) { notify(await apiErrorMessage(res, 'Action impossible.'), 'error'); return false }
+      notify(done)
+      await load()
+      onChanged()
+      window.dispatchEvent(new CustomEvent(ADMIN_BADGES_EVENT))
+      return true
+    } finally { setBusy(false) }
+  }
+
+  if (error) return <div className="p-5"><ErrorBox text="La fiche n'a pas pu être chargée." /></div>
+  if (!data) return <Spinner />
+
+  const u = data.user
+  const name = displayName(u)
+  const p = u.profile
+  const sub = u.subscription
+  const agency = u.agencySubscription
+  const proGifted = sub && sub.source === 'ADMIN' && u.plan !== 'FREE' && !sub.endDate
+  const publicHref = p ? `/${String(u.role).toLowerCase()}/${u.id}` : null
+  const otherUser = Object.entries(u).filter(([k]) => !USER_SHOWN.includes(k) && !NESTED.has(k))
+  const otherProfile = p ? Object.entries(p).filter(([k]) => !PROFILE_SHOWN.includes(k) && !NESTED.has(k) && k !== 'id' && k !== 'avatar' && k !== 'banner' && k !== '_count') : []
+  const counts = { ...(p?._count || {}), ...u._count }
+
+  return (
+    <div className="px-5 pb-8 pt-5">
+      {/* En-tête */}
+      <div className="mb-4 flex items-center gap-3">
+        <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full bg-accent/15">
+          {p?.avatar
+            ? <img src={p.avatar} alt="" className="h-full w-full object-cover" />
+            : <span className="flex h-full items-center justify-center text-lg font-semibold text-accent-light">{name[0]?.toUpperCase()}</span>}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate font-semibold">{name}</p>
+          <p className="truncate text-xs text-muted">{u.email}</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <span className="rounded-md bg-white/8 px-2 py-0.5 text-[11px] text-white/70">{ROLE_LABEL[u.role] || u.role}</span>
+            <PlanTag plan={u.plan} source={u.canManageProfiles && u.plan === 'BUSINESS' ? 'ADMIN' : sub?.source} />
+            {u.bannedAt && <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-[11px] text-red-300">Suspendu</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className={`${CARD} mb-5 space-y-3 p-4`}>
+        <div>
+          <p className="mb-2 text-[11px] uppercase tracking-widest text-muted">Abonnement</p>
+          <div className="grid grid-cols-2 gap-2">
+            {u.plan === 'PRO' && !proGifted
+              ? <span className={`${BTN2} text-center opacity-60`}>Déjà Pro ({sub?.source === 'FOUNDER' ? 'Fondateur' : 'payant'})</span>
+              : proGifted
+              ? <button type="button" disabled={busy} className={BTN2} onClick={async () => {
+                  if (await confirm({ title: `Retirer le Pro offert à ${name} ?`, confirmLabel: 'Retirer', danger: true })) act(`/api/admin/billing/users/${u.id}/gift-pro`, 'DELETE', null, 'Pro retiré.')
+                }}>Retirer le Pro offert</button>
+              : <button type="button" disabled={busy} className={BTN2} onClick={async () => {
+                  if (await confirm({ title: `Offrir le Pro à ${name} ?`, message: 'Sans limite de durée, sans carte bancaire. Vous pourrez le retirer à tout moment.', confirmLabel: 'Offrir le Pro' })) act(`/api/admin/billing/users/${u.id}/gift-pro`, 'POST', {}, 'Pro offert.')
+                }}>Offrir le Pro</button>}
+            <button type="button" disabled={busy} className={BTN2} onClick={async () => {
+              const enabled = !u.canManageProfiles
+              if (await confirm({ title: enabled ? `Offrir la formule Business à ${name} ?` : `Retirer la formule Business offerte à ${name} ?`, confirmLabel: enabled ? 'Offrir Business' : 'Retirer', danger: !enabled }))
+                act(`/api/admin/users/${u.id}/manage-profiles`, 'PATCH', { enabled }, enabled ? 'Business offert.' : 'Business retiré.')
+            }}>{u.canManageProfiles ? 'Retirer Business offert' : 'Offrir Business'}</button>
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-[11px] uppercase tracking-widest text-muted">Compte</p>
+          <div className="grid grid-cols-2 gap-2">
+            {publicHref
+              ? <Link href={publicHref} target="_blank" className={`${BTN2} flex items-center justify-center gap-1.5`}>Voir le profil <ExternalLink className="h-3 w-3" /></Link>
+              : <span className={`${BTN2} text-center opacity-40`}>Pas de profil</span>}
+            {u.bannedAt
+              ? <button type="button" disabled={busy} className={BTN2} onClick={async () => {
+                  if (await confirm({ title: `Réactiver le compte de ${name} ?`, confirmLabel: 'Réactiver' })) act(`/api/admin/billing/users/${u.id}/unban`, 'POST', null, 'Compte réactivé.')
+                }}>Réactiver</button>
+              : <button type="button" disabled={busy} className={BTN_DANGER} onClick={() => setShowBan(v => !v)}>Suspendre</button>}
+          </div>
+          {showBan && !u.bannedAt && (
+            <div className="mt-3 space-y-2">
+              <input value={banReason} onChange={e => setBanReason(e.target.value)} placeholder="Motif (gardé dans l'historique)" className={INPUT} />
+              <button type="button" disabled={busy || !banReason.trim()} className={`${BTN} w-full`} onClick={async () => {
+                if (await act(`/api/admin/billing/users/${u.id}/ban`, 'POST', { reason: banReason.trim() }, 'Compte suspendu : le membre est déconnecté partout.')) { setShowBan(false); setBanReason('') }
+              }}>Confirmer la suspension</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {u.bannedAt && (
+        <p className="mb-5 rounded-xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+          Suspendu le {fmtDate(u.bannedAt)}{u.banReason ? ` · ${u.banReason}` : ''}
+        </p>
+      )}
+
+      <Section title="Identité et compte"><Fields obj={u} keys={USER_SHOWN} /></Section>
+
+      <Section title="Abonnement">
+        {!sub && !agency && !u.canManageProfiles && <p className="py-2 text-xs text-muted">Compte gratuit, aucun abonnement.</p>}
+        {sub && (
+          <>
+            <Row label="Pro" value={`${SUB_STATUS[sub.status] || sub.status} · ${SOURCE[sub.source] || sub.source}`} />
+            {sub.source === 'STRIPE' && <Row label="Prix" value={`${money(sub.priceCents)} / ${sub.interval === 'YEAR' ? 'an' : 'mois'}`} />}
+            <Row label="Échéance" value={sub.currentPeriodEnd ? fmtDate(sub.currentPeriodEnd) : null} />
+            <Row label="Résiliation prévue" value={sub.cancelAtPeriodEnd ? 'Oui, à l’échéance' : null} />
+            <Row label="Fin" value={sub.endDate ? fmtDate(sub.endDate) : null} />
+          </>
+        )}
+        {agency && (
+          <>
+            <Row label="Business" value={`${SUB_STATUS[agency.status] || agency.status} · ${money(agency.priceCents)} / ${agency.interval === 'YEAR' ? 'an' : 'mois'}`} />
+            <Row label="Profils en plus" value={agency.extraProfiles ? String(agency.extraProfiles) : null} />
+            <Row label="Échéance" value={agency.currentPeriodEnd ? fmtDate(agency.currentPeriodEnd) : null} />
+          </>
+        )}
+        {u.promoRedemptions.map((r, i) => <Row key={i} label="Code utilisé" value={`${r.code.code} le ${fmtDate(r.createdAt)}`} />)}
+      </Section>
+
+      <Section title="Activité">
+        <div className="grid grid-cols-3 gap-2">
+          {Object.entries(counts).map(([k, v]) => (
+            <div key={k} className="rounded-xl bg-white/[0.03] px-3 py-2">
+              <p className="text-base font-semibold">{v}</p>
+              <p className="text-[11px] text-muted">{COUNT_LABELS[k] || k}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {p && <Section title="Profil et informations légales"><Fields obj={p} keys={PROFILE_SHOWN} /></Section>}
+
+      {(u.managedProfiles.length > 0 || (p?.managers.length ?? 0) > 0) && (
+        <Section title="Profils gérés">
+          {u.managedProfiles.map(m => <Row key={m.id} label={m.status === 'ACTIVE' ? 'Gère' : 'Invitation envoyée à'} value={displayName(m.profile.user)} />)}
+          {p?.managers.map((m, i) => <Row key={i} label={m.status === 'ACTIVE' ? 'Géré par' : 'Invité par'} value={displayName(m.manager)} />)}
+        </Section>
+      )}
+
+      {data.lateCancellations && (
+        <Section title="Annulations tardives">
+          <Row label="Nombre" value={String(data.lateCancellations.count)} />
+          <Row label="Averti le" value={data.lateCancellations.warnedAt ? fmtDate(data.lateCancellations.warnedAt) : null} />
+          {data.lateCancellations.cancellations.map(c => <Row key={c.id} label={`Booking du ${fmtDate(c.startDate)}`} value={`annulé le ${fmtDate(c.cancelledAt)}`} />)}
+        </Section>
+      )}
+
+      {u.extraOrders.length > 0 && (
+        <Section title="Services achetés">
+          {u.extraOrders.map(o => <Row key={o.id} label={o.label} value={`${money(o.amountCents)} · ${fmtDate(o.paidAt || o.createdAt)}`} />)}
+        </Section>
+      )}
+
+      <Section title="Appareils connectés">
+        {u.sessions.length === 0 && <p className="py-2 text-xs text-muted">Aucun.</p>}
+        {u.sessions.map((s, i) => <Row key={i} label={s.name} value={s.revokedAt ? `déconnecté le ${fmtDate(s.revokedAt)}` : `actif le ${fmtDateTime(s.lastUsedAt)}`} />)}
+      </Section>
+
+      <Section title="Actions de l'admin sur ce compte">
+        {data.adminLogs.length === 0 && <p className="py-2 text-xs text-muted">Aucune.</p>}
+        {data.adminLogs.map(l => <Row key={l.id} label={fmtDateTime(l.createdAt)} value={ADMIN_LOG_LABELS[l.action] || l.action} />)}
+        {data.adminLogs.length > 0 && <Link href="/admin/historique" className="mt-1 inline-block text-xs text-accent-light hover:underline">Voir l&apos;historique complet</Link>}
+      </Section>
+
+      <Section title="Toutes les autres informations">
+        <button type="button" onClick={() => setShowAll(v => !v)} className="text-xs text-accent-light hover:underline">
+          {showAll ? 'Masquer' : `Afficher les ${otherUser.length + otherProfile.length} autres champs`}
+        </button>
+        {showAll && (
+          <div className="mt-2">
+            {otherUser.map(([k, v]) => <Row key={`u-${k}`} label={LABELS[k] || k} value={showValue(k, v) ?? '—'} />)}
+            {otherProfile.map(([k, v]) => <Row key={`p-${k}`} label={`Profil · ${LABELS[k] || k}`} value={showValue(k, v) ?? '—'} />)}
+          </div>
+        )}
+      </Section>
+
+      <button type="button" disabled={busy} className={`${BTN_DANGER} mt-2 w-full py-2.5`} onClick={async () => {
+        if (!(await confirm({ title: `Supprimer le compte de ${name} ?`, message: `${u.email} — toutes ses données et ses fichiers sont effacés. Son abonnement s'arrête à la fin de la période payée, sans remboursement. Irréversible.`, confirmLabel: 'Supprimer définitivement', danger: true }))) return
+        setBusy(true)
+        try {
+          const res = await apiFetch(`${API}/api/admin/users/${u.id}`, { method: 'DELETE' })
+          if (!res.ok) { notify(await apiErrorMessage(res, 'Suppression impossible.'), 'error'); return }
+          notify('Compte supprimé.')
+          onChanged()
+          onClose()
+        } finally { setBusy(false) }
+      }}>Supprimer le compte</button>
     </div>
   )
 }
 
-export default function AdminUsersPage() {
-  const [q, setQ]         = useState('')
-  const [users, setUsers]  = useState<ListedUser[]>([])
-  const [total, setTotal]  = useState(0)
-  const [page, setPage]    = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError]  = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<number | null>(null)
-  const [changingRole, setChangingRole] = useState<number | null>(null)
+/* ── Membres à surveiller ─────────────────────────────── */
 
-  const [detailUser, setDetailUser] = useState<DetailUser | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
-
-  const load = useCallback(async (pageIndex: number, search: string) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({ limit: String(LIMIT), offset: String(pageIndex * LIMIT) })
-      if (search.trim()) params.set('q', search.trim())
-
-      const res = await apiFetch(`${API}/api/admin/users?${params}`, {
-        cache: 'no-store',
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      setUsers(data.users || [])
-      setTotal(data.total || 0)
-    } catch {
-      setError('Impossible de charger les utilisateurs.')
-    } finally {
-      setLoading(false)
-    }
+function WatchPanel({ onOpen }: { onOpen: (id: number) => void }) {
+  const [report, setReport] = useState<WatchReport | null>(null)
+  useEffect(() => {
+    apiFetch(`${API}/api/admin/billing/late-cancellations`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(setReport).catch(() => {})
   }, [])
+  if (!report) return null
+  return (
+    <div className="mb-5 rounded-2xl border border-gold/25 bg-gold/[0.06] px-5 py-4 text-sm">
+      <p className="text-white/80">
+        Annulations faites par la personne bookée à moins de 7 jours de la date, sur {report.rules.windowDays} jours.
+        Avertissement automatique à {report.rules.warnAt}, alerte ici à {report.rules.alertAt} : c&apos;est vous qui décidez de suspendre
+        (maladie, accident… restent des cas à part). Ouvrez la fiche pour suspendre.
+      </p>
+      {report.alerts.filter(a => a.needsDecision).map(a => (
+        <button key={a.userId} type="button" onClick={() => onOpen(a.userId)} className="mt-2 flex w-full items-center gap-2 text-left text-gold hover:underline">
+          {a.name} · {a.count} annulations tardives · à décider
+        </button>
+      ))}
+    </div>
+  )
+}
 
-  useEffect(() => { load(page, q) }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
+/* ── Page ─────────────────────────────────────────────── */
 
-  const search = () => { setPage(0); load(0, q) }
+function MembersContent() {
+  const params = useSearchParams()
+  const router = useRouter()
+  const initial = ALL_FILTERS.find(f => Object.entries(f.param).every(([k, v]) => params.get(k) === v) && Object.keys(f.param).length)?.key || 'all'
+  const [filter, setFilter] = useState(initial)
+  const [q, setQ] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [users, setUsers] = useState<ListedUser[] | null>(null)
+  const [total, setTotal] = useState(0)
+  const [error, setError] = useState(false)
+  const [openId, setOpenId] = useState<number | null>(null)
 
-  const openDetail = async (id: number) => {
-    setDetailLoading(true)
-    setDetailUser(null)
+  const load = useCallback(async () => {
+    setError(false)
     try {
-      const res = await apiFetch(`${API}/api/admin/users/${id}`, {
-        cache: 'no-store',
-      })
+      const qs = new URLSearchParams({ limit: String(LIMIT), offset: String(page * LIMIT), ...(ALL_FILTERS.find(f => f.key === filter)?.param || {}) })
+      if (search) qs.set('q', search)
+      const res = await apiFetch(`${API}/api/admin/users?${qs}`, { cache: 'no-store' })
       if (!res.ok) throw new Error()
-      const data = await res.json()
-      setDetailUser(data.user)
-    } catch {
-      alert('Impossible de charger les détails.')
-    } finally {
-      setDetailLoading(false)
-    }
-  }
+      const d = await res.json()
+      setUsers(d.users)
+      setTotal(d.total)
+    } catch { setError(true) }
+  }, [filter, page, search])
+  useEffect(() => { load() }, [load])
 
-  const changeRole = async (u: ListedUser, newRole: string) => {
-    if (newRole === u.role) return
-    if (!confirm(`Changer le rôle de ${displayName(u)} de ${ROLE_LABELS[u.role] || u.role} vers ${ROLE_LABELS[newRole] || newRole} ?`)) return
-    setChangingRole(u.id)
-    try {
-      const res = await apiFetch(`${API}/api/admin/users/${u.id}/role`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      })
-      if (!res.ok) throw new Error()
-      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x))
-    } catch {
-      alert('Échec du changement de rôle.')
-    } finally {
-      setChangingRole(null)
-    }
+  const choose = (key: string) => {
+    setFilter(key)
+    setPage(0)
+    const param = ALL_FILTERS.find(f => f.key === key)?.param || {}
+    router.replace(`/admin/users${Object.keys(param).length ? `?${new URLSearchParams(param)}` : ''}`)
   }
-
-  const [togglingManage, setTogglingManage] = useState(false)
-  const toggleManageProfiles = async (id?: number, wanted?: boolean) => {
-    const userId = id ?? detailUser?.id
-    if (!userId) return
-    const enabled = wanted ?? !detailUser?.canManageProfiles
-    setTogglingManage(true)
-    try {
-      const res = await apiFetch(`${API}/api/admin/users/${userId}/manage-profiles`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
-      })
-      if (!res.ok) throw new Error()
-      setDetailUser(d => (d && d.id === userId ? { ...d, canManageProfiles: enabled } : d))
-      setUsers(prev => prev.map(x => (x.id === userId ? { ...x, canManageProfiles: enabled } : x)))
-    } catch {
-      alert('Échec de la modification.')
-    } finally {
-      setTogglingManage(false)
-    }
-  }
-
-  const deleteUser = async (u: ListedUser) => {
-    if (!confirm(`Supprimer le compte de ${displayName(u)} (${u.email}) ? Cette action est irréversible.`)) return
-    setDeleting(u.id)
-    try {
-      const res = await apiFetch(`${API}/api/admin/users/${u.id}`, {
-        method: 'DELETE',
-        })
-      if (!res.ok) throw new Error()
-      setUsers(prev => prev.filter(x => x.id !== u.id))
-      setTotal(prev => prev - 1)
-      if (detailUser?.id === u.id) setDetailUser(null)
-    } catch {
-      alert('Échec de la suppression.')
-    } finally {
-      setDeleting(null)
-    }
-  }
+  const pages = Math.max(1, Math.ceil(total / LIMIT))
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Utilisateurs</h1>
-          <p className="text-sm text-white/40 mt-0.5">{total} compte{total !== 1 ? 's' : ''} au total</p>
-        </div>
-        <button
-          onClick={() => load(page, q)}
-          className="p-2 rounded-lg bg-white/10 hover:bg-white/20"
-          title="Rafraîchir"
-        >
-          <RefreshCw size={16} />
-        </button>
-      </div>
+    <div>
+      <PageHeader
+        title="Membres"
+        subtitle={`${total.toLocaleString('fr-FR')} compte${total > 1 ? 's' : ''}${filter !== 'all' ? ' avec ce filtre' : ''}`}
+        action={<button type="button" onClick={load} className={`${BTN2} flex items-center gap-2`}><RefreshCw className="h-3.5 w-3.5" /> Actualiser</button>}
+      />
 
-      {/* Recherche */}
-      <div className="flex gap-2 mb-5">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-          <input
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && search()}
-            placeholder="Rechercher par pseudo, nom, email…"
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-emerald-500/50"
-          />
-        </div>
-        <button
-          onClick={search}
-          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-medium"
-        >
-          Rechercher
-        </button>
-      </div>
+      <form onSubmit={e => { e.preventDefault(); setPage(0); setSearch(q.trim()) }} className="relative mb-4">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+        <input value={q} onChange={e => setQ(e.target.value)} onBlur={() => { setPage(0); setSearch(q.trim()) }}
+          placeholder="Pseudo, nom ou e-mail…" className={`${INPUT} py-2.5 pl-10`} />
+      </form>
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
-      {loading && <p className="text-white/50 text-sm mb-4">Chargement…</p>}
-
-      {!loading && users.length === 0 && (
-        <p className="text-white/40 text-sm">Aucun utilisateur trouvé.</p>
-      )}
-
-      <div className="space-y-2">
-        {users.map(u => (
-          <div
-            key={u.id}
-            className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-          >
-            {/* Avatar */}
-            <div className="relative h-10 w-10 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
-              {u.profile?.avatar ? (
-                <Image src={u.profile.avatar} alt={displayName(u)} fill className="object-cover" />
-              ) : (
-                <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white/60">
-                  {displayName(u).charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-
-            {/* Infos */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-medium text-sm truncate">{displayName(u)}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full border ${ROLE_COLORS[u.role] || 'bg-white/10 text-white/50 border-white/10'}`}>
-                  {ROLE_LABELS[u.role] || u.role}
-                </span>
-                {!u.emailVerified && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-600/20 text-yellow-400 border border-yellow-600/30">
-                    Email non vérifié
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-white/40 truncate mt-0.5">
-                {u.email} · #{u.id} · Inscrit le {new Date(u.createdAt).toLocaleDateString('fr-FR')}
-              </p>
-            </div>
-
-            {/* Voir le détail */}
-            <button
-              onClick={() => openDetail(u.id)}
-              className="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-white/50 hover:text-white flex-shrink-0"
-              title="Voir la fiche complète"
-            >
-              <Eye size={16} />
-            </button>
-
-            {/* Formule Agence offerte (gérer plusieurs profils sans payer) */}
-            <button
-              onClick={() => toggleManageProfiles(u.id, !u.canManageProfiles)}
-              disabled={togglingManage}
-              className={`text-xs rounded-lg px-2 py-1.5 flex-shrink-0 transition disabled:opacity-40 ${u.canManageProfiles ? 'bg-accent-strong text-white' : 'border border-white/10 bg-white/5 text-white/55 hover:text-white'}`}
-              title={u.canManageProfiles ? 'Formule Business offerte : cliquer pour la retirer' : 'Offrir la formule Business (gérer plusieurs profils)'}
-            >
-              {u.canManageProfiles ? 'Business offerte' : 'Offrir Business'}
-            </button>
-
-            {/* Changer le rôle */}
-            <select
-              value={u.role}
-              onChange={e => changeRole(u, e.target.value)}
-              disabled={changingRole === u.id}
-              className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white disabled:opacity-40 flex-shrink-0 cursor-pointer"
-              title="Changer le rôle"
-            >
-              <option value="ARTIST">Artiste</option>
-              <option value="ORGANIZER">Organisateur</option>
-              <option value="PROVIDER">Prestataire</option>
-            </select>
-
-            {/* Supprimer */}
-            <button
-              onClick={() => deleteUser(u)}
-              disabled={deleting === u.id}
-              className="p-2 rounded-lg bg-red-600/10 hover:bg-red-600/30 text-red-400 disabled:opacity-40 flex-shrink-0"
-              title="Supprimer ce compte"
-            >
-              <Trash2 size={16} />
-            </button>
+      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+        {FILTERS.map(g => (
+          <div key={g.group} className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[11px] uppercase tracking-widest text-muted">{g.group}</span>
+            {g.items.map(f => (
+              <button key={f.key} type="button" onClick={() => choose(f.key)}
+                className={`rounded-full px-3 py-1.5 text-xs transition ${filter === f.key ? 'bg-accent text-white' : 'border border-line text-muted hover:text-white'}`}>
+                {f.label}
+              </button>
+            ))}
           </div>
         ))}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-5 flex items-center gap-3 justify-center">
-          <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 text-sm"
-          >
-            ← Précédent
-          </button>
-          <span className="text-sm text-white/50">Page {page + 1} / {totalPages}</span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={page + 1 >= totalPages}
-            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 text-sm"
-          >
-            Suivant →
-          </button>
+      {filter === 'watch' && <WatchPanel onOpen={setOpenId} />}
+      {error && <ErrorBox text="La liste des membres n'a pas pu être chargée." />}
+      {!users && !error && <Spinner />}
+      {users && users.length === 0 && <Empty text="Aucun membre ne correspond." />}
+
+      {users && users.length > 0 && (
+        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+          {users.map(u => {
+            const name = displayName(u)
+            return (
+              <li key={u.id}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setOpenId(u.id)}
+                  onKeyDown={e => { if (e.key === 'Enter') setOpenId(u.id) }}
+                  className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-white/[0.03] ${openId === u.id ? 'bg-accent/10' : ''}`}
+                >
+                  <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-accent/15">
+                    {u.profile?.avatar
+                      ? <img src={u.profile.avatar} alt="" className="h-full w-full object-cover" />
+                      : <span className="flex h-full items-center justify-center text-sm font-semibold text-accent-light">{name[0]?.toUpperCase()}</span>}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{name}</p>
+                    <p className="truncate text-xs text-muted">
+                      {ROLE_LABEL[u.role] || u.role}{u.profile?.city || u.profile?.location ? ` · ${u.profile.city || u.profile.location}` : ''} · {u.email} · inscrit le {fmtDate(u.createdAt)}
+                    </p>
+                  </div>
+                  <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+                    {!u.emailVerified && <span className="rounded-md bg-white/8 px-2 py-0.5 text-[11px] text-white/60">E-mail non confirmé</span>}
+                    {u.bannedAt && <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-[11px] text-red-300">Suspendu</span>}
+                    <PlanTag plan={u.plan} source={u.planSource} />
+                  </div>
+                  <span className="shrink-0 rounded-lg p-2 text-muted hover:bg-white/10 hover:text-white" title="Toutes les informations du compte">
+                    <Eye className="h-4 w-4" />
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {pages > 1 && (
+        <div className="mt-5 flex items-center justify-center gap-3">
+          <button type="button" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className={BTN2}>← Précédent</button>
+          <span className="text-sm text-muted">Page {page + 1} / {pages}</span>
+          <button type="button" onClick={() => setPage(p => Math.min(pages - 1, p + 1))} disabled={page + 1 >= pages} className={BTN2}>Suivant →</button>
         </div>
       )}
 
-      {/* ── Panneau détail utilisateur ── */}
-      {(detailUser || detailLoading) && (
+      {/* Fiche à droite */}
+      {openId !== null && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Overlay */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setDetailUser(null)}
-          />
-
-          {/* Panneau */}
-          <div className="relative z-10 w-full max-w-md bg-neutral-900 border-l border-white/10 h-full overflow-y-auto shadow-2xl">
-            <div className="sticky top-0 z-10 bg-neutral-900/95 backdrop-blur border-b border-white/10 px-5 py-4 flex items-center justify-between">
-              <h2 className="font-semibold text-base">Fiche utilisateur</h2>
-              <button
-                onClick={() => setDetailUser(null)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white"
-              >
-                <X size={18} />
-              </button>
+          <button type="button" aria-label="Fermer la fiche" onClick={() => setOpenId(null)} className="absolute inset-0 bg-black/50" />
+          <div className="relative h-full w-full max-w-md overflow-y-auto border-l border-line bg-[#100e17] shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-[#100e17]/95 px-5 py-3.5 backdrop-blur">
+              <h2 className="text-sm font-semibold">Fiche du membre</h2>
+              <button type="button" onClick={() => setOpenId(null)} aria-label="Fermer" className="rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></button>
             </div>
-
-            {detailLoading && (
-              <div className="flex items-center justify-center h-48 text-white/40 text-sm">
-                Chargement…
-              </div>
-            )}
-
-            {detailUser && (
-              <div className="px-5 py-5">
-
-                {/* En-tête */}
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="relative h-14 w-14 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
-                    {detailUser.profile?.avatar ? (
-                      <Image src={detailUser.profile.avatar} alt={displayName(detailUser)} fill className="object-cover" />
-                    ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-white/60">
-                        {displayName(detailUser).charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold">{displayName(detailUser)}</p>
-                    <p className="text-xs text-white/40">{detailUser.email}</p>
-                    <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full border ${ROLE_COLORS[detailUser.role] || 'bg-white/10 text-white/50 border-white/10'}`}>
-                      {ROLE_LABELS[detailUser.role] || detailUser.role}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Identité */}
-                <Section title="Identité">
-                  <InfoRow label="Prénom" value={detailUser.firstName} />
-                  <InfoRow label="Nom" value={detailUser.lastName} />
-                  <InfoRow label="Pseudo" value={detailUser.pseudo} />
-                  <InfoRow label="Date de naissance" value={detailUser.dateOfBirth ? new Date(detailUser.dateOfBirth).toLocaleDateString('fr-FR') : null} />
-                  <InfoRow label="Téléphone" value={detailUser.phone} />
-                  <InfoRow label="Pays de résidence" value={detailUser.countryOfResidence} />
-                </Section>
-
-                {/* Compte */}
-                <Section title="Compte">
-                  <InfoRow label="ID" value={`#${detailUser.id}`} />
-                  <InfoRow label="Inscrit le" value={new Date(detailUser.createdAt).toLocaleDateString('fr-FR')} />
-                  <InfoRow label="Email vérifié" value={detailUser.emailVerified} />
-                  <InfoRow label="Étape d'inscription" value={`${detailUser.registrationStep} / 4`} />
-                  <InfoRow label="Identité vérifiée" value={detailUser.isIdentityVerified} />
-                  <InfoRow label="Paiement activé" value={detailUser.isPaymentEnabled} />
-                  {detailUser.stripeAccountId && (
-                    <InfoRow label="Compte Stripe" value={detailUser.stripeAccountId} />
-                  )}
-                  {/* Profils gérés : activé à la main en attendant la formule Agence */}
-                  <div className="flex items-center justify-between gap-3 py-1.5">
-                    <span className="text-xs text-white/50">Formule Business offerte (gérer plusieurs profils)</span>
-                    <button type="button" onClick={() => toggleManageProfiles()} disabled={togglingManage}
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${detailUser.canManageProfiles ? 'bg-accent-strong text-white' : 'border border-white/15 text-white/60 hover:text-white'}`}>
-                      {detailUser.canManageProfiles ? 'Activé' : 'Désactivé'}
-                    </button>
-                  </div>
-                </Section>
-
-                {/* Informations légales */}
-                <Section title="Informations légales">
-                  <InfoRow label="Statut juridique" value={detailUser.profile?.legalStatus ? LEGAL_LABELS[detailUser.profile.legalStatus] || detailUser.profile.legalStatus : null} />
-                  <InfoRow label="SIRET / KBIS" value={detailUser.profile?.siret} />
-                  <InfoRow label="Nom de l'établissement" value={detailUser.profile?.establishmentName} />
-                  <InfoRow label="Type organisateur" value={
-                    detailUser.profile?.organizerType === 'INDIVIDUAL' ? 'Particulier' :
-                    detailUser.profile?.organizerType === 'PROFESSIONAL' ? 'Professionnel' : null
-                  } />
-                  <InfoRow label="Adresse" value={detailUser.profile?.address} />
-                  <InfoRow label="Code postal" value={detailUser.profile?.postalCode} />
-                  <InfoRow label="Ville" value={detailUser.profile?.city} />
-                </Section>
-
-                {/* Profil public */}
-                <Section title="Profil public">
-                  <InfoRow label="Profession" value={detailUser.profile?.profession} />
-                  <InfoRow label="Localisation" value={detailUser.profile?.location} />
-                  <InfoRow label="Pays" value={detailUser.profile?.country} />
-                  <InfoRow label="Rayon (km)" value={detailUser.profile?.radiusKm} />
-                  {detailUser.profile?.specialties?.length ? (
-                    <InfoRow label="Spécialités" value={detailUser.profile.specialties.join(', ')} />
-                  ) : null}
-                  {detailUser.profile?.styles?.length ? (
-                    <InfoRow label="Styles" value={detailUser.profile.styles.join(', ')} />
-                  ) : null}
-                  {detailUser.profile?.bio && (
-                    <div className="py-2 border-b border-white/5">
-                      <p className="text-xs text-white/40 mb-1">Bio</p>
-                      <p className="text-xs text-white leading-relaxed">{detailUser.profile.bio}</p>
-                    </div>
-                  )}
-                </Section>
-
-                {/* Alerte infos manquantes */}
-                {(!detailUser.profile?.legalStatus && !detailUser.profile?.siret) && (
-                  <div className="flex items-start gap-2 bg-yellow-600/10 border border-yellow-600/20 rounded-xl p-3 text-xs text-yellow-400">
-                    <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                    <span>Aucune information légale renseignée pour ce compte.</span>
-                  </div>
-                )}
-
-              </div>
-            )}
+            <MemberPanel id={openId} onClose={() => setOpenId(null)} onChanged={load} />
           </div>
         </div>
       )}
     </div>
   )
 }
+
+export default function AdminMembersPage() {
+  return (
+    <Suspense fallback={null}>
+      <MembersContent />
+    </Suspense>
+  )
+}
+
