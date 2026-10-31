@@ -125,6 +125,14 @@ export function apiFetch(input: string, init: RequestInit = {}): Promise<Respons
     }
     return res
   }).then(res => {
+    // Session admin fermée par le serveur (1 h sans activité, 6 h au plus) : retour à la connexion
+    if (res.status === 401) {
+      res.clone().json().then((body) => {
+        if (body?.error === 'ADMIN_SESSION_EXPIRED' || body?.error === 'ADMIN_CODE_REQUIRED') {
+          window.dispatchEvent(new CustomEvent(ADMIN_SESSION_EXPIRED_EVENT))
+        }
+      }).catch(() => { })
+    }
     // Limite du compte gratuit atteinte : la fenêtre « Passer en Pro » s'ouvre, où que soit l'action
     if (res.status === 403) {
       res.clone().json().then((body) => {
@@ -139,3 +147,6 @@ export function apiFetch(input: string, init: RequestInit = {}): Promise<Respons
 
 /** Événement envoyé quand une action demande la version Pro (écouté par <UpgradePrompt />) */
 export const PRO_REQUIRED_EVENT = 'lsb:pro-required'
+
+/** Session admin expirée (envoyé par apiFetch, écouté par AuthContext) */
+export const ADMIN_SESSION_EXPIRED_EVENT = 'lsb:admin-session-expired'

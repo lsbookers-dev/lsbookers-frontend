@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard, Users, Mail, FileImage, Star,
-  CreditCard, BarChart2, Settings, LogOut, ShieldCheck,
+  CreditCard, BarChart2, Settings, LogOut, ShieldCheck, History,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/utils/auth'
@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { href: '/admin/subscriptions', label: 'Offres',        icon: CreditCard },
   { href: '/admin/stats',         label: 'Statistiques',  icon: BarChart2 },
   { href: '/admin/settings',      label: 'Paramètres',    icon: Settings },
+  { href: '/admin/historique',    label: 'Historique',    icon: History },
 ]
 
 function NavLink({ href, label, icon: Icon, badge }: {

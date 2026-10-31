@@ -4,8 +4,8 @@ import { apiFetch } from '@/utils/auth'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
-import { useAuth, type LoginError } from '@/context/AuthContext'
+import { Eye, EyeOff, Mail, Lock, ShieldCheck } from 'lucide-react'
+import { useAuth, type LoginError, type AdminCodeStep } from '@/context/AuthContext'
 import { usePublicSettings } from '@/context/PublicSettingsContext'
 import { apiUrl } from '@/utils/api'
 import PublicBrand from '@/components/PublicBrand'
@@ -51,6 +51,99 @@ function BrandingPanel({ logoUrl }: { logoUrl?: string | null }) {
 }
 
 /* ─────────────────────────────────────────────────────────
+   COMPTE ADMIN — code de sécurité reçu par e-mail
+───────────────────────────────────────────────────────── */
+function AdminCodeForm({ step, onResend, onCancel }: {
+  step: AdminCodeStep
+  onResend: () => Promise<void>
+  onCancel: () => void
+}) {
+  const { verifyAdminCode } = useAuth()
+  const [code, setCode] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [resent, setResent] = useState(false)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      await verifyAdminCode(step.challenge, code)
+    } catch (err) {
+      const authError = err as LoginError & { attemptsLeft?: number }
+      if (authError.code === 'ADMIN_CODE_WRONG') {
+        setError(`Code incorrect. Encore ${authError.attemptsLeft} essai${authError.attemptsLeft === 1 ? '' : 's'}.`)
+      } else if (authError.code === 'ADMIN_CODE_EXPIRED') {
+        setError('Ce code n\'est plus valable. Demandez un nouveau code.')
+      } else if (authError.status === 429) {
+        setError('Trop de tentatives. Réessayez dans 5 minutes.')
+      } else {
+        setError('Le code n\'a pas pu être vérifié.')
+      }
+      setCode('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resend = async () => {
+    setError(null)
+    setCode('')
+    await onResend()
+    setResent(true)
+  }
+
+  return (
+    <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl p-7 shadow-2xl">
+      <div className="mb-5 flex items-start gap-3">
+        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-accent/20 text-accent-light ring-1 ring-accent/40">
+          <ShieldCheck className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-2xl font-black">Code de sécurité</h2>
+          <p className="mt-1 text-sm text-white/55">
+            Un code à 6 chiffres vient d&apos;être envoyé à <span className="text-white">{step.emailHint}</span>. Il est valable 10 minutes.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+      )}
+      {resent && !error && (
+        <div className="mb-4 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-white/80">Nouveau code envoyé.</div>
+      )}
+
+      <input
+        autoFocus
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={6}
+        value={code}
+        onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+        placeholder="••••••"
+        aria-label="Code de sécurité"
+        className="w-full rounded-xl bg-white/5 px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-white placeholder-white/25 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-purple-500/60 transition"
+      />
+
+      <button
+        type="submit"
+        disabled={loading || code.length !== 6}
+        className="mt-4 w-full rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-500 disabled:opacity-60 transition shadow-lg shadow-purple-900/40"
+      >
+        {loading ? 'Vérification…' : 'Ouvrir l\'admin →'}
+      </button>
+
+      <div className="mt-4 flex items-center justify-between text-xs text-white/45">
+        <button type="button" onClick={onCancel} className="hover:text-white transition">← Retour</button>
+        <button type="button" onClick={resend} className="underline underline-offset-4 hover:text-white transition">Renvoyer un code</button>
+      </div>
+    </form>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────
    PAGE PRINCIPALE
 ───────────────────────────────────────────────────────── */
 export default function LoginPage() {
@@ -66,8 +159,16 @@ export default function LoginPage() {
   const [resendLoading, setResendLoading]       = useState(false)
   const [resendSent, setResendSent]             = useState(false)
   const [greeting, setGreeting]                 = useState('Bienvenue')
+  const [adminStep, setAdminStep]               = useState<AdminCodeStep | null>(null)
+  const [adminNotice, setAdminNotice]           = useState<string | null>(null)
 
   useEffect(() => { setGreeting(getGreeting()) }, [])
+  // Retour ici après la fermeture automatique de la session admin
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get('admin')
+    if (reason === 'idle') setAdminNotice('Session admin fermée après 1 heure sans activité. Reconnectez-vous.')
+    else if (reason === 'expired') setAdminNotice('Session admin expirée. Reconnectez-vous.')
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,7 +176,8 @@ export default function LoginPage() {
     setEmailNotVerified(false)
     setLoading(true)
     try {
-      await login(email, password)
+      const step = await login(email, password)
+      if (step) setAdminStep(step)
     } catch (err) {
       let message = 'Échec de la connexion.'
       const authError = err as LoginError
@@ -151,6 +253,13 @@ export default function LoginPage() {
               <PublicBrand logoUrl={logoUrl} size="small" showTagline={false} />
             </div>
 
+            {adminStep ? (
+              <AdminCodeForm
+                step={adminStep}
+                onResend={async () => { const step = await login(email, password).catch(() => null); if (step) setAdminStep(step) }}
+                onCancel={() => { setAdminStep(null); setPassword('') }}
+              />
+            ) : (
             <form
               onSubmit={handleSubmit}
               className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl p-7 shadow-2xl"
@@ -174,6 +283,12 @@ export default function LoginPage() {
                   </Link>
                 </p>
               </div>
+
+              {adminNotice && !error && (
+                <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                  {adminNotice}
+                </div>
+              )}
 
               {/* Erreurs */}
               {error && (
@@ -262,6 +377,7 @@ export default function LoginPage() {
 
               </div>
             </form>
+            )}
 
           </div>
         </main>

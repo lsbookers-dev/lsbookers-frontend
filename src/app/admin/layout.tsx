@@ -4,11 +4,15 @@ import { ReactNode, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import AdminHeader from '@/components/AdminHeader'
+import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout'
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, endAdminSession } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
+
+  // 1 h sans activité : la session admin se ferme (le serveur la refuse aussi)
+  useAdminIdleLogout(() => { endAdminSession('idle') }, user?.role === 'ADMIN')
 
   useEffect(() => {
     // Pas connecté → login

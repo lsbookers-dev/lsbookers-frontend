@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { getAuthToken, apiFetch, isCookieSessionMode, storeSession, COOKIE_SESSION_MARKER, setActingProfileId } from '@/utils/auth'
+import { getAuthToken, apiFetch, isCookieSessionMode, storeSession, COOKIE_SESSION_MARKER, setActingProfileId, ADMIN_SESSION_EXPIRED_EVENT } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
 import { disconnectSocket } from '@/lib/socket'
@@ -45,9 +45,14 @@ type AuthContextType = {
   token: string | null
   loading: boolean
   setUser: React.Dispatch<React.SetStateAction<User | null>>
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<AdminCodeStep | void>
+  verifyAdminCode: (challenge: string, code: string) => Promise<void>
+  endAdminSession: (reason: 'idle' | 'expired') => Promise<void>
   logout: () => void
 }
+
+/** Compte admin : après le mot de passe, un code à 6 chiffres est envoyé par e-mail */
+export type AdminCodeStep = { twoFactorRequired: true; challenge: string; emailHint: string }
 
 export type LoginError = Error & {
   status?: number
@@ -251,6 +256,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const data = await res.json()
+    if (data?.twoFactorRequired) return data as AdminCodeStep
+    finishLogin(data)
+  }
+
+  /* ===================== Code de sécurité admin ===================== */
+  const verifyAdminCode = async (challenge: string, code: string) => {
+    const res = await apiFetch(apiUrl('auth/admin-code'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challenge, code }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const error = new Error(data?.error || 'Code refusé') as LoginError & { attemptsLeft?: number }
+      error.status = res.status
+      error.code = data?.error
+      error.attemptsLeft = data?.attemptsLeft
+      throw error
+    }
+    finishLogin(data)
+  }
+
+  const finishLogin = (data: { user: RawUser; token?: string; deviceToken?: string }) => {
     const normalized = normalizeUser(data.user)
     setActingProfileId(null)
     setActing(null)
@@ -272,6 +300,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
+  /* ===================== Fin de session admin ===================== */
+  // 1 h sans activité (minuteur de l'admin) ou session fermée par le serveur
+  const endAdminSession = async (reason: 'idle' | 'expired') => {
+    try { await apiFetch(apiUrl('auth/logout'), { method: 'POST' }) } catch { }
+    disconnectSocket()
+    clearLocalSession()
+    // Rechargement complet (et non router.replace) : sinon la redirection « pas connecté » vers
+    // /login passe avant et le message de fin de session est perdu
+    window.location.replace(`/login?admin=${reason}`)
+  }
+
+  useEffect(() => {
+    const onExpired = () => { if (user?.role === 'ADMIN') endAdminSession('expired') }
+    window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, onExpired)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role])
+
   /* ===================== Logout ===================== */
   const logout = async () => {
     // Efface le cookie httpOnly côté serveur
@@ -288,7 +334,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, acting, token, loading, setUser, login, logout }}>
+    <AuthContext.Provider value={{ user, acting, token, loading, setUser, login, verifyAdminCode, endAdminSession, logout }}>
       {children}
     </AuthContext.Provider>
   )
