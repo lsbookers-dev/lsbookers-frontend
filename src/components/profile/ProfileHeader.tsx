@@ -2,9 +2,11 @@
 
 /** En-tête d'un profil : bannière, photo, nom, activité, statistiques, spécialités. */
 
+import Image from 'next/image'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { ProBadge } from '@/components/plan/UpgradePrompt'
-import { Camera, Pencil } from 'lucide-react'
+import { Camera, Pencil, X } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
 import { radiusLabel } from '@/utils/radius'
 import type { ProfileData, ProfileMode } from './types'
@@ -32,6 +34,16 @@ export default function ProfileHeader({ profile, mode, followersCount, publicati
   const place = [profile.location, profile.country].filter(Boolean).join(', ')
   const details = [activity, place, radiusLabel(profile.radiusKm)].filter(Boolean)
   const editable = mode === 'studio'
+  // Profil des autres : clic sur la photo = photo agrandie
+  const canZoom = !editable && !!profile.avatar
+  const [zoomed, setZoomed] = useState(false)
+
+  useEffect(() => {
+    if (!zoomed) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
 
   return (
     <>
@@ -51,10 +63,10 @@ export default function ProfileHeader({ profile, mode, followersCount, publicati
             <div className="flex min-w-0 items-center gap-4">
               <button
                 type="button"
-                disabled={!editable}
-                onClick={onPickAvatar}
-                aria-label={editable ? 'Changer la photo de profil' : undefined}
-                className="group/avatar relative shrink-0 rounded-xl disabled:cursor-default"
+                disabled={!editable && !canZoom}
+                onClick={editable ? onPickAvatar : () => setZoomed(true)}
+                aria-label={editable ? 'Changer la photo de profil' : canZoom ? 'Agrandir la photo de profil' : undefined}
+                className={`group/avatar relative shrink-0 rounded-xl disabled:cursor-default ${canZoom ? 'cursor-zoom-in' : ''}`}
               >
                 <SafeImage type="avatar" src={profile.avatar} name={name} size={82} priority className="rounded-xl ring-2 ring-gold/40" />
                 {editable && (
@@ -101,6 +113,28 @@ export default function ProfileHeader({ profile, mode, followersCount, publicati
           )}
         </section>
       </div>
+
+      {zoomed && profile.avatar && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Photo de profil de ${name}`}
+          onClick={() => setZoomed(false)}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-6 backdrop-blur-sm"
+        >
+          <button
+            type="button"
+            onClick={() => setZoomed(false)}
+            aria-label="Fermer"
+            className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+1rem)] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <X size={20} />
+          </button>
+          <div className="relative aspect-square w-[min(88vw,70vh)] overflow-hidden rounded-2xl ring-2 ring-gold/40" onClick={e => e.stopPropagation()}>
+            <Image src={profile.avatar} alt={`Photo de profil de ${name}`} fill sizes="(max-width: 768px) 88vw, 70vh" className="object-cover" />
+          </div>
+        </div>
+      )}
     </>
   )
 }
