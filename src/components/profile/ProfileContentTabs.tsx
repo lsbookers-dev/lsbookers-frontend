@@ -1,6 +1,6 @@
 'use client'
 
-/** Onglets Publications (ou Réalisations) / Albums / Identifications d'un profil. */
+/** Onglets Publications / Albums / Identifications d'un profil. */
 
 import { useState } from 'react'
 import { Plus } from 'lucide-react'

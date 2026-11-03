@@ -449,7 +449,7 @@ export default function AgendaCalendar({
         openEventDetail(d.event.id)
       } else {
         const err = await res.json().catch(() => ({}))
-        setCreateError(err.error || 'Erreur lors de la création')
+        setCreateError(err.message || err.error || 'Erreur lors de la création')
       }
     } catch { setCreateError('Impossible de joindre le serveur') }
     finally { setCreating(false) }
@@ -601,7 +601,7 @@ export default function AgendaCalendar({
         await fetchAllEvents(); fetchData()
       } else {
         const err = await res.json().catch(() => ({}))
-        setEditError(err.error || 'Erreur lors de la sauvegarde')
+        setEditError(err.message || err.error || 'Erreur lors de la sauvegarde')
       }
     } catch { setEditError('Erreur réseau') }
     finally { setEditSaving(false) }

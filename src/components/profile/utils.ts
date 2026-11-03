@@ -67,5 +67,5 @@ export const ROLE_TEXT: Record<ProfileRole, {
 }> = {
   ARTIST: { about: 'À propos', publications: 'Publications', fees: 'Tarifs', activityLabel: 'Activité artistique', activityPlaceholder: 'Ex : DJ, chanteuse, groupe…', accent: 'violet' },
   ORGANIZER: { about: 'Description', publications: 'Publications', fees: 'Tarifs', activityLabel: 'Type d’établissement', activityPlaceholder: 'Ex : club, festival, agence…', accent: 'violet' },
-  PROVIDER: { about: 'Description', publications: 'Réalisations', fees: 'Prestations & tarifs', activityLabel: 'Métier', activityPlaceholder: 'Ex : photographe, traiteur…', accent: 'violet' },
+  PROVIDER: { about: 'Description', publications: 'Publications', fees: 'Prestations & tarifs', activityLabel: 'Métier', activityPlaceholder: 'Ex : photographe, traiteur…', accent: 'violet' },
 }

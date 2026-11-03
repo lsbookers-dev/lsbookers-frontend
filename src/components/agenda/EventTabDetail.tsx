@@ -99,8 +99,7 @@ export default function EventTabDetail(p: Props) {
           </div>
           <div>
             <p className="text-xs text-white/55 mb-1.5">Heure</p>
-            <input type="text" value={p.editStartTime} onChange={e => p.setEditStartTime(e.target.value)}
-              placeholder="20:00" maxLength={5}
+            <input type="time" value={p.editStartTime} onChange={e => p.setEditStartTime(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/80 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
           </div>
         </div>
@@ -122,8 +121,7 @@ export default function EventTabDetail(p: Props) {
             </div>
             <div>
               <p className="text-[11px] text-white/50 mb-1.5">Heure de fin</p>
-              <input type="text" value={p.editEndTime} onChange={e => p.setEditEndTime(e.target.value)}
-                placeholder="23:00" maxLength={5}
+              <input type="time" value={p.editEndTime} onChange={e => p.setEditEndTime(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/80 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
             </div>
           </div>

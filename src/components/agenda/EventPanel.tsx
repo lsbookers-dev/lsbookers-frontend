@@ -366,8 +366,7 @@ export default function EventPanel(p: EventPanelProps) {
             </div>
             <div>
               <p className="text-[11px] text-white/50 mb-1.5">Heure</p>
-              <input type="text" value={createStartTime} onChange={e => setCreateStartTime(e.target.value)}
-                placeholder="20:00" maxLength={5}
+              <input type="time" value={createStartTime} onChange={e => setCreateStartTime(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/75 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
             </div>
           </div>
@@ -392,8 +391,7 @@ export default function EventPanel(p: EventPanelProps) {
               </div>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Heure de fin</p>
-                <input type="text" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
-                  placeholder="23:00" maxLength={5}
+                <input type="time" value={createEndTime} onChange={e => setCreateEndTime(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl bg-[#11101a]/75 border border-white/10 text-sm text-white placeholder-white/25 outline-none focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/15" />
               </div>
             </div>
