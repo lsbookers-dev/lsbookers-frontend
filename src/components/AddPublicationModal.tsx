@@ -20,6 +20,13 @@ import CropModal from './CropModal'
 
 // Ratio 4:5 — format Instagram portrait, idéal pour un feed uniforme
 const PUBLICATION_ASPECT_RATIO = 4 / 5
+// Formats proposés pour une photo de publication : entière par défaut, ou recadrée façon Instagram
+const PUBLICATION_FORMATS = [
+  { key: 'whole', label: 'Entière', ratio: null },
+  { key: 'portrait', label: 'Portrait 4:5', ratio: 4 / 5 },
+  { key: 'square', label: 'Carré', ratio: 1 },
+  { key: 'landscape', label: 'Paysage 16:9', ratio: 16 / 9 },
+]
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 const MAX_FILES = 10
@@ -343,6 +350,7 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
       <CropModal
         src={cropSrc}
         aspectRatio={PUBLICATION_ASPECT_RATIO}
+        formats={PUBLICATION_FORMATS}
         displayWidth={360}
         outputWidth={1080}
         maxZoom={4}
@@ -505,7 +513,10 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
             <article className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-[#141019]">
               {selectedMedia ? (
                 selectedMedia.type === 'image'
-                  ? <Image src={selectedMedia.previewUrl} alt="" fill className="object-cover" unoptimized />
+                  ? <>
+                      <Image src={selectedMedia.previewUrl} alt="" fill className="scale-110 object-cover opacity-45 blur-2xl" unoptimized />
+                      <Image src={selectedMedia.previewUrl} alt="" fill className="object-contain" unoptimized />
+                    </>
                   : <video src={selectedMedia.previewUrl} className="h-full w-full object-cover" muted autoPlay loop playsInline />
               ) : (
                 <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_65%_30%,rgba(168,85,247,.16),transparent_40%),#111016] text-white/15"><ImagePlus size={34} /></div>

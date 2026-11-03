@@ -97,8 +97,13 @@ export default function PostCard({ post, onLike, onOpenModal, currentUserId, isM
             onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1 }}
           />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={current.url} alt={post.caption || post.title} className="h-full w-full cursor-pointer object-cover transition duration-700 group-hover:scale-[1.015]" loading="lazy" />
+          // Photo entière (jamais coupée), sur un fond flou de la même image quand elle n'est pas au format portrait
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={current.url} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-2xl" loading="lazy" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={current.url} alt={post.caption || post.title} className="relative h-full w-full cursor-pointer object-contain transition duration-700 group-hover:scale-[1.015]" loading="lazy" />
+          </>
         )}
       </div>
 

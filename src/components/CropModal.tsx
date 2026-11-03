@@ -10,6 +10,8 @@ interface Props {
   outputWidth?: number   // résolution de sortie (défaut : 400, ou 1200 si ratio ≥ 2)
   shape?: 'circle' | 'rect'
   maxZoom?: number       // zoom maximum (défaut 3)
+  /** Formats proposés (le 1er est choisi au départ). ratio null = image entière, sans recadrage */
+  formats?: { key: string; label: string; ratio: number | null }[]
   onConfirm: (blob: Blob) => void
   onCancel: () => void
 }
@@ -21,17 +23,31 @@ export default function CropModal({
   outputWidth,
   shape = 'rect',
   maxZoom = 3,
+  formats,
   onConfirm,
   onCancel,
 }: Props) {
-  const CW = displayWidth
-  const CH = Math.round(CW / aspectRatio)
-
   const [zoom, setZoom]   = useState(1)
   const [tx, setTx]       = useState(0)
   const [ty, setTy]       = useState(0)
   const [natW, setNatW]   = useState(0)
   const [natH, setNatH]   = useState(0)
+  const [formatKey, setFormatKey] = useState(formats?.[0]?.key)
+
+  // Format choisi : « entière » = proportions de l'image elle-même
+  const format = formats?.find(f => f.key === formatKey)
+  const whole = format?.ratio === null
+  const ratio = format ? (format.ratio ?? (natW && natH ? natW / natH : aspectRatio)) : aspectRatio
+
+  // Zone affichée : largeur fixe, hauteur limitée pour les images très hautes
+  const maxDisplayH = Math.round(displayWidth * 1.25)
+  const CH = Math.min(Math.round(displayWidth / ratio), maxDisplayH)
+  const CW = Math.round(CH * ratio)
+
+  const pickFormat = (key: string) => {
+    setFormatKey(key)
+    setZoom(1); setTx(0); setTy(0)
+  }
   const [dragging, setDragging] = useState(false)
 
   const drag = useRef({ sx: 0, sy: 0, stx: 0, sty: 0 })
@@ -102,8 +118,8 @@ export default function CropModal({
     const srcY = centerY - srcH / 2
 
     // Résolution de sortie : prop outputWidth, sinon 1200 pour bannière, 400 pour avatar
-    const outW = outputWidth ?? (aspectRatio >= 2 ? 1200 : 400)
-    const outH = Math.round(outW / aspectRatio)
+    const outW = outputWidth ?? (ratio >= 2 ? 1200 : 400)
+    const outH = Math.round(outW / ratio)
 
     const canvas = document.createElement('canvas')
     canvas.width  = outW
@@ -134,11 +150,28 @@ export default function CropModal({
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h3 className="text-sm font-semibold text-white">Recadrer l&apos;image</h3>
+          <h3 className="text-sm font-semibold text-white">{whole ? 'Aperçu de l\u2019image' : 'Recadrer l\u2019image'}</h3>
           <button onClick={onCancel} className="text-white/40 hover:text-white transition">
             <X size={18} />
           </button>
         </div>
+
+        {/* Choix du format */}
+        {formats && formats.length > 1 && (
+          <div className="flex flex-wrap justify-center gap-1.5 px-5 pt-4" role="group" aria-label="Format de l'image">
+            {formats.map(f => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => pickFormat(f.key)}
+                aria-pressed={f.key === formatKey}
+                className={`rounded-full border px-3 py-1.5 text-xs transition ${f.key === formatKey ? 'border-accent/60 bg-accent/15 text-accent-light' : 'border-white/10 text-white/55 hover:text-white'}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Zone de crop */}
         <div className="flex justify-center py-5 px-5">
@@ -149,14 +182,14 @@ export default function CropModal({
               borderRadius: shape === 'circle' ? '50%' : '10px',
               overflow: 'hidden',
               position: 'relative',
-              border: '2px solid rgba(16,185,129,0.55)',
-              cursor: dragging ? 'grabbing' : 'grab',
+              border: '2px solid rgba(139,92,246,0.55)',
+              cursor: whole ? 'default' : dragging ? 'grabbing' : 'grab',
               flexShrink: 0,
               touchAction: 'none',
             }}
-            onMouseDown={e => { e.preventDefault(); startDrag(e.clientX, e.clientY) }}
-            onTouchStart={e => { startDrag(e.touches[0].clientX, e.touches[0].clientY) }}
-            onWheel={handleWheel}
+            onMouseDown={e => { if (whole) return; e.preventDefault(); startDrag(e.clientX, e.clientY) }}
+            onTouchStart={e => { if (!whole) startDrag(e.touches[0].clientX, e.touches[0].clientY) }}
+            onWheel={whole ? undefined : handleWheel}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -184,6 +217,9 @@ export default function CropModal({
         </div>
 
         {/* Zoom */}
+        {whole ? (
+          <p className="px-5 pb-4 text-center text-xs text-white/40">L&apos;image sera publiée entière, sans être coupée.</p>
+        ) : (
         <div className="px-5 pb-4">
           <div className="flex items-center gap-3">
             <button
@@ -196,7 +232,7 @@ export default function CropModal({
               type="range" min={100} max={Math.round(maxZoom * 100)} step={5}
               value={Math.round(zoom * 100)}
               onChange={e => changeZoom(Number(e.target.value) / 100)}
-              className="flex-1 accent-emerald-500"
+              className="flex-1 accent-violet-500"
             />
             <button
               onClick={() => changeZoom(zoom + 0.1)}
@@ -209,6 +245,7 @@ export default function CropModal({
             Glisse pour repositionner · Zoom {Math.round(zoom * 100)}&nbsp;%
           </p>
         </div>
+        )}
 
         {/* Boutons */}
         <div className="flex gap-3 px-5 pb-5">
@@ -221,7 +258,7 @@ export default function CropModal({
           <button
             onClick={handleConfirm}
             disabled={!natW}
-            className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2.5 text-sm font-semibold text-white transition flex items-center justify-center gap-1.5"
+            className="flex-1 rounded-xl bg-accent hover:bg-accent-strong disabled:opacity-40 px-4 py-2.5 text-sm font-semibold text-white transition flex items-center justify-center gap-1.5"
           >
             <Check size={15} /> Confirmer
           </button>
