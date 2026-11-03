@@ -8,8 +8,10 @@ export type PublicSettings = {
 
 // Filet de sécurité : utilisé seulement si l'API ne répond pas (ex. juste après un déploiement).
 // Ces fichiers existent bien sur R2 — à mettre à jour si les images changent dans l'admin.
-/** Adresse publique du stockage R2 (photos, bannières, médias) */
-export const R2_ORIGIN = 'https://pub-28115fb1c7084199a44966ca2924104c.r2.dev'
+/** Adresse publique du stockage R2 (photos, bannières, médias) — à nous depuis le 03/11/2026 (#324) */
+export const R2_ORIGIN = 'https://media.lsbookers.com'
+/** Ancienne adresse r2.dev : encore utilisée par les médias enregistrés avant le 03/11/2026 */
+export const R2_LEGACY_ORIGIN = 'https://pub-28115fb1c7084199a44966ca2924104c.r2.dev'
 const R2_BASE = `${R2_ORIGIN}/lsbookers/media`
 
 export const FALLBACK_PUBLIC_SETTINGS: PublicSettings = {
