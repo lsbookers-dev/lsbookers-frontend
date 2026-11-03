@@ -200,7 +200,7 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
       <section role="dialog" aria-modal="true" aria-label="Modifier mon profil" className="flex h-[100dvh] w-full max-w-4xl flex-col overflow-hidden border-white/10 bg-[#0d0c12] text-white shadow-2xl sm:h-[88vh] sm:rounded-2xl sm:border">
         <header className="flex items-center justify-between gap-3 border-b border-white/[0.08] px-4 py-3.5 sm:px-5">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-300/80">Studio profil</span>
+            <span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-300/80">Mon profil</span>
             <h2 className="font-display text-xl font-semibold">Modifier mon profil</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="grid h-10 w-10 place-items-center rounded-xl text-white/50 hover:bg-white/5 hover:text-white"><X size={18} /></button>

@@ -107,7 +107,7 @@ export default function OfferCard({
         </header>
 
         <div className="lsb-offer-title">
-          <span>{offer.specialty || 'Opportunité'} · {offer.location}</span>
+          <span>{offer.specialty || 'Offre'} · {offer.location}</span>
           <h3>{offer.title}</h3>
         </div>
 

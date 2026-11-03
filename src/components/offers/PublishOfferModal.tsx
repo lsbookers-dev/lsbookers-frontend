@@ -1,6 +1,6 @@
 'use client'
 
-/** Formulaire « Publier une offre » (page Opportunités et Studio profil), avec aperçu en direct. */
+/** Formulaire « Publier une offre » (page Offres et Mon profil), avec aperçu en direct. */
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -226,9 +226,9 @@ export default function PublishOfferModal({ onClose, onPublished, defaultLocatio
             </div>
           </div>
 
-          {/* ── Aperçu : la vraie carte de la page Opportunités ── */}
+          {/* ── Aperçu : la vraie carte de la page Offres ── */}
           <div className="lg:sticky lg:top-0 lg:self-start">
-            <p className={PUB_LABEL}>Aperçu dans Opportunités</p>
+            <p className={PUB_LABEL}>Aperçu dans Offres</p>
             <div className="pointer-events-none select-none" aria-hidden="true" inert>
               <OfferCard offer={previewOffer} isLoggedIn isOwner={false} applying={false} onApply={() => {}} onShare={() => {}} />
             </div>

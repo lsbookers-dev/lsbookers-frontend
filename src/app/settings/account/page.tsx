@@ -95,14 +95,14 @@ export default function AccountSettingsPage() {
 
   return (
     <>
-      <SettingsTitle title="Mon compte" description="Les informations de votre compte. Ce que les autres voient se règle dans le Studio profil." />
+      <SettingsTitle title="Mon compte" description="Les informations de votre compte. Ce que les autres voient se règle dans Mon profil." />
 
       <SettingsCard>
         <SettingRow label="Adresse e-mail" description={loading ? 'Chargement…' : email}>
           <Link href="/settings/security#email" className="text-xs text-accent-light hover:text-white">Modifier</Link>
         </SettingRow>
         <SettingRow label="Pseudo, prénom et nom" description={identity || 'Visibles sur votre profil public'}>
-          <Link href="/studio-profile" className="text-xs text-accent-light hover:text-white">Studio profil</Link>
+          <Link href="/studio-profile" className="text-xs text-accent-light hover:text-white">Mon profil</Link>
         </SettingRow>
       </SettingsCard>
 
@@ -139,7 +139,7 @@ export default function AccountSettingsPage() {
                 <Field label="Ville"><input value={form.city} onChange={e => set('city', e.target.value)} maxLength={100} className={SETTINGS_INPUT} /></Field>
               </div>
             ) : (
-              <p className="text-xs text-white/40">L’adresse de votre établissement se règle dans le Studio profil, rubrique « Localisation ».</p>
+              <p className="text-xs text-white/40">L’adresse de votre établissement se règle dans Mon profil, rubrique « Localisation ».</p>
             )}
 
             <div className="flex justify-end">

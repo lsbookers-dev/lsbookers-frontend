@@ -155,7 +155,7 @@ function InvoicesContent() {
       {!issuerReady && (
         <Link href="/studio-profile?edit=private" className="flex items-center gap-2.5 rounded-xl border border-gold/35 bg-gold/10 px-4 py-3 text-sm text-gold-light">
           <LsIcon name="warning" size={18} tone="inherit" />
-          <span>Ajoutez votre SIRET et votre adresse (Studio profil → Infos privées) pour que vos devis et factures soient complets.</span>
+          <span>Ajoutez votre SIRET et votre adresse (Mon profil → Infos privées) pour que vos devis et factures soient complets.</span>
         </Link>
       )}
 

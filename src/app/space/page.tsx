@@ -2,7 +2,7 @@
 
 /**
  * Mon espace — tableau de bord de travail (artistes / prestataires et organisateurs).
- * Ordre : Mon activité · Bookings en cours + Opportunités · Prochaine date + Activité récente ·
+ * Ordre : Mon activité · Bookings en cours + Offres · Prochaine date + Activité récente ·
  * Mes avis · Lien de booking ou Équipe habituelle · Revenus / dépenses.
  */
 

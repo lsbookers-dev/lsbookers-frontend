@@ -19,5 +19,5 @@ export default function StudioProfileRedirect() {
     router.replace('/admin/dashboard')
   }, [loading, router, user])
 
-  return <div className="lsb-state-screen">Ouverture du Studio profil…</div>
+  return <div className="lsb-state-screen">Ouverture de votre profil…</div>
 }

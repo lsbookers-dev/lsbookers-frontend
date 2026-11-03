@@ -224,7 +224,7 @@ export default function AgencySpace({ agencyName }: { agencyName: string }) {
       </div>
 
       {data.opportunities.length > 0 && (
-        <SpacePanel kicker="Opportunités" title={onlyArtists ? 'Pour mes artistes' : 'Pour mes profils'} action={<PanelLink href="/offers">Toutes les offres</PanelLink>}>
+        <SpacePanel kicker="Offres" title={onlyArtists ? 'Pour mes artistes' : 'Pour mes profils'} action={<PanelLink href="/offers">Toutes les offres</PanelLink>}>
           <div className="grid">
             {data.opportunities.map(o => {
               const p = byId[o.profileId]

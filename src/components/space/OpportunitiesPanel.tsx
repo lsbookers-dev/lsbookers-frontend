@@ -26,7 +26,7 @@ export default function OpportunitiesPanel({ organizer, offers, total }: { organ
 
   return (
     <SpacePanel
-      kicker={organizer ? 'Vos recrutements' : 'Opportunités pour vous'}
+      kicker={organizer ? 'Vos recrutements' : 'Offres pour vous'}
       title={title}
       action={<PanelLink href="/offers">{organizer ? 'Gérer les offres' : 'Explorer'}</PanelLink>}
     >

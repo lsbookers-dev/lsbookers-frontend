@@ -13,13 +13,13 @@ const primary = [
   { href: '/home', label: 'Accueil', icon: Home },
   { href: '/discover', label: 'Découvrir', icon: Compass, match: ['/discover', '/search'] },
   { href: '/agenda', label: 'Agenda', icon: CalendarDays },
-  { href: '/offers', label: 'Opportunités', icon: TicketCheck },
+  { href: '/offers', label: 'Offres', icon: TicketCheck },
   { href: '/messages', label: 'Messages', icon: Mail },
 ]
 
 const secondary = [
   { href: '/space', label: 'Mon espace', icon: LayoutDashboard },
-  { href: '/studio-profile', label: 'Studio profil', icon: Sparkles, match: ['/studio-profile', '/profile/artist', '/profile/organizer', '/profile/provider'] },
+  { href: '/studio-profile', label: 'Mon profil', icon: Sparkles, match: ['/studio-profile', '/profile/artist', '/profile/organizer', '/profile/provider'] },
   { href: '/subscriptions', label: 'Offres et abonnements', icon: Crown },
   { href: '/settings', label: 'Réglages', icon: Settings },
 ]
