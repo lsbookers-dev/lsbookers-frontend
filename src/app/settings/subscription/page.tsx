@@ -153,8 +153,8 @@ function SubscriptionSettingsContent() {
         </SettingsCard>
       )}
 
-      <SettingsCard title="Factures LS Bookers" description="Les factures de votre abonnement Pro et de vos formules sont envoyées par e-mail et disponibles dans « Gérer mon abonnement » sur la page Offres et abonnements. Pour vos bookings, LS Bookers vous remet une attestation de paiement : la facture de la prestation se fait directement entre vous et l’organisateur.">
-        <Link href="/subscriptions" className="text-xs text-accent-light hover:text-white">Offres et abonnements</Link>
+      <SettingsCard title="Factures LS Bookers" description="Les factures de votre abonnement Pro et de vos formules sont envoyées par e-mail et disponibles dans « Gérer mon abonnement » sur la page Abonnements. Pour vos bookings, LS Bookers vous remet une attestation de paiement : la facture de la prestation se fait directement entre vous et l’organisateur.">
+        <Link href="/subscriptions" className="text-xs text-accent-light hover:text-white">Abonnements</Link>
       </SettingsCard>
     </>
   )

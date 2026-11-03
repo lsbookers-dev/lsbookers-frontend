@@ -2,7 +2,7 @@
 
 /**
  * Après la première connexion : si la version Pro (ou un code) a été choisie à l'inscription,
- * on emmène une fois le membre sur « Offres et abonnements » pour la finaliser.
+ * on emmène une fois le membre sur « Abonnements » pour la finaliser.
  */
 import { useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'

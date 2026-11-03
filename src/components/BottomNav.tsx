@@ -45,7 +45,7 @@ export default function BottomNav() {
     { href: '/notifications',    icon: Bell,            label: 'Notifications', badge: unreadNotif },
     { href: '/offers',           icon: TicketCheck,     label: 'Offres',        badge: 0 },
     { href: '/studio-profile',   icon: Sparkles,        label: 'Mon profil', badge: 0 },
-    { href: '/subscriptions',    icon: Crown,           label: 'Offres et abonnements', badge: 0 },
+    { href: '/subscriptions',    icon: Crown,           label: 'Abonnements', badge: 0 },
     { href: '/settings',         icon: Settings,        label: 'Réglages',      badge: 0 },
   ]
   const morePaths = [...moreItems.map(i => i.href), '/profile', '/settings', '/contact']

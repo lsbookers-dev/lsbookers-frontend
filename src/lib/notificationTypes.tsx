@@ -32,7 +32,7 @@ export const NOTIFICATION_TYPES: Record<string, NotificationType> = {
   MANAGEMENT_DECLINED:   { icon: 'close',    tone: 'bad',    label: 'Gestion refusée' },
   MANAGEMENT_ENDED:      { icon: 'cancel',   tone: 'muted',  label: 'Fin de gestion' },
   ADMIN_MANAGED_PROFILE_CHECK:{ icon: 'warning', tone: 'gold', label: 'Profil à vérifier' },
-  // Offres et abonnements
+  // Abonnements
   SUBSCRIPTION_UPDATE:   { icon: 'star',     tone: 'gold',   label: 'Abonnement' },
   EXTRA_ORDER_UPDATE:    { icon: 'star',     tone: 'gold',   label: 'Formule' },
   // Admin

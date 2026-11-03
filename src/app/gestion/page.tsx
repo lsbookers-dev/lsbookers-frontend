@@ -72,7 +72,7 @@ export default function ManagedProfilesPage() {
         <div className="max-w-md">
           <LsIcon name="follow" size={30} tone="accent" />
           <h1 className="mt-3 text-xl font-semibold">Gérer plusieurs profils</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted">Agents d’artistes, gérants de plusieurs salles : la formule Business vous permettra de gérer plusieurs profils depuis votre compte. Elle arrive bientôt sur « Offres et abonnements ».</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">Agents d’artistes, gérants de plusieurs salles : la formule Business vous permettra de gérer plusieurs profils depuis votre compte. Elle arrive bientôt sur « Abonnements ».</p>
         </div>
       </div>
     )

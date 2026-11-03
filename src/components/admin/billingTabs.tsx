@@ -391,7 +391,7 @@ export function ExtrasTab() {
   if (!offers) return <Spinner />
   return (
     <div className="space-y-4">
-      <p className="text-sm text-white/55">Les formules proposées sur la page « Offres et abonnements », à tous les membres (gratuits ou Pro). Fixez les prix puis cochez « Proposée aux membres » pour les ouvrir. Le carrousel a besoin d’options régionales ou nationales avec une durée.</p>
+      <p className="text-sm text-white/55">Les formules proposées sur la page « Abonnements », à tous les membres (gratuits ou Pro). Fixez les prix puis cochez « Proposée aux membres » pour les ouvrir. Le carrousel a besoin d’options régionales ou nationales avec une durée.</p>
       {offers.map(o => <OfferEditor key={o.id} offer={o} onSaved={load} />)}
       {creating ? <OfferEditor offer={null} onSaved={load} /> : <button type="button" onClick={() => setCreating(true)} className={BTN2}>Nouvelle formule</button>}
     </div>

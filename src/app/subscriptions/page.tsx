@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Offres et abonnements (choix A2 d'Antho, 22/10/2026) — une page en deux parties :
+ * Abonnements (choix A2 d'Antho, 22/10/2026) — une page en deux parties :
  * 1. Les formules : Gratuit, Pro au milieu, Agence (choix D1, 27/10/2026), code promo ou Fondateur, + comparatif
  * 2. Nos autres services : formules ajoutées dans l'admin (carrousel, réseaux sociaux, newsletter…)
  */
@@ -216,7 +216,7 @@ function SubscriptionsContent() {
     return <div className="lsb-page text-white"><p className="text-white/60">L’abonnement de {user.name || 'ce profil'} est réservé à son titulaire. Revenez à votre profil pour voir vos formules.</p></div>
   }
   if (role === 'ADMIN') {
-    return <div className="lsb-page text-white"><p className="text-white/60">Les offres et abonnements se règlent dans l’admin.</p></div>
+    return <div className="lsb-page text-white"><p className="text-white/60">Les abonnements se règlent dans l’admin.</p></div>
   }
 
   const sub = plan?.subscription

@@ -20,7 +20,7 @@ const primary = [
 const secondary = [
   { href: '/space', label: 'Mon espace', icon: LayoutDashboard },
   { href: '/studio-profile', label: 'Mon profil', icon: Sparkles, match: ['/studio-profile', '/profile/artist', '/profile/organizer', '/profile/provider'] },
-  { href: '/subscriptions', label: 'Offres et abonnements', icon: Crown },
+  { href: '/subscriptions', label: 'Abonnements', icon: Crown },
   { href: '/settings', label: 'Réglages', icon: Settings },
 ]
 
