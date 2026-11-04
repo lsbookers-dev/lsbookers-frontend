@@ -44,8 +44,17 @@ export default function InstallPrompt() {
   }, [showGuide])
 
   const mobile = platform === 'ios' || platform === 'android'
-  if (!ready || standalone || pathname === '/' || (snoozed && !showGuide)) return null
-  if (!mobile && !canPrompt) return null
+  const hidden = !ready || standalone || pathname === '/' || (snoozed && !showGuide) || (!mobile && !canPrompt)
+  const bannerShown = !hidden && !showGuide
+
+  // Tant que la fenêtre est affichée, le bas des pages laisse sa place : elle ne recouvre plus rien
+  useEffect(() => {
+    if (!bannerShown) return
+    document.documentElement.style.setProperty('--lsb-install-space', '6.5rem')
+    return () => { document.documentElement.style.removeProperty('--lsb-install-space') }
+  }, [bannerShown])
+
+  if (hidden) return null
 
   const install = async () => {
     if (canPrompt) { if (await promptInstall()) snooze() }

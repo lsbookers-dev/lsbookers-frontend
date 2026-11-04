@@ -126,6 +126,18 @@ export default function NotificationsPage() {
     setSummary({})
   }
 
+  const deleteNotifs = async (ids: number[]) => {
+    setList(prev => prev.filter(n => !ids.includes(n.id)))
+    try {
+      await apiFetch(`${API_BASE}/api/notifications/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      window.dispatchEvent(new Event('lsb:unread-changed'))
+    } catch { /* silencieux */ }
+  }
+
   const openPublication = async (id: number) => {
     try {
       const res = await apiFetch(`${API_BASE}/api/publications/${id}`)
@@ -235,6 +247,7 @@ export default function NotificationsPage() {
                           onOpenPublication={openPublication}
                           onStaffRespond={respondStaffInvitation}
                           responding={!!responding[item.lead.id]}
+                          onDelete={deleteNotifs}
                         />
                       ))}
                     </div>

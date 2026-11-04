@@ -186,6 +186,19 @@ export default function Header() {
     refreshUnreadCounts()
   }, [API_BASE])
 
+  /* ── Supprimer une notification (ou un groupe) ──────── */
+  const deleteNotifs = useCallback(async (ids: number[]) => {
+    setNotifList(list => list.filter(n => !ids.includes(n.id)))
+    try {
+      await apiFetch(`${API_BASE}/api/notifications/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+    } catch { /* silencieux */ }
+    refreshUnreadCounts()
+  }, [API_BASE])
+
   /* ── Fermer le menu au changement de page ──────────── */
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
@@ -267,6 +280,7 @@ export default function Header() {
                                     onNavigate={() => setNotifOpen(false)}
                                     onStaffRespond={respondStaffInvitation}
                                     responding={!!respondingStaff[item.lead.id]}
+                                    onDelete={deleteNotifs}
                                   />
                                 ))}
                               </div>

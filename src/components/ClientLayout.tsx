@@ -61,7 +61,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         className={`flex-grow ${showAppNav ? 'lsb-app-main' : ''}`}
         style={{
           paddingBottom: showAppNav
-            ? 'calc(4rem + env(safe-area-inset-bottom))'
+            ? 'calc(4rem + env(safe-area-inset-bottom) + var(--lsb-install-space, 0px))'
             : undefined,
         }}
       >

@@ -20,11 +20,13 @@ type Props = {
   onNavigate?: () => void
   onStaffRespond?: (notifId: number, staffId: number, eventId: number, response: 'ACCEPT' | 'REFUSE') => void
   responding?: boolean
+  /** Supprimer la notification (ou tout le groupe) */
+  onDelete?: (ids: number[]) => void
 }
 
 const BUTTON = 'inline-flex items-center rounded-lg border px-2.5 py-1 font-medium transition'
 
-export default function NotificationRow({ item, compact = false, onOpenPublication, onNavigate, onStaffRespond, responding }: Props) {
+export default function NotificationRow({ item, compact = false, onOpenPublication, onNavigate, onStaffRespond, responding, onDelete }: Props) {
   const n = item.lead
   const cfg = notificationType(n.type)
   const target = notificationTarget(n)
@@ -36,7 +38,7 @@ export default function NotificationRow({ item, compact = false, onOpenPublicati
   const staffPending = n.type === 'STAFF_INVITATION' && n.staffId && n.eventId && !['BOOKED', 'CANCELLED'].includes(n.staffStatus || '')
 
   const body = (
-    <div className={`flex items-start gap-3 rounded-xl transition ${compact ? 'px-3 py-2.5' : 'px-4 py-3.5'} ${item.read ? 'hover:bg-white/[0.04]' : 'bg-accent/[0.08] hover:bg-accent/[0.12]'}`}>
+    <div className={`flex items-start gap-3 rounded-xl transition ${compact ? 'px-3 py-2.5' : 'px-4 py-3.5'} ${onDelete ? (compact ? 'pr-9' : 'pr-11') : ''} ${item.read ? 'hover:bg-white/[0.04]' : 'bg-accent/[0.08] hover:bg-accent/[0.12]'}`}>
       {/* Avatar de la personne + picto du type ; sans personne, le picto seul */}
       <span className="relative mt-0.5 shrink-0" style={{ width: avatar, height: avatar }}>
         {n.actor?.avatar ? (
@@ -91,9 +93,26 @@ export default function NotificationRow({ item, compact = false, onOpenPublicati
   )
 
   // Une invitation en attente garde ses boutons : pas de lien autour (pas de bouton dans un lien)
-  if (staffPending || !target) return <div>{body}</div>
-  if ('publicationId' in target) {
-    return <button type="button" className="block w-full text-left" onClick={() => onOpenPublication(target.publicationId)}>{body}</button>
-  }
-  return <Link href={target.href} onClick={onNavigate} className="block">{body}</Link>
+  const main = staffPending || !target
+    ? <div>{body}</div>
+    : 'publicationId' in target
+      ? <button type="button" className="block w-full text-left" onClick={() => onOpenPublication(target.publicationId)}>{body}</button>
+      : <Link href={target.href} onClick={onNavigate} className="block">{body}</Link>
+
+  if (!onDelete) return main
+  return (
+    <div className="group relative">
+      {main}
+      {/* Supprimer : visible au survol sur ordinateur, toujours discret sur téléphone */}
+      <button
+        type="button"
+        onClick={() => onDelete(item.ids)}
+        aria-label={item.count > 1 ? 'Supprimer ces notifications' : 'Supprimer la notification'}
+        title="Supprimer"
+        className={`absolute grid place-items-center rounded-full text-white/35 transition hover:bg-white/10 hover:text-white md:opacity-0 md:focus-visible:opacity-100 md:group-hover:opacity-100 ${compact ? 'right-1.5 top-2 h-7 w-7' : 'right-2.5 top-3 h-8 w-8'}`}
+      >
+        <LsIcon name="close" tone="inherit" size={compact ? 13 : 15} />
+      </button>
+    </div>
+  )
 }
