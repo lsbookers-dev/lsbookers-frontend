@@ -11,6 +11,8 @@ const CATEGORIES: { key: string; label: string; description: string; emailOnly?:
   { key: 'events', label: 'Événements', description: 'Invitations dans une équipe, réponses, rappels de checklist' },
   { key: 'reviews', label: 'Avis', description: 'Nouveaux avis, avis à laisser, réponses' },
   { key: 'network', label: 'Réseau', description: 'Abonnés, J’aime, commentaires, identifications' },
+  { key: 'business', label: 'Gestion par une agence', description: 'Invitations d’une agence, réponses, fin de gestion, mise en pause du profil' },
+  { key: 'account', label: 'Abonnement et commandes', description: 'Votre abonnement et vos options achetées' },
 ]
 
 /** Réglages › Notifications et e-mails */

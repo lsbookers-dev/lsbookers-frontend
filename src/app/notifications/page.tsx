@@ -3,7 +3,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
 import { apiFetch } from '@/utils/auth'
-import { reviewOrBookingItemLink, billingLink } from '@/utils/notificationLinks'
+import { notificationTarget } from '@/utils/notificationLinks'
+import PublicationModal from '@/components/PublicationModal'
+import type { PubCardData } from '@/components/PublicationCard'
 import LsIcon from '@/components/ui/LsIcon'
 import { NotificationIcon, notificationType } from '@/lib/notificationTypes'
 
@@ -18,46 +20,13 @@ type Notif = {
   actor?: { id: number; name?: string | null; avatar?: string | null; role?: string | null } | null
   conversationId?: number | null
   offerId?: number | null
+  publicationId?: number | null
   staffId?: number | null
   eventId?: number | null
   staffStatus?: string | null
 }
 
 // Pictos et libellés des types : lib/notificationTypes
-
-const BOOKING_TYPES = [
-  'BOOKING_REQUEST', 'BOOKING_ACCEPTED', 'BOOKING_DECLINED',
-  'BOOKING_CANCELLED', 'CANCELLATION_REQUEST', 'CANCELLATION_ACCEPTED',
-  'CANCELLATION_DECLINED', 'PAYMENT_RECEIVED', 'BOOKING_APPROVAL_NEEDED',
-]
-
-function getLink(notif: Notif): string | null {
-  // Messages → conversation directe
-  if (notif.type === 'NEW_MESSAGE' && notif.conversationId)
-    return `/messages?c=${notif.conversationId}`
-  // Bookings → conversation liée (ou agenda en fallback)
-  if (BOOKING_TYPES.includes(notif.type))
-    return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
-  // Offres
-  if (notif.type === 'NEW_OFFER' || notif.type === 'OFFER_CLOSED')
-    return `/offers`
-  // Booking confirmé : l'offre encore en ligne, pour la clôturer
-  if (notif.type === 'OFFER_TO_CLOSE')
-    return notif.offerId ? `/offers?offer=${notif.offerId}` : '/offers'
-  // Avis (reçu / à laisser) et ajouts dans un booking
-  const reviewOrItem = reviewOrBookingItemLink(notif.type, notif.eventId)
-  if (reviewOrItem) return reviewOrItem
-  const billing = billingLink(notif.type)
-  if (billing) return billing
-  // Réseau social → profil de l'acteur
-  if (['NEW_FOLLOW', 'NEW_COMMENT', 'NEW_LIKE', 'REVIEW_REPLY'].includes(notif.type) && notif.actor?.id) {
-    const role = notif.actor.role?.toLowerCase()
-    if (role === 'artist')    return `/artist/${notif.actor.id}`
-    if (role === 'organizer') return `/organizer/${notif.actor.id}`
-    if (role === 'provider')  return `/provider/${notif.actor.id}`
-  }
-  return null
-}
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -76,6 +45,27 @@ export default function NotificationsPage() {
   const [cursor, setCursor]       = useState<number | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
+  const [pubModal, setPubModal]   = useState<PubCardData | null>(null)
+
+  // « Lu » uniquement pour les notifications réellement affichées (pas les plus anciennes)
+  const markShownAsRead = useCallback((list: Notif[]) => {
+    const ids = list.filter(n => !n.read).map(n => n.id)
+    if (!ids.length || !API_BASE) return
+    apiFetch(`${API_BASE}/api/notifications/mark-read`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+      .then(() => window.dispatchEvent(new Event('lsb:unread-changed')))
+      .catch(() => {})
+  }, [API_BASE])
+
+  const openPublication = async (id: number) => {
+    try {
+      const res = await apiFetch(`${API_BASE}/api/publications/${id}`)
+      if (res.ok) setPubModal(await res.json() as PubCardData)
+    } catch { /* silencieux */ }
+  }
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchNotifications = useCallback(async () => {
@@ -86,22 +76,17 @@ export default function NotificationsPage() {
       const res = await apiFetch(`${API_BASE}/api/notifications?limit=${PAGE_SIZE}`)
       if (!res.ok) throw new Error()
       const data = await res.json()
-      const list: { read?: boolean }[] = data.notifications || []
-      setAll(data.notifications || [])
+      const list: Notif[] = data.notifications || []
+      setAll(list)
       setCursor(data.nextCursor ?? null)
-      // Comme la cloche sur ordinateur : ouvrir la page vaut lecture. Les nouvelles
-      // restent mises en avant pendant cette visite, mais les pastilles s'effacent.
-      if (list.some(n => !n.read)) {
-        apiFetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH' })
-          .then(() => window.dispatchEvent(new Event('lsb:unread-changed')))
-          .catch(() => {})
-      }
+      // Les nouvelles restent mises en avant pendant cette visite, mais les pastilles s'effacent
+      markShownAsRead(list)
     } catch {
       setError(true)
     } finally {
       setLoading(false)
     }
-  }, [API_BASE, user?.id])
+  }, [API_BASE, user?.id, markShownAsRead])
 
   useEffect(() => { fetchNotifications() }, [fetchNotifications])
 
@@ -113,6 +98,7 @@ export default function NotificationsPage() {
       const res = await apiFetch(`${API_BASE}/api/notifications?limit=${PAGE_SIZE}&before=${cursor}`)
       if (res.ok) {
         const data = await res.json()
+        markShownAsRead(data.notifications || [])
         setAll(prev => {
           const seen = new Set(prev.map(n => n.id))
           return [...prev, ...(data.notifications || []).filter((n: Notif) => !seen.has(n.id))]
@@ -232,7 +218,8 @@ export default function NotificationsPage() {
           <div className="space-y-2">
             {filtered.map(notif => {
               const cfg  = notificationType(notif.type)
-              const link = getLink(notif)
+              const target = notificationTarget(notif)
+              const link = target && 'href' in target ? target.href : null
               const content = (
                 <div
                   className={`relative rounded-2xl border transition cursor-pointer group ${
@@ -276,9 +263,9 @@ export default function NotificationsPage() {
 
                       {/* Alerte sécurité — action par email */}
                       {notif.type === 'NEW_DEVICE_LOGIN' && (
-                        <Link href="/settings/security" className="mt-2 flex items-center gap-1.5 text-xs text-gold hover:text-gold-light">
+                        <span className="mt-2 flex items-center gap-1.5 text-xs text-gold group-hover:text-gold-light">
                           <LsIcon name="shield" tone="inherit" size={15} />Ce n’était pas vous ? Retirez l’appareil dans Réglages › Connexion et sécurité
-                        </Link>
+                        </span>
                       )}
 
                       {/* Invitation staff — boutons Accepter / Refuser */}
@@ -309,6 +296,13 @@ export default function NotificationsPage() {
                 </div>
               )
 
+              if (target && 'publicationId' in target) {
+                return (
+                  <button key={notif.id} type="button" className="block w-full text-left" onClick={() => openPublication(target.publicationId)}>
+                    {content}
+                  </button>
+                )
+              }
               return link ? (
                 <Link key={notif.id} href={link} className="block">
                   {content}
@@ -334,6 +328,11 @@ export default function NotificationsPage() {
         )}
 
       </div>
+
+      {/* Publication ouverte depuis une notification (j'aime, commentaire, identification) */}
+      {pubModal && (
+        <PublicationModal pub={pubModal} onClose={() => setPubModal(null)} onCountChange={() => {}} />
+      )}
     </main>
   )
 }

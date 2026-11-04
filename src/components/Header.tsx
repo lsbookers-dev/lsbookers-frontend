@@ -10,10 +10,10 @@ import {
   Settings, UserRound, ChevronDown,
 } from 'lucide-react'
 import { apiFetch } from '@/utils/auth'
-import { useUnreadCounts, clearUnreadNotifications, refreshUnreadCounts } from '@/hooks/useUnreadCounts'
+import { useUnreadCounts, refreshUnreadCounts } from '@/hooks/useUnreadCounts'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
-import { reviewOrBookingItemLink, billingLink } from '@/utils/notificationLinks'
+import { notificationTarget } from '@/utils/notificationLinks'
 import LsIcon from '@/components/ui/LsIcon'
 import HeaderAnnouncement, { announcementFromSettings, type Announcement } from './HeaderAnnouncement'
 import { NotificationIcon } from '@/lib/notificationTypes'
@@ -36,38 +36,6 @@ type PopupNotif = {
   staffId?: number | null
   eventId?: number | null
   staffStatus?: string | null
-}
-
-const BOOKING_TYPES = [
-  'BOOKING_REQUEST', 'BOOKING_ACCEPTED', 'BOOKING_DECLINED',
-  'BOOKING_CANCELLED', 'CANCELLATION_REQUEST', 'CANCELLATION_ACCEPTED',
-  'CANCELLATION_DECLINED', 'PAYMENT_RECEIVED', 'BOOKING_APPROVAL_NEEDED',
-]
-
-function getPopupLink(notif: PopupNotif): string | null {
-  if (notif.type === 'NEW_MESSAGE' && notif.conversationId)
-    return `/messages?c=${notif.conversationId}`
-  if (BOOKING_TYPES.includes(notif.type))
-    return notif.conversationId ? `/messages?c=${notif.conversationId}` : null
-  if (notif.type === 'NEW_OFFER' || notif.type === 'OFFER_CLOSED')
-    return `/offers`
-  // Booking confirmé : l'offre encore en ligne, pour la clôturer
-  if (notif.type === 'OFFER_TO_CLOSE')
-    return notif.offerId ? `/offers?offer=${notif.offerId}` : '/offers'
-  const reviewOrItem = reviewOrBookingItemLink(notif.type, notif.eventId)
-  if (reviewOrItem) return reviewOrItem
-  const billing = billingLink(notif.type)
-  if (billing) return billing
-  // NEW_COMMENT / NEW_LIKE / NEW_COMMENT_REPLY / NEW_COMMENT_LIKE avec publicationId → modal inline, pas de navigation
-  if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE'].includes(notif.type) && notif.publicationId)
-    return null
-  if (['NEW_FOLLOW', 'REVIEW_REPLY'].includes(notif.type) && notif.actor?.id) {
-    const role = notif.actor.role?.toLowerCase()
-    if (role === 'artist')    return `/artist/${notif.actor.id}`
-    if (role === 'organizer') return `/organizer/${notif.actor.id}`
-    if (role === 'provider')  return `/provider/${notif.actor.id}`
-  }
-  return null
 }
 
 type AuthUser = {
@@ -188,19 +156,23 @@ export default function Header() {
     setNotifOpen(v => !v)
     if (!opening) return
 
-    // Réinitialiser le compteur immédiatement (avant même la réponse réseau)
-    clearUnreadNotifications()
     setNotifLoading(true)
 
-    // Fetch liste + mark-all-read en parallèle
+    // Liste d'abord, puis « lu » uniquement pour les notifications affichées
     try {
-      const [listRes] = await Promise.all([
-        apiFetch(`${API_BASE}/api/notifications?limit=20`),
-        apiFetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH' }),
-      ])
+      const listRes = await apiFetch(`${API_BASE}/api/notifications?limit=20`)
       if (listRes.ok) {
         const data = await listRes.json()
-        setNotifList(data.notifications || [])
+        const list: PopupNotif[] = data.notifications || []
+        setNotifList(list)
+        const unreadIds = list.filter(n => !n.read).map(n => n.id)
+        if (unreadIds.length) {
+          await apiFetch(`${API_BASE}/api/notifications/mark-read`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: unreadIds }),
+          })
+        }
       }
       refreshUnreadCounts()
     } catch { /* silencieux */ }
@@ -280,7 +252,8 @@ export default function Header() {
                       ) : (
                         <div className="p-2 space-y-0.5">
                           {notifList.slice(0, 20).map(notif => {
-                            const link = getPopupLink(notif)
+                            const target = notificationTarget(notif)
+                            const link = target && 'href' in target ? target.href : null
                             const inner = (
                               <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
                                 notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
@@ -371,10 +344,10 @@ export default function Header() {
                                 </Link>
                               )
                             }
-                            // Notif avec publicationId → ouvre la modal sans naviguer
-                            if (['NEW_COMMENT', 'NEW_LIKE', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE', 'TAG_ON_PUBLICATION'].includes(notif.type) && notif.publicationId) {
+                            // Notif liée à une publication → ouvre la fenêtre sans quitter la page
+                            if (target && 'publicationId' in target) {
                               return (
-                                <button key={notif.id} className="block w-full text-left" onClick={() => openPubModal(notif.publicationId!)}>
+                                <button key={notif.id} className="block w-full text-left" onClick={() => openPubModal(target.publicationId)}>
                                   {inner}
                                 </button>
                               )
