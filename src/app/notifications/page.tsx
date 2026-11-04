@@ -1,64 +1,130 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@/context/AuthContext'
+
+/**
+ * Page Notifications — choix B2 d'Antho (04/11/2026) : menu des sujets à gauche avec le nombre
+ * de nouvelles (une ligne de filtres sur téléphone), liste rangée par jour à droite.
+ * Mise en forme commune avec la cloche : lib/notificationFeed + components/notifications/NotificationRow.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
-import { notificationTarget } from '@/utils/notificationLinks'
+import LsIcon, { type LsIconName } from '@/components/ui/LsIcon'
+import NotificationRow from '@/components/notifications/NotificationRow'
 import PublicationModal from '@/components/PublicationModal'
 import type { PubCardData } from '@/components/PublicationCard'
-import LsIcon from '@/components/ui/LsIcon'
-import { NotificationIcon, notificationType } from '@/lib/notificationTypes'
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type Notif = {
-  id: number
-  type: string
-  content: string
-  read: boolean
-  createdAt: string
-  actor?: { id: number; name?: string | null; avatar?: string | null; role?: string | null } | null
-  conversationId?: number | null
-  offerId?: number | null
-  publicationId?: number | null
-  staffId?: number | null
-  eventId?: number | null
-  staffStatus?: string | null
-}
-
-// Pictos et libellés des types : lib/notificationTypes
-
-// ─── Constantes ──────────────────────────────────────────────────────────────
+import { buildFeed, type FeedNotif } from '@/lib/notificationFeed'
 
 const PAGE_SIZE = 30
 
-// ─── Composant ───────────────────────────────────────────────────────────────
+type CategoryKey = 'all' | 'bookings' | 'offers' | 'events' | 'reviews' | 'network' | 'account'
+type Summary = Partial<Record<Exclude<CategoryKey, 'all'> | 'total', number>>
+
+const CATEGORIES: { key: CategoryKey; label: string; icon: LsIconName }[] = [
+  { key: 'all', label: 'Tout', icon: 'bell' },
+  { key: 'bookings', label: 'Bookings', icon: 'booking' },
+  { key: 'offers', label: 'Offres', icon: 'offer' },
+  { key: 'events', label: 'Événements', icon: 'stage' },
+  { key: 'reviews', label: 'Avis', icon: 'star' },
+  { key: 'network', label: 'Réseau', icon: 'follow' },
+  { key: 'account', label: 'Compte', icon: 'shield' },
+]
 
 export default function NotificationsPage() {
   const { user } = useAuth() as { user: { id: number | string } | null }
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
-  const [all, setAll]             = useState<Notif[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(false)
-  const [filterUnread, setFilterUnread] = useState(false)
-  const [cursor, setCursor]       = useState<number | null>(null)
+  const [category, setCategory] = useState<CategoryKey>('all')
+  const [list, setList] = useState<FeedNotif[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [cursor, setCursor] = useState<number | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [markingAll, setMarkingAll] = useState(false)
-  const [pubModal, setPubModal]   = useState<PubCardData | null>(null)
+  const [summary, setSummary] = useState<Summary>({})
+  const [pubModal, setPubModal] = useState<PubCardData | null>(null)
+  const [responding, setResponding] = useState<Record<number, boolean>>({})
 
-  // « Lu » uniquement pour les notifications réellement affichées (pas les plus anciennes)
-  const markShownAsRead = useCallback((list: Notif[]) => {
-    const ids = list.filter(n => !n.read).map(n => n.id)
-    if (!ids.length || !API_BASE) return
-    apiFetch(`${API_BASE}/api/notifications/mark-read`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
-    })
-      .then(() => window.dispatchEvent(new Event('lsb:unread-changed')))
-      .catch(() => {})
+  const listUrl = useCallback((before?: number | null) => {
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE) })
+    if (category !== 'all') params.set('category', category)
+    if (before) params.set('before', String(before))
+    return `${API_BASE}/api/notifications?${params}`
+  }, [API_BASE, category])
+
+  // Nombre de nouvelles par sujet à l'arrivée sur la page (relevé une fois, avant de marquer « lu »)
+  const summaryLoaded = useRef(false)
+  const loadSummary = useCallback(async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/api/notifications/summary`, { cache: 'no-store' })
+      if (res.ok) setSummary(await res.json())
+    } catch { /* silencieux */ }
   }, [API_BASE])
+
+  // « Lu » uniquement pour ce qui est affiché ; les nouvelles restent en avant pendant la visite
+  const markShownAsRead = useCallback(async (shown: FeedNotif[]) => {
+    const ids = shown.filter(n => !n.read).map(n => n.id)
+    if (ids.length) {
+      try {
+        await apiFetch(`${API_BASE}/api/notifications/mark-read`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        })
+        window.dispatchEvent(new Event('lsb:unread-changed'))
+      } catch { /* silencieux */ }
+    }
+  }, [API_BASE])
+
+  const fetchFirstPage = useCallback(async () => {
+    if (!user?.id || !API_BASE) return
+    setLoading(true)
+    setError(false)
+    if (!summaryLoaded.current) { summaryLoaded.current = true; await loadSummary() }
+    try {
+      const res = await apiFetch(listUrl())
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      const rows: FeedNotif[] = data.notifications || []
+      setList(rows)
+      setCursor(data.nextCursor ?? null)
+      void markShownAsRead(rows)
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [API_BASE, user?.id, listUrl, markShownAsRead, loadSummary])
+
+  useEffect(() => { void fetchFirstPage() }, [fetchFirstPage])
+
+  const loadMore = async () => {
+    if (!cursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const res = await apiFetch(listUrl(cursor))
+      if (res.ok) {
+        const data = await res.json()
+        const rows: FeedNotif[] = data.notifications || []
+        setList(prev => {
+          const seen = new Set(prev.map(n => n.id))
+          return [...prev, ...rows.filter(n => !seen.has(n.id))]
+        })
+        setCursor(data.nextCursor ?? null)
+        void markShownAsRead(rows)
+      }
+    } catch { /* silencieux */ }
+    setLoadingMore(false)
+  }
+
+  const markAllAsRead = async () => {
+    setList(prev => prev.map(n => ({ ...n, read: true })))
+    try {
+      await apiFetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH' })
+      window.dispatchEvent(new Event('lsb:unread-changed'))
+    } catch { /* silencieux */ }
+    setSummary({})
+  }
 
   const openPublication = async (id: number) => {
     try {
@@ -66,61 +132,9 @@ export default function NotificationsPage() {
       if (res.ok) setPubModal(await res.json() as PubCardData)
     } catch { /* silencieux */ }
   }
-  // ── Fetch ──────────────────────────────────────────────────────────────────
-
-  const fetchNotifications = useCallback(async () => {
-    if (!user?.id || !API_BASE) return
-    setLoading(true)
-    setError(false)
-    try {
-      const res = await apiFetch(`${API_BASE}/api/notifications?limit=${PAGE_SIZE}`)
-      if (!res.ok) throw new Error()
-      const data = await res.json()
-      const list: Notif[] = data.notifications || []
-      setAll(list)
-      setCursor(data.nextCursor ?? null)
-      // Les nouvelles restent mises en avant pendant cette visite, mais les pastilles s'effacent
-      markShownAsRead(list)
-    } catch {
-      setError(true)
-    } finally {
-      setLoading(false)
-    }
-  }, [API_BASE, user?.id, markShownAsRead])
-
-  useEffect(() => { fetchNotifications() }, [fetchNotifications])
-
-  // Notifications plus anciennes, par paquets de 30
-  const loadMore = async () => {
-    if (!cursor || loadingMore) return
-    setLoadingMore(true)
-    try {
-      const res = await apiFetch(`${API_BASE}/api/notifications?limit=${PAGE_SIZE}&before=${cursor}`)
-      if (res.ok) {
-        const data = await res.json()
-        markShownAsRead(data.notifications || [])
-        setAll(prev => {
-          const seen = new Set(prev.map(n => n.id))
-          return [...prev, ...(data.notifications || []).filter((n: Notif) => !seen.has(n.id))]
-        })
-        setCursor(data.nextCursor ?? null)
-      }
-    } catch { /* silencieux */ }
-    setLoadingMore(false)
-  }
-
-  // ── Actions ────────────────────────────────────────────────────────────────
-
-  const markAsRead = async (id: number) => {
-    try {
-      await apiFetch(`${API_BASE}/api/notifications/${id}`, {
-        method: 'PATCH',
-        })
-      setAll(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
-    } catch { /* silencieux */ }
-  }
 
   const respondStaffInvitation = async (notifId: number, staffId: number, eventId: number, response: 'ACCEPT' | 'REFUSE') => {
+    setResponding(r => ({ ...r, [notifId]: true }))
     try {
       const res = await apiFetch(`${API_BASE}/api/events/${eventId}/staff/${staffId}/respond`, {
         method: 'PATCH',
@@ -128,208 +142,123 @@ export default function NotificationsPage() {
         body: JSON.stringify({ response }),
       })
       if (res.ok) {
-        const newStatus = response === 'ACCEPT' ? 'BOOKED' : 'CANCELLED'
-        setAll(prev => prev.map(n => n.id === notifId ? { ...n, read: true, staffStatus: newStatus } : n))
-        markAsRead(notifId)
+        const staffStatus = response === 'ACCEPT' ? 'BOOKED' : 'CANCELLED'
+        setList(prev => prev.map(n => (n.id === notifId ? { ...n, read: true, staffStatus } : n)))
       }
     } catch { /* silencieux */ }
+    setResponding(r => { const copy = { ...r }; delete copy[notifId]; return copy })
   }
 
-  const markAllAsRead = async () => {
-    setMarkingAll(true)
-    try {
-      await apiFetch(`${API_BASE}/api/notifications/mark-all-read`, {
-        method: 'PATCH',
-        })
-      setAll(prev => prev.map(n => ({ ...n, read: true })))
-    } catch { /* silencieux */ }
-    setMarkingAll(false)
-  }
-
-  // ── Données filtrées ───────────────────────────────────────────────────────
-
-  const filtered  = filterUnread ? all.filter(n => !n.read) : all
-  const unreadCount = all.filter(n => !n.read).length
-
-  const handleFilterToggle = () => setFilterUnread(v => !v)
-
-  // ── Rendu ──────────────────────────────────────────────────────────────────
+  const sections = useMemo(() => buildFeed(list), [list])
+  const hasUnread = list.some(n => !n.read)
+  const current = CATEGORIES.find(c => c.key === category)!
+  const countOf = (key: CategoryKey) => (key === 'all' ? summary.total : summary[key]) || 0
 
   return (
     <main className="min-h-screen text-white lsb-surface-page lsb-notifications-page">
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-8">
 
         {/* En-tête */}
-        <div className="flex items-center justify-between mb-6 gap-4">
+        <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="lsb-eyebrow">ACTIVITÉ</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-white">Notifications<span className="text-violet-400">.</span></h1>
-            {unreadCount > 0 && (
-              <p className="text-xs text-white/40 mt-0.5">{unreadCount} non lue{unreadCount > 1 ? 's' : ''}</p>
-            )}
+            <h1 className="text-2xl font-bold text-white md:text-3xl">Notifications<span className="text-accent-light">.</span></h1>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Filtre non lus */}
-            <button
-              onClick={handleFilterToggle}
-              className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                filterUnread
-                  ? 'bg-violet-600 border-violet-500 text-white'
-                  : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
-              }`}
-            >
-              Non lues
+          {hasUnread && (
+            <button type="button" onClick={markAllAsRead} className="rounded-full border border-line bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/[0.08] hover:text-white">
+              Tout lire
             </button>
-            {/* Tout marquer comme lu */}
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                disabled={markingAll}
-                className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 disabled:opacity-40 transition"
-              >
-                {markingAll ? '…' : 'Tout lire'}
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* États */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-white/30">Chargement…</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-16 space-y-3">
-            <p className="text-sm text-red-400/80">Impossible de charger les notifications.</p>
-            <button onClick={fetchNotifications}
-              className="text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-white/70 transition">
-              Réessayer
-            </button>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <LsIcon name="bell" size={34} tone="muted" className="mx-auto mb-3" />
-            <p className="text-sm text-white/30">
-              {filterUnread ? 'Aucune notification non lue.' : 'Aucune notification.'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filtered.map(notif => {
-              const cfg  = notificationType(notif.type)
-              const target = notificationTarget(notif)
-              const link = target && 'href' in target ? target.href : null
-              const content = (
-                <div
-                  className={`relative rounded-2xl border transition cursor-pointer group ${
-                    notif.read
-                      ? 'bg-white/[0.02] border-white/8 hover:bg-white/5'
-                      : 'bg-white/[0.06] border-white/15 hover:bg-white/10'
-                  }`}
-                  onClick={() => { if (!notif.read) markAsRead(notif.id) }}
-                >
-                  {/* Point non-lu */}
-                  {!notif.read && (
-                    <span className="absolute top-3.5 right-3.5 w-2 h-2 rounded-full bg-violet-400" />
-                  )}
-
-                  <div className="flex items-start gap-3 p-4">
-                    {/* Avatar ou icône type */}
-                    <div className="shrink-0 mt-0.5">
-                      {notif.actor?.avatar ? (
-                        <img src={notif.actor.avatar} alt="" className="w-9 h-9 rounded-full object-cover" />
-                      ) : (
-                        <NotificationIcon type={notif.type} box={36} />
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[210px_minmax(0,1fr)]">
+          {/* Sujets : colonne sur ordinateur, ligne de filtres sur téléphone */}
+          <nav aria-label="Sujets" className="md:sticky md:top-24 md:self-start">
+            <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:flex-col md:gap-0.5 md:overflow-visible md:px-0 md:pb-0">
+              {CATEGORIES.map(c => {
+                const active = c.key === category
+                const count = countOf(c.key)
+                return (
+                  <li key={c.key} className="shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setCategory(c.key)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex w-full items-center gap-2.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition md:rounded-xl md:border-transparent md:py-2 ${
+                        active ? 'border-accent bg-accent text-white md:bg-accent/15 md:text-white' : 'border-line text-white/60 hover:bg-white/[0.05] hover:text-white'
+                      }`}
+                    >
+                      <LsIcon name={c.icon} tone={active ? 'inherit' : 'muted'} size={16} />
+                      <span className="flex-1 text-left">{c.label}</span>
+                      {count > 0 && (
+                        <span className={`rounded-full px-1.5 text-[11px] font-medium ${active ? 'bg-white/20 text-white' : 'bg-accent/20 text-accent-light'}`}>{count > 99 ? '99+' : count}</span>
                       )}
-                    </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            <Link href="/settings/notifications" className="mt-4 hidden items-center gap-2 border-t border-line px-3 pt-4 text-xs text-white/45 transition hover:text-white md:flex">
+              <LsIcon name="tools" tone="inherit" size={14} />Choisir ce que je reçois
+            </Link>
+          </nav>
 
-                    {/* Contenu */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.04] text-white/60">
-                          {cfg.label}
-                        </span>
-                      </div>
-                      {notif.actor?.name && (
-                        <p className="text-xs font-semibold text-white/80 mb-0.5">{notif.actor.name}</p>
-                      )}
-                      <p className="text-sm text-white/70 leading-relaxed">{notif.content}</p>
-                      <p className="text-[11px] text-white/30 mt-1.5">
-                        {new Date(notif.createdAt).toLocaleDateString('fr-FR', {
-                          day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                        })}
-                      </p>
-
-                      {/* Alerte sécurité — action par email */}
-                      {notif.type === 'NEW_DEVICE_LOGIN' && (
-                        <span className="mt-2 flex items-center gap-1.5 text-xs text-gold group-hover:text-gold-light">
-                          <LsIcon name="shield" tone="inherit" size={15} />Ce n’était pas vous ? Retirez l’appareil dans Réglages › Connexion et sécurité
-                        </span>
-                      )}
-
-                      {/* Invitation staff — boutons Accepter / Refuser */}
-                      {notif.type === 'STAFF_INVITATION' && notif.staffId && notif.eventId && (
-                        notif.staffStatus === 'BOOKED' ? (
-                          <p className="mt-2 flex items-center gap-1 text-xs text-emerald-400"><LsIcon name="check" tone="inherit" size={15} />Invitation acceptée</p>
-                        ) : notif.staffStatus === 'CANCELLED' ? (
-                          <p className="mt-2 flex items-center gap-1 text-xs text-red-400"><LsIcon name="close" tone="inherit" size={15} />Invitation refusée</p>
-                        ) : (
-                          <div className="mt-3 flex gap-2">
-                            <button
-                              onClick={e => { e.preventDefault(); respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'ACCEPT') }}
-                              className="flex-1 py-1.5 rounded-lg bg-emerald-600/70 hover:bg-emerald-600 text-white text-xs font-medium transition"
-                            >
-                              Accepter
-                            </button>
-                            <button
-                              onClick={e => { e.preventDefault(); respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'REFUSE') }}
-                              className="flex-1 py-1.5 rounded-lg bg-red-600/50 hover:bg-red-600/80 text-white text-xs font-medium transition"
-                            >
-                              Refuser
-                            </button>
-                          </div>
-                        )
-                      )}
+          {/* Liste */}
+          <section aria-label={`Notifications : ${current.label}`}>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-16">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                <p className="text-xs text-white/40">Chargement…</p>
+              </div>
+            ) : error ? (
+              <div className="space-y-3 py-16 text-center">
+                <p className="text-sm text-red-300">Impossible de charger les notifications.</p>
+                <button type="button" onClick={fetchFirstPage} className="rounded-xl bg-white/10 px-4 py-2 text-xs text-white/75 transition hover:bg-white/20">Réessayer</button>
+              </div>
+            ) : list.length === 0 ? (
+              <div className="rounded-2xl border border-line bg-surface py-16 text-center">
+                <LsIcon name={current.icon} size={30} tone="muted" className="mx-auto mb-3" />
+                <p className="text-sm text-white/50">
+                  {category === 'all' ? 'Aucune notification pour l’instant.' : `Aucune notification dans « ${current.label} ».`}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-line bg-surface p-2">
+                {sections.map(section => (
+                  <div key={section.label}>
+                    <p className="px-4 pb-1.5 pt-4 text-[11px] font-medium uppercase tracking-wider text-white/40">{section.label}</p>
+                    <div className="space-y-0.5">
+                      {section.items.map(item => (
+                        <NotificationRow
+                          key={item.key}
+                          item={item}
+                          onOpenPublication={openPublication}
+                          onStaffRespond={respondStaffInvitation}
+                          responding={!!responding[item.lead.id]}
+                        />
+                      ))}
                     </div>
                   </div>
-                </div>
-              )
+                ))}
+              </div>
+            )}
 
-              if (target && 'publicationId' in target) {
-                return (
-                  <button key={notif.id} type="button" className="block w-full text-left" onClick={() => openPublication(target.publicationId)}>
-                    {content}
-                  </button>
-                )
-              }
-              return link ? (
-                <Link key={notif.id} href={link} className="block">
-                  {content}
-                </Link>
-              ) : (
-                <div key={notif.id}>{content}</div>
-              )
-            })}
-          </div>
-        )}
+            {!loading && !error && cursor && (
+              <div className="mt-6 flex justify-center">
+                <button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-xl border border-line bg-white/[0.04] px-4 py-2 text-xs text-white/70 transition hover:bg-white/[0.08] disabled:opacity-40">
+                  {loadingMore ? 'Chargement…' : 'Voir plus'}
+                </button>
+              </div>
+            )}
 
-        {/* Voir plus (notifications plus anciennes) */}
-        {!loading && !error && cursor && (
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={loadMore}
-              disabled={loadingMore}
-              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white/60 hover:bg-white/10 disabled:opacity-40 transition"
-            >
-              {loadingMore ? 'Chargement…' : 'Voir plus'}
-            </button>
-          </div>
-        )}
-
+            <Link href="/settings/notifications" className="mt-6 flex items-center justify-center gap-2 text-xs text-white/45 transition hover:text-white md:hidden">
+              <LsIcon name="tools" tone="inherit" size={14} />Choisir ce que je reçois
+            </Link>
+          </section>
+        </div>
       </div>
 
-      {/* Publication ouverte depuis une notification (j'aime, commentaire, identification) */}
+      {/* Publication ouverte depuis une notification (J'aime, commentaire, identification) */}
       {pubModal && (
         <PublicationModal pub={pubModal} onClose={() => setPubModal(null)} onCountChange={() => {}} />
       )}

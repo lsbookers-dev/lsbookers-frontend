@@ -13,10 +13,10 @@ import { apiFetch } from '@/utils/auth'
 import { useUnreadCounts, refreshUnreadCounts } from '@/hooks/useUnreadCounts'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
-import { notificationTarget } from '@/utils/notificationLinks'
+import NotificationRow from './notifications/NotificationRow'
+import { buildFeed } from '@/lib/notificationFeed'
 import LsIcon from '@/components/ui/LsIcon'
 import HeaderAnnouncement, { announcementFromSettings, type Announcement } from './HeaderAnnouncement'
-import { NotificationIcon } from '@/lib/notificationTypes'
 
 /* ─────────────────────────────────────────────────────────
    TYPES
@@ -179,6 +179,13 @@ export default function Header() {
     setNotifLoading(false)
   }, [notifOpen, API_BASE])
 
+  /* ── « Tout lire » depuis la cloche ─────────────────── */
+  const markAllNotifRead = useCallback(async () => {
+    setNotifList(list => list.map(n => ({ ...n, read: true })))
+    try { await apiFetch(`${API_BASE}/api/notifications/mark-all-read`, { method: 'PATCH' }) } catch { /* silencieux */ }
+    refreshUnreadCounts()
+  }, [API_BASE])
+
   /* ── Fermer le menu au changement de page ──────────── */
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
@@ -225,144 +232,53 @@ export default function Header() {
                 </button>
 
                 {notifOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-[380px] rounded-2xl border border-white/10 bg-neutral-900/98 backdrop-blur shadow-2xl overflow-hidden z-50 flex flex-col" style={{ maxHeight: '520px' }}>
-                    {/* En-tête popup */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
+                  <div className="absolute right-0 top-full z-50 mt-2 flex w-[380px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl" style={{ maxHeight: '560px' }}>
+                    {/* En-tête : titre + « Tout lire » (choix A1, 04/11/2026) */}
+                    <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3">
                       <h3 className="text-sm font-semibold text-white">Notifications</h3>
-                      <Link
-                        href="/notifications"
-                        onClick={() => setNotifOpen(false)}
-                        className="text-xs text-white/40 hover:text-white/70 transition"
-                      >
-                        Tout voir →
-                      </Link>
+                      {notifList.some(n => !n.read) && (
+                        <button type="button" onClick={markAllNotifRead} className="text-xs text-accent-light transition hover:text-white">Tout lire</button>
+                      )}
                     </div>
 
-                    {/* Corps scrollable */}
-                    <div className="overflow-y-auto flex-1">
+                    {/* Liste rangée par jour */}
+                    <div className="flex-1 overflow-y-auto">
                       {notifLoading ? (
                         <div className="flex items-center justify-center py-10">
-                          <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
                         </div>
                       ) : notifList.length === 0 ? (
-                        <div className="text-center py-10">
+                        <div className="py-10 text-center">
                           <LsIcon name="bell" size={26} tone="muted" className="mx-auto mb-2" />
-                          <p className="text-xs text-white/30">Aucune notification</p>
+                          <p className="text-xs text-white/40">Aucune notification pour l’instant</p>
                         </div>
                       ) : (
-                        <div className="p-2 space-y-0.5">
-                          {notifList.slice(0, 20).map(notif => {
-                            const target = notificationTarget(notif)
-                            const link = target && 'href' in target ? target.href : null
-                            const inner = (
-                              <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
-                                notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
-                              }`}>
-                                {/* Avatar ou icône */}
-                                <div className="shrink-0 mt-0.5">
-                                  {notif.actor?.avatar ? (
-                                    <img src={notif.actor.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                                  ) : (
-                                    <NotificationIcon type={notif.type} />
-                                  )}
-                                </div>
-                                {/* Texte */}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-white/75 leading-relaxed line-clamp-2">{notif.content}</p>
-                                  <p className="text-[10px] text-white/30 mt-1">
-                                    {new Date(notif.createdAt).toLocaleDateString('fr-FR', {
-                                      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-                                    })}
-                                  </p>
-                                </div>
-                                {/* Point non-lu */}
-                                {!notif.read && (
-                                  <span className="shrink-0 w-2 h-2 rounded-full bg-violet-400 mt-1" />
-                                )}
+                        <div className="px-2 pb-2">
+                          {buildFeed(notifList).map(section => (
+                            <div key={section.label}>
+                              <p className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-white/40">{section.label}</p>
+                              <div className="space-y-0.5">
+                                {section.items.map(item => (
+                                  <NotificationRow
+                                    key={item.key}
+                                    item={item}
+                                    compact
+                                    onOpenPublication={openPubModal}
+                                    onNavigate={() => setNotifOpen(false)}
+                                    onStaffRespond={respondStaffInvitation}
+                                    responding={!!respondingStaff[item.lead.id]}
+                                  />
+                                ))}
                               </div>
-                            )
-                            // Notif STAFF_INVITATION → boutons Accept/Refuse inline
-                            if (notif.type === 'STAFF_INVITATION' && notif.staffId && notif.eventId) {
-                              return (
-                                <div key={notif.id} className={`flex items-start gap-3 px-3 py-2.5 rounded-xl ${notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'}`}>
-                                  <div className="shrink-0 mt-0.5">
-                                    {notif.actor?.avatar
-                                      ? <img src={notif.actor.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                                      : <NotificationIcon type={notif.type} />
-                                    }
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-white/75 leading-relaxed line-clamp-2">{notif.content}</p>
-                                    <p className="text-[10px] text-white/30 mt-1">
-                                      {new Date(notif.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                    </p>
-                                    {notif.staffStatus === 'BOOKED' ? (
-                                      <p className="mt-2 flex items-center gap-1 text-[10px] text-emerald-400 font-medium"><LsIcon name="check" tone="inherit" size={13} />Invitation acceptée</p>
-                                    ) : notif.staffStatus === 'CANCELLED' ? (
-                                      <p className="mt-2 flex items-center gap-1 text-[10px] text-red-400 font-medium"><LsIcon name="close" tone="inherit" size={13} />Invitation refusée</p>
-                                    ) : (
-                                      <div className="mt-2 flex gap-1.5">
-                                        <button
-                                          onClick={() => respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'ACCEPT')}
-                                          disabled={!!respondingStaff[notif.id]}
-                                          className="flex-1 py-1 rounded-lg bg-emerald-600/70 hover:bg-emerald-600 text-white text-[10px] font-medium transition disabled:opacity-40"
-                                        >
-                                          {respondingStaff[notif.id] ? '…' : 'Accepter'}
-                                        </button>
-                                        <button
-                                          onClick={() => respondStaffInvitation(notif.id, notif.staffId!, notif.eventId!, 'REFUSE')}
-                                          disabled={!!respondingStaff[notif.id]}
-                                          className="flex-1 py-1 rounded-lg bg-red-600/50 hover:bg-red-600/80 text-white text-[10px] font-medium transition disabled:opacity-40"
-                                        >
-                                          {respondingStaff[notif.id] ? '…' : 'Refuser'}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                  {!notif.read && <span className="shrink-0 w-2 h-2 rounded-full bg-violet-400 mt-1" />}
-                                </div>
-                              )
-                            }
-                            // Notif NEW_DEVICE_LOGIN → appareils connectés (Réglages › Connexion et sécurité)
-                            if (notif.type === 'NEW_DEVICE_LOGIN') {
-                              return (
-                                <Link key={notif.id} href="/settings/security" onClick={() => setNotifOpen(false)} className="block">
-                                  <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition ${
-                                    notif.read ? 'hover:bg-white/5' : 'bg-white/[0.05] hover:bg-white/8'
-                                  }`}>
-                                    <div className="shrink-0 mt-0.5">
-                                      <NotificationIcon type="NEW_DEVICE_LOGIN" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs text-white/75 leading-relaxed line-clamp-2">{notif.content}</p>
-                                      <p className="text-[10px] text-gold mt-1 font-medium">Voir mes appareils connectés</p>
-                                    </div>
-                                    {!notif.read && (
-                                      <span className="shrink-0 w-2 h-2 rounded-full bg-violet-400 mt-1" />
-                                    )}
-                                  </div>
-                                </Link>
-                              )
-                            }
-                            // Notif liée à une publication → ouvre la fenêtre sans quitter la page
-                            if (target && 'publicationId' in target) {
-                              return (
-                                <button key={notif.id} className="block w-full text-left" onClick={() => openPubModal(target.publicationId)}>
-                                  {inner}
-                                </button>
-                              )
-                            }
-                            return link ? (
-                              <Link key={notif.id} href={link} onClick={() => setNotifOpen(false)} className="block">
-                                {inner}
-                              </Link>
-                            ) : (
-                              <div key={notif.id}>{inner}</div>
-                            )
-                          })}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
+
+                    <Link href="/notifications" onClick={() => setNotifOpen(false)} className="block shrink-0 border-t border-line py-3 text-center text-xs text-accent-light transition hover:text-white">
+                      Voir toutes les notifications
+                    </Link>
                   </div>
                 )}
               </div>
