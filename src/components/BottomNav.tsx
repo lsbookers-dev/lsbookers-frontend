@@ -184,11 +184,6 @@ export default function BottomNav() {
               {moreOpen
                 ? <X className="w-[22px] h-[22px]" strokeWidth={2.5} />
                 : <Menu className="w-[22px] h-[22px]" strokeWidth={moreActive ? 2.5 : 1.75} />}
-              {unreadNotif > 0 && !moreOpen && (
-                <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 bg-violet-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none shadow-lg">
-                  {unreadNotif > 99 ? '99+' : unreadNotif}
-                </span>
-              )}
             </div>
             <span className="text-[9px] font-medium leading-none tracking-wide">Plus</span>
           </button>

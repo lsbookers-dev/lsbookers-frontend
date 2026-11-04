@@ -1,5 +1,6 @@
 'use client'
 
+import MobileBell from '@/components/MobileBell'
 import { type ReactNode, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { isPublicPath, useAuth } from '@/context/AuthContext'
@@ -72,6 +73,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
       {showAppNav && <BottomNav />}
+      {showAppNav && <MobileBell />}
       {/* Appli installée sur iPhone : la barre d'état (heure, encoche) est transparente */}
       <div className="lsb-status-shield md:hidden" aria-hidden="true" />
       <InstallPrompt />
