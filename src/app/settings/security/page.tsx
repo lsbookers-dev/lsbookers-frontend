@@ -158,7 +158,7 @@ export default function SecuritySettingsPage() {
         </form>
       </SettingsCard>
 
-      <SettingsCard title="Appareils connectés" description="Les appareils utilisés ces 30 derniers jours. Retirez ceux que vous ne reconnaissez pas.">
+      <SettingsCard title="Appareils connectés" description="Les appareils encore connectés à votre compte (une connexion reste ouverte 30 jours après la dernière visite). Retirez ceux que vous ne reconnaissez pas.">
         {sessions === null ? (
           <p className="text-sm text-white/40">Chargement…</p>
         ) : (

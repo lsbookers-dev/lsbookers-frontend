@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { getAuthToken, apiFetch, isCookieSessionMode, storeSession, COOKIE_SESSION_MARKER, setActingProfileId, ADMIN_SESSION_EXPIRED_EVENT } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import { getOrCreateDeviceToken, persistDeviceToken } from '@/utils/deviceToken'
+import { isStandaloneDisplay } from '@/lib/install'
 import { disconnectSocket } from '@/lib/socket'
 
 /* ===================== Types ===================== */
@@ -103,6 +104,7 @@ const PUBLIC_PATHS = [
   '/device-verified',
   '/contact',
   '/confirm-email-change',
+  '/securiser-mon-compte', // lien « Ce n'était pas moi » de l'e-mail d'alerte de connexion
   '/gestion/invitation', // lien reçu par e-mail pour valider un profil géré
 ]
 
@@ -256,7 +258,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const res = await apiFetch(apiUrl('auth/login'), {
       method: 'POST',
       headers,
-      body: JSON.stringify({ email, password }),
+      // Application installée (écran d'accueil) : appareil nommé à part, pas de fausse alerte de connexion
+      body: JSON.stringify({ email, password, standalone: isStandaloneDisplay() }),
     })
 
     if (!res.ok) {

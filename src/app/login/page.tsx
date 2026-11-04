@@ -189,7 +189,7 @@ export default function LoginPage() {
           setLoading(false)
           return
         } else if (authError.status === 403 && authError.code === 'PASSWORD_RESET_REQUIRED') {
-          message = 'Ce compte a été sécurisé après une connexion refusée. Réinitialise ton mot de passe pour continuer.'
+          message = 'Ce compte a été sécurisé : choisis un nouveau mot de passe avec le lien reçu par e-mail, ou clique sur « Mot de passe oublié ».'
         } else if (authError.status === 429) {
           message = 'Trop de tentatives. Réessayez dans 5 minutes.'
         }
