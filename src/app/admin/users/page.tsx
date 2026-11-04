@@ -91,7 +91,7 @@ const LABELS: Record<string, string> = {
 }
 const LEGAL: Record<string, string> = { INDIVIDUAL: 'Particulier', AUTO_ENTREPRENEUR: 'Auto-entrepreneur', COMPANY: 'Société', INTERMITTENT: 'Intermittent du spectacle' }
 const SUB_STATUS: Record<string, string> = { TRIAL: 'Essai', ACTIVE: 'Actif', PAST_DUE: 'Paiement en retard', CANCELLED: 'Résilié', EXPIRED: 'Terminé' }
-const SOURCE: Record<string, string> = { STRIPE: 'payant', FOUNDER: 'Fondateur', ADMIN: 'offert' }
+const SOURCE: Record<string, string> = { STRIPE: 'payant', FOUNDER: 'offert', ADMIN: 'offert' }
 const COUNT_LABELS: Record<string, string> = {
   publications: 'Publications', events: 'Événements', offers: 'Offres', albums: 'Albums', bookingRequestsSent: 'Bookings envoyés',
   bookingRequestsReceived: 'Bookings reçus', reviewsGiven: 'Avis donnés', reviewsReceived: 'Avis reçus', applicationsSubmitted: 'Candidatures',
@@ -184,7 +184,7 @@ function MemberPanel({ id, onClose, onChanged }: { id: number; onClose: () => vo
   const p = u.profile
   const sub = u.subscription
   const agency = u.agencySubscription
-  const proGifted = sub && sub.source === 'ADMIN' && u.plan !== 'FREE' && !sub.endDate
+  const proGifted = sub && (sub.source === 'ADMIN' || sub.source === 'FOUNDER') && u.plan !== 'FREE' && !sub.endDate
   const publicHref = p ? `/${String(u.role).toLowerCase()}/${u.id}` : null
   const otherUser = Object.entries(u).filter(([k]) => !USER_SHOWN.includes(k) && !NESTED.has(k))
   const otherProfile = p ? Object.entries(p).filter(([k]) => !PROFILE_SHOWN.includes(k) && !NESTED.has(k) && k !== 'id' && k !== 'avatar' && k !== 'banner' && k !== '_count') : []
@@ -216,7 +216,7 @@ function MemberPanel({ id, onClose, onChanged }: { id: number; onClose: () => vo
           <p className="mb-2 text-[11px] uppercase tracking-widest text-muted">Abonnement</p>
           <div className="grid grid-cols-2 gap-2">
             {u.plan === 'PRO' && !proGifted
-              ? <span className={`${BTN2} text-center opacity-60`}>Déjà Pro ({sub?.source === 'FOUNDER' ? 'Fondateur' : 'payant'})</span>
+              ? <span className={`${BTN2} text-center opacity-60`}>Déjà Pro (payant)</span>
               : proGifted
               ? <button type="button" disabled={busy} className={BTN2} onClick={async () => {
                   if (await confirm({ title: `Retirer le Pro offert à ${name} ?`, confirmLabel: 'Retirer', danger: true })) act(`/api/admin/billing/users/${u.id}/gift-pro`, 'DELETE', null, 'Pro retiré.')

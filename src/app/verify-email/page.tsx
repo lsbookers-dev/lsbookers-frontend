@@ -5,10 +5,14 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
 import { apiUrl } from '@/utils/api'
+import { useAuth } from '@/context/AuthContext'
+
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
+  // Un autre compte peut être ouvert dans ce navigateur : il faut le fermer pour se connecter au nouveau
+  const { user, logout } = useAuth()
 
   const [status, setStatus] = useState<'confirm' | 'loading' | 'success' | 'error'>(token ? 'confirm' : 'error')
   const [message, setMessage] = useState('')
@@ -80,11 +84,16 @@ function VerifyEmailContent() {
           <p className="mt-2 text-sm text-white/60">
             Ton adresse email a été vérifiée. Tu peux maintenant te connecter.
           </p>
+          {user && (
+            <p className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
+              Tu es encore connecté avec le compte <span className="font-semibold text-white">{user.email}</span>. Il sera déconnecté pour que tu puisses te connecter avec ton nouveau compte.
+            </p>
+          )}
           <button
-            onClick={() => router.replace('/login')}
-            className="mt-6 w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-500"
+            onClick={() => { if (user) logout(); else router.replace('/login') }}
+            className="mt-6 w-full rounded-xl bg-accent px-4 py-2.5 font-semibold text-white transition hover:bg-accent-strong"
           >
-            Se connecter →
+            {user ? 'Me déconnecter et me connecter →' : 'Se connecter →'}
           </button>
         </>
       )}

@@ -41,10 +41,6 @@ export type PlanInfo = {
   commission: { freePct: number; proPct: number }
   limits: PlanLimits
   usage: Partial<Record<keyof PlanLimits, number>> | null
-  /** Code Fondateur réservé à ce membre, pas encore utilisé (activable en un clic) */
-  founderCode: string | null
-  /** Formule choisie à l'inscription, pas encore finalisée */
-  signupPlan: null | { plan: 'FREE' | 'PRO' | 'AGENCY'; interval: 'MONTH' | 'YEAR'; promoCode: string | null }
   /** Formule Agence du compte (payée, ou offerte par l'admin) */
   agency: null | {
     active: boolean
@@ -90,7 +86,7 @@ async function load(force = false): Promise<PlanInfo | null> {
   return inflight
 }
 
-/** À appeler après un changement (abonnement, code Fondateur…) */
+/** À appeler après un changement (abonnement, code promo…) */
 export const refreshPlan = () => load(true)
 
 export function usePlan() {

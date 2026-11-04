@@ -82,8 +82,7 @@ function SubscriptionSettingsContent() {
         <SettingRow
           label="Votre formule"
           description={isPro
-            ? (sub?.source === 'FOUNDER' ? 'Pro, offert à vie (membre fondateur).'
-              : sub?.source === 'ADMIN' ? 'Pro, offert par LS Bookers.'
+            ? (sub?.source === 'ADMIN' || sub?.source === 'FOUNDER' ? 'Pro, offert par LS Bookers.'
               : sub?.status === 'TRIAL' ? `Pro, période offerte jusqu’au ${fmtDate(sub.trialEndsAt)}.`
               : sub?.cancelAtPeriodEnd ? `Pro jusqu’au ${fmtDate(sub.currentPeriodEnd)} (résilié).`
               : sub ? `Pro, ${price(sub.priceCents)} ${sub.interval === 'YEAR' ? 'par an' : 'par mois'}.` : 'Pro.')

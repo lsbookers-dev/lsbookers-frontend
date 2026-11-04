@@ -9,7 +9,7 @@ import axios, { isAxiosError } from 'axios'
 import { apiUrl } from '@/utils/api'
 import { usePublicSettings } from '@/context/PublicSettingsContext'
 import { PUBLIC_IMAGE_BLUR } from '@/lib/publicSettings.shared'
-import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Gift, Mail, Lock, CalendarDays, Building2, ChefHat, Users, Search } from 'lucide-react'
+import { Eye, EyeOff, Check, Loader2, Sparkles, Mic2, User, FileText, Mail, Lock, CalendarDays, Building2, ChefHat, Users, Search } from 'lucide-react'
 import { SPECIALTIES_BY_ROLE } from '@/constants/specialties'
 import LsIcon, { LsBullet } from '@/components/ui/LsIcon'
 import CityAutocomplete from '@/components/CityAutocomplete'
@@ -18,9 +18,6 @@ import PublicBrand from '@/components/PublicBrand'
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Role = 'ARTIST' | 'ORGANIZER' | 'PROVIDER'
 type LegalType = 'INDIVIDUAL' | 'INTERMITTENT' | 'PROFESSIONAL'
-type Plan = 'FREE' | 'PRO' | 'AGENCY'
-type SignupPrices = { prices: Record<string, { monthCents: number; yearCents: number }>; agency?: { monthCents: number; yearCents: number; includedProfiles: number; extraMonthCents: number; extraYearCents: number }; trialDays: number; limits: { applicationsPerMonth: number; bookingRequestsPerMonth: number }; commission: { freePct: number; proPct: number } }
-const formatPrice = (cents: number) => (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: cents % 100 ? 2 : 0 })
 type PseudoStatus = 'idle' | 'checking' | 'available' | 'taken'
 type SiretStatus  = 'idle' | 'checking' | 'valid' | 'invalid'
 
@@ -123,7 +120,7 @@ function BackBtn({ onClick }: { onClick: () => void }) {
 }
 
 // ─── Barre de progression ─────────────────────────────────────────────────────
-const STEPS = ['Compte', 'Profil', 'Identité', 'Statut', 'Offre']
+const STEPS = ['Compte', 'Profil', 'Identité', 'Statut']
 
 function ProgressBar({ current }: { current: number }) {
   return (
@@ -183,12 +180,6 @@ const BRANDING: { icon: React.ReactNode; title: string; subtitle: string; items:
     title: 'Ton statut.',
     subtitle: 'Nécessaire pour activer les fonctionnalités de facturation sur la plateforme.',
     items: ['Particulier ou professionnel', 'SIRET vérifié en temps réel', 'Informations sécurisées et chiffrées'],
-  },
-  {
-    icon: <Gift className="h-7 w-7 text-violet-400" />,
-    title: 'Ta formule.',
-    subtitle: 'Commence gratuitement, ou passe directement à la version Pro.',
-    items: ['Compte gratuit sans carte bancaire', 'Version Pro résiliable à tout moment', 'Code Fondateur ou code promo accepté'],
   },
 ]
 
@@ -299,13 +290,11 @@ export default function RegisterPage() {
     const next = PATHS.find(p => p.value === value)!.role
     if (next !== role) setSpecialties([])
     setPath(value); setRole(next); setMulti(null); setError(null)
-    if (value !== 'MULTI') setPlan(p => (p === 'AGENCY' ? 'FREE' : p))
   }
   const chooseMulti = (value: Multi) => {
     const spec = MULTI_CHOICES.find(m => m.value === value)!.specialty
     const others = MULTI_CHOICES.map(m => m.specialty)
     setMulti(value); setPinnedJob(spec); setError(null)
-    setPlan('AGENCY') // formule proposée en premier à l'étape Offre
     setSpecialties(prev => [spec, ...prev.filter(s => !others.includes(s))])
   }
   // Un métier trouvé par la recherche : rôle, phrase et spécialité choisis d'un coup
@@ -329,6 +318,7 @@ export default function RegisterPage() {
   const [city, setCity]                         = useState('')
   const [phone, setPhone]                       = useState('')
   const [pseudoStatus, setPseudoStatus]         = useState<PseudoStatus>('idle')
+  const [emailTaken, setEmailTaken]             = useState(false)
   const [isAdult, setIsAdult]                   = useState(false)
 
   // Synchroniser la date complète depuis les 3 sélects
@@ -345,18 +335,6 @@ export default function RegisterPage() {
   const [siret, setSiret]           = useState('')
   const [siretStatus, setSiretStatus] = useState<SiretStatus>('idle')
   const [siretName, setSiretName]   = useState('')
-
-  // ── Étape 5 : Offre ──
-  const [plan, setPlan]             = useState<Plan>('FREE')
-  const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('MONTH')
-  const [promoCode, setPromoCode]   = useState('')
-  const [signupPrices, setSignupPrices] = useState<SignupPrices | null>(null)
-  useEffect(() => {
-    fetch(apiUrl('billing/prices')).then(r => (r.ok ? r.json() : null)).then(setSignupPrices).catch(() => {})
-  }, [])
-  const rolePrices = role ? signupPrices?.prices?.[role] : null
-  const signupLimits = signupPrices?.limits
-  const signupCommission = signupPrices?.commission
 
   // ── Helpers ──
   const go = (n: number) => { setStep(n); setError(null) }
@@ -406,9 +384,6 @@ export default function RegisterPage() {
           siret: legalType === 'PROFESSIONAL' ? siret.replace(/\s/g, '') : undefined,
           city: city,
           specialties: specialties.length > 0 ? specialties : undefined,
-          plan,
-          billingInterval,
-          promoCode: promoCode.trim() || undefined,
         },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       )
@@ -430,10 +405,22 @@ export default function RegisterPage() {
   }
 
   // ── Handlers de navigation ──
-  const handleStep1 = (e: React.FormEvent) => {
-    e.preventDefault(); setError(null)
+  const handleStep1 = async (e: React.FormEvent) => {
+    e.preventDefault(); setError(null); setEmailTaken(false)
     if (password !== confirmPwd) { setError('Les mots de passe ne correspondent pas.'); return }
     if (password.length < 8) { setError('Le mot de passe doit contenir au moins 8 caractères.'); return }
+    // E-mail déjà inscrit : on le dit tout de suite, pas à la fin de l'inscription
+    setLoading(true)
+    try {
+      const res = await apiFetch(`${apiUrl('auth/check-email')}?email=${encodeURIComponent(email.trim())}`)
+      const d = await res.json().catch(() => ({ available: true }))
+      if (d.available === false) {
+        setEmailTaken(true)
+        setError('Un compte existe déjà avec cet e-mail.')
+        return
+      }
+    } catch { /* serveur injoignable : le contrôle final de l'inscription prendra le relais */ }
+    finally { setLoading(false) }
     go(2)
   }
 
@@ -451,7 +438,7 @@ export default function RegisterPage() {
     go(4)
   }
 
-  const handleStep4 = (e: React.FormEvent) => {
+  const handleStep4 = async (e: React.FormEvent) => {
     e.preventDefault(); setError(null)
     if (!legalType) { setError('Choisis ton statut pour continuer.'); return }
     if (legalType === 'PROFESSIONAL') {
@@ -459,7 +446,8 @@ export default function RegisterPage() {
       if (siretStatus === 'invalid') { setError('SIRET invalide ou introuvable. Vérifie le numéro.'); return }
       if (siretStatus === 'idle' || siretStatus === 'checking') { setError('Vérifie ton numéro SIRET avant de continuer.'); return }
     }
-    go(5)
+    // Dernière étape : tout le monde démarre en gratuit, la formule se choisit ensuite sur le site
+    await handleSubmit(e)
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -525,6 +513,12 @@ export default function RegisterPage() {
 
               {step <= 5 && <ProgressBar current={step} />}
               {error && <div className="mb-4"><ErrorBox message={error} /></div>}
+              {step === 1 && emailTaken && (
+                <p className="-mt-2 mb-4 text-sm text-white/60">
+                  C&apos;est ton adresse ? <Link href="/login" className="font-semibold text-accent-light underline underline-offset-4">Se connecter</Link>
+                  {' '}ou <Link href="/forgot-password" className="font-semibold text-accent-light underline underline-offset-4">mot de passe oublié</Link>
+                </p>
+              )}
 
               {/* ── ÉTAPE 1 : Compte ────────────────────────────────────────── */}
               {step === 1 && (
@@ -532,7 +526,7 @@ export default function RegisterPage() {
                   <Field label="Email">
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Mail className="w-4 h-4" /></span>
-                      <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                      <input type="email" value={email} onChange={e => { setEmail(e.target.value); setEmailTaken(false) }}
                         required autoComplete="email" placeholder="nom@domaine.com"
                         className={inputCls('pl-10')} />
                     </div>
@@ -838,129 +832,10 @@ export default function RegisterPage() {
 
                   <div className="flex gap-3">
                     <BackBtn onClick={() => go(3)} />
-                    <PrimaryBtn loading={loading} label="Continuer →" />
-                  </div>
-                </form>
-              )}
-
-              {/* ── ÉTAPE 5 : Formule (gratuit par défaut, Pro en option) ─────── */}
-              {step === 5 && (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-3">
-                    {/* Formule Agence : proposée en premier à ceux qui gèrent plusieurs profils */}
-                    {path === 'MULTI' && signupPrices?.agency && (
-                      <button type="button" onClick={() => setPlan('AGENCY')}
-                        className={`relative w-full text-left rounded-2xl border p-4 transition
-                          ${plan === 'AGENCY' ? 'border-accent bg-accent/15 shadow-lg shadow-black/20' : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
-                        <span className="absolute -top-2.5 right-4 rounded-md bg-gold px-2 py-0.5 text-[10px] font-semibold text-[#1a1408]">Pour vous</span>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className={`font-semibold text-sm ${plan === 'AGENCY' ? 'text-white' : 'text-white/70'}`}>Formule Business</p>
-                            <p className="text-xs text-white/40 mt-0.5">Gérer plusieurs profils depuis ton compte</p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className={`font-black text-lg ${plan === 'AGENCY' ? 'text-white' : 'text-white/60'}`}>{formatPrice(billingInterval === 'YEAR' ? signupPrices.agency.yearCents : signupPrices.agency.monthCents)}</p>
-                            <p className="text-[10px] text-white/35">{billingInterval === 'YEAR' ? 'par an' : 'par mois'}</p>
-                          </div>
-                        </div>
-                        <ul className="mt-3 space-y-1.5">
-                          {[
-                            `${signupPrices.agency.includedProfiles} profils gérés inclus, tous en Pro`,
-                            'Ton propre profil passe en Pro aussi',
-                            `${formatPrice(billingInterval === 'YEAR' ? signupPrices.agency.extraYearCents : signupPrices.agency.extraMonthCents)} ${billingInterval === 'YEAR' ? 'par an' : 'par mois'} par profil en plus`,
-                          ].map(f => (
-                            <li key={f} className="flex items-center gap-2 text-xs text-white/60">
-                              <Check className={`h-3 w-3 flex-shrink-0 ${plan === 'AGENCY' ? 'text-accent-light' : 'text-white/30'}`} />{f}
-                            </li>
-                          ))}
-                        </ul>
-                      </button>
-                    )}
-                    {/* Compte gratuit — choisi par défaut */}
-                    <button type="button" onClick={() => setPlan('FREE')}
-                      className={`w-full text-left rounded-2xl border p-4 transition
-                        ${plan === 'FREE' ? 'border-accent bg-accent/15 shadow-lg shadow-black/20' : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className={`font-semibold text-sm ${plan === 'FREE' ? 'text-white' : 'text-white/70'}`}>Compte gratuit</p>
-                          <p className="text-xs text-white/40 mt-0.5">Pour démarrer, sans carte bancaire</p>
-                        </div>
-                        <p className={`font-black text-lg ${plan === 'FREE' ? 'text-white' : 'text-white/60'}`}>0 €</p>
-                      </div>
-                      <ul className="mt-3 space-y-1.5">
-                        {[
-                          'Profil, publications et messagerie',
-                          'Bookings reçus et acceptés sans limite',
-                          signupLimits ? `${role === 'ORGANIZER' ? `${signupLimits.bookingRequestsPerMonth} demandes de booking` : `${signupLimits.applicationsPerMonth} candidatures`} par mois` : 'Quelques limites mensuelles',
-                        ].map(f => (
-                          <li key={f} className="flex items-center gap-2 text-xs text-white/60">
-                            <Check className={`h-3 w-3 flex-shrink-0 ${plan === 'FREE' ? 'text-accent-light' : 'text-white/30'}`} />{f}
-                          </li>
-                        ))}
-                      </ul>
-                    </button>
-
-                    {/* Version Pro — en option */}
-                    <button type="button" onClick={() => setPlan('PRO')}
-                      className={`relative w-full text-left rounded-2xl border p-4 transition
-                        ${plan === 'PRO' ? 'border-accent bg-accent/15 shadow-lg shadow-black/20' : 'border-white/10 bg-white/4 hover:border-white/20'}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className={`font-semibold text-sm ${plan === 'PRO' ? 'text-white' : 'text-white/70'}`}>Version Pro</p>
-                          <p className="text-xs text-white/40 mt-0.5">Tout illimité, résiliable à tout moment</p>
-                        </div>
-                        {rolePrices && (
-                          <div className="text-right flex-shrink-0">
-                            <p className={`font-black text-lg ${plan === 'PRO' ? 'text-white' : 'text-white/60'}`}>{formatPrice(billingInterval === 'YEAR' ? rolePrices.yearCents : rolePrices.monthCents)}</p>
-                            <p className="text-[10px] text-white/35">{billingInterval === 'YEAR' ? 'par an' : 'par mois'}</p>
-                          </div>
-                        )}
-                      </div>
-                      <ul className="mt-3 space-y-1.5">
-                        {[
-                          'Candidatures, demandes et événements illimités',
-                          'Module Finances, devis et factures',
-                          role === 'ORGANIZER' ? 'Budget, équipe et documents d’événement' : `Commission réduite${signupCommission ? ` à ${String(signupCommission.proPct).replace('.', ',')} %` : ''} sur les bookings payés en ligne`,
-                          'Badge Pro et meilleure place dans la recherche',
-                        ].map(f => (
-                          <li key={f} className="flex items-center gap-2 text-xs text-white/60">
-                            <Check className={`h-3 w-3 flex-shrink-0 ${plan === 'PRO' ? 'text-accent-light' : 'text-white/30'}`} />{f}
-                          </li>
-                        ))}
-                      </ul>
-                    </button>
-                  </div>
-
-                  {((plan === 'PRO' && rolePrices) || (plan === 'AGENCY' && signupPrices?.agency)) && (
-                    <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1 text-xs">
-                      {(['MONTH', 'YEAR'] as const).map(i => {
-                        const p = plan === 'AGENCY' ? signupPrices!.agency! : rolePrices!
-                        return (
-                        <button key={i} type="button" onClick={() => setBillingInterval(i)}
-                          className={`flex-1 rounded-lg px-3 py-2 font-medium transition ${billingInterval === i ? 'bg-accent-strong text-white' : 'text-white/55 hover:text-white'}`}>
-                          {i === 'YEAR' ? `Annuel · ${formatPrice(p.yearCents)}${Math.round(p.yearCents / p.monthCents) < 12 ? ` (${Math.round(p.yearCents / p.monthCents)} mois payés, 12 mois d’accès)` : ''}` : `Mensuel · ${formatPrice(p.monthCents)}`}
-                        </button>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  <Field label="Code promo ou code Fondateur" hint="Optionnel — appliqué à votre première connexion.">
-                    <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value.toUpperCase())}
-                      placeholder="Ex. FONDATEUR-XXXXXXXX" className={inputCls('tracking-widest font-mono')} />
-                  </Field>
-
-                  <div className="flex gap-3">
-                    <BackBtn onClick={() => go(4)} />
                     <PrimaryBtn loading={loading} label="Créer mon compte →" />
                   </div>
-
-                  <p className="text-center text-xs text-white/30 leading-relaxed">
-                    {plan === 'AGENCY'
-                      ? 'Après la confirmation de votre e-mail, vous finaliserez la formule Business en enregistrant votre carte, puis vous ajouterez vos profils.'
-                      : plan === 'PRO'
-                      ? 'Après la confirmation de votre e-mail, vous finaliserez la version Pro en enregistrant votre carte. Un code de lancement vous offre des mois gratuits.'
-                      : 'Aucune carte bancaire demandée. Vous pourrez passer en Pro à tout moment.'}
+                  <p className="text-center text-xs text-white/35 leading-relaxed">
+                    Aucune carte bancaire demandée : ton compte démarre en version gratuite. Tu pourras passer en Pro à tout moment.
                   </p>
                 </form>
               )}

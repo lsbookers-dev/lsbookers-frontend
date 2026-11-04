@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@/context/AuthContext'
+import { isPublicPath, useAuth } from '@/context/AuthContext'
 import Header from '@/components/Header'
 import BottomNav from '@/components/BottomNav'
 import InstallPrompt from '@/components/InstallPrompt'
@@ -11,7 +11,6 @@ import PausedAccountBanner from '@/components/settings/PausedAccountBanner'
 import AppSidebar from '@/components/AppSidebar'
 import { ActingBanner } from '@/components/managed/ProfileSwitcher'
 import UpgradePrompt from '@/components/plan/UpgradePrompt'
-import SignupPlanRedirect from '@/components/plan/SignupPlanRedirect'
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -35,12 +34,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
       .catch((err) => console.error('SW registration failed:', err))
   }, [])
 
-  const publicPaths = [
-    '/', '/login', '/register', '/forgot-password', '/reset-password',
-    '/verify-email', '/device-verified', '/contact', '/confirm-email-change',
-    '/gestion/invitation',
-  ]
-  const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/legal/') || pathname.startsWith('/b/')
+  const isPublicPage = isPublicPath(pathname)
   const isAdminPage = pathname.startsWith('/admin')
   // Contact et pages légales sont publics, mais un membre connecté y garde le menu du site pour pouvoir revenir
   const keepsNavWhenLoggedIn = pathname === '/contact' || pathname.startsWith('/legal/')
@@ -81,7 +75,6 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
       <div className="lsb-status-shield md:hidden" aria-hidden="true" />
       <InstallPrompt />
       {!!user && <UpgradePrompt />}
-      {!!user && user.role !== 'ADMIN' && <SignupPlanRedirect />}
     </div>
   )
 }

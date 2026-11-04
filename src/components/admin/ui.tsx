@@ -91,6 +91,6 @@ export function ErrorBox({ text }: { text: string }) {
 /** Pastille de formule : Gratuit, Pro, Business (or = valeur) */
 export function PlanTag({ plan, source }: { plan: 'FREE' | 'PRO' | 'BUSINESS'; source?: string | null }) {
   if (plan === 'FREE') return <span className="rounded-md bg-white/8 px-2 py-0.5 text-[11px] text-white/60">Gratuit</span>
-  const extra = source === 'ADMIN' ? ' offert' : source === 'FOUNDER' ? ' fondateur' : ''
+  const extra = source === 'ADMIN' || source === 'FOUNDER' ? ' offert' : ''
   return <span className="rounded-md bg-gold/15 px-2 py-0.5 text-[11px] text-gold-light">{plan === 'PRO' ? 'Pro' : 'Business'}{extra}</span>
 }

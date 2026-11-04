@@ -102,11 +102,19 @@ const PUBLIC_PATHS = [
   '/gestion/invitation', // lien reçu par e-mail pour valider un profil géré
 ]
 
-const isPublicPath = (pathname: string) => {
+// Rubriques réservées aux membres. Une adresse hors de ces rubriques n'existe pas :
+// elle doit afficher la page « introuvable », pas renvoyer vers la connexion.
+// Toute nouvelle rubrique réservée aux membres doit être ajoutée ici.
+const MEMBER_SECTIONS = new Set([
+  'admin', 'agenda', 'artist', 'discover', 'gestion', 'home', 'messages', 'notifications', 'offers',
+  'organizer', 'profile', 'provider', 'search', 'settings', 'space', 'studio-profile', 'subscriptions',
+])
+
+export const isPublicPath = (pathname: string) => {
   if (PUBLIC_PATHS.includes(pathname)) return true
   if (pathname.startsWith('/legal/')) return true
   if (pathname.startsWith('/b/')) return true // lien de booking partagé (visible sans compte)
-  return false
+  return !MEMBER_SECTIONS.has(pathname.split('/')[1] || '')
 }
 
 function clearLocalSession() {

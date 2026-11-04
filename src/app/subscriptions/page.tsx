@@ -2,7 +2,7 @@
 
 /**
  * Abonnements (choix A2 d'Antho, 22/10/2026) — une page en deux parties :
- * 1. Les formules : Gratuit, Pro au milieu, Agence (choix D1, 27/10/2026), code promo ou Fondateur, + comparatif
+ * 1. Les formules : Gratuit, Pro au milieu, Agence (choix D1, 27/10/2026), code promo, + comparatif
  * 2. Nos autres services : formules ajoutées dans l'admin (carrousel, réseaux sociaux, newsletter…)
  */
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
@@ -98,27 +98,6 @@ function SubscriptionsContent() {
   useEffect(() => { if (user) loadExtras() }, [user, loadExtras])
   useEffect(() => { if (user) refresh() }, [user, refresh])
 
-  // Formule et code choisis à l'inscription : on les reprend
-  const [signupHandled, setSignupHandled] = useState(false)
-  useEffect(() => {
-    const choice = plan?.signupPlan
-    if (!choice || signupHandled) return
-    setSignupHandled(true)
-    setBilling(choice.interval)
-    if (choice.promoCode) {
-      setPromo(choice.promoCode)
-      apiFetch(apiUrl('billing/promo/check'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: choice.promoCode }) })
-        .then(r => (r.ok ? r.json() : null))
-        .then(info => { if (info?.kind === 'LAUNCH') setPromoInfo(info) })
-        .catch(() => {})
-    }
-  }, [plan?.signupPlan, signupHandled])
-
-  const dismissSignupPlan = async () => {
-    await apiFetch(apiUrl('billing/signup-plan/clear'), { method: 'POST' }).catch(() => null)
-    refresh()
-  }
-
   // Retour de la page de paiement Stripe
   useEffect(() => {
     const sub = params.get('abonnement')
@@ -158,8 +137,7 @@ function SubscriptionsContent() {
     } finally { setBusy(null) }
   }
 
-  // Un seul champ pour tous les codes : un code Fondateur active le Pro offert tout de suite,
-  // un code de lancement s'applique au paiement
+  // Code de lancement : mois offerts, appliqués au paiement
   const applyCode = async () => {
     if (!promo.trim()) return
     setBusy('promo')
@@ -167,28 +145,8 @@ function SubscriptionsContent() {
       const res = await apiFetch(apiUrl('billing/promo/check'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: promo }) })
       if (!res.ok) { setPromoInfo(null); notify(await apiErrorMessage(res, 'Code promo invalide.'), 'error'); return }
       const info = await res.json()
-      if (info.kind === 'FOUNDER') {
-        const r = await apiFetch(apiUrl('billing/founder'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: info.code }) })
-        if (!r.ok) { notify(await apiErrorMessage(r, 'Code invalide.'), 'error'); return }
-        notify('Merci de faire partie des fondateurs : votre compte Pro vous est offert à vie !')
-        setPromo('')
-        refresh()
-        return
-      }
       setPromoInfo(info)
       notify(`Code accepté : ${info.freeMonths} mois offerts.`)
-    } finally { setBusy(null) }
-  }
-
-  // Code Fondateur réservé au membre : activation en un clic, sans rien saisir
-  const activateFounder = async () => {
-    if (!plan?.founderCode) return
-    setBusy('founder')
-    try {
-      const r = await apiFetch(apiUrl('billing/founder'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: plan.founderCode }) })
-      if (!r.ok) { notify(await apiErrorMessage(r, 'Activation impossible.'), 'error'); return }
-      notify('Merci de faire partie des fondateurs : votre compte Pro vous est offert à vie !')
-      refresh()
     } finally { setBusy(null) }
   }
 
@@ -244,38 +202,6 @@ function SubscriptionsContent() {
         </div>
       </header>
 
-      {plan?.founderCode && !isPro && (
-        <section className="mb-6 flex flex-col gap-4 rounded-2xl border border-gold/35 bg-gradient-to-br from-gold/[0.12] to-transparent p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-gold/30 bg-gold/10"><LsIcon name="star" tone="gold" /></span>
-            <div>
-              <p className="text-sm font-semibold text-white">Un code Fondateur vous attend</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-white/60">Merci de faire partie de l’aventure : LS Bookers vous offre la version Pro à vie, sans carte bancaire.</p>
-            </div>
-          </div>
-          <button type="button" onClick={activateFounder} disabled={busy === 'founder'}
-            className="shrink-0 rounded-xl bg-gold px-5 py-2.5 text-sm font-semibold text-[#1a1408] transition hover:brightness-110 disabled:opacity-50">
-            Activer mon Pro offert
-          </button>
-        </section>
-      )}
-
-      {plan?.signupPlan && !isPro && (
-        <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-white">{plan.signupPlan.plan === 'AGENCY' ? 'Finalisez votre formule Business' : plan.signupPlan.plan === 'PRO' ? 'Finalisez votre version Pro' : 'Votre code est prêt'}</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-white/60">
-              {plan.signupPlan.plan === 'AGENCY'
-                ? 'Vous avez choisi la formule Business à l’inscription. Choisissez mensuel ou annuel, puis « Choisir Business » pour enregistrer votre carte.'
-                : plan.signupPlan.plan === 'PRO'
-                ? 'Vous avez choisi la version Pro à l’inscription. Il ne reste qu’à choisir mensuel ou annuel et à enregistrer votre carte.'
-                : 'Le code saisi à l’inscription est prêt ci-dessous : cliquez sur « Appliquer ».'}
-            </p>
-          </div>
-          <button type="button" onClick={dismissSignupPlan} className="shrink-0 text-xs text-white/50 hover:text-white">Rester en gratuit</button>
-        </section>
-      )}
-
       {/* ── 1. Les formules : Gratuit, Pro au milieu, Agence (D1) ─── */}
       <PartTitle num={1} title="Nos formules" />
 
@@ -317,8 +243,7 @@ function SubscriptionsContent() {
               ) : isPro && sub ? (
                 <>
                   <StatusBox title="Vous êtes Pro" text={[
-                    sub.source === 'FOUNDER' ? 'Offert à vie grâce à votre code Fondateur. Merci de faire partie de l’aventure !' : '',
-                    sub.source === 'ADMIN' ? 'Offert par LS Bookers.' : '',
+                    sub.source !== 'STRIPE' ? 'Offert par LS Bookers.' : '',
                     sub.source === 'STRIPE' && sub.status === 'TRIAL' && sub.trialEndsAt ? `Période offerte jusqu’au ${fmtDate(sub.trialEndsAt)}, puis ${price(sub.priceCents)} ${sub.interval === 'YEAR' ? 'par an' : 'par mois'}.` : '',
                     sub.source === 'STRIPE' && sub.status === 'ACTIVE' && !sub.cancelAtPeriodEnd ? `${price(sub.priceCents)} ${sub.interval === 'YEAR' ? 'par an' : 'par mois'}, prochain prélèvement le ${fmtDate(sub.currentPeriodEnd)}.` : '',
                     sub.source === 'STRIPE' && sub.cancelAtPeriodEnd ? `Résilié : vous restez Pro jusqu’au ${fmtDate(sub.currentPeriodEnd)}.` : '',
@@ -372,7 +297,7 @@ function SubscriptionsContent() {
                     {sub?.source === 'STRIPE' && isPro && sub.status !== 'CANCELLED' && (
                       <p className="text-center text-[11px] leading-relaxed text-white/45">Votre abonnement Pro s’arrêtera : la partie non utilisée sera déduite de votre prochaine facture.</p>
                     )}
-                    {(sub?.source === 'FOUNDER' || sub?.source === 'ADMIN') && isPro && (
+                    {sub?.source !== 'STRIPE' && sub && isPro && (
                       <p className="text-center text-[11px] leading-relaxed text-white/45">Votre Pro offert est conservé : vous le retrouvez si vous arrêtez la formule Business.</p>
                     )}
                   </>
@@ -381,12 +306,12 @@ function SubscriptionsContent() {
             )}
           </div>
 
-          {/* Code promo / Fondateur et mois offerts : pour Pro et Agence */}
+          {/* Code promo et mois offerts : pour Pro et Agence */}
           {!plan?.managedPro && !(isPro && sub) && !agencyActive && (
             <div className="mx-auto mt-4 max-w-md">
               <div className="flex gap-2">
                 <input value={promo} onChange={e => { setPromo(e.target.value); setPromoInfo(null) }} onKeyDown={e => { if (e.key === 'Enter') applyCode() }}
-                  placeholder="Code promo ou code Fondateur" aria-label="Code promo"
+                  placeholder="Code promo" aria-label="Code promo"
                   className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm uppercase text-white outline-none placeholder:normal-case placeholder:text-white/30 focus:border-accent/50" />
                 <button type="button" onClick={applyCode} disabled={!promo.trim() || busy === 'promo'} className="rounded-xl border border-white/12 px-4 text-xs font-medium text-white/80 transition hover:bg-white/[0.06] disabled:opacity-40">Appliquer</button>
               </div>

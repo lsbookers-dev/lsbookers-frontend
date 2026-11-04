@@ -40,6 +40,10 @@ export default function ContactPage() {
       setError('Merci de remplir tous les champs obligatoires.')
       return
     }
+    if (form.message.trim().length < 10) {
+      setError('Votre message est trop court : 10 caractères minimum.')
+      return
+    }
     setSending(true)
     setError(null)
     try {
@@ -50,7 +54,7 @@ export default function ContactPage() {
       })
       if (!res.ok) {
         const d = await res.json()
-        throw new Error(d.error || 'Erreur lors de l\'envoi.')
+        throw new Error(d.message || d.error || 'Erreur lors de l\'envoi.')
       }
       setSent(true)
     } catch (err: unknown) {
@@ -165,6 +169,7 @@ export default function ContactPage() {
                   rows={7}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition resize-none"
                 />
+                <p className={`text-xs ${form.message.trim().length > 0 && form.message.trim().length < 10 ? 'text-gold' : 'text-white/35'}`}>10 caractères minimum</p>
               </div>
 
               {error && (
