@@ -16,6 +16,8 @@ type Props = {
   compact?: boolean
   /** Fenêtre d'une publication (J'aime, commentaire, identification) */
   onOpenPublication: (publicationId: number) => void
+  /** Fenêtre d'une demande de booking (résumé, Accepter / Refuser) */
+  onOpenBookingRequest?: (bookingRequestId: number) => void
   /** Après un clic qui change de page (pour refermer la cloche) */
   onNavigate?: () => void
   onStaffRespond?: (notifId: number, staffId: number, eventId: number, response: 'ACCEPT' | 'REFUSE') => void
@@ -26,7 +28,7 @@ type Props = {
 
 const BUTTON = 'inline-flex items-center rounded-lg border px-2.5 py-1 font-medium transition'
 
-export default function NotificationRow({ item, compact = false, onOpenPublication, onNavigate, onStaffRespond, responding, onDelete }: Props) {
+export default function NotificationRow({ item, compact = false, onOpenPublication, onOpenBookingRequest, onNavigate, onStaffRespond, responding, onDelete }: Props) {
   const n = item.lead
   const cfg = notificationType(n.type)
   const target = notificationTarget(n)
@@ -97,7 +99,9 @@ export default function NotificationRow({ item, compact = false, onOpenPublicati
     ? <div>{body}</div>
     : 'publicationId' in target
       ? <button type="button" className="block w-full text-left" onClick={() => onOpenPublication(target.publicationId)}>{body}</button>
-      : <Link href={target.href} onClick={onNavigate} className="block">{body}</Link>
+      : 'bookingRequestId' in target
+        ? <button type="button" className="block w-full text-left" onClick={() => onOpenBookingRequest?.(target.bookingRequestId)}>{body}</button>
+        : <Link href={target.href} onClick={onNavigate} className="block">{body}</Link>
 
   if (!onDelete) return main
   return (

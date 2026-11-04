@@ -14,6 +14,7 @@ import { useUnreadCounts, refreshUnreadCounts } from '@/hooks/useUnreadCounts'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
 import NotificationRow from './notifications/NotificationRow'
+import BookingRequestModal from './notifications/BookingRequestModal'
 import { buildFeed } from '@/lib/notificationFeed'
 import LsIcon from '@/components/ui/LsIcon'
 import HeaderAnnouncement, { announcementFromSettings, type Announcement } from './HeaderAnnouncement'
@@ -73,6 +74,7 @@ export default function Header() {
   const [notifList, setNotifList]       = useState<PopupNotif[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
   const [pubModal, setPubModal]         = useState<PubCardData | null>(null)
+  const [bookingModal, setBookingModal] = useState<number | null>(null)
   const [respondingStaff, setRespondingStaff] = useState<Record<number, boolean>>({})
 
   // Pastille de la cloche (compteur partagé du site) ; à zéro tant que la liste est ouverte
@@ -277,6 +279,7 @@ export default function Header() {
                                     item={item}
                                     compact
                                     onOpenPublication={openPubModal}
+                                    onOpenBookingRequest={id => { setNotifOpen(false); setBookingModal(id) }}
                                     onNavigate={() => setNotifOpen(false)}
                                     onStaffRespond={respondStaffInvitation}
                                     responding={!!respondingStaff[item.lead.id]}
@@ -373,6 +376,9 @@ export default function Header() {
           </div>
         </div>
       </header>
+
+      {/* Demande de booking ouverte depuis une notification : répondre sans ouvrir la conversation */}
+      {bookingModal && <BookingRequestModal id={bookingModal} onClose={() => setBookingModal(null)} />}
 
       {/* Modal publication ouverte depuis une notification */}
       {pubModal && (

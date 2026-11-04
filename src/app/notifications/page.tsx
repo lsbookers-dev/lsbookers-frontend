@@ -13,6 +13,7 @@ import { apiFetch } from '@/utils/auth'
 import LsIcon, { type LsIconName } from '@/components/ui/LsIcon'
 import NotificationRow from '@/components/notifications/NotificationRow'
 import PublicationModal from '@/components/PublicationModal'
+import BookingRequestModal from '@/components/notifications/BookingRequestModal'
 import type { PubCardData } from '@/components/PublicationCard'
 import { buildFeed, type FeedNotif } from '@/lib/notificationFeed'
 
@@ -43,6 +44,7 @@ export default function NotificationsPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [summary, setSummary] = useState<Summary>({})
   const [pubModal, setPubModal] = useState<PubCardData | null>(null)
+  const [bookingModal, setBookingModal] = useState<number | null>(null)
   const [responding, setResponding] = useState<Record<number, boolean>>({})
 
   const listUrl = useCallback((before?: number | null) => {
@@ -245,6 +247,7 @@ export default function NotificationsPage() {
                           key={item.key}
                           item={item}
                           onOpenPublication={openPublication}
+                          onOpenBookingRequest={setBookingModal}
                           onStaffRespond={respondStaffInvitation}
                           responding={!!responding[item.lead.id]}
                           onDelete={deleteNotifs}
@@ -270,6 +273,9 @@ export default function NotificationsPage() {
           </section>
         </div>
       </div>
+
+      {/* Demande de booking : résumé et réponse sans ouvrir la conversation */}
+      {bookingModal && <BookingRequestModal id={bookingModal} onClose={() => setBookingModal(null)} />}
 
       {/* Publication ouverte depuis une notification (J'aime, commentaire, identification) */}
       {pubModal && (

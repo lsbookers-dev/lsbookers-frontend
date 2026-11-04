@@ -16,6 +16,7 @@ export type FeedNotif = {
   staffId?: number | null
   eventId?: number | null
   staffStatus?: string | null
+  bookingRequestId?: number | null
 }
 
 /** Une ligne affichée : une notification, ou plusieurs regroupées (« Mika et 4 autres ont aimé… ») */

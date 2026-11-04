@@ -59,10 +59,11 @@ export type NotificationLinkData = {
   offerId?: number | null
   publicationId?: number | null
   eventId?: number | null
+  bookingRequestId?: number | null
 }
 
-/** Publication à ouvrir dans sa fenêtre (sans quitter la page), ou adresse où aller, ou rien */
-export type NotificationTarget = { publicationId: number } | { href: string } | null
+/** Publication ou demande de booking à ouvrir dans sa fenêtre (sans quitter la page), ou adresse où aller, ou rien */
+export type NotificationTarget = { publicationId: number } | { bookingRequestId: number } | { href: string } | null
 
 const PUBLICATION_TYPES = ['NEW_LIKE', 'NEW_COMMENT', 'NEW_COMMENT_REPLY', 'NEW_COMMENT_LIKE', 'TAG_ON_PUBLICATION']
 const CONVERSATION_TYPES = [
@@ -85,6 +86,8 @@ function profileLink(actor?: { id: number; role?: string | null } | null): strin
 export function notificationTarget(n: NotificationLinkData): NotificationTarget {
   // J'aime, commentaires, identifications : la publication concernée
   if (PUBLICATION_TYPES.includes(n.type)) return n.publicationId ? { publicationId: n.publicationId } : null
+  // Demande de booking reçue : résumé et réponse dans une fenêtre, sans ouvrir la conversation
+  if (['BOOKING_REQUEST', 'BOOKING_APPROVAL_NEEDED'].includes(n.type) && n.bookingRequestId) return { bookingRequestId: n.bookingRequestId }
   // Bookings : la conversation du booking (demande, réponse, annulation)
   if (CONVERSATION_TYPES.includes(n.type)) return { href: n.conversationId ? `/messages?c=${n.conversationId}` : '/agenda' }
   // Offres : l'offre elle-même (nouvelle, candidature reçue, clôturée, à clôturer)

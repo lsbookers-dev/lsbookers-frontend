@@ -105,6 +105,7 @@ const PUBLIC_PATHS = [
   '/contact',
   '/confirm-email-change',
   '/securiser-mon-compte', // lien « Ce n'était pas moi » de l'e-mail d'alerte de connexion
+  '/desinscription', // lien « Ne plus recevoir ces e-mails » des e-mails de notification
   '/gestion/invitation', // lien reçu par e-mail pour valider un profil géré
 ]
 
