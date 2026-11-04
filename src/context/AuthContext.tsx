@@ -30,6 +30,8 @@ type User = {
   profile?: Profile
   avatarUrl?: string | null
   canManageProfiles?: boolean
+  /** Fenêtre de bienvenue déjà vue (elle ne s'ouvre qu'une fois, à la 1re connexion) */
+  welcomeSeenAt?: string | null
 }
 
 /** Profil géré en cours (« Vous agissez en tant que ») : le site s'affiche comme ce profil */
@@ -75,6 +77,7 @@ type RawUser = {
   profile?: Profile & { avatar?: string | null }
   canManageProfiles?: boolean
   hasAgency?: boolean
+  welcomeSeenAt?: string | null
 }
 
 const normalizeUser = (raw: RawUser): User => ({
@@ -86,6 +89,7 @@ const normalizeUser = (raw: RawUser): User => ({
   profile: raw.profile || undefined,
   // Formule Agence (payée ou offerte par l'admin) : gérer plusieurs profils
   canManageProfiles: !!(raw.hasAgency ?? raw.canManageProfiles),
+  welcomeSeenAt: raw.welcomeSeenAt ?? null,
 })
 
 /* ===================== Routes publiques ===================== */

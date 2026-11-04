@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { isPublicPath, useAuth } from '@/context/AuthContext'
+import WelcomeModal from '@/components/WelcomeModal'
 import Header from '@/components/Header'
 import BottomNav from '@/components/BottomNav'
 import InstallPrompt from '@/components/InstallPrompt'
@@ -75,6 +76,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
       <div className="lsb-status-shield md:hidden" aria-hidden="true" />
       <InstallPrompt />
       {!!user && <UpgradePrompt />}
+      {showAppNav && <WelcomeModal />}
     </div>
   )
 }

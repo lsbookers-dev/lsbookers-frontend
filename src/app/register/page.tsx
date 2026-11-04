@@ -571,11 +571,13 @@ export default function RegisterPage() {
                 <form onSubmit={handleStep2} className="space-y-4">
                   <div>
                     <p className="text-base font-semibold text-white">Que fais-tu ?</p>
-                    <div className="relative mt-2">
+                    <p className="mt-0.5 text-xs text-white/50">Une seule réponse suffit : l&apos;une ou l&apos;autre.</p>
+                    <p className="mt-3 text-[11px] font-bold uppercase tracking-[.1em] text-accent-light">Tape ton métier</p>
+                    <div className="relative mt-1.5">
                       <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
                       <input type="search" value={jobQuery} onChange={e => setJobQuery(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (jobResults[0]) chooseJob(jobResults[0].label, jobResults[0].role) } }}
-                        placeholder="Tape ton métier : traiteur, DJ, salle…" aria-label="Rechercher ton métier"
+                        placeholder="Traiteur, DJ, salle…" aria-label="Rechercher ton métier"
                         className={inputCls('pl-10')} />
                     </div>
                     {jobQuery.trim() && (
@@ -593,8 +595,14 @@ export default function RegisterPage() {
                     )}
                   </div>
 
-                  <p className="text-center text-xs text-white/35">ou choisis</p>
+                  {/* « OU » bien visible : on tape son métier OU on choisit une phrase, pas les deux (choix B1) */}
+                  <div className="flex items-center gap-3" aria-hidden="true">
+                    <span className="h-px flex-1 bg-white/20" />
+                    <span className="rounded-full border border-accent/50 bg-accent/15 px-3.5 py-1 text-xs font-extrabold tracking-[.12em] text-accent-light">OU</span>
+                    <span className="h-px flex-1 bg-white/20" />
+                  </div>
 
+                  <p className="-mb-2 text-[11px] font-bold uppercase tracking-[.1em] text-accent-light">Choisis ce qui te ressemble</p>
                   <div className="grid gap-2">
                     {PATHS.map(opt => (
                       <button key={opt.value} type="button" onClick={() => choosePath(opt.value)} aria-pressed={path === opt.value}
