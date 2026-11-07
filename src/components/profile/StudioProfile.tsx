@@ -6,8 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { Eye, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch, getAuthToken } from '@/utils/auth'
 import { uploadToStorage } from '@/utils/directUpload'
@@ -23,7 +22,7 @@ import ProfileBody from './ProfileBody'
 import ProfileEditor from './ProfileEditor'
 import { ProfileSkeleton, ProfileUnavailable } from './ProfileStates'
 import type { EditorSection, ProfileData, ProfilePublication } from './types'
-import { isProfileRole, publicProfileHref, ROLE_TEXT } from './utils'
+import { isProfileRole, ROLE_TEXT } from './utils'
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024
 const EDITOR_SECTIONS: EditorSection[] = ['identity', 'presentation', 'location', 'specialties', 'media', 'socials', 'career']
@@ -138,8 +137,6 @@ export default function StudioProfile() {
     )
   }
 
-  const publicHref = publicProfileHref(role, profile.userId)
-
   return (
     <div className="relative min-h-screen text-white lsb-profile-page lsb-profile-studio">
       <ProfileHeader
@@ -151,16 +148,9 @@ export default function StudioProfile() {
         onPickBanner={() => bannerInput.current?.click()}
         onPickAvatar={() => avatarInput.current?.click()}
         actions={(
-          <>
-            <button type="button" onClick={() => setEditorSection('identity')} className="flex items-center gap-2 whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
-              <Sparkles size={15} /> Modifier mon profil
-            </button>
-            {publicHref && (
-              <Link href={publicHref} className="flex items-center gap-2 whitespace-nowrap rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white">
-                <Eye size={15} /> Voir mon profil public
-              </Link>
-            )}
-          </>
+          <button type="button" onClick={() => setEditorSection('identity')} className="flex items-center gap-2 whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
+            <Sparkles size={15} /> Modifier mon profil
+          </button>
         )}
       />
       <input ref={bannerInput} type="file" accept="image/*" className="hidden" onChange={e => pickImage(e, 'banner')} />

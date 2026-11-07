@@ -13,7 +13,6 @@ import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import LsIcon, { type LsIconName } from '@/components/ui/LsIcon'
 import type { PendingReview } from '@/components/ReviewModal'
-import { publicProfileHref } from '@/components/profile/utils'
 import ActivityPanel, { type Kpis } from '@/components/space/ActivityPanel'
 import AgencySpace from '@/components/space/AgencySpace'
 import UpcomingPanel, { type UpcomingBooking } from '@/components/space/UpcomingPanel'
@@ -188,7 +187,6 @@ export default function SpacePage() {
     ...(data.unreadMessages ? [{ icon: 'message' as const, text: <><b className="text-white">{data.unreadMessages}</b> message{data.unreadMessages > 1 ? 's' : ''} non lu{data.unreadMessages > 1 ? 's' : ''}</>, href: '/messages' }] : []),
     ...(dashboard.kpis.upcomingPending ? [{ icon: organizer ? 'hourglass' as const : 'booking' as const, text: <><b className="text-white">{dashboard.kpis.upcomingPending}</b> {organizer ? `booking${dashboard.kpis.upcomingPending > 1 ? 's' : ''} sans réponse` : `demande${dashboard.kpis.upcomingPending > 1 ? 's' : ''} de booking à examiner`}</>, href: '/agenda' }] : []),
   ]
-  const publicHref = user?.id ? publicProfileHref(role, user.id) : null
   const intro = INTRO[dashboard.role]
 
   return (
@@ -200,11 +198,6 @@ export default function SpacePage() {
           <p className="mt-1 text-sm text-muted">{intro.text}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {publicHref && (
-            <Link href={publicHref} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-surface/80 px-3.5 text-xs font-semibold text-white">
-              <LsIcon name="user" size={16} tone="inherit" />Voir mon profil
-            </Link>
-          )}
           <Link href="/studio-profile" className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-3.5 text-xs font-semibold text-white transition hover:bg-accent-strong">
             <LsIcon name="plus" size={16} tone="inherit" />Modifier mon profil
           </Link>

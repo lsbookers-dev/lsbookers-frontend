@@ -48,6 +48,11 @@ export default function PublicProfile({ userId }: { userId: string }) {
     return () => { cancelled = true }
   }, [userId])
 
+  // Mon propre profil : une seule page, celle qu'on peut modifier (Mon profil)
+  useEffect(() => {
+    if (isOwner) router.replace('/studio-profile')
+  }, [isOwner, router])
+
   // Un lien /artist/7 vers un organisateur : on redirige vers la bonne adresse
   useEffect(() => {
     if (!role) return
