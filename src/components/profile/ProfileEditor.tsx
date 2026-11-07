@@ -15,6 +15,7 @@ import { apiUrl } from '@/utils/api'
 import { MUSIC_STYLES, SPECIALTIES_BY_ROLE } from '@/constants/specialties'
 import { NATIONAL_RADIUS_KM } from '@/utils/radius'
 import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
+import NameChangeRequest from './NameChangeRequest'
 import { ROLE_TEXT, SOCIAL_FIELDS } from './utils'
 import type { EditorSection, ProfileData, ProfileRole } from './types'
 
@@ -128,6 +129,11 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
     ...(role !== 'ORGANIZER' ? [{ key: 'career', label: 'Parcours & tarifs' }] : []),
   ] as { key: EditorSection; label: string }[]), [role])
 
+  const nameLocked = Boolean(profile.user?.nameLocked)
+  const editableUntil = profile.user?.nameEditableUntil
+    ? new Date(profile.user.nameEditableUntil).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+    : null
+
   const save = async () => {
     if (!form.pseudo.trim() || !form.firstName.trim() || !form.lastName.trim()) {
       setSection('identity')
@@ -143,8 +149,7 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pseudo: form.pseudo.trim(),
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
+          ...(nameLocked ? {} : { firstName: form.firstName.trim(), lastName: form.lastName.trim() }),
         }),
       })
       if (!accountRes.ok) throw new Error(await apiErrorMessage(accountRes, 'Impossible d’enregistrer ton identité.'))
@@ -222,8 +227,14 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Pseudo"><input value={form.pseudo} onChange={e => set('pseudo', e.target.value)} maxLength={30} className={INPUT} /></Field>
                   <div className="hidden sm:block" />
-                  <Field label="Prénom"><input value={form.firstName} onChange={e => set('firstName', e.target.value)} maxLength={50} className={INPUT} /></Field>
-                  <Field label="Nom"><input value={form.lastName} onChange={e => set('lastName', e.target.value)} maxLength={50} className={INPUT} /></Field>
+                  {nameLocked ? (
+                    <NameChangeRequest firstName={form.firstName} lastName={form.lastName} verified={profile.user?.nameLockReason === 'VERIFIED'} />
+                  ) : (
+                    <>
+                      <Field label="Prénom"><input value={form.firstName} onChange={e => set('firstName', e.target.value)} maxLength={50} className={INPUT} /></Field>
+                      <Field label="Nom" hint={editableUntil ? `Modifiables jusqu’au ${editableUntil}, ensuite sur demande à l’équipe.` : undefined}><input value={form.lastName} onChange={e => set('lastName', e.target.value)} maxLength={50} className={INPUT} /></Field>
+                    </>
+                  )}
                 </div>
                 <div className="rounded-xl border border-white/[0.08] px-4 py-2">
                   <Toggle value={form.showRealName} onChange={v => set('showRealName', v)} label="Afficher mon prénom et mon nom à la place du pseudo" />

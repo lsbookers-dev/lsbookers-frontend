@@ -153,6 +153,7 @@ function MemberPanel({ id, onClose, onChanged }: { id: number; onClose: () => vo
   const [banReason, setBanReason] = useState('')
   const [showBan, setShowBan] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [nameForm, setNameForm] = useState<{ firstName: string; lastName: string } | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -161,7 +162,7 @@ function MemberPanel({ id, onClose, onChanged }: { id: number; onClose: () => vo
       setData(await res.json())
     } catch { setError(true) }
   }, [id])
-  useEffect(() => { setData(null); setError(false); setShowBan(false); setShowAll(false); load() }, [load])
+  useEffect(() => { setData(null); setError(false); setShowBan(false); setShowAll(false); setNameForm(null); load() }, [load])
 
   const act = async (url: string, method: string, body: unknown, done: string) => {
     setBusy(true)
@@ -242,7 +243,22 @@ function MemberPanel({ id, onClose, onChanged }: { id: number; onClose: () => vo
                   if (await confirm({ title: `Réactiver le compte de ${name} ?`, confirmLabel: 'Réactiver' })) act(`/api/admin/billing/users/${u.id}/unban`, 'POST', null, 'Compte réactivé.')
                 }}>Réactiver</button>
               : <button type="button" disabled={busy} className={BTN_DANGER} onClick={() => setShowBan(v => !v)}>Suspendre</button>}
+            <button type="button" disabled={busy} className={`${BTN2} col-span-2`} onClick={() => setNameForm(f => (f ? null : { firstName: String(u.firstName || ''), lastName: String(u.lastName || '') }))}>
+              Corriger le prénom / nom
+            </button>
           </div>
+          {nameForm && (
+            <div className="mt-3 space-y-2">
+              <p className="text-[11px] text-muted">Après une demande du membre (Messages). Vérifiez son identité par e-mail si besoin.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={nameForm.firstName} onChange={e => setNameForm(f => f && { ...f, firstName: e.target.value })} maxLength={50} placeholder="Prénom" className={INPUT} />
+                <input value={nameForm.lastName} onChange={e => setNameForm(f => f && { ...f, lastName: e.target.value })} maxLength={50} placeholder="Nom" className={INPUT} />
+              </div>
+              <button type="button" disabled={busy || !nameForm.firstName.trim() || !nameForm.lastName.trim()} className={`${BTN} w-full`} onClick={async () => {
+                if (await act(`/api/admin/users/${u.id}/name`, 'PATCH', { firstName: nameForm.firstName.trim(), lastName: nameForm.lastName.trim() }, 'Prénom et nom corrigés.')) setNameForm(null)
+              }}>Enregistrer</button>
+            </div>
+          )}
           {showBan && !u.bannedAt && (
             <div className="mt-3 space-y-2">
               <input value={banReason} onChange={e => setBanReason(e.target.value)} placeholder="Motif (gardé dans l'historique)" className={INPUT} />

@@ -11,6 +11,10 @@ export type ProfileUser = {
   dateOfBirth?: string | null
   phone?: string | null
   countryOfResidence?: string | null
+  // Prénom / nom figés 7 jours après l'inscription (ou identité vérifiée par Stripe)
+  nameLocked?: boolean
+  nameLockReason?: 'DELAY' | 'VERIFIED' | null
+  nameEditableUntil?: string | null
 }
 
 /** Profil tel que renvoyé par /profile/me (complet) ou /profile/user/:id (public). */
