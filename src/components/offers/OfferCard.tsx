@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { CircleCheck, FileText, Layers, Send, Share2 } from 'lucide-react'
+import { Pencil, CircleCheck, FileText, Layers, Send, Share2 } from 'lucide-react'
 import { publicProfileHref } from '@/components/profile/utils'
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -46,6 +46,7 @@ export default function OfferCard({
   onShare,
   onQuote,
   onClose,
+  onEdit,
 }: {
   offer: Offer
   isLoggedIn: boolean
@@ -57,6 +58,8 @@ export default function OfferCard({
   onQuote?: (offer: Offer) => void
   /** Auteur de l'offre : clôturer une fois le booking trouvé */
   onClose?: (offer: Offer) => void
+  /** Auteur de l'offre : la modifier */
+  onEdit?: (offer: Offer) => void
 }) {
   const cfg = OFFER_TYPE_CONFIG[offer.type]
   const date = new Date(offer.date)
@@ -140,12 +143,24 @@ export default function OfferCard({
             </button>
           )}
 
+          {/* Auteur de l'offre : la modifier */}
+          {isOwner && onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(offer)}
+              className="lsb-offer-secondary !text-white/80"
+            >
+              <Pencil className="w-3 h-3" />
+              Modifier
+            </button>
+          )}
+
           {/* Auteur de l'offre : la clôturer une fois le booking trouvé */}
           {isOwner && onClose && (
             <button
               type="button"
               onClick={() => onClose(offer)}
-              className="lsb-offer-secondary col-span-2 !text-white/80"
+              className={`lsb-offer-secondary ${onEdit ? '' : 'col-span-2'} !text-white/80`}
             >
               <CircleCheck className="w-3 h-3" />
               Clôturer l&apos;offre

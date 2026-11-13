@@ -2,7 +2,7 @@
 
 /**
  * Lien de booking partagé (bio Instagram, signature e-mail…) : visible sans compte.
- * Montre l'essentiel du profil et mène à la demande de date (agenda du profil).
+ * Montre l'essentiel du profil, et un formulaire de demande de date pour un membre connecté.
  */
 
 import { useEffect, useState } from 'react'
@@ -24,6 +24,13 @@ export default function BookingLinkPage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing'>('loading')
+  // Formulaire de demande de booking (membre connecté, sur le profil d'un autre)
+  const [date, setDate] = useState('')
+  const [fee, setFee] = useState('')
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [sentConversationId, setSentConversationId] = useState<number | null | undefined>(undefined)
 
   useEffect(() => {
     apiFetch(apiUrl(`profile/user/${id}`), { cache: 'no-store' })
@@ -33,6 +40,31 @@ export default function BookingLinkPage() {
   }, [id])
 
   const profileHref = profile ? publicProfileHref(profile.user?.role, profile.userId) : null
+  const isOwner = !!user && !!profile && Number(user.id) === Number(profile.userId)
+  const today = new Date().toISOString().slice(0, 10)
+
+  const sendRequest = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profile || !date) { setFormError('Choisissez une date.'); return }
+    setSending(true); setFormError(null)
+    try {
+      const res = await apiFetch(apiUrl('events/booking-request'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetProfileId: profile.id,
+          date: `${date}T00:00:00.000Z`,
+          fee: fee ? parseFloat(fee) : undefined,
+          message: message.trim() || undefined,
+        }),
+      })
+      const d = await res.json().catch(() => null)
+      if (!res.ok) { setFormError(d?.message || d?.error || 'Impossible d’envoyer la demande pour le moment.'); return }
+      setSentConversationId(d?.conversationId ?? null)
+    } catch {
+      setFormError('Impossible de joindre le serveur.')
+    } finally { setSending(false) }
+  }
   const name = profileName(profile)
   const place = [profile?.location, profile?.country].filter(Boolean).join(', ')
 
@@ -79,10 +111,44 @@ export default function BookingLinkPage() {
               {profile.bio && <p className="line-clamp-4 text-sm leading-relaxed text-white/70">{profile.bio}</p>}
 
               <div className="mt-2 grid w-full gap-2">
-                {user ? (
-                  <Link href={`${profileHref}#agenda`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong">
-                    <LsIcon name="booking" size={18} tone="inherit" />Voir les disponibilités et demander une date
-                  </Link>
+                {isOwner ? (
+                  <p className="rounded-xl border border-line bg-white/[0.03] px-4 py-3 text-sm text-white/70">
+                    C&apos;est votre lien de booking : partagez-le (bio Instagram, signature e-mail…) pour recevoir des demandes de date.
+                  </p>
+                ) : user && sentConversationId !== undefined ? (
+                  <div className="grid gap-2 rounded-xl border border-gold/30 bg-gold/[0.08] px-4 py-4 text-sm">
+                    <p className="font-semibold text-gold-light">Demande envoyée à {name}.</p>
+                    <p className="text-white/65">Vous serez prévenu de sa réponse. Vous pouvez aussi échanger dans la conversation.</p>
+                    <Link href={sentConversationId ? `/messages?c=${sentConversationId}` : '/messages'} className="mt-1 rounded-xl bg-accent px-4 py-2.5 font-semibold text-white transition hover:bg-accent-strong">
+                      Voir la conversation
+                    </Link>
+                  </div>
+                ) : user ? (
+                  <form onSubmit={sendRequest} className="grid gap-3 text-left">
+                    <p className="text-sm font-semibold text-white">Demander une date</p>
+                    <label className="grid gap-1 text-xs text-white/55">
+                      Date souhaitée
+                      <input type="date" required min={today} value={date} onChange={e => setDate(e.target.value)}
+                        className="rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white outline-none focus:border-accent/50" />
+                    </label>
+                    <label className="grid gap-1 text-xs text-white/55">
+                      Cachet proposé (facultatif, en €)
+                      <input type="number" min={0} step="1" inputMode="numeric" value={fee} onChange={e => setFee(e.target.value)} placeholder="Ex. 400"
+                        className="rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-accent/50" />
+                    </label>
+                    <label className="grid gap-1 text-xs text-white/55">
+                      Message (facultatif)
+                      <textarea rows={3} maxLength={1000} value={message} onChange={e => setMessage(e.target.value)} placeholder="Type d’événement, lieu, horaires…"
+                        className="resize-none rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-accent/50" />
+                    </label>
+                    {formError && <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{formError}</p>}
+                    <button type="submit" disabled={sending} className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-50">
+                      <LsIcon name="booking" size={18} tone="inherit" />{sending ? 'Envoi…' : 'Envoyer la demande'}
+                    </button>
+                    {profileHref && (
+                      <Link href={profileHref} className="text-center text-xs text-white/50 underline underline-offset-4 hover:text-white">Voir son profil complet et ses disponibilités</Link>
+                    )}
+                  </form>
                 ) : (
                   <>
                     <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong">

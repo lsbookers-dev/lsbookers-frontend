@@ -56,6 +56,12 @@ export const longDate = (value: string | Date, withYear = false) =>
 export const timeOf = (value: string | Date) =>
   new Date(value).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
+/** Booking demandé pour une date sans heure : enregistré à minuit pile (heure de Londres) */
+export const isDateOnly = (value: string | Date) => {
+  const d = new Date(value)
+  return d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0
+}
+
 export function relativeTime(value: string) {
   const delta = Date.now() - new Date(value).getTime()
   const minute = 60_000, hour = 60 * minute, day = 24 * hour

@@ -78,9 +78,9 @@ export function AttachmentBubble({ msg, onImageClick }: {
         onClick={() => onImageClick(url, msg.attachmentName)}
         className="block mt-1 relative group rounded-xl overflow-hidden"
       >
-        <div className="relative w-52 h-40">
-          <Image src={url} alt={msg.attachmentName || 'image'} fill className="object-cover" unoptimized />
-        </div>
+        {/* Photo dans ses vraies proportions (plus de cadre fixe qui la coupe), taille limitée */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={msg.attachmentName || 'image'} loading="lazy" className="block h-auto max-h-72 w-auto max-w-[15rem] bg-black/20 sm:max-w-[18rem]" />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
           <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition" />
         </div>

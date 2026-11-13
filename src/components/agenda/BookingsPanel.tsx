@@ -46,8 +46,9 @@ export default function BookingsPanel({
   }
 
   const TABS = [
-    { key: 'pending'   as const, label: 'Offres',   count: tabItems.pending.length },
+    // Les bookings à venir d'abord (onglet ouvert par défaut), les propositions en attente ensuite
     { key: 'upcoming'  as const, label: 'À venir',  count: tabItems.upcoming.length },
+    { key: 'pending'   as const, label: 'Offres',   count: tabItems.pending.length },
     { key: 'past'      as const, label: 'Passés',   count: tabItems.past.length },
     { key: 'cancelled' as const, label: 'Annulés',  count: tabItems.cancelled.length },
   ]
@@ -207,9 +208,9 @@ export default function BookingsPanel({
                       ) : (
                         <button
                           onClick={() => { setCancelNoteFor(b.id); setCancelNoteText('') }}
-                          className="min-h-9 rounded-lg px-1 text-[11px] text-white/45 transition hover:text-amber-300"
+                          className="min-h-9 w-full rounded-xl border border-rose-400/30 bg-rose-500/[0.07] px-3 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/15"
                         >
-                          Demander l&apos;annulation…
+                          Demander l&apos;annulation
                         </button>
                       )
                     )}

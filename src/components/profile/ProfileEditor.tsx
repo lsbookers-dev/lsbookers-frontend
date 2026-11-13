@@ -244,7 +244,6 @@ export default function ProfileEditor({ profile, role, initialSection = 'identit
 
             {section === 'presentation' && (
               <>
-                <Field label={text.activityLabel}><input value={form.activity} onChange={e => set('activity', e.target.value)} maxLength={100} placeholder={text.activityPlaceholder} className={INPUT} /></Field>
                 <Field label={text.about} hint={`${form.bio.length}/600`}>
                   <textarea value={form.bio} onChange={e => set('bio', e.target.value)} maxLength={600} rows={6} placeholder="Présente-toi en quelques lignes…" className={`${INPUT} resize-none`} />
                 </Field>

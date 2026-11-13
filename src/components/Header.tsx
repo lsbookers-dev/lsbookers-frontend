@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Bell, LogOut,
   Settings, UserRound, ChevronDown,
+  Sparkles,
 } from 'lucide-react'
 import { apiFetch } from '@/utils/auth'
 import { useUnreadCounts, refreshUnreadCounts } from '@/hooks/useUnreadCounts'
@@ -351,6 +352,12 @@ export default function Header() {
                           className="w-full px-4 py-2.5 text-left text-sm text-white/80 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-colors"
                         >
                           <UserRound className="h-4 w-4 text-white/50" /> Mon espace
+                        </button>
+                        <button
+                          onClick={() => router.push('/studio-profile')}
+                          className="w-full px-4 py-2.5 text-left text-sm text-white/80 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-colors"
+                        >
+                          <Sparkles className="h-4 w-4 text-white/50" /> Mon profil
                         </button>
                         <button
                           onClick={() => router.push('/settings')}

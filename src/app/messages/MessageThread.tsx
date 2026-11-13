@@ -42,6 +42,9 @@ interface MessageThreadProps {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
   handleSend: () => void
   handleMessagesScroll: () => void
+  /** Un message est arrivé pendant qu'on lisait plus haut */
+  newBelow?: boolean
+  onJumpToBottom?: () => void
   handleTextareaChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   messagesContainerRef: React.RefObject<HTMLDivElement | null>
   messagesEndRef: React.RefObject<HTMLDivElement | null>
@@ -59,7 +62,7 @@ export default function MessageThread({
   activeConv, activeConvId, messages, currentUserId, isOrganizer, loadingMsgs,
   token, mobileView, content, file, filePreviewUrl, sending, uploadPercent,
   setLightbox, setMobileView, setFile, setMessages,
-  handleSend, handleMessagesScroll, handleTextareaChange,
+  handleSend, handleMessagesScroll, newBelow, onJumpToBottom, handleTextareaChange,
   messagesContainerRef, messagesEndRef, fileInputRef, textareaRef,
   fetchMessages,
   hasMoreMessages = false, loadingMore = false, onLoadMore,
@@ -668,6 +671,13 @@ export default function MessageThread({
               <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
+          </div>
+        )}
+        {newBelow && onJumpToBottom && (
+          <div className="pointer-events-none sticky bottom-2 flex justify-center">
+            <button type="button" onClick={onJumpToBottom} className="pointer-events-auto rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-black/40 transition hover:bg-accent-strong">
+              Nouveau message ↓
+            </button>
           </div>
         )}
         <div ref={messagesEndRef} />

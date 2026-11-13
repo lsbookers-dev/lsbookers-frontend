@@ -5,7 +5,7 @@
 import Link from 'next/link'
 import EventChecklist from '@/components/agenda/EventChecklist'
 import { agendaEventLink } from '@/utils/notificationLinks'
-import { EmptyLine, PanelLink, SpacePanel, longDate, timeOf } from './ui'
+import { EmptyLine, PanelLink, SpacePanel, longDate, timeOf, isDateOnly } from './ui'
 
 export type NextEvent = { id: number; title: string; start: string; end?: string | null; lieu?: string | null }
 
@@ -29,7 +29,7 @@ export default function NextDatePanel({ event }: { event: NextEvent | null }) {
             <span className="text-[11px] font-bold uppercase tracking-wider text-gold-light">{countdown(event.start)}</span>
             <h3 className="text-xl font-semibold tracking-tight text-white">{event.title}</h3>
             <p className="text-xs text-muted">
-              {timeOf(event.start)}{event.end ? ` – ${timeOf(event.end)}` : ''}{event.lieu ? ` · ${event.lieu}` : ''}
+              {[isDateOnly(event.start) ? null : `${timeOf(event.start)}${event.end ? ` – ${timeOf(event.end)}` : ''}`, event.lieu].filter(Boolean).join(' · ')}
             </p>
           </Link>
           <EventChecklist eventId={event.id} compact />

@@ -95,7 +95,7 @@ export default function AgendaCalendar({
   const [showPanel, setShowPanel] = useState(false)
   const [panelData, setPanelData] = useState<{ received: BookingItem[]; sent: BookingItem[] } | null>(null)
   const [panelLoading, setPanelLoading] = useState(false)
-  const [panelTab, setPanelTab] = useState<'pending' | 'upcoming' | 'past' | 'cancelled'>('pending')
+  const [panelTab, setPanelTab] = useState<'pending' | 'upcoming' | 'past' | 'cancelled'>('upcoming')
   const [cancelingId, setCancelingId] = useState<number | null>(null)
   const [cancelNoteFor, setCancelNoteFor] = useState<number | null>(null)
   const [cancelNoteText, setCancelNoteText] = useState('')

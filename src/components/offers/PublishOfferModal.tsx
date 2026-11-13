@@ -38,14 +38,50 @@ type Props = {
   onPublished: (offer: Offer) => void
   defaultLocation?: string | null
   defaultCountry?: string | null
+  /** Offre à modifier : le formulaire est prérempli et enregistre les changements */
+  offer?: Offer | null
 }
 
-export default function PublishOfferModal({ onClose, onPublished, defaultLocation, defaultCountry }: Props) {
+// Heures proposées dans la liste : toutes les 15 minutes (plus simple que le champ heure natif sur ordinateur)
+const TIME_OPTIONS = Array.from({ length: 96 }, (_, i) => `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`)
+
+function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const options = value && !TIME_OPTIONS.includes(value) ? [value, ...TIME_OPTIONS] : TIME_OPTIONS
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} className={PUB_INPUT}>
+      <option value="">Heure (facultatif)</option>
+      {options.map(t => <option key={t} value={t}>{t.replace(':', ' h ')}</option>)}
+    </select>
+  )
+}
+
+// Date et heure locales d'une offre existante, pour préremplir le formulaire
+function splitDate(iso?: string | null) {
+  if (!iso) return { date: '', time: '' }
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return { date: '', time: '' }
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, time: time === '00:00' ? '' : time }
+}
+
+function formFromOffer(offer: Offer): OfferForm {
+  const start = splitDate(offer.date)
+  const end = splitDate(offer.endDate)
+  return {
+    title: offer.title, description: offer.description || '', type: offer.type, specialty: offer.specialty || '',
+    date: start.date, time: start.time, endDate: end.date, endTime: end.time === '23:59' ? '' : end.time,
+    location: offer.location || '', country: offer.country || '', fee: offer.fee != null ? String(offer.fee) : '',
+  }
+}
+
+export default function PublishOfferModal({ onClose, onPublished, defaultLocation, defaultCountry, offer }: Props) {
   const { user } = useAuth()
-  const [pubForm, setPubForm] = useState<OfferForm>({ ...EMPTY_FORM, location: defaultLocation || '', country: defaultCountry || '' })
+  const editing = !!offer
+  const [pubForm, setPubForm] = useState<OfferForm>(offer ? formFromOffer(offer) : { ...EMPTY_FORM, location: defaultLocation || '', country: defaultCountry || '' })
   const [pubSubmitting, setPubSubmitting] = useState(false)
   const [pubError, setPubError] = useState<string | null>(null)
-  const [pubWithEnd, setPubWithEnd] = useState(false)
+  const [pubWithEnd, setPubWithEnd] = useState(!!offer?.endDate)
 
   // Aperçu en direct : l'offre telle qu'elle apparaîtra dans la liste
   const previewDate = pubForm.date
@@ -85,8 +121,8 @@ export default function PublishOfferModal({ onClose, onPublished, defaultLocatio
     setPubSubmitting(true)
     try {
       const dateTime = pubForm.time ? `${pubForm.date}T${pubForm.time}:00` : `${pubForm.date}T00:00:00`
-      const res = await apiFetch(apiUrl('offers'), {
-        method: 'POST',
+      const res = await apiFetch(apiUrl(editing ? `offers/${offer!.id}` : 'offers'), {
+        method: editing ? 'PUT' : 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,11 +136,11 @@ export default function PublishOfferModal({ onClose, onPublished, defaultLocatio
       })
       if (!res.ok) {
         const err = await res.json().catch(() => null)
-        setPubError(err?.message || err?.error || 'Échec de la publication. Réessayez.')
+        setPubError(err?.message || err?.error || (editing ? 'Échec de l’enregistrement. Réessayez.' : 'Échec de la publication. Réessayez.'))
         return
       }
       const saved = await res.json()
-      onPublished(saved)
+      onPublished(editing ? { ...offer!, ...(saved.offer || saved) } : saved)
     } catch {
       setPubError('Échec de la publication. Réessayez.')
     } finally {
@@ -124,7 +160,7 @@ export default function PublishOfferModal({ onClose, onPublished, defaultLocatio
             <Sparkles className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 id="publish-offer-title" className="text-sm font-bold text-white">Publier une offre</h3>
+            <h3 id="publish-offer-title" className="text-sm font-bold text-white">{editing ? 'Modifier l’offre' : 'Publier une offre'}</h3>
             <p className="text-[11px] text-white/45">L&apos;aperçu se met à jour pendant la saisie.</p>
           </div>
           <button onClick={() => onClose()} aria-label="Fermer" className="grid h-10 w-10 place-items-center rounded-xl text-white/45 transition hover:bg-white/5 hover:text-white">
@@ -174,7 +210,7 @@ export default function PublishOfferModal({ onClose, onPublished, defaultLocatio
               </div>
               <div>
                 <p className={PUB_LABEL}>Heure</p>
-                <input type="time" value={pubForm.time} onChange={e => setPubForm(p => ({ ...p, time: e.target.value }))} className={PUB_INPUT} />
+                <TimeSelect value={pubForm.time} onChange={v => setPubForm(p => ({ ...p, time: v }))} />
               </div>
             </div>
 
@@ -196,7 +232,7 @@ export default function PublishOfferModal({ onClose, onPublished, defaultLocatio
                 </div>
                 <div>
                   <p className={PUB_LABEL}>Heure de fin</p>
-                  <input type="time" value={pubForm.endTime} onChange={e => setPubForm(p => ({ ...p, endTime: e.target.value }))} className={PUB_INPUT} />
+                  <TimeSelect value={pubForm.endTime} onChange={v => setPubForm(p => ({ ...p, endTime: v }))} />
                 </div>
               </div>
             )}
@@ -245,7 +281,7 @@ export default function PublishOfferModal({ onClose, onPublished, defaultLocatio
             </button>
             <button onClick={submitPublish} disabled={pubSubmitting}
               className="min-h-11 flex-[2] rounded-xl bg-gradient-to-r from-accent-strong to-accent text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(139,92,246,0.9)] transition hover:brightness-110 disabled:opacity-50">
-              {pubSubmitting ? 'Publication…' : 'Publier l’offre'}
+              {pubSubmitting ? (editing ? 'Enregistrement…' : 'Publication…') : (editing ? 'Enregistrer les modifications' : 'Publier l’offre')}
             </button>
           </div>
         </div>

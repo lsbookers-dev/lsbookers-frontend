@@ -68,6 +68,9 @@ function MessagesContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const prevMsgCountRef = useRef(0)
   const isNearBottomRef = useRef(true)
+  const lastScrollTopRef = useRef(0)
+  // Nouveau message reçu pendant qu'on lit plus haut : petit bouton pour descendre
+  const [newBelow, setNewBelow] = useState(false)
   // Debounce fetchConversations (évite double-fetch new_message + conversation_updated simultanés)
   const fetchConvTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fetchConversationsRef = useRef<() => void>(() => {})
@@ -165,6 +168,8 @@ function MessagesContent() {
       setLoadingMsgs(false)
     }
   }, [token])
+  const fetchMessagesRef = useRef(fetchMessages)
+  fetchMessagesRef.current = fetchMessages
 
   /* ── Charger les messages précédents (pagination) ── */
   const loadMoreMessages = useCallback(async () => {
@@ -324,8 +329,14 @@ function MessagesContent() {
         .catch(() => {})
     }
 
+    // Un booking a changé de statut (accepté, refusé, annulation…) : la carte de la conversation ouverte se met à jour
+    const handleBookingUpdated = () => {
+      if (activeConvId) fetchMessagesRef.current(activeConvId, true)
+    }
+
     socket.on('new_message', handleNewMessage)
     socket.on('conversation_updated', handleConvUpdated)
+    socket.on('booking_updated', handleBookingUpdated)
     socket.on('messages_seen', handleMessagesSeen)
     socket.on('typing', handleTyping)
     // 'reconnect' est émis par le manager Socket.IO, pas par le socket lui-même
@@ -340,6 +351,7 @@ function MessagesContent() {
     return () => {
       socket.off('new_message', handleNewMessage)
       socket.off('conversation_updated', handleConvUpdated)
+      socket.off('booking_updated', handleBookingUpdated)
       socket.off('messages_seen', handleMessagesSeen)
       socket.off('typing', handleTyping)
       socket.io.off('reconnect', handleReconnect)
@@ -403,6 +415,13 @@ function MessagesContent() {
     }
   }, [activeConvId, conversations])
 
+  /* ── Nouvelle conversation ouverte : on repart du bas ── */
+  useEffect(() => {
+    isNearBottomRef.current = true
+    prevMsgCountRef.current = 0
+    setNewBelow(false)
+  }, [activeConvId])
+
   /* ── Smart scroll ── */
   useEffect(() => {
     const newCount = messages.length
@@ -412,7 +431,14 @@ function MessagesContent() {
       const isFromMe = lastMsg?.sender.id === currentUserId
       if (prevCount === 0 || isFromMe || isNearBottomRef.current) {
         const el = messagesContainerRef.current
-        if (el) el.scrollTo({ top: el.scrollHeight, behavior: prevCount === 0 ? 'auto' : 'smooth' })
+        if (el) {
+          el.scrollTo({ top: el.scrollHeight, behavior: prevCount === 0 ? 'auto' : 'smooth' })
+          // Une photo qui finit de charger allonge la conversation : on redescend une fois
+          setTimeout(() => { if (isNearBottomRef.current) el.scrollTo({ top: el.scrollHeight }) }, 400)
+        }
+        setNewBelow(false)
+      } else {
+        setNewBelow(true)
       }
     }
     prevMsgCountRef.current = newCount
@@ -423,7 +449,18 @@ function MessagesContent() {
     const el = messagesContainerRef.current
     if (!el) return
     const { scrollTop, scrollHeight, clientHeight } = el
-    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 120
+    // « En bas » : proche du dernier message. On n'en sort que par un vrai geste vers le haut :
+    // l'ouverture du clavier sur téléphone rétrécit la zone sans que l'on ait bougé.
+    if (scrollHeight - scrollTop - clientHeight < 160) { isNearBottomRef.current = true; setNewBelow(false) }
+    else if (scrollTop < lastScrollTopRef.current - 4) isNearBottomRef.current = false
+    lastScrollTopRef.current = scrollTop
+  }, [])
+
+  const jumpToBottom = useCallback(() => {
+    const el = messagesContainerRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    isNearBottomRef.current = true
+    setNewBelow(false)
   }, [])
 
   /* ── Charger les contacts (followers + suivis) ── */
@@ -674,6 +711,8 @@ function MessagesContent() {
         setMessages={setMessages}
         handleSend={handleSend}
         handleMessagesScroll={handleMessagesScroll}
+        newBelow={newBelow}
+        onJumpToBottom={jumpToBottom}
         handleTextareaChange={handleTextareaChange}
         messagesContainerRef={messagesContainerRef}
         messagesEndRef={messagesEndRef}

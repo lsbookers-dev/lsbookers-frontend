@@ -15,6 +15,7 @@ import EventChecklist from './EventChecklist'
 import { apiFetch } from '@/utils/auth'
 import type { BookingContract, BookingDetail, BookingLogistic, DocumentItem } from './types'
 import BookingPaymentPanel from './BookingPaymentPanel'
+import { useFeedback, apiErrorMessage } from '@/components/ui/Feedback'
 import { PAYMENT_LABEL, TabContrat, TabLogement, TabMedia, TabNotes } from './EventTabBookings'
 
 type StaffViewData = {
@@ -74,6 +75,8 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [tab, setTab] = useState<TabKey>('details')
+  const { confirm, notify } = useFeedback()
+  const [cancelling, setCancelling] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -95,6 +98,32 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
   }, [api, eventId])
 
   useEffect(() => { load() }, [load])
+
+  /* ── Demander l'annulation du booking (l'organisateur devra confirmer, sauf booking payé en ligne) ── */
+  const requestCancellation = async () => {
+    if (!detail) return
+    const summary = await apiFetch(`${api}/api/booking-payments/${detail.id}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+    const online = summary?.mode === 'ONLINE'
+    const days = summary?.rules?.lateCancelDays ?? 7
+    const ok = await confirm({
+      title: online ? 'Annuler ce booking payé en ligne ?' : 'Demander l’annulation de ce booking ?',
+      message: online
+        ? `L’annulation est immédiate et l’organisateur est remboursé. Une annulation à moins de ${days} jours de la date est comptée : il pourra laisser un avis, et des annulations répétées peuvent entraîner la suspension du compte.`
+        : 'L’organisateur recevra votre demande dans la conversation et devra la confirmer.',
+      confirmLabel: online ? 'Annuler le booking' : 'Envoyer la demande',
+      danger: true,
+    })
+    if (!ok) return
+    setCancelling(true)
+    try {
+      const res = await apiFetch(`${api}/api/events/booking-request/${detail.id}/cancel-request`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+      })
+      if (!res.ok) { notify(await apiErrorMessage(res, 'Impossible d’envoyer la demande.'), 'error'); return }
+      notify(online ? 'Booking annulé.' : 'Demande d’annulation envoyée.')
+      await load()
+    } finally { setCancelling(false) }
+  }
 
   /* ── Mises à jour locales après ajout / suppression ── */
   const addLogistic = (l: BookingLogistic) =>
@@ -221,6 +250,21 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-100/55">Description</p>
                     <p className="whitespace-pre-line text-sm leading-relaxed text-white/70">{ev.description}</p>
                   </div>
+                )}
+
+                {detail?.status === 'ACCEPTED' && (
+                  detail.cancellationRequestedBy ? (
+                    <p className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70">
+                      {detail.cancellationRequestedBy === myProfileId
+                        ? 'Demande d’annulation envoyée. En attente de la réponse de l’organisateur.'
+                        : 'L’organisateur a demandé l’annulation : répondez-lui dans la conversation.'}
+                    </p>
+                  ) : (
+                    <button type="button" onClick={requestCancellation} disabled={cancelling}
+                      className="w-full rounded-xl border border-rose-400/30 bg-rose-500/[0.07] px-4 py-3 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/15 disabled:opacity-50">
+                      {cancelling ? 'Envoi…' : 'Demander l’annulation du booking'}
+                    </button>
+                  )
                 )}
               </>
             )}

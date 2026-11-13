@@ -221,7 +221,11 @@ export function CancellationRequestCard({
     ? new Date(br.startDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : '—'
 
-  const isRequester = currentUserId !== null && currentUserId === br.cancellationRequesterUserId
+  // Celui qui a demandé l'annulation ne voit pas les boutons de réponse : on se fie aussi à l'auteur du message
+  const isRequester = currentUserId !== null && (currentUserId === br.cancellationRequesterUserId || Number(msg.sender?.id) === currentUserId)
+  // Demande déjà traitée (vue après coup) : booking annulé, ou plus aucune demande en cours
+  const resolved: 'accepted' | 'denied' | null = localDone
+    ?? (br.status === 'CANCELLED' ? 'accepted' : br.status === 'ACCEPTED' && !br.cancellationRequestedBy ? 'denied' : null)
 
   const respond = async (accept: boolean) => {
     if (!token || responding) return
@@ -250,7 +254,7 @@ export function CancellationRequestCard({
           <span>GESTION DU BOOKING</span>
           <h3>Demande d&apos;annulation</h3>
         </div>
-        <span className="lsb-booking-status is-cancel-request"><Ban className="w-3 h-3" /> À confirmer</span>
+        <span className="lsb-booking-status is-cancel-request"><Ban className="w-3 h-3" /> {resolved === 'accepted' ? 'Annulé' : resolved === 'denied' ? 'Refusée' : isRequester ? 'Envoyée' : 'À confirmer'}</span>
       </div>
       <div className="lsb-booking-card-body">
         <div className="lsb-booking-facts is-single">
@@ -261,12 +265,12 @@ export function CancellationRequestCard({
         )}
       </div>
       <div className="lsb-booking-card-footer">
-        {localDone === 'accepted' ? (
+        {resolved === 'accepted' ? (
           <p className="lsb-booking-result is-success"><Check className="w-4 h-4" />Annulation confirmée</p>
-        ) : localDone === 'denied' ? (
+        ) : resolved === 'denied' ? (
           <p className="lsb-booking-result"><X className="w-4 h-4" />Demande d&apos;annulation refusée</p>
         ) : isRequester ? (
-          <p className="lsb-booking-result">En attente de confirmation…</p>
+          <p className="lsb-booking-result">Demande d&apos;annulation envoyée. En attente de la réponse de l&apos;autre personne.</p>
         ) : (
           <div className="lsb-booking-actions">
             <button onClick={() => respond(true)} disabled={responding}

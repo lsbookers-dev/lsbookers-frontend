@@ -208,11 +208,12 @@ export function MapSection({ profile, mode, onEdit }: SectionProps) {
 
 const OFFERS_PREVIEW = 4
 
-export function OffersSection({ offers, mode, onPublish, onDelete }: {
+export function OffersSection({ offers, mode, onPublish, onDelete, onEdit }: {
   offers: Offer[]
   mode: ProfileMode
   onPublish?: () => void
   onDelete?: (offer: Offer) => void
+  onEdit?: (offer: Offer) => void
 }) {
   const [showAll, setShowAll] = useState(false)
   if (mode === 'public' && !offers.length) return null
@@ -247,6 +248,11 @@ export function OffersSection({ offers, mode, onPublish, onDelete }: {
                     {offer.fee != null && <span className="font-semibold text-gold">{offer.fee.toLocaleString('fr-FR')} €</span>}
                   </p>
                 </Link>
+                {onEdit && (
+                  <button type="button" onClick={() => onEdit(offer)} aria-label={`Modifier ${offer.title}`} className="shrink-0 rounded-lg p-1.5 text-white/30 transition hover:bg-white/[0.06] hover:text-white">
+                    <Pencil size={14} />
+                  </button>
+                )}
                 {onDelete && (
                   <button type="button" onClick={() => onDelete(offer)} aria-label={`Supprimer ${offer.title}`} className="shrink-0 rounded-lg p-1.5 text-white/30 transition hover:bg-red-500/10 hover:text-red-300">
                     <Trash2 size={14} />

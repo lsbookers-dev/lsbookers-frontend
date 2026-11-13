@@ -4,7 +4,7 @@
 
 import Link from 'next/link'
 import { agendaEventLink } from '@/utils/notificationLinks'
-import { DateBadge, EmptyLine, PanelLink, SpacePanel, euro, timeOf, type Person } from './ui'
+import { DateBadge, EmptyLine, PanelLink, SpacePanel, euro, timeOf, isDateOnly, type Person } from './ui'
 
 export type UpcomingBooking = {
   id: number
@@ -30,7 +30,7 @@ export default function UpcomingPanel({ bookings, organizer }: { bookings: Upcom
               <div className="min-w-0">
                 <h3 className="truncate text-[13px] font-semibold text-white">{b.counterpart?.name || 'Booking'}</h3>
                 <p className="truncate text-xs text-muted">
-                  {new Date(b.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })} · {timeOf(b.date)}
+                  {new Date(b.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })}{isDateOnly(b.date) ? '' : ` · ${timeOf(b.date)}`}
                   {b.title ? ` · ${b.title}` : ''}{b.place ? ` · ${b.place}` : ''}
                 </p>
               </div>

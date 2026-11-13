@@ -30,17 +30,18 @@ type Props = {
   onDeletePublication?: (id: number) => void
   onPublishOffer?: () => void
   onDeleteOffer?: (offer: Offer) => void
+  onEditOffer?: (offer: Offer) => void
 }
 
 export default function ProfileBody({
   profile, role, mode, pubs, offers, viewer, isOwner = false,
-  onEdit, onAddPublication, onDeletePublication, onPublishOffer, onDeleteOffer,
+  onEdit, onAddPublication, onDeletePublication, onPublishOffer, onDeleteOffer, onEditOffer,
 }: Props) {
   const text = ROLE_TEXT[role]
   const section = { profile, mode, onEdit }
   const hasCareer = role !== 'ORGANIZER'
   const offersBlock = role !== 'ARTIST' && (
-    <OffersSection offers={offers} mode={mode} onPublish={onPublishOffer} onDelete={onDeleteOffer} />
+    <OffersSection offers={offers} mode={mode} onPublish={onPublishOffer} onDelete={onDeleteOffer} onEdit={onEditOffer} />
   )
 
   return (

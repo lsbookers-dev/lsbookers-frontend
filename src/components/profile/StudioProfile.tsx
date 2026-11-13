@@ -37,6 +37,7 @@ export default function StudioProfile() {
   const [editorSection, setEditorSection] = useState<EditorSection | null>(null)
   const [showAddPublication, setShowAddPublication] = useState(false)
   const [showPublishOffer, setShowPublishOffer] = useState(false)
+  const [editingOffer, setEditingOffer] = useState<Offer | null>(null)
   const [crop, setCrop] = useState<{ src: string; type: 'avatar' | 'banner' } | null>(null)
   const [uploading, setUploading] = useState<'avatar' | 'banner' | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
@@ -168,6 +169,7 @@ export default function StudioProfile() {
         onDeletePublication={deletePublication}
         onPublishOffer={role !== 'ARTIST' ? () => setShowPublishOffer(true) : undefined}
         onDeleteOffer={deleteOffer}
+        onEditOffer={offer => setEditingOffer(offer)}
       />
 
       {editorSection && (
@@ -199,6 +201,13 @@ export default function StudioProfile() {
         />
       )}
 
+      {editingOffer && (
+        <PublishOfferModal
+          offer={editingOffer}
+          onClose={() => setEditingOffer(null)}
+          onPublished={saved => { setOffers(list => list.map(o => (o.id === saved.id ? saved : o))); setEditingOffer(null); notify('Offre modifiée') }}
+        />
+      )}
       {showPublishOffer && (
         <PublishOfferModal
           defaultLocation={profile.location}

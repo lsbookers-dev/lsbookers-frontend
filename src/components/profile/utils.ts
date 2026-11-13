@@ -19,8 +19,9 @@ export function profileName(profile?: ProfileData | null) {
 }
 
 /** Activité affichée sous le nom (saisie par la personne, jamais le rôle technique). */
+// Activité affichée sous le nom : le métier, sinon la première spécialité choisie à l'inscription
 export const profileActivity = (profile: ProfileData) =>
-  profile.profession || profile.typeEtablissement || ''
+  profile.profession || profile.typeEtablissement || profile.specialties?.[0] || ''
 
 export function youtubeEmbedUrl(url?: string | null) {
   const value = url?.trim()

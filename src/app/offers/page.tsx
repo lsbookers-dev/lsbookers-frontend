@@ -45,6 +45,7 @@ function OffersInner() {
 
   // Modal publication (organisateurs)
   const [showPublish, setShowPublish]     = useState(false)
+  const [editOffer, setEditOffer]         = useState<Offer | null>(null)
 
 
   // Auto-fill ville/pays depuis le profil
@@ -218,6 +219,10 @@ function OffersInner() {
         } else {
           router.push('/messages')
         }
+      } else if (res.status === 409) {
+        // Déjà postulé : on le dit, sans renvoyer de message à l'organisateur
+        const err = await res.json().catch(() => null)
+        notify(err?.message || 'Vous avez déjà postulé à cette offre.')
       }
     } catch { /* silent */ } finally {
       setApplyingId(null)
@@ -415,6 +420,7 @@ function OffersInner() {
                   onShare={o => { setShareOffer(o); setShareQuery(''); setShareUsers([]); setShareSuccess(false) }}
                   onQuote={o => setQuoteOffer(o)}
                   onClose={closeOffer}
+                  onEdit={o => setEditOffer(o)}
                 />
               ))}
             </div>
@@ -487,6 +493,13 @@ function OffersInner() {
       )}
 
       {/* ── Modal : publier une offre (organisateurs) — formulaire + aperçu en direct ── */}
+      {editOffer && (
+        <PublishOfferModal
+          offer={editOffer}
+          onClose={() => setEditOffer(null)}
+          onPublished={saved => { setOffers(prev => prev.map(o => (o.id === saved.id ? saved : o))); setEditOffer(null); notify('Offre modifiée.') }}
+        />
+      )}
       {showPublish && (
         <PublishOfferModal
           defaultLocation={userLocation}

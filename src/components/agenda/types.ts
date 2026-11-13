@@ -114,6 +114,8 @@ export type BookingDetail = {
   fee?: number | null
   status: string
   paymentStatus?: string | null
+  /** Profil qui a demandé l'annulation (demande en cours), sinon null */
+  cancellationRequestedBy?: number | null
   sharedNotes?: string | null
   logistics: BookingLogistic[]
   media: BookingMedia[]

@@ -262,10 +262,15 @@ export function TabLogement({ logistics, isOrganizer, myProfileId, bookingId, on
             {l.addedByProfileId === myProfileId || (isOrganizer && l.addedByProfileId == null) ? 'Ajouté par vous' : `Ajouté par ${otherName}`}
           </p>
           {l.fileUrl && (
-            <a href={l.fileUrl} target="_blank" rel="noreferrer" download={l.fileName || true}
-              className="inline-flex min-h-9 items-center gap-1.5 text-[11px] text-violet-300 transition-colors hover:text-violet-200">
-              <Download className="w-3 h-3" /> {l.fileName || 'Télécharger le document'}
-            </a>
+            // Même présentation que les contrats : nom du fichier + bouton « Voir »
+            <div className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+              <FileText className="h-4 w-4 shrink-0 text-white/45" />
+              <span className="min-w-0 flex-1 truncate text-xs text-white/75">{l.fileName || 'Document joint'}</span>
+              <a href={l.fileUrl} target="_blank" rel="noreferrer"
+                className="flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-violet-400/20 px-2.5 text-[11px] text-violet-200 transition-colors hover:bg-violet-500/10">
+                <Eye className="w-3 h-3" /> Voir
+              </a>
+            </div>
           )}
         </div>
       ))}
