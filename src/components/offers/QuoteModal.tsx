@@ -52,15 +52,25 @@ export default function QuoteModal({ offer, onClose }: { offer: Offer; onClose: 
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: intro }),
       })
-      if (!apply.ok) {
+      // Déjà postulé : le devis part quand même dans la conversation existante
+      const applied = await apply.json().catch(() => null)
+      if (!apply.ok && !(apply.status === 409 && applied?.conversationId)) {
         // Limite du compte gratuit : la fenêtre « Passer en Pro » s'ouvre d'elle-même
-        if (apply.status !== 403) notify(await apiErrorMessage(apply, 'Envoi impossible pour le moment.'), 'error')
+        if (apply.status !== 403) notify(applied?.message || applied?.error || 'Envoi impossible pour le moment.', 'error')
         return
       }
-      const { conversationId } = await apply.json()
+      const { conversationId } = applied
       const init = await fileRequest(doc, 'message', { conversationId, content: message.trim() || undefined })
       const sent = init instanceof Response ? init : await apiFetch(apiUrl('messages/send-file'), init)
       if (!sent.ok) { notify(await apiErrorMessage(sent, 'Le document n’a pas pu être envoyé.'), 'error'); return }
+      // Le devis est rangé dans Mon espace › Devis (envoyé pour moi, reçu pour l'organisateur)
+      const sentData = await sent.json().catch(() => null)
+      if (sentData?.message?.id) {
+        await apiFetch(apiUrl('quotes/from-message'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageId: Number(sentData.message.id), offerId: offer.id, amount: mode === 'online' ? total : undefined }),
+        }).catch(() => null)
+      }
       notify('Votre devis est envoyé à l’organisateur.')
       onClose()
       router.push(`/messages?c=${conversationId}`)

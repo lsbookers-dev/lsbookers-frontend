@@ -1,599 +1,353 @@
 'use client'
 
-import { apiFetch } from '@/utils/auth'
-import { useFeedback } from '@/components/ui/Feedback'
 /**
- * AlbumsTab — Onglet Albums sur les profils
- * Affiche la grille d'albums, permet de créer / supprimer un album (owner),
- * et d'ouvrir un album pour voir ses items + ajouter des publications (owner).
+ * Albums d'un profil (refait le 16/11/2026, demande d'Antho) :
+ * on crée l'album, puis on y ajoute ses publications, celles où l'on est identifié,
+ * ou des photos envoyées depuis l'appareil. Clic sur un élément : vue agrandie.
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import Image from 'next/image'
-import { Plus, Trash2, X, FolderOpen, Play, Lock, ImagePlus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { ArrowLeft, Check, ImagePlus, Lock, Plus, Trash2, X } from 'lucide-react'
+import { apiFetch } from '@/utils/auth'
+import { apiUrl } from '@/utils/api'
+import { uploadToStorage } from '@/utils/directUpload'
+import { useFeedback, apiErrorMessage } from '@/components/ui/Feedback'
+import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
-
-const ACCENT_CLASSES: Record<string, { btn: string; ring: string }> = {
-  pink:   { btn: 'bg-pink-600 hover:bg-pink-500',     ring: 'ring-pink-500/50' },
-  violet: { btn: 'bg-violet-600 hover:bg-violet-500', ring: 'ring-violet-500/50' },
-  blue:   { btn: 'bg-blue-600 hover:bg-blue-500',     ring: 'ring-blue-500/50' },
-}
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type AlbumSummary = {
-  id: number
-  title: string
-  description?: string | null
-  coverUrl?: string | null
-  coverType?: string
-  itemCount: number
-  isPrivate?: boolean
-  createdAt: string
-}
-
-type AlbumItem = {
-  id: number
-  mediaUrl?: string | null
-  mediaType?: string | null
-  caption?: string | null
-  order: number
-  publication?: PubCardData | null
-}
-
-type AlbumDetail = {
-  id: number
-  title: string
-  description?: string | null
-  isPrivate: boolean
-  items: AlbumItem[]
-}
+type AlbumSummary = { id: number; title: string; description?: string | null; coverUrl?: string | null; itemCount: number; isPrivate?: boolean }
+type AlbumItem = { id: number; mediaUrl?: string | null; mediaType?: string | null; caption?: string | null; publication?: PubCardData | null }
+type AlbumDetail = { id: number; title: string; description?: string | null; isPrivate: boolean; items: AlbumItem[] }
+type Source = 'mine' | 'tagged' | 'upload'
 
 type Props = {
   profileId: number
   isOwner?: boolean
   token?: string
-  accent?: 'pink' | 'violet' | 'blue'
-  /** Publications du profil (pour les ajouter à un album) */
+  accent?: string
+  /** Gardé pour compatibilité : les publications sont maintenant chargées par la fenêtre d'ajout */
   publications?: PubCardData[]
 }
 
-// ─── Composant principal ──────────────────────────────────────────────────────
+const thumbOf = (item: AlbumItem) => item.publication?.media || item.mediaUrl || ''
+const isVideo = (url: string, type?: string | null) => type === 'video' || type === 'VIDEO' || /\.(mp4|mov|webm)(\?|$)/i.test(url)
 
-export default function AlbumsTab({
-  profileId,
-  isOwner = false,
-  token = '',
-  accent = 'pink',
-  publications = [],
-}: Props) {
-  const { btn, ring } = ACCENT_CLASSES[accent] ?? ACCENT_CLASSES.pink
+export default function AlbumsTab({ profileId, isOwner = false }: Props) {
   const { notify, confirm } = useFeedback()
-
-  const [albums, setAlbums]           = useState<AlbumSummary[]>([])
-  const [loading, setLoading]         = useState(true)
-
-  // Création d'album
-  const [showCreate, setShowCreate]   = useState(false)
-  const [newTitle, setNewTitle]       = useState('')
-  const [newDesc, setNewDesc]         = useState('')
-  const [newPrivate, setNewPrivate]   = useState(false)
-  const [creating, setCreating]       = useState(false)
-
-  // Detail album ouvert
-  const [openAlbum, setOpenAlbum]     = useState<AlbumDetail | null>(null)
-  const [loadingAlbum, setLoadingAlbum] = useState(false)
-
-  // Lightbox : index de l'item sélectionné dans l'album ouvert
-  const [selectedItemIdx, setSelectedItemIdx] = useState<number | null>(null)
-
-  // Ajout de publications à l'album
-  const [showAddPub, setShowAddPub]   = useState(false)
-  const [addingPubId, setAddingPubId] = useState<number | null>(null)
-
-  // ── Chargement des albums ─────────────────────────────────────────────────
+  const [albums, setAlbums] = useState<AlbumSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newPrivate, setNewPrivate] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [open, setOpen] = useState<AlbumDetail | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [viewPub, setViewPub] = useState<PubCardData | null>(null)
+  const [viewMedia, setViewMedia] = useState<AlbumItem | null>(null)
 
   const loadAlbums = useCallback(async () => {
     setLoading(true)
     try {
-      const endpoint = isOwner && token
-        ? `${API_BASE}/api/albums/mine`
-        : `${API_BASE}/api/albums/profile/${profileId}`
-
-      const res = await apiFetch(endpoint, {
-        })
-      const data = await res.json()
-      setAlbums(data.albums ?? [])
-    } catch {
-      setAlbums([])
-    } finally {
-      setLoading(false)
-    }
-  }, [profileId, isOwner, token])
+      const res = await apiFetch(apiUrl(isOwner ? 'albums/mine' : `albums/profile/${profileId}`))
+      setAlbums(res.ok ? ((await res.json()).albums ?? []) : [])
+    } catch { setAlbums([]) }
+    finally { setLoading(false) }
+  }, [profileId, isOwner])
 
   useEffect(() => { loadAlbums() }, [loadAlbums])
 
-  // ── Créer un album ────────────────────────────────────────────────────────
+  const openAlbum = async (id: number) => {
+    const res = await apiFetch(apiUrl(`albums/${id}`)).catch(() => null)
+    if (!res?.ok) { notify('Impossible de charger l’album.', 'error'); return }
+    setOpen((await res.json()).album ?? null)
+  }
 
-  const handleCreate = async () => {
+  const createAlbum = async () => {
     if (!newTitle.trim() || creating) return
     setCreating(true)
     try {
-      const res = await apiFetch(`${API_BASE}/api/albums`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await apiFetch(apiUrl('albums'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle.trim(), description: newDesc.trim() || null, isPrivate: newPrivate }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) { notify(await apiErrorMessage(res, 'Impossible de créer l’album.'), 'error'); return }
+      const d = await res.json()
       setNewTitle(''); setNewDesc(''); setNewPrivate(false); setShowCreate(false)
       await loadAlbums()
-    } catch {
-      notify('Impossible de créer l\'album', 'error')
-    } finally {
-      setCreating(false)
-    }
+      // L'album créé s'ouvre directement, avec la fenêtre d'ajout
+      const id = d.album?.id ?? d.id
+      if (id) { await openAlbum(id); setAdding(true) }
+    } finally { setCreating(false) }
   }
 
-  // ── Supprimer un album ────────────────────────────────────────────────────
-
-  const handleDeleteAlbum = async (id: number, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const deleteAlbum = async (album: { id: number }) => {
     if (!(await confirm({ title: 'Supprimer cet album ?', message: 'Les publications qu’il contient ne sont pas supprimées.', danger: true }))) return
-    try {
-      await apiFetch(`${API_BASE}/api/albums/${id}`, {
-        method: 'DELETE',
-        })
-      setAlbums(prev => prev.filter(a => a.id !== id))
-      if (openAlbum?.id === id) setOpenAlbum(null)
-    } catch {
-      notify('Impossible de supprimer l\'album', 'error')
-    }
+    const res = await apiFetch(apiUrl(`albums/${album.id}`), { method: 'DELETE' }).catch(() => null)
+    if (!res?.ok) { notify('Impossible de supprimer l’album.', 'error'); return }
+    setAlbums(prev => prev.filter(a => a.id !== album.id))
+    setOpen(null)
   }
 
-  // ── Ouvrir un album ───────────────────────────────────────────────────────
-
-  const handleOpenAlbum = async (albumId: number) => {
-    setLoadingAlbum(true)
-    try {
-      const res = await apiFetch(`${API_BASE}/api/albums/${albumId}`, {
-        })
-      const data = await res.json()
-      setOpenAlbum(data.album ?? null)
-    } catch {
-      notify('Impossible de charger l\'album', 'error')
-    } finally {
-      setLoadingAlbum(false)
-    }
+  const removeItem = async (item: AlbumItem) => {
+    if (!open) return
+    const res = await apiFetch(apiUrl(`albums/${open.id}/items/${item.id}`), { method: 'DELETE' }).catch(() => null)
+    if (!res?.ok) { notify('Impossible de retirer cet élément.', 'error'); return }
+    setOpen(prev => prev ? { ...prev, items: prev.items.filter(i => i.id !== item.id) } : prev)
+    setAlbums(prev => prev.map(a => a.id === open.id ? { ...a, itemCount: Math.max(0, a.itemCount - 1) } : a))
   }
 
-  // ── Ajouter une publication à l'album ────────────────────────────────────
+  if (loading) return <div className="py-16 text-center text-sm text-white/30">Chargement…</div>
 
-  const handleAddPubToAlbum = async (pubId: number) => {
-    if (!openAlbum || addingPubId === pubId) return
-    setAddingPubId(pubId)
-    try {
-      const res = await apiFetch(`${API_BASE}/api/albums/${openAlbum.id}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publicationId: pubId }),
-      })
-      if (!res.ok) throw new Error()
-      // Recharger l'album
-      await handleOpenAlbum(openAlbum.id)
-      setShowAddPub(false)
-    } catch {
-      notify('Impossible d\'ajouter la publication', 'error')
-    } finally {
-      setAddingPubId(null)
-    }
-  }
-
-  // ── Supprimer un item de l'album ─────────────────────────────────────────
-
-  const handleRemoveItem = async (itemId: number) => {
-    if (!openAlbum) return
-    try {
-      await apiFetch(`${API_BASE}/api/albums/${openAlbum.id}/items/${itemId}`, {
-        method: 'DELETE',
-        })
-      setOpenAlbum(prev => prev ? { ...prev, items: prev.items.filter(i => i.id !== itemId) } : null)
-      // Mettre à jour le count dans la liste
-      setAlbums(prev => prev.map(a => a.id === openAlbum.id ? { ...a, itemCount: Math.max(0, a.itemCount - 1) } : a))
-    } catch {
-      notify('Impossible de retirer cet item', 'error')
-    }
-  }
-
-  // ── IDs déjà dans l'album (pour éviter les doublons) ────────────────────
-
-  const alreadyInAlbum = new Set(
-    openAlbum?.items.map(i => i.publication?.id).filter(Boolean) ?? []
-  )
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDU
-  // ─────────────────────────────────────────────────────────────────────────
-
-  if (loading) {
+  /* ── Album ouvert ── */
+  if (open) {
     return (
-      <div className="flex items-center justify-center py-16 text-white/30 text-sm">
-        Chargement…
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button type="button" onClick={() => { setOpen(null); loadAlbums() }} className="flex items-center gap-1.5 text-sm text-white/60 transition hover:text-white">
+            <ArrowLeft size={15} /> Tous les albums
+          </button>
+          {isOwner && (
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setAdding(true)} className="flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-accent-strong">
+                <Plus size={13} /> Ajouter
+              </button>
+              <button type="button" onClick={() => deleteAlbum(open)} aria-label="Supprimer l’album" className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-white/45 transition hover:border-red-400/40 hover:text-red-300">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-white">{open.title}{open.isPrivate && <Lock size={14} className="text-white/40" />}</h3>
+          {open.description && <p className="mt-1 text-sm text-white/55">{open.description}</p>}
+        </div>
+
+        {open.items.length === 0 ? (
+          <div className="grid justify-items-center gap-3 rounded-2xl border border-dashed border-white/10 px-5 py-10 text-center">
+            <ImagePlus size={26} className="text-white/30" />
+            <p className="text-sm text-white/55">Cet album est vide.</p>
+            {isOwner && <button type="button" onClick={() => setAdding(true)} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">Ajouter des publications ou des photos</button>}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {open.items.map(item => {
+              const url = thumbOf(item)
+              return (
+                <div key={item.id} className="group relative aspect-square overflow-hidden rounded-xl border border-white/[0.08] bg-black">
+                  <button type="button" className="h-full w-full" onClick={() => item.publication ? setViewPub(item.publication) : setViewMedia(item)} aria-label="Agrandir">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {url && (isVideo(url, item.publication?.mediaType || item.mediaType) ? <video src={url} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : <img src={url} alt={item.publication?.title || item.caption || ''} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />)}
+                  </button>
+                  {item.publication && <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white/80">Publication</span>}
+                  {isOwner && (
+                    <button type="button" onClick={() => removeItem(item)} aria-label="Retirer de l’album"
+                      className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-white/80 opacity-100 transition hover:bg-red-500/80 sm:opacity-0 sm:group-hover:opacity-100">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {adding && isOwner && (
+          <AddToAlbumModal
+            album={open}
+            profileId={profileId}
+            onClose={() => setAdding(false)}
+            onAdded={() => openAlbum(open.id)}
+          />
+        )}
+        {viewPub && <PublicationModal pub={viewPub} onClose={() => setViewPub(null)} onCountChange={() => {}} />}
+        {viewMedia && <MediaViewer item={viewMedia} onClose={() => setViewMedia(null)} />}
       </div>
     )
   }
 
+  /* ── Liste des albums ── */
   return (
     <div className="space-y-4">
-
-      {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white/70">
-          {albums.length > 0 ? `${albums.length} album${albums.length > 1 ? 's' : ''}` : 'Aucun album'}
-        </h3>
+        <h3 className="text-sm font-semibold text-white/70">{albums.length > 0 ? `${albums.length} album${albums.length > 1 ? 's' : ''}` : 'Aucun album'}</h3>
         {isOwner && (
-          <button
-            onClick={() => setShowCreate(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${btn} text-xs font-semibold text-white transition`}
-          >
-            <Plus size={14} /> Nouvel album
+          <button type="button" onClick={() => setShowCreate(v => !v)} className="flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-accent-strong">
+            <Plus size={13} /> Nouvel album
           </button>
         )}
       </div>
 
-      {/* ── Grille albums ── */}
-      {albums.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-white/30">
-          <FolderOpen size={36} />
-          <p className="text-sm">{isOwner ? 'Crée ton premier album !' : 'Aucun album public'}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {albums.map(album => (
-            <AlbumCard
-              key={album.id}
-              album={album}
-              isOwner={isOwner}
-              onOpen={handleOpenAlbum}
-              onDelete={handleDeleteAlbum}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* ── Modal : créer un album ── */}
-      {showCreate && (
-        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-          <div className="max-w-sm w-full bg-neutral-950 border border-white/10 rounded-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold">Nouvel album</h3>
-              <button onClick={() => setShowCreate(false)} className="text-neutral-400 hover:text-white"><X size={18} /></button>
-            </div>
-            <input
-              className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-1 ${ring} transition`}
-              placeholder="Titre de l'album"
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              maxLength={100}
-              autoFocus
-            />
-            <textarea
-              className={`w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:ring-1 ${ring} transition resize-none`}
-              placeholder="Description (optionnel)"
-              rows={2}
-              value={newDesc}
-              onChange={e => setNewDesc(e.target.value)}
-              maxLength={500}
-            />
-            <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer select-none">
-              <input type="checkbox" checked={newPrivate} onChange={e => setNewPrivate(e.target.checked)} className="accent-violet-500" />
-              Album privé
-            </label>
-            <button
-              onClick={handleCreate}
-              disabled={!newTitle.trim() || creating}
-              className={`w-full py-2.5 rounded-xl ${btn} disabled:opacity-50 text-sm font-semibold transition`}
-            >
-              {creating ? 'Création…' : 'Créer l\'album'}
+      {showCreate && isOwner && (
+        <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <input value={newTitle} onChange={e => setNewTitle(e.target.value)} maxLength={100} autoFocus placeholder="Nom de l’album (ex. Concerts 2026)"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-accent/50" />
+          <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2} maxLength={500} placeholder="Description (facultatif)"
+            className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-accent/50" />
+          <label className="flex items-center gap-2 text-xs text-white/60">
+            <input type="checkbox" checked={newPrivate} onChange={e => setNewPrivate(e.target.checked)} className="accent-violet-500" />
+            Album privé (visible seulement par moi)
+          </label>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setShowCreate(false)} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/60 transition hover:text-white">Annuler</button>
+            <button type="button" onClick={createAlbum} disabled={!newTitle.trim() || creating} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40">
+              {creating ? 'Création…' : 'Créer et ajouter du contenu'}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Popup : detail album ── */}
-      {(loadingAlbum || openAlbum) && (
-        <div
-          className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => { setOpenAlbum(null); setSelectedItemIdx(null) }}
-        >
-          <div
-            className="bg-neutral-950 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 flex-shrink-0">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold truncate">{openAlbum?.title ?? '…'}</h3>
-                  {openAlbum?.isPrivate && (
-                    <span className="flex items-center gap-1 text-[10px] text-white/40 bg-white/5 rounded-full px-1.5 py-0.5">
-                      <Lock size={9} /> Privé
-                    </span>
-                  )}
-                </div>
-                {openAlbum?.description && (
-                  <p className="text-xs text-white/40 truncate mt-0.5">{openAlbum.description}</p>
-                )}
+      {albums.length === 0 ? (
+        <p className="py-10 text-center text-sm text-white/40">{isOwner ? 'Créez un album pour regrouper vos publications et vos photos.' : 'Aucun album pour l’instant.'}</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {albums.map(album => (
+            <button key={album.id} type="button" onClick={() => openAlbum(album.id)} className="group text-left">
+              <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-accent/20 to-surface-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {album.coverUrl ? <img src={album.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" /> : <span className="grid h-full place-items-center"><ImagePlus size={26} className="text-white/25" /></span>}
+                {album.isPrivate && <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-black/60"><Lock size={11} className="text-white/80" /></span>}
               </div>
-              {isOwner && openAlbum && (
-                <button
-                  onClick={() => setShowAddPub(true)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${btn} text-xs font-semibold text-white transition flex-shrink-0`}
-                >
-                  <ImagePlus size={13} /> Ajouter
-                </button>
-              )}
-              <button
-                onClick={() => { setOpenAlbum(null); setSelectedItemIdx(null) }}
-                className="text-white/40 hover:text-white transition flex-shrink-0"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Grille items */}
-            <div className="overflow-y-auto p-4 flex-1">
-              {loadingAlbum ? (
-                <div className="flex items-center justify-center h-40 text-white/30 text-sm">Chargement…</div>
-              ) : openAlbum && openAlbum.items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 gap-3 text-white/30">
-                  <FolderOpen size={32} />
-                  <p className="text-sm">{isOwner ? 'Ajoute des publications à cet album' : 'Cet album est vide'}</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {openAlbum?.items.map((item, idx) => {
-                    const pub = item.publication
-                    const mediaUrl = pub?.media ?? item.mediaUrl ?? ''
-                    const mediaType = pub?.mediaType ?? item.mediaType ?? 'image'
-                    const isImg = mediaType?.toLowerCase() === 'image'
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="relative aspect-square rounded-xl overflow-hidden bg-white/5 group cursor-pointer"
-                        onClick={() => setSelectedItemIdx(idx)}
-                      >
-                        {isImg ? (
-                          <Image src={mediaUrl} alt="" fill className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
-                        ) : (
-                          <>
-                            <video src={mediaUrl} className="w-full h-full object-cover" muted preload="metadata" />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="bg-black/50 rounded-full p-2">
-                                <Play size={16} className="text-white fill-white" />
-                              </div>
-                            </div>
-                          </>
-                        )}
-                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        {isOwner && (
-                          <button
-                            onClick={e => { e.stopPropagation(); handleRemoveItem(item.id) }}
-                            className="absolute top-1 right-1 bg-black/70 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Lightbox : visionneuse galerie ── */}
-      {selectedItemIdx !== null && openAlbum && openAlbum.items.length > 0 && (() => {
-        const items = openAlbum.items
-        const item  = items[selectedItemIdx]
-        if (!item) return null
-        const mediaUrl  = item.publication?.media ?? item.mediaUrl ?? ''
-        const mediaType = item.publication?.mediaType ?? item.mediaType ?? 'image'
-        const caption   = item.publication?.caption ?? item.caption ?? null
-        const isImg     = mediaType?.toLowerCase() === 'image'
-        const hasPrev   = selectedItemIdx > 0
-        const hasNext   = selectedItemIdx < items.length - 1
-
-        return (
-          <div
-            className="fixed inset-0 z-[220] bg-black/95 flex flex-col"
-            onClick={() => setSelectedItemIdx(null)}
-          >
-            {/* Header lightbox */}
-            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
-              <button
-                onClick={() => setSelectedItemIdx(null)}
-                className="flex items-center gap-1.5 text-white/60 hover:text-white transition text-sm"
-              >
-                <ChevronLeft size={18} /> Retour à l&apos;album
-              </button>
-              <span className="text-xs text-white/40">{selectedItemIdx + 1} / {items.length}</span>
-            </div>
-
-            {/* Media centré */}
-            <div className="flex-1 flex items-center justify-center relative px-12" onClick={e => e.stopPropagation()}>
-              {isImg ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={mediaUrl} alt={caption || ''} className="max-w-full max-h-full object-contain rounded-lg" />
-              ) : (
-                <video
-                  key={mediaUrl}
-                  src={mediaUrl}
-                  className="max-w-full max-h-full rounded-lg"
-                  controls
-                  autoPlay
-                  playsInline
-                />
-              )}
-
-              {/* Flèche gauche */}
-              {hasPrev && (
-                <button
-                  onClick={() => setSelectedItemIdx(i => (i ?? 1) - 1)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/90 rounded-full p-2.5 text-white transition"
-                >
-                  <ChevronLeft size={22} />
-                </button>
-              )}
-
-              {/* Flèche droite */}
-              {hasNext && (
-                <button
-                  onClick={() => setSelectedItemIdx(i => (i ?? 0) + 1)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/90 rounded-full p-2.5 text-white transition"
-                >
-                  <ChevronRight size={22} />
-                </button>
-              )}
-            </div>
-
-            {/* Caption + dots */}
-            <div className="flex-shrink-0 px-4 pb-4 space-y-2" onClick={e => e.stopPropagation()}>
-              {caption && <p className="text-sm text-white/60 text-center">{caption}</p>}
-              {items.length > 1 && (
-                <div className="flex justify-center gap-1.5">
-                  {items.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedItemIdx(i)}
-                      className={`rounded-full transition-all ${i === selectedItemIdx ? 'bg-white w-4 h-1.5' : 'bg-white/30 w-1.5 h-1.5'}`}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* ── Modal : choisir une publication à ajouter ── */}
-      {showAddPub && openAlbum && (
-        <div className="fixed inset-0 z-[210] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowAddPub(false)}>
-          <div className="w-full sm:max-w-lg bg-neutral-950 border border-white/10 rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Ajouter une publication</h3>
-              <button onClick={() => setShowAddPub(false)} className="text-neutral-400 hover:text-white"><X size={18} /></button>
-            </div>
-
-            {publications.length === 0 ? (
-              <p className="text-sm text-white/40 text-center py-6">Aucune publication disponible</p>
-            ) : (
-              <div className="grid grid-cols-4 gap-2 overflow-y-auto flex-1">
-                {publications.map(pub => {
-                  const inAlbum = alreadyInAlbum.has(pub.id)
-                  const isImg   = pub.mediaType?.toLowerCase() === 'image'
-                  return (
-                    <button
-                      key={pub.id}
-                      disabled={inAlbum || addingPubId === pub.id}
-                      onClick={() => handleAddPubToAlbum(pub.id)}
-                      className={`relative aspect-square rounded-lg overflow-hidden group ${inAlbum ? 'opacity-40 cursor-not-allowed' : 'hover:ring-2 hover:ring-white/40'} transition`}
-                    >
-                      {isImg ? (
-                        <Image src={pub.media} alt={pub.title} fill className="object-cover" unoptimized />
-                      ) : (
-                        <div className="w-full h-full bg-black/40 flex items-center justify-center">
-                          <Play size={18} className="text-white/60 fill-white/60" />
-                        </div>
-                      )}
-                      {inAlbum && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          <span className="text-[9px] font-bold text-white bg-black/60 rounded px-1">Déjà ajouté</span>
-                        </div>
-                      )}
-                      {addingPubId === pub.id && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                          <span className="text-[9px] text-white/60">…</span>
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+              <p className="mt-2 truncate text-sm font-semibold text-white">{album.title}</p>
+              <p className="text-xs text-white/45">{album.itemCount} élément{album.itemCount > 1 ? 's' : ''}</p>
+            </button>
+          ))}
         </div>
       )}
     </div>
   )
 }
 
-// ─── Carte album ──────────────────────────────────────────────────────────────
+/* ── Fenêtre « Ajouter à l'album » : mes publications, où je suis identifié, ou des photos envoyées ── */
+function AddToAlbumModal({ album, profileId, onClose, onAdded }: { album: AlbumDetail; profileId: number; onClose: () => void; onAdded: () => void }) {
+  const { notify } = useFeedback()
+  const [source, setSource] = useState<Source>('mine')
+  const [pubs, setPubs] = useState<PubCardData[] | null>(null)
+  const [picked, setPicked] = useState<number[]>([])
+  const [saving, setSaving] = useState(false)
+  const [progress, setProgress] = useState<string | null>(null)
+  const inAlbum = new Set(album.items.map(i => i.publication?.id).filter(Boolean) as number[])
 
-function AlbumCard({
-  album, isOwner, onOpen, onDelete,
-}: {
-  album: AlbumSummary
-  isOwner: boolean
-  onOpen: (id: number) => void
-  onDelete: (id: number, e: React.MouseEvent) => void
-}) {
-  const isImg = album.coverType?.toLowerCase() === 'image'
+  useEffect(() => {
+    if (source === 'upload') return
+    setPubs(null); setPicked([])
+    apiFetch(apiUrl(source === 'mine' ? `publications/profile/${profileId}?limit=50` : `publications/tagged/${profileId}?limit=50`))
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setPubs(d?.publications ?? []))
+      .catch(() => setPubs([]))
+  }, [source, profileId])
 
-  return (
-    <div
-      onClick={() => onOpen(album.id)}
-      className="group cursor-pointer rounded-xl overflow-hidden border border-white/10 bg-black/30"
-    >
-      {/* Cover */}
-      <div className="relative aspect-square bg-white/5">
-        {album.coverUrl ? (
-          isImg ? (
-            <Image src={album.coverUrl} alt={album.title} fill className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
+  const toggle = (id: number) => setPicked(list => list.includes(id) ? list.filter(x => x !== id) : [...list, id])
+
+  const addPicked = async () => {
+    if (!picked.length) return
+    setSaving(true)
+    let ok = 0
+    for (const id of picked) {
+      const res = await apiFetch(apiUrl(`albums/${album.id}/items`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ publicationId: id }) }).catch(() => null)
+      if (res?.ok) ok++
+    }
+    setSaving(false)
+    notify(ok ? `${ok} publication${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''} à l’album.` : 'Aucune publication ajoutée.', ok ? 'success' : 'error')
+    onAdded(); onClose()
+  }
+
+  const uploadPhotos = async (files: FileList | null) => {
+    const list = Array.from(files || []).filter(f => f.type.startsWith('image/'))
+    if (!list.length) return
+    setSaving(true)
+    let ok = 0
+    for (const [i, file] of list.entries()) {
+      setProgress(`Envoi ${i + 1} / ${list.length}…`)
+      const up = await uploadToStorage(file, { folder: 'media' }).catch(() => null)
+      const d = up?.ok ? await up.json() : null
+      if (!d?.url) continue
+      const res = await apiFetch(apiUrl(`albums/${album.id}/items`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mediaUrl: d.url, mediaType: 'image' }) }).catch(() => null)
+      if (res?.ok) ok++
+    }
+    setSaving(false); setProgress(null)
+    notify(ok ? `${ok} photo${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''} à l’album.` : 'Aucune photo n’a pu être ajoutée.', ok ? 'success' : 'error')
+    onAdded(); onClose()
+  }
+
+  const TABS: { key: Source; label: string }[] = [
+    { key: 'mine', label: 'Mes publications' },
+    { key: 'tagged', label: 'Où je suis identifié' },
+    { key: 'upload', label: 'Envoyer des photos' },
+  ]
+
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-labelledby="album-add-title" onClick={e => e.stopPropagation()}
+        className="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/12 bg-surface sm:rounded-3xl">
+        <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-4">
+          <h2 id="album-add-title" className="truncate text-base font-bold text-white">Ajouter à « {album.title} »</h2>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/[0.07] text-white/60 hover:text-white"><X size={16} /></button>
+        </div>
+        <div className="flex gap-1 overflow-x-auto border-b border-white/[0.08] px-3 py-2">
+          {TABS.map(t => (
+            <button key={t.key} type="button" onClick={() => setSource(t.key)} aria-pressed={source === t.key}
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${source === t.key ? 'bg-accent text-white' : 'text-white/55 hover:text-white'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {source === 'upload' ? (
+            <label className="grid cursor-pointer justify-items-center gap-3 rounded-2xl border border-dashed border-white/15 px-5 py-12 text-center transition hover:border-accent/50">
+              <ImagePlus size={28} className="text-white/40" />
+              <span className="text-sm font-semibold text-white">{progress || 'Choisir des photos'}</span>
+              <span className="text-xs text-white/45">Depuis votre téléphone ou votre ordinateur. Elles restent dans l’album, sans devenir des publications.</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={saving} className="hidden" onChange={e => uploadPhotos(e.target.files)} />
+            </label>
+          ) : pubs === null ? (
+            <p className="py-10 text-center text-sm text-white/40">Chargement…</p>
+          ) : pubs.length === 0 ? (
+            <p className="py-10 text-center text-sm text-white/45">{source === 'mine' ? 'Vous n’avez pas encore de publication.' : 'Vous n’êtes identifié dans aucune publication pour l’instant.'}</p>
           ) : (
-            <>
-              <video src={album.coverUrl} className="w-full h-full object-cover" muted preload="metadata" />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <Play size={18} className="text-white/60 fill-white/60" />
-              </div>
-            </>
-          )
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/20">
-            <FolderOpen size={32} />
-          </div>
-        )}
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {pubs.map(p => {
+                const already = inAlbum.has(p.id)
+                const on = picked.includes(p.id)
+                return (
+                  <button key={p.id} type="button" disabled={already} onClick={() => toggle(p.id)} aria-pressed={on}
+                    className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-black transition ${on ? 'border-accent' : 'border-transparent'} disabled:opacity-40`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {isVideo(p.media, p.mediaType) ? <video src={p.media} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : <img src={p.media} alt={p.title} loading="lazy" className="h-full w-full object-cover" />}
+                    {(on || already) && <span className={`absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full ${already ? 'bg-white/30' : 'bg-accent'}`}><Check size={13} className="text-white" /></span>}
+                    {already && <span className="absolute inset-x-0 bottom-0 bg-black/70 py-1 text-center text-[10px] text-white/80">Déjà dans l’album</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
-        {/* Overlay + actions owner */}
-        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-
-        {/* Bouton supprimer */}
-        {isOwner && (
-          <button
-            onClick={e => onDelete(album.id, e)}
-            className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
-          >
-            <Trash2 size={12} />
-          </button>
-        )}
-
-        {/* Badge privé */}
-        {album.isPrivate && (
-          <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 bg-black/60 text-white/60 rounded-full px-1.5 py-0.5 text-[10px]">
-            <Lock size={9} /> Privé
+        {source !== 'upload' && (
+          <div className="flex items-center justify-between gap-3 border-t border-white/[0.08] px-5 py-3">
+            <span className="text-xs text-white/50">{picked.length ? `${picked.length} sélectionnée${picked.length > 1 ? 's' : ''}` : 'Touchez les publications à ajouter'}</span>
+            <button type="button" onClick={addPicked} disabled={!picked.length || saving} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40">
+              {saving ? 'Ajout…' : 'Ajouter à l’album'}
+            </button>
           </div>
         )}
       </div>
+    </div>,
+    document.body,
+  )
+}
 
-      {/* Infos */}
-      <div className="px-2.5 py-2">
-        <p className="text-xs font-semibold truncate">{album.title}</p>
-        <p className="text-[10px] text-white/40 mt-0.5">{album.itemCount} élément{album.itemCount !== 1 ? 's' : ''}</p>
-      </div>
-    </div>
+/* ── Photo envoyée directement dans l'album, en grand ── */
+function MediaViewer({ item, onClose }: { item: AlbumItem; onClose: () => void }) {
+  const url = item.mediaUrl || ''
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4" onClick={onClose}>
+      <button type="button" onClick={onClose} aria-label="Fermer" className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+1rem)] grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"><X size={20} /></button>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {isVideo(url, item.mediaType) ? <video src={url} controls autoPlay playsInline className="max-h-[88dvh] max-w-full rounded-xl" onClick={e => e.stopPropagation()} /> : <img src={url} alt={item.caption || ''} className="max-h-[88dvh] max-w-full rounded-xl object-contain" onClick={e => e.stopPropagation()} />}
+    </div>,
+    document.body,
   )
 }

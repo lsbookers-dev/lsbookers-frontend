@@ -12,7 +12,39 @@ import LsIcon from '@/components/ui/LsIcon'
 import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
 
 type Item = { id: number; label: string; done: boolean }
-type Checklist = { id: number; items: Item[] }
+type RemindMode = 'NONE' | 'J7_J1' | 'J1' | 'J7' | 'CUSTOM'
+type Checklist = { id: number; items: Item[]; remindMode?: RemindMode; remindAt?: string | null }
+
+// Rappel choisi par l'utilisateur (16/11/2026)
+const REMIND_OPTIONS: { value: RemindMode; label: string }[] = [
+  { value: 'J7_J1', label: 'Une semaine avant et la veille' },
+  { value: 'J1', label: 'La veille seulement' },
+  { value: 'J7', label: 'Une semaine avant seulement' },
+  { value: 'CUSTOM', label: 'À une date choisie' },
+  { value: 'NONE', label: 'Aucun rappel' },
+]
+// Valeur d'un champ date-heure local à partir d'une date ISO
+const localInput = (iso?: string | null) => {
+  if (!iso) return ''
+  const d = new Date(iso); const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function ReminderPicker({ mode, at, onChange, disabled }: { mode: RemindMode; at: string; onChange: (mode: RemindMode, at: string) => void; disabled?: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs text-white/55">
+      <label htmlFor="checklist-reminder" className="flex items-center gap-1.5"><LsIcon name="bell" size={14} tone="muted" />Rappel</label>
+      <select id="checklist-reminder" value={mode} disabled={disabled} onChange={e => onChange(e.target.value as RemindMode, at)}
+        className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white/85 outline-none focus:border-accent/50">
+        {REMIND_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      {mode === 'CUSTOM' && (
+        <input type="datetime-local" value={at} disabled={disabled} onChange={e => onChange(mode, e.target.value)} aria-label="Date et heure du rappel"
+          className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white/85 outline-none focus:border-accent/50" />
+      )}
+    </div>
+  )
+}
 
 export default function EventChecklist({ eventId, compact = false }: { eventId: number; compact?: boolean }) {
   const { notify, confirm } = useFeedback()
@@ -20,6 +52,9 @@ export default function EventChecklist({ eventId, compact = false }: { eventId: 
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [newLabel, setNewLabel] = useState('')
+  // Rappel choisi avant de créer la checklist
+  const [draftMode, setDraftMode] = useState<RemindMode>('J7_J1')
+  const [draftAt, setDraftAt] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -37,11 +72,23 @@ export default function EventChecklist({ eventId, compact = false }: { eventId: 
     return res.json()
   }
 
+  const reminderBody = (mode: RemindMode, at: string) => JSON.stringify({ remindMode: mode, remindAt: mode === 'CUSTOM' && at ? new Date(at).toISOString() : undefined })
+
   const create = async () => {
+    if (draftMode === 'CUSTOM' && !draftAt) { notify('Choisissez la date et l’heure du rappel.', 'error'); return }
     setBusy(true)
-    const data = await call('', { method: 'POST' }, 'Impossible d’ajouter la checklist.')
+    const data = await call('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: reminderBody(draftMode, draftAt) }, 'Impossible d’ajouter la checklist.')
     if (data) setChecklist(data.checklist)
     setBusy(false)
+  }
+
+  // Changer le rappel d'une checklist existante (une date choisie s'enregistre une fois remplie)
+  const changeReminder = async (mode: RemindMode, at: string) => {
+    if (!checklist) return
+    setChecklist({ ...checklist, remindMode: mode, remindAt: mode === 'CUSTOM' && at ? new Date(at).toISOString() : null })
+    if (mode === 'CUSTOM' && !at) return
+    const data = await call('/reminder', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: reminderBody(mode, at) }, 'Impossible de changer le rappel.')
+    if (data) { setChecklist(data.checklist); notify(mode === 'NONE' ? 'Aucun rappel pour cette checklist.' : 'Rappel enregistré.') }
   }
 
   const remove = async () => {
@@ -78,8 +125,9 @@ export default function EventChecklist({ eventId, compact = false }: { eventId: 
         <LsIcon name="booking" size={28} />
         <div>
           <p className="text-sm font-medium text-white/80">Pas de checklist pour cet événement</p>
-          <p className="mt-1 max-w-sm text-xs text-white/45">Ajoutez-en une pour suivre contrat, acompte, transport… Vous recevrez un rappel à J-7 et J-1 s&apos;il reste des choses à faire.</p>
+          <p className="mt-1 max-w-sm text-xs text-white/45">Ajoutez-en une pour suivre contrat, acompte, transport… Choisissez si vous voulez un rappel tant qu&apos;il reste des choses à faire.</p>
         </div>
+        <ReminderPicker mode={draftMode} at={draftAt} onChange={(m, a) => { setDraftMode(m); setDraftAt(a) }} />
         <button type="button" onClick={create} disabled={busy} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-50">
           {busy ? 'Ajout…' : 'Ajouter une checklist'}
         </button>
@@ -96,6 +144,7 @@ export default function EventChecklist({ eventId, compact = false }: { eventId: 
         <span className="text-xs font-semibold text-white/80">{done}/{total} terminé{done > 1 ? 's' : ''}</span>
         {!compact && <button type="button" onClick={remove} className="text-xs text-white/40 transition hover:text-red-300">Retirer la checklist</button>}
       </div>
+      {!compact && <ReminderPicker mode={checklist.remindMode || 'J7_J1'} at={localInput(checklist.remindAt)} onChange={changeReminder} />}
       <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
         <div className="h-full rounded-full bg-gradient-to-r from-accent to-gold transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
       </div>

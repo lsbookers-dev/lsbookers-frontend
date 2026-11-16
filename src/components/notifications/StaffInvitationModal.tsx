@@ -8,6 +8,7 @@ import SafeImage from '@/components/SafeImage'
 import LsIcon from '@/components/ui/LsIcon'
 import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
+import { isDateOnly } from '@/components/space/ui'
 
 type Invitation = {
   staffId: number; eventId: number; status: string; role: string; fee: number | null; notes: string | null
@@ -62,7 +63,7 @@ export default function StaffInvitationModal({ eventId, staffId, responding, onR
             <ul className="space-y-2 rounded-2xl border border-white/[0.09] bg-surface-2 p-4 text-sm text-white/80">
               <li className="flex items-start gap-2.5"><LsIcon name="stage" size={16} tone="accent" className="mt-0.5" /><span>Poste : <strong className="text-white">{inv.role}</strong></span></li>
               <li className="flex items-start gap-2.5"><LsIcon name="calendar" size={16} tone="accent" className="mt-0.5" />
-                <span className="capitalize">{dateLabel(inv.event.start)}{!inv.event.allDay && <span className="normal-case"> · {timeLabel(inv.event.start)}{inv.event.end ? ` – ${timeLabel(inv.event.end)}` : ''}</span>}</span>
+                <span className="capitalize">{dateLabel(inv.event.start)}{!inv.event.allDay && !isDateOnly(inv.event.start) && <span className="normal-case"> · {timeLabel(inv.event.start)}{inv.event.end ? ` – ${timeLabel(inv.event.end)}` : ''}</span>}</span>
               </li>
               <li className="flex items-start gap-2.5"><LsIcon name="pin" size={16} tone="accent" className="mt-0.5" /><span>{inv.event.lieu || 'Lieu non précisé'}</span></li>
               {inv.fee != null && (

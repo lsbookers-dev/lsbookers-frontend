@@ -261,7 +261,7 @@ function FinanceZoneContent({ organizer, ownerName }: { organizer: boolean; owne
           <LsIcon name="document" size={15} tone="inherit" />{exporting ? 'Préparation…' : 'Exporter en PDF pour la compta'}
         </button>
         <Link href="/space/invoices" className="inline-flex items-center gap-1.5 rounded-xl border border-gold/35 bg-gold/10 px-3 py-2 text-xs font-semibold text-gold-light transition hover:bg-gold/20">
-          <LsIcon name="payment" size={15} tone="inherit" />Devis et factures
+          <LsIcon name="document" size={15} tone="inherit" />Devis
         </Link>
         <span className="text-[11px] text-white/35">Montants indiqués dans vos bookings{organizer ? ' et votre agenda' : ''}, hors paiements en ligne.</span>
       </div>
