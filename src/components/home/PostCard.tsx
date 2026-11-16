@@ -79,11 +79,8 @@ export default function PostCard({ post, onLike, onOpenModal, currentUserId, isM
     }
   }
 
-  const feedLabel = post.feedType === 'suggestion'
-    ? 'À découvrir'
-    : post.feedType === 'trending'
-      ? 'En tendance'
-      : null
+  // Pas de mention « En tendance » sur les publications (retirée le 17/11/2026, demande d'Antho)
+  const feedLabel = post.feedType === 'suggestion' ? 'À découvrir' : null
 
   return (
     <article className="group relative overflow-hidden rounded-[1.4rem] border border-white/[0.1] bg-surface shadow-[0_28px_75px_rgba(0,0,0,.2)]">
