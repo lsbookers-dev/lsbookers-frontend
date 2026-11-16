@@ -50,7 +50,7 @@ function avatarUrl(b: BookingItem2): string | null {
 function TabPayment({ booking }: { booking: BookingDetail }) {
   const u = booking.target?.user
   const otherName = u?.pseudo || [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'la personne bookée'
-  return <BookingPaymentPanel bookingId={booking.id} bookingStatus={booking.status} otherName={otherName} directStatus={booking.paymentStatus} />
+  return <BookingPaymentPanel bookingId={booking.id} bookingStatus={booking.status} otherName={otherName} />
 }
 
 // Contrat — PDF propres à ce booking, déposés par l'organisateur ou la personne bookée
@@ -482,15 +482,8 @@ export default function EventTabBookings(p: Props) {
               {p.linkedBooking?.fee ? `${Number(p.linkedBooking.fee).toLocaleString('fr-FR')} €` : '—'}
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-white/50">Statut</span>
-            {(() => {
-              const pay = PAYMENT_LABEL[p.linkedBooking?.paymentStatus || 'UNPAID']
-              return <span className={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${pay.cls}`}>{pay.label}</span>
-            })()}
-          </div>
         </div>
-        <p className="text-center text-[11px] text-white/40">Le paiement est géré par l&apos;organisateur.</p>
+        <p className="text-center text-[11px] text-white/40">Paiement en direct avec l&apos;organisateur, hors LS Bookers.</p>
       </div>
     )
   }

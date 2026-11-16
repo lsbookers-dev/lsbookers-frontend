@@ -1,7 +1,7 @@
 // agenda/BookingsPanel.tsx — Panneau "Mes Bookings"
 
 import { BookingItem } from './types'
-import { BkStatusBadge, PayBadge } from './helpers'
+import { BkStatusBadge } from './helpers'
 import { BellRing, CalendarDays, Clock3, MessageCircle, Send, WalletCards } from 'lucide-react'
 
 interface BookingsPanelProps {
@@ -13,20 +13,18 @@ interface BookingsPanelProps {
   cancelNoteFor: number | null
   cancelNoteText: string
   cancelRequestingId: number | null
-  updatingPayment: number | null
   setPanelTab: (tab: 'pending' | 'upcoming' | 'past' | 'cancelled') => void
   setCancelNoteFor: (id: number | null) => void
   setCancelNoteText: (text: string) => void
   cancelBooking: (id: number) => void
   requestCancellation: (id: number) => void
-  updatePaymentStatus: (id: number, status: string) => void
 }
 
 export default function BookingsPanel({
   panelData, panelLoading, panelTab, profileId,
-  cancelingId, cancelNoteFor, cancelNoteText, cancelRequestingId, updatingPayment,
+  cancelingId, cancelNoteFor, cancelNoteText, cancelRequestingId,
   setPanelTab, setCancelNoteFor, setCancelNoteText,
-  cancelBooking, requestCancellation, updatePaymentStatus,
+  cancelBooking, requestCancellation,
 }: BookingsPanelProps) {
   const received = (panelData?.received || []) as BookingItem[]
   const sent     = (panelData?.sent     || []) as BookingItem[]
@@ -149,34 +147,6 @@ export default function BookingsPanel({
                       </div>
                       <BkStatusBadge status={b.status} awaitingArtist={!!b.awaitingArtistSince} />
                     </div>
-
-                    {b.status === 'ACCEPTED' && (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <PayBadge status={b.paymentStatus} />
-                        {/* Boutons changement statut paiement — organisateur seulement */}
-                        {b.direction === 'sent' && (
-                          <div className="flex gap-1 flex-wrap">
-                            {[
-                              { key: 'UNPAID',  label: 'Non payé',  cls: 'bg-white/5 text-white/40' },
-                              { key: 'DEPOSIT', label: 'Acompte',   cls: 'bg-amber-600/20 text-amber-300' },
-                              { key: 'PAID',    label: 'Payé',      cls: 'bg-green-600/20 text-green-300' },
-                              { key: 'DIRECT',  label: 'En direct', cls: 'bg-blue-600/20 text-blue-300' },
-                            ].map(opt => (
-                              <button
-                                key={opt.key}
-                                onClick={() => updatePaymentStatus(b.id, opt.key)}
-                                disabled={updatingPayment === b.id || b.paymentStatus === opt.key}
-                                className={`min-h-8 rounded-full border border-white/10 px-2.5 text-[10px] transition disabled:opacity-40 ${
-                                  b.paymentStatus === opt.key ? 'opacity-40 cursor-default' : 'hover:brightness-125'
-                                } ${opt.cls}`}
-                              >
-                                {opt.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     {/* Lien conversation */}
                     {b.conversationId && (

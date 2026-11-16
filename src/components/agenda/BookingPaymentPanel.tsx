@@ -54,14 +54,8 @@ const STATUS: Record<NonNullable<Summary['payment']>['status'], { label: string;
 }
 
 // Statut suivi à la main pour un paiement en direct
-const DIRECT_STATUS: Record<string, { label: string; tone: string }> = {
-  UNPAID: { label: 'Non payé', tone: 'border-amber-400/25 bg-amber-400/10 text-amber-200' },
-  DEPOSIT: { label: 'Acompte versé', tone: 'border-accent/30 bg-accent/10 text-accent-light' },
-  PAID: { label: 'Payé', tone: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200' },
-  DIRECT: { label: 'Payé en direct', tone: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200' },
-}
 
-export default function BookingPaymentPanel({ bookingId, bookingStatus, otherName, directStatus }: { bookingId: number; bookingStatus?: string; otherName: string; directStatus?: string | null }) {
+export default function BookingPaymentPanel({ bookingId, bookingStatus, otherName }: { bookingId: number; bookingStatus?: string; otherName: string }) {
   const { notify, confirm } = useFeedback()
   const [data, setData] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -141,12 +135,9 @@ export default function BookingPaymentPanel({ bookingId, bookingStatus, otherNam
         )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="inline-flex min-h-7 items-center rounded-full border border-white/10 bg-white/5 px-3 text-xs text-white/70">
-            {data.mode === 'ONLINE' ? 'Paiement en ligne via LS Bookers' : 'Paiement en direct'}
+            {data.mode === 'ONLINE' ? 'Paiement en ligne via LS Bookers' : 'Paiement en direct, hors LS Bookers'}
           </span>
           {p && <span className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-medium ${STATUS[p.status].tone}`}>{STATUS[p.status].label}</span>}
-          {data.mode === 'DIRECT' && directStatus && DIRECT_STATUS[directStatus] && (
-            <span className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-medium ${DIRECT_STATUS[directStatus].tone}`}>{DIRECT_STATUS[directStatus].label}</span>
-          )}
         </div>
       </div>
 

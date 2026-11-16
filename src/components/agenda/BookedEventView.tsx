@@ -16,7 +16,7 @@ import { apiFetch } from '@/utils/auth'
 import type { BookingContract, BookingDetail, BookingLogistic, DocumentItem } from './types'
 import BookingPaymentPanel from './BookingPaymentPanel'
 import { useFeedback, apiErrorMessage } from '@/components/ui/Feedback'
-import { PAYMENT_LABEL, TabContrat, TabLogement, TabMedia, TabNotes } from './EventTabBookings'
+import { TabContrat, TabLogement, TabMedia, TabNotes } from './EventTabBookings'
 
 type StaffViewData = {
   event: {
@@ -144,7 +144,6 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
   const ev = data?.event
   const docs = ev?.documents || []
   const fee = detail?.fee ?? data?.booking?.fee ?? data?.staffFee ?? null
-  const pay = PAYMENT_LABEL[detail?.paymentStatus || data?.booking?.paymentStatus || 'UNPAID'] || PAYMENT_LABEL.UNPAID
   const organizerName = data?.organizer?.name || 'l\'organisateur'
 
   const noBooking = (
@@ -275,7 +274,7 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
                 {detail ? (
                   <>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-violet-100/60">Paiement</p>
-                    <BookingPaymentPanel bookingId={detail.id} bookingStatus={detail.status} otherName={organizerName} directStatus={detail.paymentStatus} />
+                    <BookingPaymentPanel bookingId={detail.id} bookingStatus={detail.status} otherName={organizerName} />
                   </>
                 ) : (
                   <div className="space-y-3 rounded-2xl border border-violet-300/15 bg-white/[0.035] p-4">
@@ -283,11 +282,7 @@ export default function BookedEventView({ eventId, api, onClose }: Props) {
                       <span className="flex items-center gap-1.5 text-xs text-white/55"><Euro className="h-3.5 w-3.5" aria-hidden="true" /> Cachet convenu</span>
                       <span className="text-base font-semibold text-white">{fee != null ? `${Number(fee).toLocaleString('fr-FR')} €` : '—'}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-white/55">Statut du paiement</span>
-                      <span className={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${pay.cls}`}>{pay.label}</span>
-                    </div>
-                    <p className="text-[11px] text-white/40">Le statut du paiement est mis à jour par {organizerName}.</p>
+                    <p className="text-[11px] text-white/40">Paiement en direct avec {organizerName}, hors LS Bookers.</p>
                   </div>
                 )}
                 <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-violet-100/60">Contrat</p>

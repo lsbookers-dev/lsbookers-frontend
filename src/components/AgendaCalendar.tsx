@@ -193,7 +193,6 @@ export default function AgendaCalendar({
   const [linkedBooking, setLinkedBooking] = useState<LinkedBooking | null>(null)
 
   // Mise à jour statut paiement
-  const [updatingPayment, setUpdatingPayment] = useState<number | null>(null)
 
   /* ── fetchData ── */
   const fetchData = useCallback(async () => {
@@ -726,20 +725,6 @@ export default function AgendaCalendar({
     } catch {}
   }, [API, selectedEventId])
 
-  /* ── updatePaymentStatus ── */
-  const updatePaymentStatus = useCallback(async (bookingId: number, paymentStatus: string) => {
-    setUpdatingPayment(bookingId)
-    try {
-      const res = await apiFetch(`${API}/api/events/booking-request/${bookingId}/payment-status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentStatus }),
-      })
-      if (res.ok) await refreshPanel()
-    } catch {}
-    finally { setUpdatingPayment(null) }
-  }, [API, refreshPanel])
-
   /* ── submitEventOffer (extrait de l'inline JSX) ── */
   const submitEventOffer = useCallback(async (form: EventOfferForm) => {
     setEventOfferError(null)
@@ -1045,13 +1030,11 @@ export default function AgendaCalendar({
           cancelNoteFor={cancelNoteFor}
           cancelNoteText={cancelNoteText}
           cancelRequestingId={cancelRequestingId}
-          updatingPayment={updatingPayment}
           setPanelTab={setPanelTab}
           setCancelNoteFor={setCancelNoteFor}
           setCancelNoteText={setCancelNoteText}
           cancelBooking={cancelBooking}
           requestCancellation={requestCancellation}
-          updatePaymentStatus={updatePaymentStatus}
         />
       )}
 

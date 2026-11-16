@@ -4,15 +4,16 @@ import { SettingRow, SettingsCard, SettingsTitle, Toggle } from '@/components/se
 import { useAccountSettings } from '@/components/settings/useAccountSettings'
 
 // Mêmes catégories que le serveur (backend/lib/notifPrefs.js)
-const CATEGORIES: { key: string; label: string; description: string; emailOnly?: boolean }[] = [
-  { key: 'bookings', label: 'Bookings', description: 'Demandes, réponses, annulations, éléments ajoutés, paiements' },
-  { key: 'messages', label: 'Messages', description: 'Par e-mail quand vous n’êtes pas sur le site (au plus un par heure et par conversation)', emailOnly: true },
-  { key: 'offers', label: 'Offres', description: 'Nouvelles offres et candidatures reçues' },
-  { key: 'events', label: 'Événements', description: 'Invitations dans une équipe, réponses, rappels de checklist' },
-  { key: 'reviews', label: 'Avis', description: 'Nouveaux avis, avis à laisser, réponses' },
-  { key: 'network', label: 'Réseau', description: 'Abonnés, J’aime, commentaires, identifications' },
-  { key: 'business', label: 'Gestion par une agence', description: 'Invitations d’une agence, réponses, fin de gestion, mise en pause du profil' },
-  { key: 'account', label: 'Abonnement et commandes', description: 'Votre abonnement et vos options achetées' },
+// Les e-mails sont réservés à l'essentiel : les catégories « noEmail » n'en envoient jamais (14/11/2026).
+// Les messages ne sont plus listés : ni cloche (pastille de « Messages »), ni e-mail.
+const CATEGORIES: { key: string; label: string; description: string; noEmail?: boolean }[] = [
+  { key: 'bookings', label: 'Bookings', description: 'Demandes, réponses, annulations, paiements. E-mail pour les demandes, réponses, annulations et paiements.' },
+  { key: 'business', label: 'Gestion par une agence', description: 'Invitations d’une agence, réponses, fin de gestion. E-mail pour une nouvelle invitation.' },
+  { key: 'offers', label: 'Offres', description: 'Nouvelles offres et candidatures reçues', noEmail: true },
+  { key: 'events', label: 'Événements', description: 'Invitations dans une équipe, réponses, rappels de checklist', noEmail: true },
+  { key: 'reviews', label: 'Avis', description: 'Nouveaux avis, avis à laisser, réponses', noEmail: true },
+  { key: 'network', label: 'Réseau', description: 'Abonnés, J’aime, commentaires, identifications', noEmail: true },
+  { key: 'account', label: 'Abonnement et commandes', description: 'Votre abonnement et vos options achetées', noEmail: true },
 ]
 
 /** Réglages › Notifications et e-mails */
@@ -22,7 +23,7 @@ export default function NotificationSettingsPage() {
 
   return (
     <>
-      <SettingsTitle title="Notifications et e-mails" description="Choisissez ce que vous recevez dans la cloche et par e-mail. Les e-mails de sécurité (connexion, mot de passe) sont toujours envoyés." />
+      <SettingsTitle title="Notifications et e-mails" description="Choisissez ce que vous recevez dans la cloche. Les e-mails sont réservés à l’essentiel : bookings, paiements et invitations d’agence. Les e-mails de sécurité (connexion, mot de passe) sont toujours envoyés." />
 
       <SettingsCard title="Par type">
         <div className="mb-2 hidden grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] gap-2 text-[11px] uppercase tracking-wider text-white/35 sm:grid">
@@ -40,25 +41,25 @@ export default function NotificationSettingsPage() {
               <span className="col-span-2 flex items-center gap-5 sm:col-span-2 sm:contents">
                 <span className="flex items-center gap-2 sm:justify-center">
                   <span className="text-xs text-white/45 sm:hidden">Cloche</span>
-                  {cat.emailOnly ? (
-                    <span className="text-xs text-white/25" title="Les messages s’affichent sur « Messages », pas dans la cloche">—</span>
-                  ) : (
-                    <Toggle
-                      label={`${cat.label} dans la cloche`}
-                      checked={!!prefs?.[cat.key]?.bell}
-                      disabled={!prefs}
-                      onChange={bell => update({ notifPrefs: { [cat.key]: { bell } } })}
-                    />
-                  )}
+                  <Toggle
+                    label={`${cat.label} dans la cloche`}
+                    checked={!!prefs?.[cat.key]?.bell}
+                    disabled={!prefs}
+                    onChange={bell => update({ notifPrefs: { [cat.key]: { bell } } })}
+                  />
                 </span>
                 <span className="flex items-center gap-2 sm:justify-center">
                   <span className="text-xs text-white/45 sm:hidden">E-mail</span>
-                  <Toggle
-                    label={`${cat.label} par e-mail`}
-                    checked={!!prefs?.[cat.key]?.email}
-                    disabled={!prefs}
-                    onChange={email => update({ notifPrefs: { [cat.key]: { email } } })}
-                  />
+                  {cat.noEmail ? (
+                    <span className="text-xs text-white/25" title="Pas d’e-mail pour ce type : seulement dans la cloche">—</span>
+                  ) : (
+                    <Toggle
+                      label={`${cat.label} par e-mail`}
+                      checked={!!prefs?.[cat.key]?.email}
+                      disabled={!prefs}
+                      onChange={email => update({ notifPrefs: { [cat.key]: { email } } })}
+                    />
+                  )}
                 </span>
               </span>
             </li>

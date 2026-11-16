@@ -31,7 +31,7 @@ const PUBLICATION_FORMATS = [
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 const MAX_FILES = 10
 const MAX_IMAGE_SIZE = 25 * 1024 * 1024
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 const VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/webm', 'video/ogg'])
 
@@ -188,7 +188,7 @@ export default function AddPublicationModal({ profileId, token, onClose, onPubli
       if (file.size > maxSize) {
         nextError = isImage
           ? 'Une image dépasse la limite de 25 Mo.'
-          : 'Une vidéo dépasse la limite de 100 Mo.'
+          : 'Une vidéo dépasse la limite de 500 Mo.'
         continue
       }
       // Les images passent par le CropModal — les vidéos sont ajoutées directement
