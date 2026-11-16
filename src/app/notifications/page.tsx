@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
 import LsIcon, { type LsIconName } from '@/components/ui/LsIcon'
 import NotificationRow from '@/components/notifications/NotificationRow'
+import StaffInvitationModal from '@/components/notifications/StaffInvitationModal'
 import PublicationModal from '@/components/PublicationModal'
 import BookingRequestModal from '@/components/notifications/BookingRequestModal'
 import type { PubCardData } from '@/components/PublicationCard'
@@ -46,6 +47,7 @@ export default function NotificationsPage() {
   const [pubModal, setPubModal] = useState<PubCardData | null>(null)
   const [bookingModal, setBookingModal] = useState<number | null>(null)
   const [responding, setResponding] = useState<Record<number, boolean>>({})
+  const [staffInvite, setStaffInvite] = useState<{ notifId: number; staffId: number; eventId: number } | null>(null)
 
   const listUrl = useCallback((before?: number | null) => {
     const params = new URLSearchParams({ limit: String(PAGE_SIZE) })
@@ -249,6 +251,7 @@ export default function NotificationsPage() {
                           onOpenPublication={openPublication}
                           onOpenBookingRequest={setBookingModal}
                           onStaffRespond={respondStaffInvitation}
+                          onOpenStaffInvitation={(notifId, staffId, eventId) => setStaffInvite({ notifId, staffId, eventId })}
                           responding={!!responding[item.lead.id]}
                           onDelete={deleteNotifs}
                         />
@@ -280,6 +283,15 @@ export default function NotificationsPage() {
       {/* Publication ouverte depuis une notification (J'aime, commentaire, identification) */}
       {pubModal && (
         <PublicationModal pub={pubModal} onClose={() => setPubModal(null)} onCountChange={() => {}} />
+      )}
+      {staffInvite && (
+        <StaffInvitationModal
+          eventId={staffInvite.eventId}
+          staffId={staffInvite.staffId}
+          responding={!!responding[staffInvite.notifId]}
+          onRespond={async response => { await respondStaffInvitation(staffInvite.notifId, staffInvite.staffId, staffInvite.eventId, response); setStaffInvite(null) }}
+          onClose={() => setStaffInvite(null)}
+        />
       )}
     </main>
   )

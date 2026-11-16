@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { X, Tag, UserMinus, Search } from 'lucide-react'
 import type { PubTag } from './PublicationCard'
@@ -102,7 +103,8 @@ export default function TagModal({ pubId, initialTags, onClose, onTagsChange }: 
   const acceptedTags = tags.filter(t => t.status === 'ACCEPTED')
   const pendingTags  = tags.filter(t => t.status === 'PENDING')
 
-  return (
+  // Affichée au niveau de la page : un bloc à effet de flou (profil) enfermerait la fenêtre
+  return createPortal(
     <div
       className="fixed inset-0 z-[90] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
@@ -240,5 +242,5 @@ export default function TagModal({ pubId, initialTags, onClose, onTagsChange }: 
         </div>
       </div>
     </div>
-  )
+  , document.body)
 }

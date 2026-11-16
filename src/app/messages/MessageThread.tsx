@@ -277,7 +277,7 @@ export default function MessageThread({
           </div>
         )}
         {otherParticipant && (() => {
-          const profileLink = getProfileLink(otherParticipant.role, otherParticipant.id)
+          const profileLink = otherParticipant.deleted ? null : getProfileLink(otherParticipant.role, otherParticipant.id)
           const inner = (
             <div className="flex items-center gap-3 min-w-0 flex-1 group">
               <Avatar src={otherParticipant.profile?.avatar || ''} alt={otherParticipant.name} size={38} />
@@ -759,7 +759,12 @@ export default function MessageThread({
         </div>
       )}
 
-      {/* Zone de saisie */}
+      {/* Zone de saisie (remplacée par un message si l'interlocuteur a supprimé son compte) */}
+      {otherParticipant?.deleted ? (
+        <div className="lsb-message-composer-wrap shrink-0 px-4 pb-4 pt-2">
+          <p className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-center text-sm text-white/55">Ce membre a supprimé son compte : vous ne pouvez plus lui écrire.</p>
+        </div>
+      ) : (
       <div className="lsb-message-composer-wrap px-4 pb-4 pt-2 shrink-0">
         <div className="lsb-message-composer flex items-end gap-2 rounded-2xl border border-white/[0.08] backdrop-blur-sm px-3 py-2.5 shadow-lg shadow-black/20 focus-within:border-violet-500/30 transition-colors">
           <textarea
@@ -820,6 +825,7 @@ export default function MessageThread({
           ? <p className="text-[10px] text-white/50 mt-1.5 text-center tracking-wide" role="status">Envoi du fichier… {uploadPercent} %</p>
           : <p className="hidden md:block text-[10px] text-white/10 mt-1.5 text-center tracking-wide">Entrée pour envoyer · Shift+Entrée pour nouvelle ligne</p>}
       </div>
+      )}
 
       {/* Modal offre partagée */}
       {selectedSharedOffer && (

@@ -15,6 +15,7 @@ import { useUnreadCounts, refreshUnreadCounts } from '@/hooks/useUnreadCounts'
 import PublicationModal from './PublicationModal'
 import type { PubCardData } from './PublicationCard'
 import NotificationRow from './notifications/NotificationRow'
+import StaffInvitationModal from './notifications/StaffInvitationModal'
 import BookingRequestModal from './notifications/BookingRequestModal'
 import { buildFeed } from '@/lib/notificationFeed'
 import LsIcon from '@/components/ui/LsIcon'
@@ -76,6 +77,7 @@ export default function Header() {
   const [notifLoading, setNotifLoading] = useState(false)
   const [pubModal, setPubModal]         = useState<PubCardData | null>(null)
   const [bookingModal, setBookingModal] = useState<number | null>(null)
+  const [staffInvite, setStaffInvite] = useState<{ notifId: number; staffId: number; eventId: number } | null>(null)
   const [respondingStaff, setRespondingStaff] = useState<Record<number, boolean>>({})
 
   // Pastille de la cloche (compteur partagé du site) ; à zéro tant que la liste est ouverte
@@ -283,6 +285,7 @@ export default function Header() {
                                     onOpenBookingRequest={id => { setNotifOpen(false); setBookingModal(id) }}
                                     onNavigate={() => setNotifOpen(false)}
                                     onStaffRespond={respondStaffInvitation}
+                                    onOpenStaffInvitation={(notifId, staffId, eventId) => { setNotifOpen(false); setStaffInvite({ notifId, staffId, eventId }) }}
                                     responding={!!respondingStaff[item.lead.id]}
                                     onDelete={deleteNotifs}
                                   />
@@ -386,6 +389,15 @@ export default function Header() {
 
       {/* Demande de booking ouverte depuis une notification : répondre sans ouvrir la conversation */}
       {bookingModal && <BookingRequestModal id={bookingModal} onClose={() => setBookingModal(null)} />}
+      {staffInvite && (
+        <StaffInvitationModal
+          eventId={staffInvite.eventId}
+          staffId={staffInvite.staffId}
+          responding={!!respondingStaff[staffInvite.notifId]}
+          onRespond={async response => { await respondStaffInvitation(staffInvite.notifId, staffInvite.staffId, staffInvite.eventId, response); setStaffInvite(null) }}
+          onClose={() => setStaffInvite(null)}
+        />
+      )}
 
       {/* Modal publication ouverte depuis une notification */}
       {pubModal && (

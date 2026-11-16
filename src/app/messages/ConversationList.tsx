@@ -119,7 +119,7 @@ export default function ConversationList({
             </div>
             <div className="flex items-center justify-between gap-2 mt-0.5">
               <p className={`text-xs truncate ${isUnread ? 'text-white/60' : 'text-white/30'}`}>
-                {conv.lastMessage ? stripLeadingEmoji(conv.lastMessage) : <span className="italic text-white/20">Nouvelle conversation</span>}
+                {conv.lastMessage ? stripLeadingEmoji(conv.lastMessage) : conv.participants.some(p => p.deleted) ? <span className="italic text-white/30">Compte supprimé</span> : <span className="italic text-white/20">Nouvelle conversation</span>}
               </p>
               <button onClick={(e) => deleteConversation(conv.id, e)} disabled={deletingId === conv.id}
                 aria-label={`Supprimer la conversation avec ${other?.name || 'cet utilisateur'}`}

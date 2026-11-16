@@ -21,6 +21,8 @@ type Props = {
   /** Après un clic qui change de page (pour refermer la cloche) */
   onNavigate?: () => void
   onStaffRespond?: (notifId: number, staffId: number, eventId: number, response: 'ACCEPT' | 'REFUSE') => void
+  /** Fenêtre de l'invitation d'équipe (poste, date, lieu, cachet, message, Accepter / Refuser) */
+  onOpenStaffInvitation?: (notifId: number, staffId: number, eventId: number) => void
   responding?: boolean
   /** Supprimer la notification (ou tout le groupe) */
   onDelete?: (ids: number[]) => void
@@ -28,7 +30,7 @@ type Props = {
 
 const BUTTON = 'inline-flex items-center rounded-lg border px-2.5 py-1 font-medium transition'
 
-export default function NotificationRow({ item, compact = false, onOpenPublication, onOpenBookingRequest, onNavigate, onStaffRespond, responding, onDelete }: Props) {
+export default function NotificationRow({ item, compact = false, onOpenPublication, onOpenBookingRequest, onNavigate, onStaffRespond, onOpenStaffInvitation, responding, onDelete }: Props) {
   const n = item.lead
   const cfg = notificationType(n.type)
   const target = notificationTarget(n)
@@ -71,7 +73,13 @@ export default function NotificationRow({ item, compact = false, onOpenPublicati
           ) : n.staffStatus === 'CANCELLED' ? (
             <span className={`mt-1.5 flex items-center gap-1 text-red-400 ${small}`}><LsIcon name="close" tone="inherit" size={13} />Invitation refusée</span>
           ) : (
-            <span className="mt-2 flex gap-1.5">
+            <span className="mt-2 flex flex-wrap gap-1.5">
+              {onOpenStaffInvitation && (
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); onOpenStaffInvitation(n.id, n.staffId!, n.eventId!) }}
+                  className={`${BUTTON} ${small} border-accent/50 text-accent-light hover:bg-accent/10`}>
+                  Voir l&apos;invitation
+                </button>
+              )}
               <button type="button" disabled={responding} onClick={e => { e.preventDefault(); e.stopPropagation(); onStaffRespond?.(n.id, n.staffId!, n.eventId!, 'ACCEPT') }}
                 className={`${BUTTON} ${small} border-accent bg-accent text-white hover:bg-accent-strong disabled:opacity-40`}>
                 {responding ? '…' : 'Accepter'}

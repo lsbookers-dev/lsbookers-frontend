@@ -15,6 +15,9 @@ import LsIcon from '@/components/ui/LsIcon'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
+type DateMode = '' | 'exact' | 'period'
+const EMPTY_FILTERS = { type: '', specialty: '', location: '', country: '', dateMode: '' as DateMode, dateFrom: '', dateTo: '' }
+
 /* ─── Contenu principal (nécessite useSearchParams) ─────── */
 function OffersInner() {
   const router = useRouter()
@@ -31,9 +34,7 @@ function OffersInner() {
   const queryRef = useRef('')
   const requestIdRef = useRef(0)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const [filters, setFilters]           = useState({
-    type: '', specialty: '', location: '', country: '',
-  })
+  const [filters, setFilters]           = useState(EMPTY_FILTERS)
   const [forMe, setForMe]               = useState(false)
   const [filtersOpen, setFiltersOpen]   = useState(false)
   const [userSpecialties, setUserSpec]  = useState<string[]>([])
@@ -41,7 +42,7 @@ function OffersInner() {
   // Organisateurs, et prestataires qui cherchent un partenaire
   const canPublish   = user?.role === 'ORGANIZER' || user?.role === 'PROVIDER'
   const canFilterMe  = user?.role === 'ARTIST' || user?.role === 'PROVIDER'
-  const activeFilterCount = Object.values(filters).filter(Boolean).length
+  const activeFilterCount = [filters.type, filters.specialty, filters.location, filters.country, filters.dateFrom].filter(Boolean).length
 
   // Modal publication (organisateurs)
   const [showPublish, setShowPublish]     = useState(false)
@@ -108,6 +109,11 @@ function OffersInner() {
       if (filters.specialty) params.set('specialty', filters.specialty)
       if (filters.location)  params.set('location',  filters.location)
       if (filters.country)   params.set('country',   filters.country)
+      // Date précise : du = au ; période : du … au …
+      if (filters.dateFrom) {
+        params.set('dateFrom', filters.dateFrom)
+        params.set('dateTo', filters.dateMode === 'period' && filters.dateTo ? filters.dateTo : filters.dateFrom)
+      }
       if (forMe && user?.role) {
         params.set('forRole', user.role)
         if (userSpecialties.length) params.set('forSpecialties', userSpecialties.join(','))
@@ -305,7 +311,7 @@ function OffersInner() {
               <span className="text-sm font-medium text-white/60">Filtrer les offres</span>
               {(Object.values(filters).some(Boolean) || forMe) && (
                 <button
-                  onClick={() => { setFilters({ type: '', specialty: '', location: '', country: '' }); setForMe(false) }}
+                  onClick={() => { setFilters(EMPTY_FILTERS); setForMe(false) }}
                   className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white/40 hover:text-white/70 border border-white/10 hover:border-white/20 transition-all"
                 >
                   <X className="w-3 h-3" />
@@ -359,6 +365,34 @@ function OffersInner() {
               />
             </div>
 
+            {/* Date : toutes, une date précise ou une période */}
+            <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
+              <select
+                value={filters.dateMode}
+                onChange={e => setFilters(p => ({ ...p, dateMode: e.target.value as DateMode, dateFrom: e.target.value ? p.dateFrom : '', dateTo: e.target.value === 'period' ? p.dateTo : '' }))}
+                aria-label="Filtrer par date"
+                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-purple-500/50"
+              >
+                <option value="">Toutes les dates</option>
+                <option value="exact">Une date précise</option>
+                <option value="period">Une période</option>
+              </select>
+              {filters.dateMode && (
+                <label className="flex items-center gap-2 text-xs text-white/50">
+                  {filters.dateMode === 'period' ? 'Du' : 'Le'}
+                  <input type="date" value={filters.dateFrom} onChange={e => setFilters(p => ({ ...p, dateFrom: e.target.value }))}
+                    className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-purple-500/50" />
+                </label>
+              )}
+              {filters.dateMode === 'period' && (
+                <label className="flex items-center gap-2 text-xs text-white/50">
+                  au
+                  <input type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={e => setFilters(p => ({ ...p, dateTo: e.target.value }))}
+                    className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-purple-500/50" />
+                </label>
+              )}
+            </div>
+
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
               <input
@@ -371,7 +405,7 @@ function OffersInner() {
 
             {(activeFilterCount > 0 || forMe) && (
               <button
-                onClick={() => { setFilters({ type: '', specialty: '', location: '', country: '' }); setForMe(false) }}
+                onClick={() => { setFilters(EMPTY_FILTERS); setForMe(false) }}
                 className="sm:hidden flex items-center justify-center gap-1.5 rounded-xl border border-white/10 py-2.5 text-sm text-white/50"
               >
                 <X className="w-4 h-4" />
@@ -394,7 +428,7 @@ function OffersInner() {
             </p>
             {(Object.values(filters).some(Boolean) || forMe) && (
               <button
-                onClick={() => { setFilters({ type: '', specialty: '', location: '', country: '' }); setForMe(false) }}
+                onClick={() => { setFilters(EMPTY_FILTERS); setForMe(false) }}
                 className="mt-3 text-xs text-purple-400 hover:text-purple-300 transition-colors"
               >
                 Réinitialiser les filtres

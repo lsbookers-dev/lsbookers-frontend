@@ -3,6 +3,7 @@
 /** Portfolio vivant partagé par les profils privés et publics. */
 
 import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ImagePlus, Trash2, X } from 'lucide-react'
 import PublicationCard, { type PubCardData, type PubTag } from './PublicationCard'
 import PublicationModal from './PublicationModal'
@@ -141,7 +142,7 @@ export default function PublicationsSection({
         />
       )}
 
-      {showAll && (
+      {showAll && createPortal(
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 backdrop-blur-md sm:items-center sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget) setShowAll(false) }}>
           <section role="dialog" aria-modal="true" aria-label={`${title}, toutes les publications`} className="flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden border-white/10 bg-[#0b0a0e] shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-[1.35rem] sm:border">
             <header className="flex items-center justify-between gap-4 border-b border-white/[0.08] px-4 py-4 sm:px-5">
@@ -160,7 +161,7 @@ export default function PublicationsSection({
             </div>
           </section>
         </div>
-      )}
+      , document.body)}
     </>
   )
 }

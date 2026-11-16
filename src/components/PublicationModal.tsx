@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import {
   X, Heart, Send, Trash2, MessageCircle, ChevronLeft, ChevronRight,
@@ -524,7 +525,8 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
   const acceptedTags = tags.filter(tag => tag.status === 'ACCEPTED')
   const isImage = currentMedia.mediaType?.toLowerCase() === 'image'
 
-  return (
+  // Affichée au niveau de la page : un bloc à effet de flou (profil) enfermerait la fenêtre
+  return createPortal(
     <>
       <div
         className="fixed inset-0 z-[70] flex items-end justify-center bg-black/88 backdrop-blur-md lg:items-center lg:p-5"
@@ -731,5 +733,5 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
         />
       )}
     </>
-  )
+  , document.body)
 }

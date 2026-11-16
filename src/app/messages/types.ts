@@ -12,6 +12,8 @@ export interface Participant {
   profile?: { avatar?: string | null } | null
   profileId?: number | null
   lastActiveAt?: string | null
+  /** L'interlocuteur a supprimé son compte (conversation gardée, « Compte supprimé ») */
+  deleted?: boolean
 }
 
 export interface Conversation {
