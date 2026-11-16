@@ -2,7 +2,7 @@
 export function PostCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-[1.4rem] border border-white/[0.08] bg-surface" aria-hidden="true">
-      <div className="relative aspect-[4/5] animate-pulse bg-white/[0.04]">
+      <div className="relative aspect-[4/5] max-h-[75dvh] w-full animate-pulse bg-white/[0.04]">
         <div className="absolute left-4 top-4 flex items-center gap-3 sm:left-5 sm:top-5">
           <div className="h-10 w-10 rounded-full bg-white/[0.08]" />
           <div className="space-y-2">

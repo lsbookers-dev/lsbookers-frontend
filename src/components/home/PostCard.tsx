@@ -87,7 +87,8 @@ export default function PostCard({ post, onLike, onOpenModal, currentUserId, isM
 
   return (
     <article className="group relative overflow-hidden rounded-[1.4rem] border border-white/[0.1] bg-surface shadow-[0_28px_75px_rgba(0,0,0,.2)]">
-      <div className={`relative ${isVideo ? 'aspect-video' : 'aspect-[4/5]'} bg-black`} onClick={() => onOpenModal(post)}>
+      {/* Maquette A2 (17/11/2026) : la photo ne dépasse jamais 75 % de la hauteur de l'écran, elle reste entière sur fond flou */}
+      <div className={`relative ${isVideo ? 'aspect-video' : 'aspect-[4/5]'} max-h-[75dvh] w-full overflow-hidden bg-black`} onClick={() => onOpenModal(post)}>
         {isVideo ? (
           <video
             key={current.url}
@@ -148,7 +149,7 @@ export default function PostCard({ post, onLike, onOpenModal, currentUserId, isM
 
       <div className="absolute bottom-5 left-4 right-[4.8rem] z-[3] sm:bottom-6 sm:left-5 sm:right-24">
         <button type="button" onClick={() => onOpenModal(post)} className="block text-left">
-          <h2 className="font-serif text-2xl font-semibold leading-[1.05] text-white drop-shadow sm:text-3xl">{post.title}</h2>
+          <h2 className="font-serif text-xl font-semibold leading-[1.1] text-white drop-shadow sm:text-2xl">{post.title}</h2>
           {post.caption && <p className="mt-2 line-clamp-2 max-w-xl text-[11px] leading-relaxed text-white/70 sm:text-xs">{post.caption}</p>}
         </button>
       </div>
