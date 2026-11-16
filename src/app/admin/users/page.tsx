@@ -78,7 +78,7 @@ const LABELS: Record<string, string> = {
   emailVerified: 'E-mail confirmé', requiresPasswordReset: 'Doit changer son mot de passe', isIdentityVerified: 'Identité vérifiée',
   isPaymentEnabled: 'Paiements activés', stripeAccountId: 'Compte Stripe (versements)', stripeCustomerId: 'Client Stripe (abonnements)',
   signupPlan: 'Formule choisie à l’inscription', payoutMode: 'Mode de versement', registrationStep: 'Étape d’inscription',
-  pausedAt: 'Compte en pause depuis', bannedAt: 'Suspendu le', banReason: 'Motif de suspension', lateCancelWarnedAt: 'Averti (annulations) le',
+  pausedAt: 'Compte en pause depuis', bannedAt: 'Suspendu le', banReason: 'Motif de suspension', warningCount: 'Avertissements (modération)', lateCancelWarnedAt: 'Averti (annulations) le',
   newsletterOptIn: 'Accepte la newsletter', newsletterOptInAt: 'Newsletter acceptée le', loginAlerts: 'Alertes de connexion',
   passwordChangedAt: 'Mot de passe changé le', pendingEmail: 'Nouvel e-mail en attente', pendingEmailExpiresAt: 'Nouvel e-mail valable jusqu’au',
   canManageProfiles: 'Business offert par l’admin', isAdmin: 'Ancien drapeau admin', role: 'Type de compte', notifPrefs: 'Préférences de notification',
@@ -136,7 +136,7 @@ function Fields({ obj, keys }: { obj: Json | null | undefined; keys: string[] })
 }
 
 const USER_SHOWN = ['id', 'email', 'pseudo', 'firstName', 'lastName', 'dateOfBirth', 'phone', 'countryOfResidence', 'role', 'createdAt', 'lastActiveAt',
-  'emailVerified', 'registrationStep', 'pausedAt', 'bannedAt', 'banReason', 'isIdentityVerified', 'isPaymentEnabled', 'payoutMode', 'stripeAccountId',
+  'emailVerified', 'registrationStep', 'pausedAt', 'bannedAt', 'banReason', 'warningCount', 'isIdentityVerified', 'isPaymentEnabled', 'payoutMode', 'stripeAccountId',
   'stripeCustomerId', 'signupPlan', 'canManageProfiles']
 const PROFILE_SHOWN = ['legalStatus', 'siret', 'organizerType', 'establishmentName', 'address', 'postalCode', 'city', 'profession', 'location', 'country',
   'radiusKm', 'specialties', 'styles', 'typeEtablissement', 'bio', 'instagramUrl', 'facebookUrl', 'tiktokUrl', 'soundcloudUrl', 'youtubeUrl',
@@ -408,7 +408,8 @@ function MembersContent() {
   const [users, setUsers] = useState<ListedUser[] | null>(null)
   const [total, setTotal] = useState(0)
   const [error, setError] = useState(false)
-  const [openId, setOpenId] = useState<number | null>(null)
+  // ?open=<id> : ouvre directement la fiche d'un membre (lien depuis Signalements)
+  const [openId, setOpenId] = useState<number | null>(Number(params.get('open')) || null)
 
   const load = useCallback(async () => {
     setError(false)

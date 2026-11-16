@@ -42,6 +42,8 @@ export function billingLink(type: string): string | null {
       return '/admin/subscriptions?tab=orders'
     case 'ADMIN_LATE_CANCEL_ALERT':
       return '/admin/subscriptions?tab=cancellations'
+    case 'ADMIN_REPORT':
+      return '/admin/signalements'
     case 'ADMIN_PAYMENT_ISSUE':
       return '/admin/subscriptions'
     default:

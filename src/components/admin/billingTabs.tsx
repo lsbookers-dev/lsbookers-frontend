@@ -338,6 +338,7 @@ type Settings = {
   trialDays: number
   carousel: { regionalSlots: number; nationalSlots: number }
   lateCancellations: { warnAt: number; alertAt: number; windowDays: number }
+  moderation?: { autoHideAt: number }
 }
 
 function NumberField({ label, value, onChange, suffix, step = 1 }: { label: string; value: number; onChange: (n: number) => void; suffix?: string; step?: number }) {
@@ -447,6 +448,13 @@ export function RulesTab() {
           <NumberField label="Alerte admin à" value={s.lateCancellations.alertAt} onChange={n => up('lateCancellations', { alertAt: n })} suffix="annul." />
           <NumberField label="Sur une période de" value={s.lateCancellations.windowDays} onChange={n => up('lateCancellations', { windowDays: n })} suffix="jours" />
         </div>
+      </section>
+      <section className={CARD}>
+        <p className="mb-3 text-sm font-semibold">Signalements</p>
+        <div className="grid gap-3 sm:grid-cols-5">
+          <NumberField label="Masquer un contenu à" value={s.moderation?.autoHideAt ?? 3} onChange={n => up('moderation', { autoHideAt: n })} suffix="signal." />
+        </div>
+        <p className="mt-2 text-[11px] text-muted">Une publication, un commentaire ou une offre signalé par autant de membres différents est masqué en attendant votre décision. 0 = jamais masqué automatiquement. Un profil n’est jamais masqué seul.</p>
       </section>
       <button type="button" onClick={save} disabled={busy} className={BTN}>Enregistrer les réglages</button>
     </div>

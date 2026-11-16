@@ -7,18 +7,19 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  Home, Users, Receipt, Star, Mail, SlidersHorizontal, History, LogOut, ShieldCheck, Menu, X,
+  Home, Users, Receipt, Star, Mail, SlidersHorizontal, History, LogOut, ShieldCheck, Menu, X, Flag,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
 import { API, Badge } from './ui'
 
-type Badges = { members: number; sales: number; messages: number }
+type Badges = { members: number; sales: number; messages: number; reports: number }
 
 const NAV: { href: string; label: string; icon: LucideIcon; badge?: keyof Badges; also?: string[] }[] = [
   { href: '/admin/dashboard', label: 'Accueil', icon: Home },
   { href: '/admin/users', label: 'Membres', icon: Users, badge: 'members' },
+  { href: '/admin/signalements', label: 'Signalements', icon: Flag, badge: 'reports' },
   { href: '/admin/ventes', label: 'Ventes', icon: Receipt, badge: 'sales' },
   { href: '/admin/vitrine', label: 'Vitrine', icon: Star },
   { href: '/admin/messages', label: 'Messages', icon: Mail, badge: 'messages' },
@@ -33,13 +34,13 @@ export default function AdminSidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
   const [open, setOpen] = useState(false)
-  const [badges, setBadges] = useState<Badges>({ members: 0, sales: 0, messages: 0 })
+  const [badges, setBadges] = useState<Badges>({ members: 0, sales: 0, messages: 0, reports: 0 })
 
   useEffect(() => {
     const load = () => {
       apiFetch(`${API}/api/admin/badges`, { cache: 'no-store' })
         .then(r => (r.ok ? r.json() : null))
-        .then(d => { if (d) setBadges(d) })
+        .then(d => { if (d) setBadges({ members: 0, sales: 0, messages: 0, reports: 0, ...d }) })
         .catch(() => {})
     }
     load()

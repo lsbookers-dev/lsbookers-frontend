@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Pencil, CircleCheck, FileText, Layers, Send, Share2 } from 'lucide-react'
 import { publicProfileHref } from '@/components/profile/utils'
+import ReportMenu from '@/components/ReportMenu'
 
 /* ─── Types ─────────────────────────────────────────────── */
 export type Offer = {
@@ -81,6 +82,9 @@ export default function OfferCard({
       >
         <Share2 className="h-3.5 w-3.5" />
       </button>
+      {isLoggedIn && !isOwner && (
+        <ReportMenu targetType="OFFER" targetId={offer.id} ownerUserId={offer.organizer.userId} ownerName={offer.organizer.name} variant="small" className="absolute right-12 top-3 z-10" />
+      )}
       <div className="lsb-offer-art" aria-hidden="true">
         <div className="lsb-offer-beam lsb-offer-beam-one" />
         <div className="lsb-offer-beam lsb-offer-beam-two" />

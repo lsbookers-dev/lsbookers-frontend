@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Heart, Images, MessageCircle, Share2, Volume2, VolumeX } from 'lucide-react'
 import type { Post } from './types'
 import { roleLabel, timeAgo } from './format'
+import ReportMenu from '@/components/ReportMenu'
 
 /** Carte d'une publication dans le fil. */
 export default function PostCard({ post, onLike, onOpenModal, currentUserId, isMuted, onToggleMute }: {
@@ -162,6 +163,7 @@ export default function PostCard({ post, onLike, onOpenModal, currentUserId, isM
           <span className="text-[9px] text-white/65">{post.commentsCount ?? 0}</span>
         </span>
         <button type="button" onClick={share} aria-label="Partager" className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/50 text-white/80 backdrop-blur-md transition hover:bg-white/10"><Share2 size={16} /></button>
+        <ReportMenu targetType="PUBLICATION" targetId={post.id} ownerUserId={post.author.userId} ownerName={post.author.name} />
         {isVideo && (
           <button type="button" onClick={event => { event.stopPropagation(); onToggleMute() }} aria-label={isMuted ? 'Activer le son' : 'Couper le son'} className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/50 text-white/80 backdrop-blur-md transition hover:bg-white/10">
             {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}

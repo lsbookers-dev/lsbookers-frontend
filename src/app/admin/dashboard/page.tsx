@@ -5,14 +5,14 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ChevronRight, Mail, Receipt, Star, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Flag, Mail, Receipt, Star, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
 import { API, ErrorBox, Kpi, Spinner, money } from '@/components/admin/ui'
 
 type Point = { date: string; signups: number; logins: number; salesCents: number }
 type Overview = {
-  todo: { carouselOrders: number; otherOrders: number; unreadContact: number; watchMembers: { userId: number; name: string; count: number }[] }
+  todo: { carouselOrders: number; otherOrders: number; unreadContact: number; reports?: number; watchMembers: { userId: number; name: string; count: number }[] }
   members: { total: number; artists: number; organizers: number; providers: number; newThisWeek: number; onlineNow: number; loginsToday: number }
   subscriptions: { pro: number; business: number; paying: number; payingPro: number; payingBusiness: number; gifted: number; trial: number; mrrCents: number }
   salesMonth: { commissionsCents: number; servicesCents: number; totalCents: number }
@@ -98,7 +98,8 @@ export default function AdminHomePage() {
 
   const { todo, members, subscriptions: subs, salesMonth } = data
   const orders = todo.carouselOrders + todo.otherOrders
-  const todoCount = orders + todo.unreadContact + todo.watchMembers.length
+  const reports = todo.reports ?? 0
+  const todoCount = orders + todo.unreadContact + todo.watchMembers.length + reports
 
   return (
     <div className="space-y-6">
@@ -116,6 +117,10 @@ export default function AdminHomePage() {
           <p className="flex items-center gap-2 px-5 py-4 text-sm text-muted">
             <CheckCircle2 className="h-4 w-4 text-accent-light" /> Rien à traiter pour l&apos;instant.
           </p>
+        )}
+        {reports > 0 && (
+          <TodoRow href="/admin/signalements" icon={Flag} action="Décider"
+            text={`${reports} contenu${reports > 1 ? 's' : ''} signalé${reports > 1 ? 's' : ''} à examiner`} />
         )}
         {todo.carouselOrders > 0 && (
           <TodoRow href="/admin/ventes?tab=orders" icon={Star} action="Valider"

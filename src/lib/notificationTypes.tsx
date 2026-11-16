@@ -41,6 +41,10 @@ export const NOTIFICATION_TYPES: Record<string, NotificationType> = {
   ADMIN_LATE_CANCEL_ALERT:{ icon: 'warning', tone: 'bad',    label: 'Annulations répétées' },
   ADMIN_PAYMENT_ISSUE:   { icon: 'warning',  tone: 'bad',    label: 'Paiement à vérifier' },
   ADMIN_BACKUP_FAILED:   { icon: 'warning',  tone: 'bad',    label: 'Sauvegarde échouée' },
+  ADMIN_REPORT:          { icon: 'warning',  tone: 'gold',   label: 'Signalement à examiner' },
+  // Signalements et modération
+  MODERATION_NOTICE:     { icon: 'warning',  tone: 'gold',   label: 'Message de LS Bookers' },
+  REPORT_RESOLVED:       { icon: 'shield',   tone: 'accent', label: 'Votre signalement' },
   // Offres
   NEW_OFFER:             { icon: 'offer',    tone: 'accent', label: 'Nouvelle offre' },
   NEW_APPLICATION:       { icon: 'offer',    tone: 'accent', label: 'Candidature' },

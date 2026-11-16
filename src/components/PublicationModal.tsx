@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext'
 import type { PubCardData, PubTag, PubTagUser } from './PublicationCard'
 import { getAuthToken, apiFetch } from '@/utils/auth'
 import TagModal from './TagModal'
+import ReportMenu from './ReportMenu'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
@@ -431,6 +432,9 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
                   <Trash2 size={12} />
                 </button>
               )}
+              {!isOwn && (
+                <ReportMenu targetType="COMMENT" targetId={c.id} ownerUserId={c.profile?.user?.id} ownerName={displayName(c.profile)} variant="ghost" className="mt-0.5 shrink-0" />
+              )}
             </div>
             <p className="mt-1 text-xs leading-relaxed text-white/68">{c.content}</p>
 
@@ -648,6 +652,7 @@ export default function PublicationModal({ pub, onClose, ownerUserId, onCountCha
               <button type="button" onClick={handleShare} aria-label="Partager" className="relative grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/55 text-white/80 backdrop-blur-md transition hover:bg-white/10">
                 {shareDone ? <Check size={17} /> : <Share2 size={16} />}
               </button>
+              {!isAuthor && <ReportMenu targetType="PUBLICATION" targetId={pub.id} ownerUserId={ownerUserId} />}
             </div>
 
             {allMedia.length > 1 && (

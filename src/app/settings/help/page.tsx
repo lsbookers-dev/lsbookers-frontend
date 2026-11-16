@@ -23,7 +23,7 @@ export default function HelpSettingsPage() {
       <SettingsCard title="Nous contacter">
         <LinkRow href="/contact?sujet=probleme" label="Signaler un problème" description="Un bug, une page qui ne s’affiche pas correctement…" />
         <LinkRow href="/contact?sujet=compte" label="Une question sur mon compte" />
-        <LinkRow href="/contact?sujet=abus" label="Signaler un abus" description="Un comportement ou un contenu qui ne respecte pas les règles" />
+        <LinkRow href="/contact?sujet=abus" label="Signaler un abus" description="Le plus rapide : le menu « ··· » d’un profil, d’une publication, d’un commentaire ou d’une offre, puis « Signaler ». Sinon, écrivez-nous ici." />
         <LinkRow href="/contact?sujet=donnees" label="Une question sur mes données personnelles" description="Accès, correction, suppression de vos données" />
       </SettingsCard>
 

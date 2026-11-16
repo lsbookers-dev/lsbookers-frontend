@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserPlus, UserMinus, UserX, ShieldOff } from 'lucide-react'
+import { UserPlus, UserMinus, UserX, ShieldOff, Flag } from 'lucide-react'
 import { apiFetch, getUserId } from '@/utils/auth'
+import { ReportDialog } from './ReportMenu'
 
 interface Props {
   targetUserId: number
@@ -19,6 +20,7 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
   const [loading, setLoading]       = useState(true)
   const [busy, setBusy]             = useState(false)
   const [showBlockMenu, setShowBlockMenu] = useState(false)
+  const [showReport, setShowReport] = useState(false)
 
   const currentUserId = getUserId()
   const isSelf = currentUserId === targetUserId
@@ -128,7 +130,14 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
         </button>
 
         {showBlockMenu && (
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-xl border border-white/10 bg-[#111118] shadow-2xl py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-xl border border-white/10 bg-[#111118] shadow-2xl py-1">
+            <button
+              onClick={() => { setShowBlockMenu(false); setShowReport(true) }}
+              className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm text-white/85 hover:bg-white/5 transition"
+            >
+              <Flag size={15} />
+              Signaler ce profil
+            </button>
             <button
               onClick={handleBlock}
               disabled={busy}
@@ -140,6 +149,15 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
           </div>
         )}
       </div>
+
+      {showReport && (
+        <ReportDialog
+          targetType="PROFILE"
+          targetId={targetUserId}
+          onClose={() => setShowReport(false)}
+          onBlocked={() => { setBlocked(true); setFollowing(false); onFollowChange?.(false) }}
+        />
+      )}
     </div>
   )
 }
