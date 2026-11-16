@@ -10,17 +10,18 @@ import { apiFetch } from '@/utils/auth'
 import { apiUrl } from '@/utils/api'
 import LsIcon from '@/components/ui/LsIcon'
 import { apiErrorMessage, useFeedback } from '@/components/ui/Feedback'
+import Dropdown, { type DropdownOption } from '@/components/ui/Dropdown'
 
 type Item = { id: number; label: string; done: boolean }
 type RemindMode = 'NONE' | 'J7_J1' | 'J1' | 'J7' | 'CUSTOM'
 type Checklist = { id: number; items: Item[]; remindMode?: RemindMode; remindAt?: string | null }
 
 // Rappel choisi par l'utilisateur (16/11/2026)
-const REMIND_OPTIONS: { value: RemindMode; label: string }[] = [
-  { value: 'J7_J1', label: 'Une semaine avant et la veille' },
+const REMIND_OPTIONS: DropdownOption<RemindMode>[] = [
+  { value: 'J7_J1', label: 'Une semaine avant et la veille', hint: 'Tant qu’il reste des choses à cocher' },
   { value: 'J1', label: 'La veille seulement' },
   { value: 'J7', label: 'Une semaine avant seulement' },
-  { value: 'CUSTOM', label: 'À une date choisie' },
+  { value: 'CUSTOM', label: 'À une date choisie', hint: 'Vous choisissez le jour et l’heure' },
   { value: 'NONE', label: 'Aucun rappel' },
 ]
 // Valeur d'un champ date-heure local à partir d'une date ISO
@@ -32,16 +33,15 @@ const localInput = (iso?: string | null) => {
 
 function ReminderPicker({ mode, at, onChange, disabled }: { mode: RemindMode; at: string; onChange: (mode: RemindMode, at: string) => void; disabled?: boolean }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs text-white/55">
-      <label htmlFor="checklist-reminder" className="flex items-center gap-1.5"><LsIcon name="bell" size={14} tone="muted" />Rappel</label>
-      <select id="checklist-reminder" value={mode} disabled={disabled} onChange={e => onChange(e.target.value as RemindMode, at)}
-        className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white/85 outline-none focus:border-accent/50">
-        {REMIND_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-      {mode === 'CUSTOM' && (
-        <input type="datetime-local" value={at} disabled={disabled} onChange={e => onChange(mode, e.target.value)} aria-label="Date et heure du rappel"
-          className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white/85 outline-none focus:border-accent/50" />
-      )}
+    <div className="grid w-full gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-white/60"><LsIcon name="bell" size={14} tone="muted" />Rappel</span>
+      <div className="flex flex-wrap gap-2">
+        <Dropdown label="Rappel de la checklist" value={mode} options={REMIND_OPTIONS} disabled={disabled} onChange={m => onChange(m, at)} className="min-w-[16rem] flex-1" />
+        {mode === 'CUSTOM' && (
+          <input type="datetime-local" value={at} disabled={disabled} onChange={e => onChange(mode, e.target.value)} aria-label="Date et heure du rappel"
+            className="h-10 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 text-sm text-white outline-none [color-scheme:dark] focus:border-accent/50" />
+        )}
+      </div>
     </div>
   )
 }

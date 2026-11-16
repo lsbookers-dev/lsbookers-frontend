@@ -6,7 +6,7 @@
  * ou des photos envoyées depuis l'appareil. Clic sur un élément : vue agrandie.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, Check, ImagePlus, Lock, Plus, Trash2, X } from 'lucide-react'
 import { apiFetch } from '@/utils/auth'
@@ -219,62 +219,68 @@ export default function AlbumsTab({ profileId, isOwner = false }: Props) {
   )
 }
 
-/* ── Fenêtre « Ajouter à l'album » : mes publications, où je suis identifié, ou des photos envoyées ── */
+/* ── Fenêtre « Ajouter à l'album » : mes publications, où je suis identifié, ou des photos envoyées ──
+ * La sélection est gardée d'un onglet à l'autre ; un seul bouton ajoute tout (publications + photos). */
 function AddToAlbumModal({ album, profileId, onClose, onAdded }: { album: AlbumDetail; profileId: number; onClose: () => void; onAdded: () => void }) {
   const { notify } = useFeedback()
   const [source, setSource] = useState<Source>('mine')
-  const [pubs, setPubs] = useState<PubCardData[] | null>(null)
+  const [lists, setLists] = useState<Partial<Record<'mine' | 'tagged', PubCardData[]>>>({})
   const [picked, setPicked] = useState<number[]>([])
+  const [files, setFiles] = useState<{ file: File; preview: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [progress, setProgress] = useState<string | null>(null)
   const inAlbum = new Set(album.items.map(i => i.publication?.id).filter(Boolean) as number[])
 
+  // Chaque liste n'est chargée qu'une fois : changer d'onglet ne perd rien
   useEffect(() => {
-    if (source === 'upload') return
-    setPubs(null); setPicked([])
+    if (source === 'upload' || lists[source]) return
     apiFetch(apiUrl(source === 'mine' ? `publications/profile/${profileId}?limit=50` : `publications/tagged/${profileId}?limit=50`))
       .then(r => (r.ok ? r.json() : null))
-      .then(d => setPubs(d?.publications ?? []))
-      .catch(() => setPubs([]))
-  }, [source, profileId])
+      .then(d => setLists(l => ({ ...l, [source]: d?.publications ?? [] })))
+      .catch(() => setLists(l => ({ ...l, [source]: [] })))
+  }, [source, profileId, lists])
+
+  // Aperçus libérés à la fermeture de la fenêtre seulement (ils servent tant qu'elle est ouverte)
+  const filesRef = useRef(files)
+  filesRef.current = files
+  useEffect(() => () => filesRef.current.forEach(f => URL.revokeObjectURL(f.preview)), [])
 
   const toggle = (id: number) => setPicked(list => list.includes(id) ? list.filter(x => x !== id) : [...list, id])
+  const addFiles = (list: FileList | null) => {
+    const images = Array.from(list || []).filter(f => f.type.startsWith('image/'))
+    setFiles(prev => [...prev, ...images.map(file => ({ file, preview: URL.createObjectURL(file) }))])
+  }
+  const removeFile = (index: number) => setFiles(prev => { URL.revokeObjectURL(prev[index].preview); return prev.filter((_, i) => i !== index) })
 
-  const addPicked = async () => {
-    if (!picked.length) return
+  const total = picked.length + files.length
+
+  const addAll = async () => {
+    if (!total) return
     setSaving(true)
-    let ok = 0
+    let pubs = 0, photos = 0
     for (const id of picked) {
       const res = await apiFetch(apiUrl(`albums/${album.id}/items`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ publicationId: id }) }).catch(() => null)
-      if (res?.ok) ok++
+      if (res?.ok) pubs++
     }
-    setSaving(false)
-    notify(ok ? `${ok} publication${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''} à l’album.` : 'Aucune publication ajoutée.', ok ? 'success' : 'error')
-    onAdded(); onClose()
-  }
-
-  const uploadPhotos = async (files: FileList | null) => {
-    const list = Array.from(files || []).filter(f => f.type.startsWith('image/'))
-    if (!list.length) return
-    setSaving(true)
-    let ok = 0
-    for (const [i, file] of list.entries()) {
-      setProgress(`Envoi ${i + 1} / ${list.length}…`)
+    for (const [i, { file }] of files.entries()) {
+      setProgress(`Envoi des photos ${i + 1} / ${files.length}…`)
       const up = await uploadToStorage(file, { folder: 'media' }).catch(() => null)
       const d = up?.ok ? await up.json() : null
       if (!d?.url) continue
       const res = await apiFetch(apiUrl(`albums/${album.id}/items`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mediaUrl: d.url, mediaType: 'image' }) }).catch(() => null)
-      if (res?.ok) ok++
+      if (res?.ok) photos++
     }
     setSaving(false); setProgress(null)
-    notify(ok ? `${ok} photo${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''} à l’album.` : 'Aucune photo n’a pu être ajoutée.', ok ? 'success' : 'error')
+    const parts = [pubs && `${pubs} publication${pubs > 1 ? 's' : ''}`, photos && `${photos} photo${photos > 1 ? 's' : ''}`].filter(Boolean)
+    notify(parts.length ? `${parts.join(' et ')} ajoutée${pubs + photos > 1 ? 's' : ''} à l’album.` : 'Rien n’a pu être ajouté.', parts.length ? 'success' : 'error')
     onAdded(); onClose()
   }
 
-  const TABS: { key: Source; label: string }[] = [
-    { key: 'mine', label: 'Mes publications' },
-    { key: 'tagged', label: 'Où je suis identifié' },
-    { key: 'upload', label: 'Envoyer des photos' },
+  const pubs = source === 'upload' ? null : lists[source]
+  const TABS: { key: Source; label: string; count: number }[] = [
+    { key: 'mine', label: 'Mes publications', count: picked.filter(id => lists.mine?.some(p => p.id === id)).length },
+    { key: 'tagged', label: 'Où je suis identifié', count: picked.filter(id => lists.tagged?.some(p => p.id === id)).length },
+    { key: 'upload', label: 'Envoyer des photos', count: files.length },
   ]
 
   return createPortal(
@@ -288,21 +294,35 @@ function AddToAlbumModal({ album, profileId, onClose, onAdded }: { album: AlbumD
         <div className="flex gap-1 overflow-x-auto border-b border-white/[0.08] px-3 py-2">
           {TABS.map(t => (
             <button key={t.key} type="button" onClick={() => setSource(t.key)} aria-pressed={source === t.key}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${source === t.key ? 'bg-accent text-white' : 'text-white/55 hover:text-white'}`}>
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${source === t.key ? 'bg-accent text-white' : 'text-white/55 hover:text-white'}`}>
               {t.label}
+              {t.count > 0 && <span className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] ${source === t.key ? 'bg-white/25' : 'bg-accent/30 text-accent-light'}`}>{t.count}</span>}
             </button>
           ))}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
           {source === 'upload' ? (
-            <label className="grid cursor-pointer justify-items-center gap-3 rounded-2xl border border-dashed border-white/15 px-5 py-12 text-center transition hover:border-accent/50">
-              <ImagePlus size={28} className="text-white/40" />
-              <span className="text-sm font-semibold text-white">{progress || 'Choisir des photos'}</span>
-              <span className="text-xs text-white/45">Depuis votre téléphone ou votre ordinateur. Elles restent dans l’album, sans devenir des publications.</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={saving} className="hidden" onChange={e => uploadPhotos(e.target.files)} />
-            </label>
-          ) : pubs === null ? (
+            <div className="grid gap-3">
+              <label className="grid cursor-pointer justify-items-center gap-2 rounded-2xl border border-dashed border-white/15 px-5 py-8 text-center transition hover:border-accent/50">
+                <ImagePlus size={26} className="text-white/40" />
+                <span className="text-sm font-semibold text-white">Choisir des photos</span>
+                <span className="text-xs text-white/45">Depuis votre téléphone ou votre ordinateur. Elles restent dans l’album, sans devenir des publications.</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={saving} className="hidden" onChange={e => { addFiles(e.target.files); e.target.value = '' }} />
+              </label>
+              {files.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {files.map((f, i) => (
+                    <div key={f.preview} className="relative aspect-square overflow-hidden rounded-xl border-2 border-accent bg-black">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={f.preview} alt="" className="h-full w-full object-cover" />
+                      <button type="button" onClick={() => removeFile(i)} aria-label="Retirer cette photo" className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-white"><X size={12} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : !pubs ? (
             <p className="py-10 text-center text-sm text-white/40">Chargement…</p>
           ) : pubs.length === 0 ? (
             <p className="py-10 text-center text-sm text-white/45">{source === 'mine' ? 'Vous n’avez pas encore de publication.' : 'Vous n’êtes identifié dans aucune publication pour l’instant.'}</p>
@@ -325,14 +345,16 @@ function AddToAlbumModal({ album, profileId, onClose, onAdded }: { album: AlbumD
           )}
         </div>
 
-        {source !== 'upload' && (
-          <div className="flex items-center justify-between gap-3 border-t border-white/[0.08] px-5 py-3">
-            <span className="text-xs text-white/50">{picked.length ? `${picked.length} sélectionnée${picked.length > 1 ? 's' : ''}` : 'Touchez les publications à ajouter'}</span>
-            <button type="button" onClick={addPicked} disabled={!picked.length || saving} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40">
-              {saving ? 'Ajout…' : 'Ajouter à l’album'}
-            </button>
-          </div>
-        )}
+        <div className="flex items-center justify-between gap-3 border-t border-white/[0.08] px-5 py-3">
+          <span className="text-xs text-white/50">
+            {progress || (total
+              ? [picked.length && `${picked.length} publication${picked.length > 1 ? 's' : ''}`, files.length && `${files.length} photo${files.length > 1 ? 's' : ''}`].filter(Boolean).join(' + ') + ' sélectionnée' + (total > 1 ? 's' : '')
+              : 'Choisissez dans les onglets, puis ajoutez tout d’un coup')}
+          </span>
+          <button type="button" onClick={addAll} disabled={!total || saving} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40">
+            {saving ? 'Ajout…' : total ? `Ajouter à l’album (${total})` : 'Ajouter à l’album'}
+          </button>
+        </div>
       </div>
     </div>,
     document.body,

@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Briefcase, MapPin, Search, SlidersHorizontal, Sparkles, Plus, X, Send } from 'lucide-react'
+import { Briefcase, CalendarDays, MapPin, Search, SlidersHorizontal, Sparkles, Plus, X, Send } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { apiFetch } from '@/utils/auth'
 import CityAutocomplete from '@/components/CityAutocomplete'
@@ -12,10 +12,16 @@ import PublishOfferModal from '@/components/offers/PublishOfferModal'
 import QuoteModal from '@/components/offers/QuoteModal'
 import { useFeedback } from '@/components/ui/Feedback'
 import LsIcon from '@/components/ui/LsIcon'
+import Dropdown, { type DropdownOption } from '@/components/ui/Dropdown'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 type DateMode = '' | 'exact' | 'period'
+const DATE_OPTIONS: DropdownOption<DateMode>[] = [
+  { value: '', label: 'Toutes les dates' },
+  { value: 'exact', label: 'Une date précise' },
+  { value: 'period', label: 'Une période' },
+]
 const EMPTY_FILTERS = { type: '', specialty: '', location: '', country: '', dateMode: '' as DateMode, dateFrom: '', dateTo: '' }
 
 /* ─── Contenu principal (nécessite useSearchParams) ─────── */
@@ -367,28 +373,26 @@ function OffersInner() {
 
             {/* Date : toutes, une date précise ou une période */}
             <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
-              <select
+              <Dropdown
+                label="Filtrer par date"
                 value={filters.dateMode}
-                onChange={e => setFilters(p => ({ ...p, dateMode: e.target.value as DateMode, dateFrom: e.target.value ? p.dateFrom : '', dateTo: e.target.value === 'period' ? p.dateTo : '' }))}
-                aria-label="Filtrer par date"
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-purple-500/50"
-              >
-                <option value="">Toutes les dates</option>
-                <option value="exact">Une date précise</option>
-                <option value="period">Une période</option>
-              </select>
+                options={DATE_OPTIONS}
+                icon={<CalendarDays className="w-3.5 h-3.5" />}
+                onChange={mode => setFilters(p => ({ ...p, dateMode: mode, dateFrom: mode ? p.dateFrom : '', dateTo: mode === 'period' ? p.dateTo : '' }))}
+                className="w-full sm:w-56"
+              />
               {filters.dateMode && (
                 <label className="flex items-center gap-2 text-xs text-white/50">
                   {filters.dateMode === 'period' ? 'Du' : 'Le'}
                   <input type="date" value={filters.dateFrom} onChange={e => setFilters(p => ({ ...p, dateFrom: e.target.value }))}
-                    className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-purple-500/50" />
+                    className="h-10 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 text-sm text-white [color-scheme:dark] focus:outline-none focus:border-accent/50" />
                 </label>
               )}
               {filters.dateMode === 'period' && (
                 <label className="flex items-center gap-2 text-xs text-white/50">
                   au
                   <input type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={e => setFilters(p => ({ ...p, dateTo: e.target.value }))}
-                    className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-purple-500/50" />
+                    className="h-10 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 text-sm text-white [color-scheme:dark] focus:outline-none focus:border-accent/50" />
                 </label>
               )}
             </div>

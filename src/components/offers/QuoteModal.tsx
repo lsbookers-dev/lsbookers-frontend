@@ -177,7 +177,7 @@ export default function QuoteModal({ offer, onClose }: { offer: Offer; onClose: 
                 ))}
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <button type="button" onClick={() => setLines(ls => [...ls, { label: '', amount: '' }])} className="text-xs text-accent-light hover:text-white">Ajouter une ligne</button>
+                <button type="button" onClick={() => setLines(ls => [...ls, { label: '', amount: '' }])} className="inline-flex items-center gap-1 text-xs font-semibold text-accent-light hover:text-white"><span className="text-sm leading-none">+</span> Ajouter une ligne</button>
                 <p className="text-sm text-white/70">Total : <b className="text-gold">{euros(Math.round(total * 100))}</b></p>
               </div>
             </div>
