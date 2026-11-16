@@ -8,8 +8,10 @@ import PostCard from './PostCard'
 import { PostCardSkeleton } from './FeedSkeleton'
 
 /**
- * Liste du fil, comme avant la refonte : publications officielles épinglées tout en haut,
- * puis les officielles non épinglées mélangées aux publications, de la plus récente à la plus ancienne.
+ * Liste du fil : publications officielles épinglées tout en haut, puis les publications
+ * dans l'ordre choisi par l'algorithme du serveur (comptes suivis, tendances, suggestions, classés par score —
+ * décision d'Antho du 17/11/2026, avant : retriées par date). Les officielles non épinglées
+ * s'intercalent selon leur date, juste avant la première publication plus ancienne qu'elles.
  * La page suivante se charge toute seule en arrivant en bas (le bouton reste là au cas où).
  */
 export default function FeedList({ posts, adminPosts = [], hasMore, loadingMore, onLoadMore, onLike, onOpen, currentUserId, isMuted, onToggleMute }: {
@@ -38,10 +40,16 @@ export default function FeedList({ posts, adminPosts = [], hasMore, loadingMore,
 
   type Item = { kind: 'admin'; data: AdminPost } | { kind: 'post'; data: Post }
   const pinned: Item[] = adminPosts.filter(p => p.pinned).map(data => ({ kind: 'admin', data }))
-  const mixed: Item[] = [
-    ...adminPosts.filter(p => !p.pinned).map(data => ({ kind: 'admin' as const, data })),
-    ...posts.map(data => ({ kind: 'post' as const, data })),
-  ].sort((a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime())
+  const time = (d: string) => new Date(d).getTime()
+  const officials = adminPosts.filter(p => !p.pinned).sort((a, b) => time(b.createdAt) - time(a.createdAt))
+  const mixed: Item[] = []
+  let oi = 0
+  for (const data of posts) {
+    while (oi < officials.length && time(officials[oi].createdAt) >= time(data.createdAt)) mixed.push({ kind: 'admin', data: officials[oi++] })
+    mixed.push({ kind: 'post', data })
+  }
+  // Les officielles restantes ne s'affichent qu'une fois tout le fil chargé
+  if (!hasMore) while (oi < officials.length) mixed.push({ kind: 'admin', data: officials[oi++] })
 
   return (
     <div className="space-y-4">
