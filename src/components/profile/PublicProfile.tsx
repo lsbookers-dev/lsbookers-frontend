@@ -13,7 +13,6 @@ import { useProfilePublications } from '@/hooks/useProfilePublications'
 import FollowButton from '@/components/FollowButton'
 import type { Offer } from '@/components/offers/OfferCard'
 import ProfileHeader from './ProfileHeader'
-import ShareProfileButton from './ShareProfileButton'
 import ProfileBody from './ProfileBody'
 import { ProfileSkeleton, ProfileUnavailable } from './ProfileStates'
 import type { ProfileData, ProfilePublication } from './types'
@@ -100,11 +99,16 @@ export default function PublicProfile({ userId }: { userId: string }) {
           </Link>
         ) : (
           <>
-            <FollowButton targetUserId={profile.userId} onFollowChange={following => setFollowers(c => following ? c + 1 : Math.max(0, c - 1))} />
-            <Link href={`/messages?to=${profile.userId}`} className="whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
-              Contacter
-            </Link>
-            <ShareProfileButton profileUserId={profile.userId} profileName={profileName(profile)} myUserId={viewer?.id} />
+            {/* Ordre : Suivre · Contacter · ··· (Partager, Signaler, Bloquer) */}
+            <FollowButton
+              targetUserId={profile.userId}
+              onFollowChange={following => setFollowers(c => following ? c + 1 : Math.max(0, c - 1))}
+              share={{ profileName: profileName(profile), myUserId: viewer?.id }}
+            >
+              <Link href={`/messages?to=${profile.userId}`} className="whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
+                Contacter
+              </Link>
+            </FollowButton>
           </>
         )}
       />

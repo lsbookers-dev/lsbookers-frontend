@@ -1,19 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserPlus, UserMinus, UserX, ShieldOff, Flag } from 'lucide-react'
+import { UserPlus, UserMinus, UserX, ShieldOff, Flag, Share2 } from 'lucide-react'
 import { apiFetch, getUserId } from '@/utils/auth'
 import { ReportDialog } from './ReportMenu'
+import ShareProfileDialog from './profile/ShareProfileDialog'
 
 interface Props {
   targetUserId: number
   onFollowChange?: (isFollowing: boolean) => void
+  /** Bouton placé entre « Suivre » et le menu ··· (ex. Contacter) */
+  children?: React.ReactNode
+  /** Ajoute « Partager le profil » dans le menu ··· */
+  share?: { profileName: string; myUserId?: string | number }
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 
-export default function FollowButton({ targetUserId, onFollowChange }: Props) {
+export default function FollowButton({ targetUserId, onFollowChange, children, share }: Props) {
   const [following, setFollowing]   = useState(false)
   const [followsYou, setFollowsYou] = useState(false)
   const [blocked, setBlocked]       = useState(false)
@@ -21,6 +26,7 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
   const [busy, setBusy]             = useState(false)
   const [showBlockMenu, setShowBlockMenu] = useState(false)
   const [showReport, setShowReport] = useState(false)
+  const [showShare, setShowShare] = useState(false)
 
   const currentUserId = getUserId()
   const isSelf = currentUserId === targetUserId
@@ -119,6 +125,8 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
         {following ? 'Abonné' : followsYou ? 'Suivre en retour' : 'Suivre'}
       </button>
 
+      {children}
+
       {/* Menu bloquer */}
       <div className="relative">
         <button
@@ -131,6 +139,15 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
 
         {showBlockMenu && (
           <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-xl border border-white/10 bg-[#111118] shadow-2xl py-1">
+            {share && (
+              <button
+                onClick={() => { setShowBlockMenu(false); setShowShare(true) }}
+                className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm text-white/85 hover:bg-white/5 transition"
+              >
+                <Share2 size={15} />
+                Partager le profil
+              </button>
+            )}
             <button
               onClick={() => { setShowBlockMenu(false); setShowReport(true) }}
               className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm text-white/85 hover:bg-white/5 transition"
@@ -149,6 +166,10 @@ export default function FollowButton({ targetUserId, onFollowChange }: Props) {
           </div>
         )}
       </div>
+
+      {showShare && share && (
+        <ShareProfileDialog profileUserId={targetUserId} profileName={share.profileName} myUserId={share.myUserId} onClose={() => setShowShare(false)} />
+      )}
 
       {showReport && (
         <ReportDialog
