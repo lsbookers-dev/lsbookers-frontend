@@ -113,8 +113,8 @@ export default function BottomNav() {
           </button>
           <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-white/35">
             <Link href="/contact" onClick={() => setMoreOpen(false)}>Contact</Link>
-            <Link href="/legal/mentions-legales" onClick={() => setMoreOpen(false)}>Mentions légales</Link>
-            <Link href="/legal/confidentialite" onClick={() => setMoreOpen(false)}>Confidentialité</Link>
+            <Link href="/legal/mentions" onClick={() => setMoreOpen(false)}>Mentions légales</Link>
+            <Link href="/legal/conditions#confidentialite" onClick={() => setMoreOpen(false)}>Confidentialité</Link>
           </div>
         </div>
       </div>

@@ -448,8 +448,8 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-white/40">
           <p>© {new Date().getFullYear()} LSBookers — Tous droits réservés.</p>
           <div className="flex flex-wrap items-center gap-4">
-            <Link href="/legal/terms" className="hover:text-white transition">Conditions</Link>
-            <Link href="/legal/privacy" className="hover:text-white transition">Confidentialité</Link>
+            <Link href="/legal/conditions" className="hover:text-white transition">Conditions</Link>
+            <Link href="/legal/conditions#confidentialite" className="hover:text-white transition">Confidentialité</Link>
             <Link href="/legal/mentions" className="hover:text-white transition">Mentions légales</Link>
             <Link href="/contact" className="hover:text-white transition">Contact</Link>
           </div>

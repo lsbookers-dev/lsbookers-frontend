@@ -5,8 +5,8 @@ export default function Footer() {
         © {new Date().getFullYear()} LSBookers – Tous droits réservés.
       </div>
       <div className="flex justify-center gap-6">
-        <a href="#" className="hover:underline">Mentions légales</a>
-        <a href="#" className="hover:underline">Politique de confidentialité</a>
+        <a href="/legal/mentions" className="hover:underline">Mentions légales</a>
+        <a href="/legal/conditions" className="hover:underline">Conditions et confidentialité</a>
         <a href="/contact" className="hover:underline">Contact</a>
       </div>
     </footer>

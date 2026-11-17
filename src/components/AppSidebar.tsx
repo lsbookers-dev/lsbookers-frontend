@@ -56,8 +56,8 @@ export default function AppSidebar() {
         <nav>{group(secondary)}</nav>
         <div className="lsb-sidebar-legal">
           <Link href="/contact">Contact</Link>
-          <Link href="/legal/mentions-legales">Mentions légales</Link>
-          <Link href="/legal/confidentialite">Confidentialité</Link>
+          <Link href="/legal/mentions">Mentions légales</Link>
+          <Link href="/legal/conditions#confidentialite">Confidentialité</Link>
           <span>© {new Date().getFullYear()} LSBookers</span>
         </div>
       </div>

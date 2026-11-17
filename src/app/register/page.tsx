@@ -561,7 +561,7 @@ export default function RegisterPage() {
                   <PrimaryBtn loading={loading} label="Continuer →" />
                   <p className="text-center text-xs text-white/35">
                     En t&apos;inscrivant, tu acceptes nos{' '}
-                    <Link href="/legal/terms" className="underline underline-offset-4 hover:text-white transition">conditions d&apos;utilisation</Link>.
+                    <Link href="/legal/conditions" className="underline underline-offset-4 hover:text-white transition">conditions d&apos;utilisation</Link>{' '}et notre{' '}<Link href="/legal/conditions#confidentialite" className="underline underline-offset-4 hover:text-white transition">politique de confidentialité</Link>.
                   </p>
                 </form>
               )}

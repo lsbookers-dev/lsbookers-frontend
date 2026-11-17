@@ -27,9 +27,9 @@ export default function HelpSettingsPage() {
         <LinkRow href="/contact?sujet=donnees" label="Une question sur mes données personnelles" description="Accès, correction, suppression de vos données" />
       </SettingsCard>
 
-      <SettingsCard title="Informations légales" description="Les textes définitifs sont en cours de rédaction et seront publiés avant le lancement.">
-        <LinkRow href="/legal/terms" label="Conditions générales d’utilisation" />
-        <LinkRow href="/legal/privacy" label="Politique de confidentialité" />
+      <SettingsCard title="Informations légales" description="Version provisoire, en attendant les textes définitifs.">
+        <LinkRow href="/legal/conditions" label="Conditions générales d’utilisation" description="Avec les conditions des abonnements et des paiements" />
+        <LinkRow href="/legal/conditions#confidentialite" label="Politique de confidentialité" description="Avec la charte d’utilisation des données" />
         <LinkRow href="/legal/mentions" label="Mentions légales" />
       </SettingsCard>
 
