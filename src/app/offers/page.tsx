@@ -478,7 +478,7 @@ function OffersInner() {
 
       {/* ── Modal : Partager ── */}
       {shareOffer && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShareOffer(null)}>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShareOffer(null)}>
           <div className="max-w-sm w-full bg-neutral-950 border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold">Partager cette offre</h3>

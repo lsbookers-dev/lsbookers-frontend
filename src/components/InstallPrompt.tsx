@@ -20,6 +20,20 @@ export default function InstallPrompt() {
   const { ready, platform, standalone, canPrompt, promptInstall } = useInstall()
   const [snoozed, setSnoozed] = useState(true)
   const [showGuide, setShowGuide] = useState(false)
+  // Une fenêtre (publication, recadrage, offre…) est ouverte : la bannière s'efface pour ne rien recouvrir
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  useEffect(() => {
+    let frame = 0
+    const check = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => setDialogOpen(!!document.querySelector('[aria-modal="true"]')))
+    }
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
+  }, [])
 
   useEffect(() => {
     try {
@@ -45,7 +59,7 @@ export default function InstallPrompt() {
 
   const mobile = platform === 'ios' || platform === 'android'
   const hidden = !ready || standalone || pathname === '/' || (snoozed && !showGuide) || (!mobile && !canPrompt)
-  const bannerShown = !hidden && !showGuide
+  const bannerShown = !hidden && !showGuide && !dialogOpen
 
   // Tant que la fenêtre est affichée, le bas des pages laisse sa place : elle ne recouvre plus rien
   useEffect(() => {
@@ -63,8 +77,8 @@ export default function InstallPrompt() {
 
   return (
     <>
-      {!showGuide && (
-        <div className="fixed bottom-20 left-4 right-4 z-[200] md:bottom-6 md:left-auto md:right-6 md:w-80">
+      {bannerShown && (
+        <div className="fixed bottom-20 left-4 right-4 z-[55] md:bottom-6 md:left-auto md:right-6 md:w-80">
           <div className="flex items-center gap-3 rounded-2xl border border-white/12 bg-surface/95 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl">
             <Image src="/icons/icon-192.png" alt="" width={44} height={44} className="shrink-0 rounded-xl ring-1 ring-white/10" unoptimized />
             <div className="min-w-0 flex-1">

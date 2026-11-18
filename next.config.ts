@@ -6,12 +6,15 @@ const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'https://lsbookers-backen
   .replace(/\/api$/, '')
 const API_WS = API_ORIGIN.replace(/^http/, 'ws')
 const isDev = process.env.NODE_ENV !== 'production'
+// Tests en navigateur (npm run test:e2e) : version « production » qui parle au faux stockage local
+const isLocalTest = process.env.LSB_E2E === '1'
+const localStorageHost = isDev || isLocalTest ? ' http://localhost:9000' : ''
 
 // En local, http://localhost:9000 = faux stockage R2 pour les essais d'envoi
 // media.lsbookers.com = adresse à nous du stockage R2 (#324) ; *.r2.dev = ancienne adresse, gardée pour les anciens médias
-const MEDIA_HOSTS = `https://media.lsbookers.com https://*.r2.dev https://*.public.blob.vercel-storage.com${isDev ? ' http://localhost:9000' : ''}`
+const MEDIA_HOSTS = `https://media.lsbookers.com https://*.r2.dev https://*.public.blob.vercel-storage.com${localStorageHost}`
 // Envoi direct des fichiers du navigateur vers le stockage R2 (adresses signées, #275)
-const UPLOAD_HOSTS = `https://*.r2.cloudflarestorage.com${isDev ? ' http://localhost:9000' : ''}`
+const UPLOAD_HOSTS = `https://*.r2.cloudflarestorage.com${localStorageHost}`
 
 const csp = [
   "default-src 'self'",
@@ -43,6 +46,8 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  // Tests en navigateur (npm run test:e2e) : construction à part, sans toucher à .next
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
   },

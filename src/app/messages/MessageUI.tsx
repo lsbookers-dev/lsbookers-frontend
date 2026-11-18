@@ -27,6 +27,8 @@ export function Lightbox({ url, name, onClose }: { url: string; name?: string | 
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4"
       onClick={onClose}
     >

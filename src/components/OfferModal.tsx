@@ -146,6 +146,8 @@ export default function OfferModal({ offer, onClose, isLoggedIn }: Props) {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >

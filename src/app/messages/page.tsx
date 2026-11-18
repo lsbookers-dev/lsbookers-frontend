@@ -37,7 +37,9 @@ function MessagesContent() {
   const [sending, setSending] = useState(false)
   const [uploadPercent, setUploadPercent] = useState<number | null>(null) // envoi d'un fichier en cours
   const [loadingMsgs, setLoadingMsgs] = useState(false)
-  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
+  // Lien vers une conversation précise (notification, candidature…) : sur téléphone, on l'ouvre directement
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>(activeConvId ? 'chat' : 'list')
+  useEffect(() => { if (activeConvId) setMobileView('chat') }, [activeConvId])
   const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] = useState<SearchUser[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
