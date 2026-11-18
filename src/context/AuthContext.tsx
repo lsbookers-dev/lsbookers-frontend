@@ -357,10 +357,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 }
 
 /* ===================== Hook ===================== */
-export const useAuth = () => {
+// Valeur de secours si un composant est affiché hors de l'AuthProvider (vu en production le 18/11/2026 :
+// rendu côté serveur d'une page d'erreur). Au lieu de faire planter la page, on la montre comme pour un visiteur
+// non connecté ; dès que l'AuthProvider est là, la vraie valeur prend le relais.
+const noop = () => {}
+const SIGNED_OUT: AuthContextType = {
+  user: null, acting: null, token: null, loading: false,
+  setUser: noop,
+  login: async () => { throw new Error('Connexion indisponible pour le moment') },
+  verifyAdminCode: async () => { throw new Error('Connexion indisponible pour le moment') },
+  endAdminSession: async () => {},
+  logout: noop,
+}
+
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    if (process.env.NODE_ENV !== 'production') console.warn('useAuth utilisé hors de l’AuthProvider : valeur « non connecté » utilisée')
+    return SIGNED_OUT
   }
   return context
 }
